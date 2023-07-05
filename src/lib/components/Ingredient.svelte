@@ -2,15 +2,15 @@
 	import type { Writable, Readable } from 'svelte/store';
 	import { RangeSlider } from '@skeletonlabs/skeleton';
 
-	import type { IngredientWithData } from '../types';
-	import { round2 } from '../types';
+	import type { IngredientWithData } from '$lib/types';
+	import { round2 } from '$lib/types';
 
 	export let ingredient: Writable<number>;
 	export let withData: Readable<IngredientWithData>;
 
-	let protein = round2($withData.protein);
-	let carbs = round2($withData.carbs);
-	let fat = round2($withData.fat);
+	$: protein = round2($withData.protein);
+	$: carbs = round2($withData.carbs);
+	$: fat = round2($withData.fat);
 </script>
 
 <tr>

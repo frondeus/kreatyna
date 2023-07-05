@@ -1,5 +1,5 @@
 {
-	"name": "karbs",
+	"name": "kreatyna",
 	"version": "0.0.1",
 	"private": true,
 	"scripts": {
@@ -15,10 +15,12 @@
 		"test:unit": "vitest"
 	},
 	"devDependencies": {
+		"@iconify-json/mdi": "^1.1.52",
 		"@playwright/test": "^1.28.1",
 		"@skeletonlabs/skeleton": "^1.8.0",
 		"@sveltejs/adapter-auto": "^2.0.0",
 		"@sveltejs/kit": "^1.20.4",
+		"@tailwindcss/forms": "^0.5.3",
 		"@typescript-eslint/eslint-plugin": "^5.45.0",
 		"@typescript-eslint/parser": "^5.45.0",
 		"autoprefixer": "^10.4.14",
@@ -35,8 +37,15 @@
 		"tailwindcss": "^3.3.2",
 		"tslib": "^2.4.1",
 		"typescript": "^5.0.0",
+		"unplugin-icons": "^0.16.3",
 		"vite": "^4.3.6",
 		"vitest": "^0.32.2"
 	},
-	"type": "module"
+	"type": "module",
+	"dependencies": {
+		"@supabase/auth-helpers-sveltekit": "^0.10.1",
+		"@supabase/auth-ui-shared": "^0.1.6",
+		"@supabase/auth-ui-svelte": "^0.2.2",
+		"@supabase/supabase-js": "^2.26.0"
+	}
 }

@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { writable, derived, get, type Readable } from 'svelte/store';
-	import type { Goal, Sum } from '../types';
-	import { derivedIngredient, derivedSum } from '../stores';
-	import type { RawIngredentsStore as RawIngredientsStore, IngredientsStore } from '../stores';
-	import IngredientRow from '../components/Ingredient.svelte';
-	import GoalRow from '../components/Goal.svelte';
-	import SumRow from '../components/Sum.svelte';
-	import RawIngredientRow from '../components/RawIngredient.svelte';
+	import type { Goal, Sum } from '$lib/types';
+	import { derivedIngredient, derivedSum } from '$lib/stores';
+	import type { RawIngredentsStore as RawIngredientsStore, IngredientsStore } from '$lib/stores';
+	import IngredientRow from '$lib/components/Ingredient.svelte';
+	import GoalRow from '$lib/components/Goal.svelte';
+	import SumRow from '$lib/components/Sum.svelte';
+	import RawIngredientRow from '$lib/components/RawIngredient.svelte';
+	import IconAdd from '~icons/mdi/add';
+	import rawIngredientsJson from '$lib/data/raw.json';
 
 	let goal: Goal = {
 		protein: writable(72.8),
@@ -14,29 +16,15 @@
 		fat: writable(28.7)
 	};
 
-	let rawIngredients: RawIngredientsStore = writable([
-		{
-			name: writable('Chicken'),
-			container: writable(100),
-			protein: writable(21.5),
-			carbs: writable(0.1),
-			fat: writable(6.9)
-		},
-		{
-			name: writable('Avocado'),
-			container: writable(100),
-			protein: writable(1.6),
-			carbs: writable(0.5),
-			fat: writable(15.1)
-		},
-		{
-			name: writable('Rye Bread'),
-			container: writable(100),
-			protein: writable(5.1),
-			carbs: writable(36.5),
-			fat: writable(1.4)
-		}
-	]);
+	let rawIngredients: RawIngredientsStore = writable(
+		rawIngredientsJson.map(entry => ({
+			name: writable(entry.name),
+			container: writable(entry.container),
+			protein: writable(entry.protein),
+			carbs: writable(entry.carbs),
+			fat: writable(entry.fat)
+		}))
+	);
 
 	const addRaw = () => {
 		rawIngredients.update((raw) => {
@@ -82,7 +70,7 @@
 
 <div class="container mx-auto p-8 space-y-8">
 	<div class="table-container">
-		<table class="table table-hover">
+		<table class="table">
 			<thead>
 				<tr>
 					<th>Name</th>
@@ -107,8 +95,7 @@
 	<h3 class="h3">Raw ingredients</h3>
 
 	<div class="table-container">
-		<!-- Native Table Element -->
-		<table class="table table-hover">
+		<table class="table">
 			<thead>
 				<tr>
 					<th>Name</th>
@@ -117,7 +104,9 @@
 					<th>Carbs</th>
 					<th>Fat</th>
 					<th>
-						<button type="button" class="btn-icon variant-filled" on:click={addRaw}>add</button>
+						<button type="button" class="btn-icon variant-soft" on:click={addRaw}>
+							<IconAdd/>
+						</button>
 					</th>
 				</tr>
 			</thead>

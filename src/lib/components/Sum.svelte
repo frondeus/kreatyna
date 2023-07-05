@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Readable } from 'svelte/store';
-	import type { Sum } from '../types';
-	import { round2 } from '../types';
+	import type { Sum } from '$lib/types';
+	import { round2 } from '$lib/types';
 
 	export let sum: Readable<Sum>;
 

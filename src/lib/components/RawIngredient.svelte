@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import type { RawIngredient } from '../types';
+	import type { RawIngredient } from '$lib/types';
+	import IconDelete from '~icons/mdi/delete';
 
 	export let raw: RawIngredient;
 
@@ -28,6 +29,8 @@
 		<input class="input" type="number" bind:value={$fat} />
 	</td>
 	<td>
-		<button type="button" class="btn-icon variant-filled" on:click={remove}>remove</button>
+		<button type="button" class="btn-icon variant-soft" on:click={remove}>
+			<IconDelete />
+		</button>
 	</td>
 </tr>

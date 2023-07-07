@@ -15,9 +15,9 @@
 </script>
 
 <tr>
-	<th>
+	<td>
 		<input class="input" type="text" bind:value={$name} />
-	</th>
+	</td>
 	<td>{$container}g</td>
 	<td>
 		<input class="input" type="number" bind:value={$protein} />

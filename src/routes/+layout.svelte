@@ -1,61 +1,35 @@
 <script>
-	// Your selected Skeleton theme:
 	import '@skeletonlabs/skeleton/themes/theme-skeleton.css';
-
-	// This contains the bulk of Skeletons required styles:
 	import '@skeletonlabs/skeleton/styles/skeleton.css';
-
-	// Finally, your application's global stylesheet (sometimes labeled 'app.css')
 	import '../app.postcss';
 
 	import { AppShell } from '@skeletonlabs/skeleton';
-	import { AppRail, AppRailTile, AppRailAnchor } from '@skeletonlabs/skeleton';
-	import IconAccountBox from '~icons/mdi/account-box';
 
-	let currentTile = 0;
+	import { invalidate } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import Sidebar from '$lib/components/Layout/Sidebar.svelte';
+
+	export let data;
+
+	let { supabase, session } = data;
+	$: ({ supabase, session } = data);
+
+	onMount(() => {
+		const { data } = supabase.auth.onAuthStateChange((_event, _session) => {
+			if (_session?.expires_at !== session?.expires_at) {
+				invalidate('supabase:auth');
+			}
+		});
+
+		return () => data.subscription.unsubscribe();
+	});
 </script>
 
 <AppShell>
-	<!-- (header) -->
 	<svelte:fragment slot="sidebarLeft">
-
-<AppRail>
-	<svelte:fragment slot="lead">
-		<AppRailAnchor href="/" >
-			<IconAccountBox style={{ fontSize: '20em', color: 'red' }}/>
-		</AppRailAnchor>
+		<Sidebar isLoggedIn={!!session} />
 	</svelte:fragment>
-	<!-- --- -->
-	<AppRailTile bind:group={currentTile} name="tile-1" value={0} title="tile-1">
-		<svelte:fragment slot="lead">
-				(icon)
-			</svelte:fragment>
-		<span>Tile 1</span>
-	</AppRailTile>
-	<AppRailTile bind:group={currentTile} name="tile-2" value={1} title="tile-2">
-		<svelte:fragment slot="lead">
-				(icon)
-		</svelte:fragment>
-		<span>Tile 2</span>
-	</AppRailTile>
-	<AppRailTile bind:group={currentTile} name="tile-3" value={2} title="tile-3">
-		<svelte:fragment slot="lead">
-				(icon)
-		</svelte:fragment>
-		<span>Tile 3</span>
-	</AppRailTile>
-	<!-- --- -->
-	<svelte:fragment slot="trail">
-		<AppRailAnchor href="/" target="_blank" title="Account">(icon)</AppRailAnchor>
-	</svelte:fragment>
-</AppRail>
-
-	</svelte:fragment>
-	<!-- (sidebarRight) -->
-	<!-- (pageHeader) -->
-	<!-- Router Slot -->
-	<slot />
-	<!-- ---- / ---- -->
-	<!-- (pageFooter) -->
-	<!-- (footer) -->
+	<div class="container mx-auto p-8 space-y-8">
+		<slot />
+	</div>
 </AppShell>

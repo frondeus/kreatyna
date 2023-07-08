@@ -7,7 +7,13 @@
 
 	import { invalidate } from '$app/navigation';
 	import { onMount } from 'svelte';
+
+	import { computePosition, autoUpdate, offset, shift, flip, arrow } from '@floating-ui/dom';
 	import Sidebar from '$lib/components/Layout/Sidebar.svelte';
+	import BottomBar from '$lib/components/Layout/BottomBar.svelte';
+
+	import { storePopup } from '@skeletonlabs/skeleton';
+	storePopup.set({ computePosition, autoUpdate, offset, shift, flip, arrow });
 
 	export let data;
 
@@ -25,11 +31,14 @@
 	});
 </script>
 
-<AppShell>
+<AppShell slotSidebarLeft="w-0 lg:w-64" slotPageFooter="lg:hidden">
 	<svelte:fragment slot="sidebarLeft">
 		<Sidebar isLoggedIn={!!session} />
 	</svelte:fragment>
-	<div class="container mx-auto p-8 space-y-8">
+	<div class="lg:mx-auto lg:p-8 lg:space-y-8">
 		<slot />
 	</div>
+	<svelte:fragment slot="pageFooter">
+		<BottomBar isLoggedIn={!!session} />
+	</svelte:fragment>
 </AppShell>

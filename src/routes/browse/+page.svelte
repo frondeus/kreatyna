@@ -41,7 +41,7 @@
 
 </script>
 
-<div class="table-container">
+<div class="md:table-container">
 	<table class="table">
 		<thead>
 			<tr>

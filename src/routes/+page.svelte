@@ -6,9 +6,9 @@
 	import IngredientRow from '$lib/components/Ingredient.svelte';
 	import GoalRow from '$lib/components/Goal.svelte';
 	import SumRow from '$lib/components/Sum.svelte';
-	import rawIngredientsJson from '$lib/data/raw.json';
+	// import rawIngredientsJson from '$lib/data/raw.json';
 
-	export let data;
+	// export let data;
 
 	let goal: Goal = {
 		protein: writable(72.8),
@@ -17,13 +17,14 @@
 	};
 
 	let rawIngredients: RawIngredientsStore = writable(
-		rawIngredientsJson.map((entry) => ({
-			name: writable(entry.name),
-			container: writable(entry.container),
-			protein: writable(entry.protein),
-			carbs: writable(entry.carbs),
-			fat: writable(entry.fat)
-		}))
+		// rawIngredientsJson.map((entry) => ({
+		// 	name: writable(entry.name),
+		// 	container: writable(entry.container),
+		// 	protein: writable(entry.protein),
+		// 	carbs: writable(entry.carbs),
+		// 	fat: writable(entry.fat)
+		// }))
+		[]
 	);
 
 	let ingredients: IngredientsStore = derived(rawIngredients, (rawIgredients) =>
@@ -69,4 +70,3 @@
 		</tfoot>
 	</table>
 </div>
-

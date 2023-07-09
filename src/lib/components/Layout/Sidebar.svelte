@@ -9,16 +9,16 @@
 	<svelte:fragment slot="lead">
 		<NavAnchor href="/">
 			<!-- <IconAccountBox style={{ fontSize: '20em', color: 'red' }} /> -->
-				Kreatyna
+			Kreatyna
 		</NavAnchor>
 	</svelte:fragment>
 
-	<NavAnchor href="/plan"  title="Plan">Plan</NavAnchor>
-	<NavAnchor href="/shop"  title="Shop">Shop</NavAnchor>
+	<NavAnchor href="/plan" title="Plan">Plan</NavAnchor>
+	<NavAnchor href="/shop" title="Shop">Shop</NavAnchor>
 	<NavAnchor href="/store" title="Store">Store</NavAnchor>
-	<NavAnchor href="/cook"  title="Cook">Cook</NavAnchor>
-	<NavAnchor href="/log"   title="Log">Log</NavAnchor>
-	<NavAnchor href="/browse"   title="Browse">Browse</NavAnchor>
+	<NavAnchor href="/cook" title="Cook">Cook</NavAnchor>
+	<NavAnchor href="/log" title="Log">Log</NavAnchor>
+	<NavAnchor href="/browse" title="Browse">Browse</NavAnchor>
 
 	<svelte:fragment slot="trail">
 		{#if isLoggedIn}

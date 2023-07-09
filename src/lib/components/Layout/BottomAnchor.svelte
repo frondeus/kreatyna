@@ -5,7 +5,7 @@
 	export let href: string;
 </script>
 
-<TabAnchor href={href} selected={$page.url.pathname === href}>
+<TabAnchor {href} selected={$page.url.pathname === href}>
 	<svelte:fragment slot="lead">(ic)</svelte:fragment>
-  <slot />
+	<slot />
 </TabAnchor>

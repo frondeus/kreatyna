@@ -3,7 +3,7 @@
 	import '@skeletonlabs/skeleton/styles/skeleton.css';
 	import '../app.postcss';
 
-	import { AppShell } from '@skeletonlabs/skeleton';
+	import { AppShell, Modal } from '@skeletonlabs/skeleton';
 
 	import { invalidate } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -31,6 +31,8 @@
 	});
 </script>
 
+<Modal />
+
 <AppShell slotSidebarLeft="w-0 lg:w-64" slotPageFooter="lg:hidden">
 	<svelte:fragment slot="sidebarLeft">
 		<Sidebar isLoggedIn={!!session} />
@@ -39,6 +41,6 @@
 		<slot />
 	</div>
 	<svelte:fragment slot="pageFooter">
-		<BottomBar isLoggedIn={!!session} />
+		<BottomBar />
 	</svelte:fragment>
 </AppShell>

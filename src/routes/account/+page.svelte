@@ -8,7 +8,7 @@
 	const { form, errors, constraints, enhance, delayed } = superForm(data.updateForm, {
 		multipleSubmits: 'prevent'
 	});
-	const { form: signoutForm, enhance: signoutEnhance } = superForm(data.signoutForm, {
+	const { enhance: signoutEnhance } = superForm(data.signoutForm, {
 		multipleSubmits: 'prevent'
 	});
 	const { session } = data;

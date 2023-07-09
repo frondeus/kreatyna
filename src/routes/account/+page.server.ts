@@ -1,15 +1,15 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { fail, redirect, type Actions, type RequestEvent } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms/server';
 
 import { z } from 'zod';
 
 const updateSchema = z.object({
-	fullName: z.string().default('John Doe').optional(),
+	fullName: z.string().default('John Doe').optional()
 });
 
 const signoutSchema = z.object({});
 
-export const load = async ({ locals: { supabase, getSession } }) => {
+export const load = async ({ locals: { supabase, getSession } }: RequestEvent) => {
 	const session = await getSession();
 
 	if (!session) {
@@ -22,10 +22,9 @@ export const load = async ({ locals: { supabase, getSession } }) => {
 		.eq('id', session.user.id)
 		.single();
 
-
 	const updateForm = await superValidate(
 		{
-			fullName: profile.full_name
+			fullName: profile?.full_name ?? undefined
 		},
 		updateSchema
 	);
@@ -35,7 +34,7 @@ export const load = async ({ locals: { supabase, getSession } }) => {
 	return { session, updateForm, signoutForm };
 };
 
-export const actions = {
+export const actions: Actions = {
 	update: async ({ request, locals: { supabase, getSession } }) => {
 		const form = await superValidate(request, updateSchema);
 
@@ -47,10 +46,14 @@ export const actions = {
 
 		const session = await getSession();
 
+		if (!session) {
+			return fail(403, { form });
+		}
+
 		const { error } = await supabase.from('profiles').upsert({
-			id: session?.user.id,
+			id: session.user.id,
 			full_name: form.data.fullName,
-			updated_at: new Date()
+			updated_at: new Date().toISOString()
 		});
 
 		if (error) {

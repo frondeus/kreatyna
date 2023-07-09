@@ -49,25 +49,6 @@
 		</span>
 	{/if}
 
-	<label class="label">
-		<span>Username</span>
-		<input
-			class="input"
-			title="Username"
-			name="username"
-			type="text"
-			aria-invalid={$errors.username ? 'true' : undefined}
-			bind:value={$form.username}
-			{...$constraints.username}
-		/>
-	</label>
-
-	{#if $errors.username}
-		<span class="invalid">
-			{$errors.username}
-		</span>
-	{/if}
-
 	<input type="submit" class="input btn variant-filled" value={$delayed ? 'Updating' : 'Update'} />
 </form>
 

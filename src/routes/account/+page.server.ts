@@ -5,7 +5,6 @@ import { z } from 'zod';
 
 const updateSchema = z.object({
 	fullName: z.string().default('John Doe').optional(),
-	username: z.string()
 });
 
 const signoutSchema = z.object({});
@@ -19,13 +18,13 @@ export const load = async ({ locals: { supabase, getSession } }) => {
 
 	const { data: profile } = await supabase
 		.from('profiles')
-		.select(`username, full_name`)
+		.select(`full_name`)
 		.eq('id', session.user.id)
 		.single();
 
+
 	const updateForm = await superValidate(
 		{
-			username: profile.username,
 			fullName: profile.full_name
 		},
 		updateSchema
@@ -51,7 +50,6 @@ export const actions = {
 		const { error } = await supabase.from('profiles').upsert({
 			id: session?.user.id,
 			full_name: form.data.fullName,
-			username: form.data.username,
 			updated_at: new Date()
 		});
 

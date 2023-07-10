@@ -7,24 +7,25 @@
 	import EditRawModal from './EditRawModal.svelte';
 	import { superForm } from 'sveltekit-superforms/client';
 	import type { PageData } from './$types';
-
-	interface RawIngredient {
-		id: number;
-		name: string;
-		container: number;
-		proteins: number;
-		carbs: number;
-		fat: number;
-		createdByMe: boolean;
-	}
+	import { fromDB, type RawIngredient, type RawIngredientRow } from './types';
+	import { realtime } from '$lib/stores';
 
 	export let data: PageData;
+	let { supabase, session } = data;
+	$: ({ supabase, session } = data);
+
+	const rawIngredients = realtime(
+		supabase,
+		data.rawIngredients ?? [],
+		'raw',
+		(row: RawIngredientRow) => fromDB(session, row)
+	);
 
 	const addRawModalOpen = () => {
 		const modalComponent: ModalComponent = {
 			ref: AddRawModal,
 			props: {
-				data
+				addRawForm: data.addRawForm
 			}
 		};
 		modalStore.trigger({
@@ -36,7 +37,6 @@
 		const modalComponent: ModalComponent = {
 			ref: EditRawModal,
 			props: {
-				data,
 				row
 			}
 		};
@@ -65,10 +65,10 @@
 			</tr>
 		</thead>
 		<tbody>
-			{#if !data.rawIngredients}
+			{#if !$rawIngredients}
 				...Loading
 			{:else}
-				{#each data.rawIngredients as row (row.name)}
+				{#each $rawIngredients as row (row.name)}
 					<tr>
 						<td> {row.name} </td>
 						<td> {row.container} </td>

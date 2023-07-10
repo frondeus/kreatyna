@@ -11,7 +11,8 @@
 	const { enhance: signoutEnhance } = superForm(data.signoutForm, {
 		multipleSubmits: 'prevent'
 	});
-	const { session } = data;
+	let { session } = data;
+	$: ({ session } = data);
 </script>
 
 <!-- <SuperDebug data={$form} /> -->

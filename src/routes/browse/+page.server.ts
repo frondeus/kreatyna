@@ -2,6 +2,7 @@ import { fail, redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { superValidate } from 'sveltekit-superforms/server';
 import { addRawSchema, deleteRawSchema, editRawSchema } from './schema';
+import { fromDB } from './types';
 
 export const load: PageServerLoad = async ({ locals: { supabase, getSession } }) => {
 	const session = await getSession();
@@ -28,16 +29,10 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 	const deleteRawForm = await superValidate({ id: 0 }, deleteRawSchema);
 
 	return {
+		session,
 		addRawForm,
 		deleteRawForm,
-		rawIngredients: rawIngredients?.map((r) => {
-			const by = r.created_by;
-			const createdByMe = by === session.user?.id;
-			return {
-				createdByMe,
-				...r
-			};
-		})
+		rawIngredients: rawIngredients?.map((r) => fromDB(session, r))
 	};
 };
 

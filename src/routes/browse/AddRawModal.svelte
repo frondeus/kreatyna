@@ -6,9 +6,9 @@
 		onClose: () => void;
 	};
 
-	export let data;
+	export let addRawForm;
 
-	const { form, errors, constraints, enhance, delayed } = superForm(data.addRawForm, {
+	const { form, errors, constraints, enhance, delayed } = superForm(addRawForm, {
 		multipleSubmits: 'prevent',
 		onUpdated: ({ form }) => {
 			if (form.valid) {

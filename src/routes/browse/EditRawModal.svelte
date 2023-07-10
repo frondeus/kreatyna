@@ -1,21 +1,26 @@
 <script lang="ts">
 	import { modalStore } from '@skeletonlabs/skeleton';
-	import { superForm } from 'sveltekit-superforms/client';
+	import { superForm, superValidateSync } from 'sveltekit-superforms/client';
+	import { editRawSchema } from './schema';
+	import type { RawIngredient } from './types';
 
 	export let parent: {
 		onClose: () => void;
 	};
 
-	export let row;
+	export let row: RawIngredient;
 
-	const { form, errors, constraints, enhance, delayed } = superForm(row, {
-		multipleSubmits: 'prevent',
-		onUpdated: ({ form }) => {
-			if (form.valid) {
-				parent.onClose();
+	const { form, errors, constraints, enhance, delayed } = superForm(
+		superValidateSync(row, editRawSchema),
+		{
+			multipleSubmits: 'prevent',
+			onUpdated: ({ form }) => {
+				if (form.valid) {
+					parent.onClose();
+				}
 			}
 		}
-	});
+	);
 </script>
 
 {#if $modalStore[0]}

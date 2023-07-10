@@ -1,10 +1,50 @@
-import { derived, type Readable, type Writable } from 'svelte/store';
+import { derived, readable, type Readable, type Writable } from 'svelte/store';
 import type { Ingredient, IngredientWithData, RawIngredient } from './types';
+import type { Database } from './database.types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type RawIngredentsStore = Writable<RawIngredient[]>;
 export type IngredientsStore = Readable<Ingredient[]>;
 export type SumStore = Readable<Readable<number>>;
 
+export function realtime<T extends { id: K }, K, R>(
+	supabase: SupabaseClient<Database>,
+	init: T[],
+	table: string,
+	map: (arg0: R) => T
+): Readable<T[]> {
+	return readable(init, (_set, update) => {
+		const channel = supabase
+			.channel('realtime_' + table)
+			.on(
+				'postgres_changes',
+				{
+					event: '*',
+					schema: 'public',
+					table
+				},
+				(payload) => {
+					update((current) => {
+						switch (payload.eventType) {
+							case 'INSERT':
+								return [...current, map(payload.new as R)];
+							case 'DELETE':
+								return current.filter((row: T) => row.id !== payload.old.id);
+							case 'UPDATE': {
+								const idx = current.findIndex((row: T) => row.id === payload.old.id);
+								return [...current.slice(0, idx), map(payload.new as R), ...current.slice(idx + 1)];
+							}
+						}
+					});
+				}
+			)
+			.subscribe();
+
+		return () => {
+			channel.unsubscribe();
+		};
+	});
+}
 //-----
 export function derivedSum(
 	ingredients: IngredientsStore,

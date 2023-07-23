@@ -13,11 +13,30 @@ export interface RawIngredient {
 
 export type RawIngredientRow = Database['public']['Tables']['raw']['Row'];
 
-export function fromDB(session: Session, dbEntry: RawIngredientRow): RawIngredient {
-	const by = dbEntry.created_by;
-	const createdByMe = by === session.user?.id;
-	return {
-		createdByMe,
-		...dbEntry
-	};
+export interface Recipy {
+	id: number,
+	name: string,
+	portions: number,
+	steps: string[],
+	ingredients: Ingredient[]
 }
+
+export interface Ingredient {
+	id: number,
+	name: string,
+	raw?: RawIngredient,
+	amount: number,
+	unit?: string
+}
+
+export const fromDB = {
+	raw(session: Session, dbEntry: RawIngredientRow): RawIngredient {
+		
+		const by = dbEntry.created_by;
+		const createdByMe = by === session.user?.id;
+		return {
+			createdByMe,
+			...dbEntry
+		};
+	}
+};

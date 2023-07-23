@@ -44,11 +44,7 @@
 		/>
 	</label>
 
-	{#if $errors.fullName}
-		<span class="invalid">
-			{$errors.fullName}
-		</span>
-	{/if}
+	{#if $errors.fullName} <small class="text-red-500"> {$errors.fullName} </small> {/if}
 
 	<input type="submit" class="input btn variant-filled" value={$delayed ? 'Updating' : 'Update'} />
 </form>

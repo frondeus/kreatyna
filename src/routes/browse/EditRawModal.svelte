@@ -44,11 +44,7 @@
 			{...$constraints.name}
 		/>
 
-		{#if $errors.name}
-			<span class="invalid">
-				{$errors.name}
-			</span>
-		{/if}
+		{#if $errors.name} <small class="text-red-500"> {$errors.name} </small> {/if}
 
 		<label class="label">
 			<span>Container</span>
@@ -64,6 +60,7 @@
 				<div class="input-group-shim">(g)</div>
 			</div>
 		</label>
+		{#if $errors.container} <small class="text-red-500"> {$errors.container} </small> {/if}
 
 		<div class="grid grid-cols-[1fr_1fr_1fr] gap-4">
 			<label class="label">
@@ -112,6 +109,9 @@
 				</div>
 			</label>
 		</div>
+		{#if $errors.proteins} <small class="text-red-500"> {$errors.proteins} </small> {/if}
+		{#if $errors.carbs} <small class="text-red-500"> {$errors.carbs} </small> {/if}
+		{#if $errors.fat} <small class="text-red-500"> {$errors.fat} </small> {/if}
 
 		<input
 			type="submit"

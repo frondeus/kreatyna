@@ -1,8 +1,8 @@
 import { fail, redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { superValidate } from 'sveltekit-superforms/server';
-import { addRawSchema, deleteRawSchema, editRawSchema } from './schema';
-import { fromDB } from './types';
+import { addRawSchema, addRecipeSchema, deleteRawSchema, editRawSchema } from './schema';
+import { fromDB, type Recipy } from './types';
 
 export const load: PageServerLoad = async ({ locals: { supabase, getSession } }) => {
 	const session = await getSession();
@@ -10,10 +10,6 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 	if (!session) {
 		throw redirect(303, '/login');
 	}
-
-	const { data: rawIngredients } = await supabase
-		.from('raw')
-		.select('id, name, container, proteins, carbs, fat, created_by');
 
 	const addRawForm = await superValidate(
 		{
@@ -26,13 +22,47 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 		addRawSchema
 	);
 
+	const addRecipeForm = await superValidate( undefined, addRecipeSchema );
+	
 	const deleteRawForm = await superValidate({ id: 0 }, deleteRawSchema);
+
+	const rawIngredients = async () => {
+		const { data: rawIngredients } = await supabase
+			.from('raw')
+			.select('id, name, container, proteins, carbs, fat, created_by');
+
+		return rawIngredients?.map(r => fromDB.raw(session, r));
+	};
+
+	const recipies = async (): Promise<Recipy[]> => {
+		const { data } = await supabase
+		.from('recipies')
+		.select('id, name, portions, steps, recipies_ingredients ( id, name, amount, unit, raw ( id, name, container, proteins, carbs, fat, created_by ) )');
+
+		const recipies = data ?? [];
+	
+		return recipies.map(recipy => ({
+			id: recipy.id,
+			name: recipy.name,
+			portions: recipy.portions,
+			steps: recipy.steps as string[],
+			ingredients: (recipy.recipies_ingredients ?? []).map(ingredient => ({
+				id: ingredient.id,
+				name: ingredient.name,
+				amount: ingredient.amount,
+				unit: ingredient.unit ?? undefined,
+				raw: ingredient.raw ? fromDB.raw(session, ingredient.raw) : undefined
+			}))
+		}));
+	};
 
 	return {
 		session,
 		addRawForm,
 		deleteRawForm,
-		rawIngredients: rawIngredients?.map((r) => fromDB(session, r))
+		addRecipeForm,
+		rawIngredients: rawIngredients(),
+		recipies: recipies()
 	};
 };
 
@@ -116,5 +146,52 @@ export const actions: Actions = {
 		}
 
 		return { form };
+	},
+	addRecipe: async({ request, locals: { supabase, getSession }}) => {
+		const form = await superValidate(request, addRecipeSchema);
+
+		console.log('POST add recipe', form);
+
+		if(!form.valid) {
+			return fail(400, { form });
+		}
+
+		const session = await getSession();
+		if(!session) {
+			return fail(403, { form });
+		}
+
+		let { error, data } = await supabase.from('recipies')
+			.insert({
+				name: form.data.name,
+				portions: form.data.portions,
+				steps: form.data.steps
+			}).select().single();
+
+		if (error) {
+			console.log('Failure recipe', { error, request, session });
+			return fail(500, { form });
+		}
+
+		const recipeId = data?.id as number;
+
+		for(const ingredient of form.data.ingredients) {
+			({error} = await supabase.from('recipies_ingredients')
+				.insert({
+					recipe_id: recipeId,
+					name: ingredient.name,
+					amount: ingredient.amount,
+					unit: ingredient.unit ?? null,
+					raw_id: ingredient.rawId ?? null
+				})
+			);
+
+			if (error) {
+				console.log('Failure recipe ingredient', { error, request, session });
+				return fail(500, { form });
+			}
+		}
+
+		return { form }
 	}
 };

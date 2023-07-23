@@ -18,7 +18,7 @@
 		supabase,
 		data.rawIngredients ?? [],
 		'raw',
-		(row: RawIngredientRow) => fromDB(session, row)
+		(row: RawIngredientRow) => fromDB.raw(session, row)
 	);
 
 	const addRawModalOpen = () => {

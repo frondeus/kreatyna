@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
 	import type { Readable } from 'svelte/store';
 	import type { Sum } from '$lib/types';
 	import { round2 } from '$lib/types';
@@ -19,4 +19,4 @@
 	<td>{round2($protein, 2)}</td>
 	<td>{round2($carbs, 2)}</td>
 	<td>{round2($fat, 2)}</td>
-</tr>
+</tr> -->

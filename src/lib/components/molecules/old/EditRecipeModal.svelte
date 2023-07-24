@@ -1,18 +1,21 @@
-<script lang="ts">
-	import type { SuperValidated } from "sveltekit-superforms";
-	import { defaultValues, superForm } from "sveltekit-superforms/client";
-  import { addIngredientSchema, type AddRecipeSchema } from "./schema";
+<!-- <script lang="ts">
+	import { defaultValues, superForm, superValidateSync } from "sveltekit-superforms/client";
+  import {  editIngredientSchema, editRecipeSchema } from "./schema";
 	import { modalStore } from "@skeletonlabs/skeleton";
 	import IconAdd from '~icons/mdi/add';
-	import IngredientForm from "./IngredientForm.svelte";
+	import EditIngredientForm from "./EditIngredientForm.svelte";
+	import type { Recipy } from "./types";
 
 	export let parent: {
 		onClose: () => void;
 	};
 
-	export let addRecipeForm: SuperValidated<AddRecipeSchema>;
+  export let row: Recipy;
 
-	const parentForm = superForm(addRecipeForm, {
+
+	$: parentForm = superForm(
+    superValidateSync(row, editRecipeSchema)
+, {
 		multipleSubmits: 'prevent',
 		dataType: 'json',
 		resetForm: true,
@@ -23,7 +26,10 @@
 		}
 	});
 
-	$: ({ form, errors, constraints, enhance, delayed } = parentForm);
+
+	$: ({ form, errors, constraints, enhance, delayed, message } = parentForm);
+
+  $: { console.log({ row, parentForm, form, $form, editRecipeSchema , $message}); }
 
 	const addStep = (event: MouseEvent) => {
 		event.preventDefault();
@@ -33,7 +39,7 @@
   const addIngredient = (event: MouseEvent) => {
 		event.preventDefault();
 		event.stopPropagation();
-		const def =  defaultValues(addIngredientSchema);
+		const def =  defaultValues(editIngredientSchema);
 		$form.ingredients = [...$form.ingredients, def];
 	};
 
@@ -48,10 +54,15 @@
 	<form
 		class="form-widget card p-4 w-modal-wide shadow-xl space-y-4"
 		method="POST"
-		action="?/addRecipe"
+		action="?/editRecipe"
 		use:enhance
 	>
-		<h2 class="h2">Add Recipe</h2>
+		<h2 class="h2">Edit Recipe</h2>
+    <input
+      name="id"
+      type="hidden"
+      value={$form.id}
+    />
 		<input
 			class="input"
 			title="Name"
@@ -125,7 +136,7 @@
             </thead>
 						<tbody>
 							{#each $form.ingredients as _, i (i)}
-								<IngredientForm form={parentForm} idx={i} on:remove={removeIngredient} />
+								<EditIngredientForm form={parentForm} idx={i} on:remove={removeIngredient} />
 							{/each}
 						</tbody>
           </table>
@@ -133,6 +144,6 @@
       </div>
     </div>
     
-		<input type="submit" class="input btn variant-filled" value={$delayed ? 'Adding...' : 'Add'} />
+		<input type="submit" class="input btn variant-filled" value={$delayed ? 'Updating...' : 'Update'} />
 	</form>
-{/if}
+{/if} -->

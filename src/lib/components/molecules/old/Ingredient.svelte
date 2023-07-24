@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
 	import type { Writable, Readable } from 'svelte/store';
 	import { RangeSlider } from '@skeletonlabs/skeleton';
 
@@ -22,4 +22,4 @@
 	<td>{protein}</td>
 	<td>{carbs}</td>
 	<td>{fat}</td>
-</tr>
+</tr> -->

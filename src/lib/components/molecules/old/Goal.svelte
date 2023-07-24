@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
 	import type { Goal } from '$lib/types';
 	export let goal: Goal;
 
@@ -12,4 +12,4 @@
 	<td><input class="input" type="number" bind:value={$protein} /></td>
 	<td><input class="input" type="number" bind:value={$carbs} /></td>
 	<td><input class="input" type="number" bind:value={$fat} /></td>
-</tr>
+</tr> -->

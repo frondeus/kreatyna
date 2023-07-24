@@ -1,38 +1,32 @@
-<script lang="ts">
+<!-- <script lang="ts">
 	import { modalStore } from '@skeletonlabs/skeleton';
-	import { superForm, superValidateSync } from 'sveltekit-superforms/client';
-	import { editRawSchema } from './schema';
-	import type { RawIngredient } from './types';
+	import { superForm } from 'sveltekit-superforms/client';
 
 	export let parent: {
 		onClose: () => void;
 	};
 
-	export let row: RawIngredient;
+	export let addRawForm;
 
-	const { form, errors, constraints, enhance, delayed } = superForm(
-		superValidateSync(row, editRawSchema),
-		{
-			multipleSubmits: 'prevent',
-			onResult: ({ result }) => {
-				if (result.type === "success") {
-					parent.onClose();
-				}
+	const { form, errors, constraints, enhance, delayed } = superForm(addRawForm, {
+		multipleSubmits: 'prevent',
+		resetForm: true,
+		onResult: ({ result }) => {
+			if (result.type === "success") {
+				parent.onClose();
 			}
 		}
-	);
+	});
 </script>
 
 {#if $modalStore[0]}
 	<form
 		class="form-widget card p-4 w-modal-wide shadow-xl space-y-4"
 		method="POST"
-		action="?/editRaw"
+		action="?/addRaw"
 		use:enhance
 	>
-		<h2 class="h2">Edit Raw Ingredient</h2>
-		<input class="input" type="hidden" name="id" value={$form.id} />
-
+		<h2 class="h2">Add Raw Ingredient</h2>
 		<input
 			class="input"
 			title="Name"
@@ -68,9 +62,9 @@
 				<div class="input-group input-group-divider grid-cols-[1fr_auto]">
 					<input
 						type="number"
+						step="0.01"
 						name="proteins"
 						title="Proteins"
-						step="0.01"
 						bind:value={$form.proteins}
 						aria-invalid={$errors.proteins ? 'true' : undefined}
 						{...$constraints.proteins}
@@ -84,8 +78,8 @@
 					<input
 						type="number"
 						name="carbs"
-						title="Carbs"
 						step="0.01"
+						title="Carbs"
 						bind:value={$form.carbs}
 						aria-invalid={$errors.carbs ? 'true' : undefined}
 						{...$constraints.carbs}
@@ -113,10 +107,6 @@
 		{#if $errors.carbs} <small class="text-red-500"> {$errors.carbs} </small> {/if}
 		{#if $errors.fat} <small class="text-red-500"> {$errors.fat} </small> {/if}
 
-		<input
-			type="submit"
-			class="input btn variant-filled"
-			value={$delayed ? 'Updating...' : 'Update'}
-		/>
+		<input type="submit" class="input btn variant-filled" value={$delayed ? 'Adding...' : 'Add'} />
 	</form>
-{/if}
+{/if} -->

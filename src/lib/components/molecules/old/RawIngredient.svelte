@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import type { RawIngredient } from '$lib/types';
 	import IconDelete from '~icons/mdi/delete';
@@ -33,4 +33,4 @@
 			<IconDelete />
 		</button>
 	</td>
-</tr>
+</tr> -->

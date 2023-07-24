@@ -1,12 +1,14 @@
+<!-- 
 <script lang="ts">
 	import { createEventDispatcher } from "svelte";
 	import { formFieldProxy, type SuperForm } from "sveltekit-superforms/client";
 	import IconRemove from '~icons/mdi/remove';
-	import type { AddRecipeSchema } from "./schema";
+	import type { EditRecipeSchema } from "./schema";
 
-  export let form: SuperForm<AddRecipeSchema>;
+  export let form: SuperForm<EditRecipeSchema>;
   export let idx: number;
 
+  const { value: id } = formFieldProxy(form, `ingredients[${idx}].id`);
   const { value: name, errors: nameErrors, constraints: nameConstraints } = formFieldProxy(form, `ingredients[${idx}].name`);
   const { value: amount, errors: amountErrors, constraints: amountConstraints } = formFieldProxy(form, `ingredients[${idx}].amount`);
   const { value: unit, errors: unitErrors, constraints: unitConstraints } = formFieldProxy(form, `ingredients[${idx}].unit`);
@@ -23,6 +25,10 @@
 
 <tr>
 	<td>
+      <input type="hidden"
+        value={$id}
+      />
+    
 			<input type="text" class="input"
 				title="Name"
 				placeholder="Name"
@@ -57,4 +63,4 @@
 			<IconRemove />
 		</button>
 	</td>
-</tr>
+</tr> -->

@@ -1,21 +1,18 @@
-<script lang="ts">
-	import { defaultValues, superForm, superValidateSync } from "sveltekit-superforms/client";
-  import {  editIngredientSchema, editRecipeSchema } from "./schema";
+<!-- <script lang="ts">
+	import type { SuperValidated } from "sveltekit-superforms";
+	import { defaultValues, superForm } from "sveltekit-superforms/client";
+  import { addIngredientSchema, type AddRecipeSchema } from "./schema";
 	import { modalStore } from "@skeletonlabs/skeleton";
 	import IconAdd from '~icons/mdi/add';
-	import EditIngredientForm from "./EditIngredientForm.svelte";
-	import type { Recipy } from "./types";
+	import IngredientForm from "./IngredientForm.svelte";
 
 	export let parent: {
 		onClose: () => void;
 	};
 
-  export let row: Recipy;
+	export let addRecipeForm: SuperValidated<AddRecipeSchema>;
 
-
-	$: parentForm = superForm(
-    superValidateSync(row, editRecipeSchema)
-, {
+	const parentForm = superForm(addRecipeForm, {
 		multipleSubmits: 'prevent',
 		dataType: 'json',
 		resetForm: true,
@@ -26,10 +23,7 @@
 		}
 	});
 
-
-	$: ({ form, errors, constraints, enhance, delayed, message } = parentForm);
-
-  $: { console.log({ row, parentForm, form, $form, editRecipeSchema , $message}); }
+	$: ({ form, errors, constraints, enhance, delayed } = parentForm);
 
 	const addStep = (event: MouseEvent) => {
 		event.preventDefault();
@@ -39,7 +33,7 @@
   const addIngredient = (event: MouseEvent) => {
 		event.preventDefault();
 		event.stopPropagation();
-		const def =  defaultValues(editIngredientSchema);
+		const def =  defaultValues(addIngredientSchema);
 		$form.ingredients = [...$form.ingredients, def];
 	};
 
@@ -54,15 +48,10 @@
 	<form
 		class="form-widget card p-4 w-modal-wide shadow-xl space-y-4"
 		method="POST"
-		action="?/editRecipe"
+		action="?/addRecipe"
 		use:enhance
 	>
-		<h2 class="h2">Edit Recipe</h2>
-    <input
-      name="id"
-      type="hidden"
-      value={$form.id}
-    />
+		<h2 class="h2">Add Recipe</h2>
 		<input
 			class="input"
 			title="Name"
@@ -121,29 +110,10 @@
       <div class="card p-4 col-span-2">
         <h4 class="h4">Ingredients</h4>
         <div class="table-container">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Ingredient</th>
-                <th>Amount</th>
-                <th>Unit</th>
-                <th class="table-cell-fit">
-        					<button class="btn-icon variant-soft" on:click={addIngredient}>
-        						<IconAdd />
-        					</button>
-                </th>
-              </tr>
-            </thead>
-						<tbody>
-							{#each $form.ingredients as _, i (i)}
-								<EditIngredientForm form={parentForm} idx={i} on:remove={removeIngredient} />
-							{/each}
-						</tbody>
-          </table>
         </div>
       </div>
     </div>
     
-		<input type="submit" class="input btn variant-filled" value={$delayed ? 'Updating...' : 'Update'} />
+		<input type="submit" class="input btn variant-filled" value={$delayed ? 'Adding...' : 'Add'} />
 	</form>
-{/if}
+{/if} -->

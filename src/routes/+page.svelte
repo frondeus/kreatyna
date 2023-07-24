@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
 	import { writable, derived, get, type Readable } from 'svelte/store';
 	import type { Goal, Sum } from '$lib/types';
 	import { derivedIngredient, derivedSum } from '$lib/stores';
@@ -69,4 +69,4 @@
 			<GoalRow {goal} />
 		</tfoot>
 	</table>
-</div>
+</div> -->

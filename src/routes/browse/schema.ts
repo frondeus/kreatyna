@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-export const addRawSchema = z.object({
+export const editRawSchema = z.object({
+	id: z.number().int(),
 	name: z.string().default(''),
 	container: z.number().default(100),
 	proteins: z.number().default(0),
@@ -8,14 +9,10 @@ export const addRawSchema = z.object({
 	fat: z.number().default(0)
 });
 
-export const editRawSchema = z.object({
-	id: z.number().int(),
-	name: z.string(),
-	container: z.number(),
-	proteins: z.number(),
-	carbs: z.number(),
-	fat: z.number()
+export const addRawSchema = editRawSchema.extend({
+	id: editRawSchema.shape.id.optional(),
 });
+
 
 export const deleteRawSchema = z.object({
 	id: z.number().int()
@@ -23,20 +20,34 @@ export const deleteRawSchema = z.object({
 
 export type DeleteRawSchema = typeof deleteRawSchema;
 
-export const addIngredientSchema = z.object({
-	
+export const editIngredientSchema = z.object({
+		id: z.number(),
 		name: z.string().default(''),
 		amount: z.number().positive().default(1),
 		unit: z.string().optional(),
 		rawId: z.number().optional()
 });
+export type EditIngredientSchema = typeof editIngredientSchema;
+
+export const addIngredientSchema = editIngredientSchema.extend({
+		id: editIngredientSchema.shape.id.optional()
+});
 export type AddIngredientSchema = typeof addIngredientSchema;
 
-export const addRecipeSchema = z.object({
+export const editRecipeSchema = z.object({
+	id: z.number(),
 	name: z.string().default(''),
 	portions: z.number().min(1).default(1),
-	ingredients: addIngredientSchema.array(),
+	ingredients: editIngredientSchema.array(),
 	steps: z.string().nonempty().array()
 });
 
+export type EditRecipeSchema = typeof editRecipeSchema;
+
+export const addRecipeSchema = editRecipeSchema.extend({
+	id: editRecipeSchema.shape.id.optional(),
+	// ingredients: addIngredientSchema.array()
+});
+
 export type AddRecipeSchema = typeof addRecipeSchema;
+

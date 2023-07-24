@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher } from "svelte";
-	import { formFieldProxy, stringProxy, type SuperForm } from "sveltekit-superforms/client";
+	import { formFieldProxy, type SuperForm } from "sveltekit-superforms/client";
 	import IconRemove from '~icons/mdi/remove';
 	import type { AddRecipeSchema } from "./schema";
 

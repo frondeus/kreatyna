@@ -14,8 +14,8 @@
 		superValidateSync(row, editRawSchema),
 		{
 			multipleSubmits: 'prevent',
-			onUpdated: ({ form }) => {
-				if (form.valid) {
+			onResult: ({ result }) => {
+				if (result.type === "success") {
 					parent.onClose();
 				}
 			}

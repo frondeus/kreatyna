@@ -10,8 +10,9 @@
 
 	const { form, errors, constraints, enhance, delayed } = superForm(addRawForm, {
 		multipleSubmits: 'prevent',
-		onUpdated: ({ form }) => {
-			if (form.valid) {
+		resetForm: true,
+		onResult: ({ result }) => {
+			if (result.type === "success") {
 				parent.onClose();
 			}
 		}

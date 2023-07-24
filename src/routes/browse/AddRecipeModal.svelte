@@ -12,12 +12,12 @@
 
 	export let addRecipeForm: SuperValidated<AddRecipeSchema>;
 
-	$: parentForm = superForm(addRecipeForm, {
+	const parentForm = superForm(addRecipeForm, {
 		multipleSubmits: 'prevent',
 		dataType: 'json',
-		onUpdated: ({ form }) => {
-			if (form.valid) {
-				console.log('closing form');
+		resetForm: true,
+		onResult: ({ result }) => {
+			if(result.type === "success") {
 				parent.onClose();
 			}
 		}

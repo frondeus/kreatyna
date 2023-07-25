@@ -10,9 +10,11 @@
 	import IngredientForm from './IngredientForm.svelte';
 	import Textarea from '../atoms/forms/Textarea.svelte';
 	import { toastStore } from '@skeletonlabs/skeleton';
+	import type { RawIngredient } from '$lib/types';
 
 	export let id: number | undefined = undefined;
 	export let form: SuperValidated<AddRecipeSchema | EditRecipeSchema>;
+	export let relatedIngredients: Map<number, RawIngredient>;
 
 	const parentForm = superForm(form, {
 		multipleSubmits: 'prevent',
@@ -85,7 +87,12 @@
 					</thead>
 					<tbody>
 						{#each $_form.ingredients as _, i (i)}
-							<IngredientForm form={parentForm} idx={i} on:remove={removeIngredient} />
+							<IngredientForm
+								form={parentForm}
+								idx={i}
+								on:remove={removeIngredient}
+								{relatedIngredients}
+							/>
 						{/each}
 					</tbody>
 				</table>

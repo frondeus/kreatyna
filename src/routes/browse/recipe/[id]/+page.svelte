@@ -8,4 +8,4 @@
 	$: ({ id } = data);
 </script>
 
-<EditRecipeForm {id} form={data.form} />
+<EditRecipeForm {id} form={data.form} relatedIngredients={data.relatedIngredients} />

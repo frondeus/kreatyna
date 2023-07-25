@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { AppRail } from '@skeletonlabs/skeleton';
-	import NavAnchor from './NavAnchor.svelte';
+	import NavAnchor from '../atoms/NavAnchor.svelte';
 
 	export let isLoggedIn: boolean;
 </script>

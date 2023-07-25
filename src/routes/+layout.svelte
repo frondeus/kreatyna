@@ -9,8 +9,8 @@
 	import { onMount } from 'svelte';
 
 	import { computePosition, autoUpdate, offset, shift, flip, arrow } from '@floating-ui/dom';
-	import Sidebar from '$lib/components/Layout/Sidebar.svelte';
-	import BottomBar from '$lib/components/Layout/BottomBar.svelte';
+	import Sidebar from '$lib/components/molecules/Sidebar.svelte';
+	import BottomBar from '$lib/components/molecules/BottomBar.svelte';
 
 	import { storePopup } from '@skeletonlabs/skeleton';
 	storePopup.set({ computePosition, autoUpdate, offset, shift, flip, arrow });

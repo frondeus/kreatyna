@@ -50,6 +50,7 @@ export const actions: Actions = {
 		const id = data?.id as number;
 
 		for (const ingredient of form.data.ingredients) {
+			console.log('ingredient', ingredient);
 			const { error } = await supabase.from('recipies_ingredients').insert({
 				recipe_id: id,
 				name: ingredient.name,

@@ -4,6 +4,10 @@ import { fail, redirect, error as returnError, type Actions } from '@sveltejs/ki
 import { editRecipeSchema } from '$lib/schemas';
 import { fromDB } from '$lib/types';
 
+function notNull<T>(value: T | null): value is T {
+	return value !== null;
+}
+
 export const load: PageServerLoad = async ({ params, locals: { getSession, supabase } }) => {
 	const session = await getSession();
 
@@ -30,25 +34,33 @@ export const load: PageServerLoad = async ({ params, locals: { getSession, supab
 		throw returnError(404, 'Recipe was not found');
 	}
 
+	const ingredients = data.recipies_ingredients ?? [];
 	const transformedData = {
 		id: data.id,
 		name: data.name,
 		portions: data.portions,
 		steps: data.steps as string[],
-		ingredients: (data.recipies_ingredients ?? []).map((raw) => ({
+		ingredients: ingredients.map((raw) => ({
 			id: raw.id,
 			name: raw.name,
 			amount: raw.amount,
 			unit: raw.unit ?? undefined,
-			raw: raw.raw ? fromDB.raw(session, raw.raw) : undefined
+			// raw: raw.raw ? fromDB.raw(session, raw.raw) : undefined
+			rawId: raw.raw?.id ?? undefined
 		}))
 	};
 
-	// console.log({i: transformedData.ingredients});
+	const relatedIngredients = new Map(
+		ingredients
+			.map((i) => i.raw)
+			.filter(notNull)
+			.map((raw) => fromDB.raw(session, raw))
+			.map((raw) => [raw.id, raw] as const)
+	);
 
 	const form = superValidate(transformedData, editRecipeSchema);
 
-	return { session, form, id };
+	return { session, form, id, relatedIngredients };
 };
 
 export const actions: Actions = {
@@ -81,6 +93,7 @@ export const actions: Actions = {
 		}
 
 		for (const ingredient of form.data.ingredients) {
+			console.log('ingredient', ingredient);
 			if (ingredient.id) {
 				const { error } = await supabase
 					.from('recipies_ingredients')

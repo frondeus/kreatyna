@@ -9,7 +9,7 @@ export interface RawIngredient {
 	proteins: number;
 	carbs: number;
 	fat: number;
-	createdByMe: boolean;
+	createdByMe: boolean | undefined;
 }
 
 export type RawIngredientRow = Database['public']['Tables']['raw']['Row'];
@@ -31,9 +31,9 @@ export interface Ingredient {
 }
 
 export const fromDB = {
-	raw(session: Session, dbEntry: RawIngredientRow): RawIngredient {
+	raw(session: Session | undefined, dbEntry: RawIngredientRow): RawIngredient {
 		const by = dbEntry.created_by;
-		const createdByMe = by === session.user?.id;
+		const createdByMe = session ? by === session?.user?.id : undefined;
 		return {
 			createdByMe,
 			...dbEntry

@@ -4,7 +4,7 @@
 	import IconAdd from '~icons/mdi/add';
 	import IconEdit from '~icons/mdi/edit';
 	import IconDelete from '~icons/mdi/delete';
-	import ConfirmDelete from '$lib/components/molecules/ConfirmDelete.svelte';
+	import ConfirmDelete from '$lib/components/molecules/modals/ConfirmDelete.svelte';
 	import { invalidateAll } from '$app/navigation';
 
 	export let data: PageData;

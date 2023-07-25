@@ -5,4 +5,4 @@
 	export let data: PageData;
 </script>
 
-<EditRecipeForm form={data.form} />
+<EditRecipeForm form={data.form} relatedIngredients={new Map()} />

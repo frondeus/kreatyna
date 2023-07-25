@@ -38,9 +38,15 @@
 	<NumberInput form={parentForm} title="Container" name="container" />
 
 	<div class="grid grid-cols-[1fr_1fr_1fr] gap-4">
-		<NumberInput form={parentForm} step="0.01" title="Proteins" name="proteins" />
-		<NumberInput form={parentForm} step="0.01" title="Carbs" name="carbs" />
-		<NumberInput form={parentForm} step="0.01" title="Fat" name="fat" />
+		<NumberInput form={parentForm} step="0.01" title="Proteins" name="proteins">
+			<div class="input-group-shim" slot="shim">(g)</div>
+		</NumberInput>
+		<NumberInput form={parentForm} step="0.01" title="Carbs" name="carbs">
+			<div class="input-group-shim" slot="shim">(g)</div>
+		</NumberInput>
+		<NumberInput form={parentForm} step="0.01" title="Fat" name="fat">
+			<div class="input-group-shim" slot="shim">(g)</div>
+		</NumberInput>
 	</div>
 
 	<Submit value={$delayed ? submitDelayed : submit} />

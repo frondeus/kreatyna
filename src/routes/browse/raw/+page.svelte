@@ -6,7 +6,7 @@
 	import { fromDB, type RawIngredient, type RawIngredientRow } from '$lib/types';
 	import { realtime } from '$lib/stores';
 	import { modalStore } from '@skeletonlabs/skeleton';
-	import ConfirmDelete from '$lib/components/molecules/ConfirmDelete.svelte';
+	import ConfirmDelete from '$lib/components/molecules/modals/ConfirmDelete.svelte';
 	import type { Readable } from 'svelte/store';
 	import { invalidateAll } from '$app/navigation';
 

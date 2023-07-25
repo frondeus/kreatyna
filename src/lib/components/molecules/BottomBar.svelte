@@ -2,7 +2,7 @@
 	import { TabGroup } from '@skeletonlabs/skeleton';
 	import { popup } from '@skeletonlabs/skeleton';
 	import type { PopupSettings } from '@skeletonlabs/skeleton';
-	import BottomAnchor from './BottomAnchor.svelte';
+	import BottomAnchor from '../atoms/BottomAnchor.svelte';
 
 	const popupHamburger: PopupSettings = {
 		event: 'click',

@@ -16,6 +16,7 @@ export interface RawIngredient extends Nutrients {
 }
 
 export type RawIngredientRow = Database['public']['Tables']['raw']['Row'];
+export type RawIngredientInsert = Database['public']['Tables']['raw']['Insert'];
 
 export interface WithIngredients {
 	ingredients: WithRawAndAmount[];

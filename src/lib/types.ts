@@ -2,17 +2,24 @@
 import type { Database } from '$lib/database.types';
 import type { Session } from '@supabase/supabase-js';
 
-export interface RawIngredient {
-	id: number;
-	name: string;
-	container: number;
+export interface Nutrients {
 	proteins: number;
 	carbs: number;
 	fat: number;
+}
+
+export interface RawIngredient extends Nutrients {
+	id: number;
+	name: string;
+	container: number;
 	createdByMe: boolean | undefined;
 }
 
 export type RawIngredientRow = Database['public']['Tables']['raw']['Row'];
+
+export interface WithIngredients {
+	ingredients: WithRawAndAmount[];
+}
 
 export interface Recipy {
 	id: number;
@@ -22,12 +29,17 @@ export interface Recipy {
 	ingredients: Ingredient[];
 }
 
+export interface WithRawAndAmount {
+	raw?: RawIngredient;
+	amount: number;
+}
+
 export interface Ingredient {
 	id: number;
 	name: string;
-	raw?: RawIngredient;
-	amount: number;
 	unit?: string;
+	amount: number;
+	raw?: RawIngredient;
 }
 
 export const fromDB = {

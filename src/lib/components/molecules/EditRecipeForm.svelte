@@ -11,6 +11,7 @@
 	import Textarea from '../atoms/forms/Textarea.svelte';
 	import { toastStore } from '@skeletonlabs/skeleton';
 	import type { RawIngredient } from '$lib/types';
+	import { Calculator } from '$lib/calc';
 
 	export let id: number | undefined = undefined;
 	export let form: SuperValidated<AddRecipeSchema | EditRecipeSchema>;
@@ -55,6 +56,15 @@
 		$_form.ingredients.splice(idx, 1);
 		$_form.ingredients = $_form.ingredients;
 	};
+
+	$: nutrients = Calculator.calcNutrientsForIngredients({
+		ingredients: $_form.ingredients.map(
+			(ingredient) => ({
+				...ingredient,
+				raw: ingredient.rawId ? relatedIngredients.get(ingredient.rawId) : undefined
+			})
+		)
+	});
 </script>
 
 <form class="card lg:p-4 shadow-xl space-y-4" method="post" use:enhance>
@@ -94,6 +104,39 @@
 								{relatedIngredients}
 							/>
 						{/each}
+					</tbody>
+				</table>
+			</div>
+			<div class="table-container mt-4">
+				<table class="table max-md:table-compact">
+					<thead>
+						<tr>
+							<th>Nutrient</th>
+							<th>Amount</th>
+							<th>Unit</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>Energy</td>
+							<td>{Calculator.calcKcal(nutrients)}</td>
+							<td>kcal</td>
+						</tr>
+						<tr>
+							<td>Protein</td>
+							<td>{nutrients.proteins}</td>
+							<td>g</td>
+						</tr>
+						<tr>
+							<td>Carbohydrates</td>
+							<td>{nutrients.carbs}</td>
+							<td>g</td>
+						</tr>
+						<tr>
+							<td>Fat</td>
+							<td>{nutrients.fat}</td>
+							<td>g</td>
+						</tr>
 					</tbody>
 				</table>
 			</div>

@@ -14,11 +14,19 @@
 
 	const parentForm = superForm(form, {
 		multipleSubmits: 'prevent',
-		onUpdated: () => {
+		onError: ({ result }) => {
 			toastStore.trigger({
-				message: 'Raw Ingredient saved',
-				background: 'variant-filled-success'
+				message: result.error.message,
+				background: 'variant-filled-error'
 			});
+		},
+		onUpdated: ({ form }) => {
+			if (form.valid) {
+				toastStore.trigger({
+					message: 'Raw Ingredient saved',
+					background: 'variant-filled-success'
+				});
+			}
 		}
 	});
 	const { enhance, delayed, form: _form } = parentForm;
@@ -54,12 +62,7 @@
 		<label class="label">
 			<span>Energy</span>
 			<WithShim>
-				<input class="input"
-					type="text"
-					disabled
-					title="Energy"
-					value={kcal}
-					/>
+				<input class="input" type="text" disabled title="Energy" value={kcal} />
 				<div class="input-group-shim">(kcal)</div>
 			</WithShim>
 		</label>

@@ -20,11 +20,19 @@
 	const parentForm = superForm(form, {
 		multipleSubmits: 'prevent',
 		dataType: 'json',
-		onUpdated: () => {
+		onError: ({ result }) => {
 			toastStore.trigger({
-				message: 'Recipe saved',
-				background: 'variant-filled-success'
+				message: result.error.message,
+				background: 'variant-filled-error'
 			});
+		},
+		onUpdated: ({ form }) => {
+			if (form.valid) {
+				toastStore.trigger({
+					message: 'Recipe saved',
+					background: 'variant-filled-success'
+				});
+			}
 		}
 	});
 	const { enhance, delayed, form: _form } = parentForm;
@@ -58,12 +66,10 @@
 	};
 
 	$: nutrients = Calculator.calcNutrientsForIngredients({
-		ingredients: $_form.ingredients.map(
-			(ingredient) => ({
-				...ingredient,
-				raw: ingredient.rawId ? relatedIngredients.get(ingredient.rawId) : undefined
-			})
-		)
+		ingredients: $_form.ingredients.map((ingredient) => ({
+			...ingredient,
+			raw: ingredient.rawId ? relatedIngredients.get(ingredient.rawId) : undefined
+		}))
 	});
 </script>
 

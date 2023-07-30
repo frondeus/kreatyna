@@ -78,7 +78,7 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		const { error } = await supabase
+		let { error } = await supabase
 			.from('recipies')
 			.update({
 				name: form.data.name,
@@ -89,7 +89,23 @@ export const actions: Actions = {
 
 		if (error) {
 			console.error(error);
-			return fail(500, { form });
+			throw returnError(500, 'Could not save recipy');
+		}
+
+		const ingredientsToKeep = form.data.ingredients
+			.filter((i) => i.id !== undefined)
+			.map((i) => i.id)
+			.join(',');
+
+		({ error } = await supabase
+			.from('recipies_ingredients')
+			.delete()
+			.eq('recipe_id', form.data.id)
+			.not('id', 'in', '(' + ingredientsToKeep + ')'));
+
+		if (error) {
+			console.error(error);
+			throw returnError(500, 'Could not remove ingredient');
 		}
 
 		for (const ingredient of form.data.ingredients) {
@@ -108,7 +124,7 @@ export const actions: Actions = {
 
 				if (error) {
 					console.error(error);
-					return fail(500, { form });
+					throw returnError(500, 'Could not update ingredient');
 				}
 			} else {
 				const { error } = await supabase.from('recipies_ingredients').insert({
@@ -121,7 +137,7 @@ export const actions: Actions = {
 
 				if (error) {
 					console.error(error);
-					return fail(500, { form });
+					throw returnError(500, 'Could not add ingredient');
 				}
 			}
 		}

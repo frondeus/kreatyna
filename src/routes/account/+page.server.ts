@@ -1,4 +1,10 @@
-import { fail, redirect, type Actions, type RequestEvent } from '@sveltejs/kit';
+import {
+	fail,
+	redirect,
+	error as returnError,
+	type Actions,
+	type RequestEvent
+} from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms/server';
 
 import { z } from 'zod';
@@ -47,7 +53,7 @@ export const actions: Actions = {
 		const session = await getSession();
 
 		if (!session) {
-			return fail(403, { form });
+			return redirect(303, '/login');
 		}
 
 		const { error } = await supabase.from('profiles').upsert({
@@ -58,9 +64,7 @@ export const actions: Actions = {
 
 		if (error) {
 			console.log('Failure', { error, request, session });
-			return fail(500, {
-				form
-			});
+			throw returnError(500, 'Failed to update profile');
 		}
 
 		return {

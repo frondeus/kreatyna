@@ -58,7 +58,7 @@ export const actions: Actions = {
 
 		if (error) {
 			console.error(error);
-			return fail(500, { form });
+			throw returnError(500, 'Could not update raw');
 		}
 
 		return { form, id: form.data.id };

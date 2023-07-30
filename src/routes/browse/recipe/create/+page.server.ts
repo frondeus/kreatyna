@@ -1,7 +1,7 @@
 import { superValidate } from 'sveltekit-superforms/server';
 import type { PageServerLoad } from './$types';
 import { addRecipeSchema } from '$lib/schemas';
-import { redirect, type Actions, fail } from '@sveltejs/kit';
+import { redirect, type Actions, fail, error as returnError } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals: { getSession } }) => {
 	const session = await getSession();
@@ -44,7 +44,7 @@ export const actions: Actions = {
 
 		if (error) {
 			console.error(error);
-			return fail(500, { form });
+			throw returnError(500, 'Could not create recipe');
 		}
 
 		const id = data?.id as number;
@@ -61,7 +61,7 @@ export const actions: Actions = {
 
 			if (error) {
 				console.error(error);
-				return fail(500, { form });
+				throw returnError(500, 'Could not add ingredient');
 			}
 		}
 

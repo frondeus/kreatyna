@@ -28,7 +28,7 @@ export const editIngredientSchema = z.object({
 	name: z.string().default(''),
 	amount: z.number().positive().default(1),
 	unit: z.string().optional(),
-	rawId: z.number().optional(),
+	rawId: z.number().optional()
 });
 export type EditIngredientSchema = typeof editIngredientSchema;
 

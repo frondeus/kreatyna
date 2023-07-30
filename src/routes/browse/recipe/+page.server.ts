@@ -1,4 +1,4 @@
-import { redirect, type Actions, fail } from '@sveltejs/kit';
+import { redirect, type Actions, error as returnError } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals: { getSession, supabase } }) => {
@@ -32,7 +32,7 @@ export const actions: Actions = {
 
 		if (error) {
 			console.error({ error });
-			return fail(500, {});
+			throw returnError(500, 'Could not delete recipy');
 		}
 
 		console.log('Deleted from recipies ', id);

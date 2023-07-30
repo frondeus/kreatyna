@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AddRecipeSchema, EditRecipeSchema } from '$lib/schemas';
+	import type { AddOrEditRecipeSchema } from '$lib/schemas';
 	import { createEventDispatcher } from 'svelte';
 	import IconRemove from '~icons/mdi/remove';
 	import IconLink from '~icons/mdi/link-variant-plus';
@@ -14,7 +14,7 @@
 	import WithShim from '../atoms/forms-look/WithShim.svelte';
 
 	export let relatedIngredients: Map<number, RawIngredient>;
-	export let form: SuperForm<AddRecipeSchema | EditRecipeSchema>;
+	export let form: SuperForm<AddOrEditRecipeSchema>;
 	export let idx: number;
 	//   export let id: number | undefined = undefined;
 

@@ -3,7 +3,7 @@
 	import TextInput from '$lib/components/atoms/forms/TextInput.svelte';
 	import NumberInput from '$lib/components/atoms/forms/NumberInput.svelte';
 	import Submit from '$lib/components/atoms/forms/Submit.svelte';
-	import { editIngredientSchema, type AddRecipeSchema, type EditRecipeSchema } from '$lib/schemas';
+	import { editIngredientSchema, type AddOrEditRecipeSchema } from '$lib/schemas';
 	import type { SuperValidated } from 'sveltekit-superforms';
 	import IconAdd from '~icons/mdi/add';
 	import IconRemove from '~icons/mdi/remove';
@@ -12,9 +12,10 @@
 	import { toastStore } from '@skeletonlabs/skeleton';
 	import type { RawIngredient } from '$lib/types';
 	import { Calculator } from '$lib/calc';
+	import Checkbox from '../atoms/forms/Checkbox.svelte';
 
 	export let id: number | undefined = undefined;
-	export let form: SuperValidated<AddRecipeSchema | EditRecipeSchema>;
+	export let form: SuperValidated<AddOrEditRecipeSchema>;
 	export let relatedIngredients: Map<number, RawIngredient>;
 
 	const parentForm = superForm(form, {
@@ -37,9 +38,9 @@
 	});
 	const { enhance, delayed, form: _form } = parentForm;
 
-	const title = id ? 'Edit Recipe' : 'Add Recipe';
-	const submitDelayed = id ? 'Updating...' : 'Adding...';
-	const submit = id ? 'Update' : 'Add';
+	$: title = id ? 'Edit Recipe' : 'Add Recipe';
+	$: submitDelayed = $_form.askGPT ? 'Asking...' : (id ? 'Updating...' : 'Adding...');
+	$: submit = $_form.askGPT ? 'Ask' : (id ? 'Update' : 'Add');
 
 	const addStep = (event: MouseEvent) => {
 		event.preventDefault();
@@ -165,7 +166,8 @@
 		</div>
 	</div>
 
-	<div class="p-2">
+	<div class="p-2 space-y-4">
+		<Checkbox form={parentForm} title="Ask GPT to fill the blanks" name="askGPT" />
 		<Submit value={$delayed ? submitDelayed : submit} />
 	</div>
 </form>

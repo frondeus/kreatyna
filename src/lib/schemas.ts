@@ -47,3 +47,19 @@ export const addRecipeSchema = editRecipeSchema.extend({
 });
 
 export type AddRecipeSchema = typeof addRecipeSchema;
+
+
+export const addOrEditRecipeSchema = addRecipeSchema.extend({
+	name: addRecipeSchema.shape.name.optional(),
+	askGPT: z.boolean().default(false).optional()	
+}).refine((data) => {
+	if (!data.askGPT) {
+		return (data.name ?? '').trim().length > 0;
+	}
+	return true;
+},{ 
+	message: 'Name is required',
+	path: ['name']
+});
+
+export type AddOrEditRecipeSchema = typeof addOrEditRecipeSchema;

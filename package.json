@@ -52,6 +52,7 @@
 		"@supabase/auth-ui-svelte": "^0.2.2",
 		"@supabase/supabase-js": "^2.26.0",
 		"openai": "^3.3.0",
+		"typechat": "^0.0.10",
 		"xlsx-import": "^2.4.4"
 	}
 }

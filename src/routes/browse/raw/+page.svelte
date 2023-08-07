@@ -3,23 +3,16 @@
 	import IconEdit from '~icons/mdi/edit';
 	import IconDelete from '~icons/mdi/delete';
 	import type { PageData } from './$types';
-	import { fromDB, type RawIngredient, type RawIngredientRow } from '$lib/types';
-	import { realtime } from '$lib/stores';
+	// import { fromDB, type RawIngredient, type RawIngredientRow } from '$lib/types';
 	import { modalStore } from '@skeletonlabs/skeleton';
 	import ConfirmDelete from '$lib/components/molecules/modals/ConfirmDelete.svelte';
-	import type { Readable } from 'svelte/store';
+	import { readable, type Readable } from 'svelte/store';
 	import { invalidateAll } from '$app/navigation';
+	import type { RawIngredient } from '$lib/types';
 
 	export let data: PageData;
-	let { supabase, session } = data;
-	$: ({ supabase, session } = data);
 
-	const rawIngredients: Readable<RawIngredient[]> = realtime(
-		supabase,
-		data.rawIngredients ?? [],
-		'raw',
-		(row: RawIngredientRow) => fromDB.raw(session, row)
-	);
+	let rawIngredients = readable(data.rawIngredients ?? []);
 
 	const openDeleteModal = (event: MouseEvent, row: RawIngredient) => {
 		event.preventDefault();

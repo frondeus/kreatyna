@@ -2,9 +2,11 @@ import { error as returnError, redirect, type Actions, fail } from '@sveltejs/ki
 import type { PageServerLoad } from './$types';
 import { superValidate } from 'sveltekit-superforms/server';
 import { editRawSchema } from '$lib/schemas';
+import { RawMap } from '$lib/mappers/raw';
 
-export const load: PageServerLoad = async ({ params, locals: { getSession, supabase } }) => {
-	const session = await getSession();
+export const load: PageServerLoad = async ({ params, locals: { auth, prisma } }) => {
+	const session = await auth.validate();
+	const map = new RawMap(session);
 
 	if (!session) {
 		throw redirect(303, '/login');
@@ -12,28 +14,22 @@ export const load: PageServerLoad = async ({ params, locals: { getSession, supab
 
 	const id = Number(params.id);
 
-	const { error, data } = await supabase
-		.from('raw')
-		.select('id, name, container, proteins, carbs, fat, created_by')
-		.eq('id', id)
-		.maybeSingle();
-
-	if (error) {
-		throw returnError(500, error.toString());
-	}
+	const data = await prisma.raw.findUnique({
+		where: { id }
+	});
 
 	if (data === null) {
 		throw returnError(404, 'Raw ingredient was not found');
 	}
 
-	const form = superValidate(data, editRawSchema);
+	const form = superValidate(map.toDomain(data), editRawSchema);
 
 	return { session, form, id };
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals: { supabase, getSession } }) => {
-		const session = await getSession();
+	default: async ({ request, locals: { auth, prisma } }) => {
+		const session = await auth.validate();
 
 		if (!session) {
 			throw redirect(303, '/login');
@@ -45,21 +41,16 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		const { error } = await supabase
-			.from('raw')
-			.update({
+		await prisma.raw.update({
+			where: { id: form.data.id },
+			data: {
 				name: form.data.name,
 				container: form.data.container,
 				proteins: form.data.proteins,
 				carbs: form.data.carbs,
 				fat: form.data.fat
-			})
-			.eq('id', form.data.id);
-
-		if (error) {
-			console.error(error);
-			throw returnError(500, 'Could not update raw');
-		}
+			}
+		});
 
 		return { form, id: form.data.id };
 	}

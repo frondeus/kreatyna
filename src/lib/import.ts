@@ -1,10 +1,14 @@
-import type { RawIngredientInsert } from './types';
+// import type { RawIngredientInsert } from './types';
+import type { Prisma } from '@prisma/client';
+
 import { ImporterFactory } from 'xlsx-import/lib/ImporterFactory';
+
+type RawCreateManyInput = Prisma.RawCreateManyInput;
 
 export async function importRawIngredients(
 	data: Buffer,
 	created_by: string
-): Promise<RawIngredientInsert[]> {
+): Promise<RawCreateManyInput[]> {
 	const config = {
 		raw: {
 			type: 'list',
@@ -39,6 +43,6 @@ export async function importRawIngredients(
 
 	const importer = await factory.fromBuffer(data);
 
-	const raw = importer.getAllItems<RawIngredientInsert>(config.raw);
+	const raw = importer.getAllItems<RawCreateManyInput>(config.raw);
 	return raw.map((r) => ({ ...r, created_by, container: 100 }));
 }

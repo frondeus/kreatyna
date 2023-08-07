@@ -2,17 +2,25 @@ import { redirect, type Actions, error as returnError } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { fromDB } from '$lib/types';
 
-export const load: PageServerLoad = async ({ locals: { supabase, getSession } }) => {
-	const session = await getSession();
+export const load: PageServerLoad = async ({ locals: { auth, prisma } }) => {
+	const session = await auth.validate();
 
 	if (!session) {
 		throw redirect(303, '/login');
 	}
 
 	const rawIngredients = async () => {
-		const { data: rawIngredients } = await supabase
-			.from('raw')
-			.select('id, name, container, proteins, carbs, fat, created_by');
+		const rawIngredients = await prisma.raw.findMany({
+			select: {
+				id: true,
+				name: true,
+				container: true,
+				proteins: true,
+				carbs: true,
+				fat: true,
+				created_by: true
+			}
+		});
 
 		return rawIngredients?.map((r) => fromDB.raw(session, r));
 	};
@@ -24,8 +32,8 @@ export const load: PageServerLoad = async ({ locals: { supabase, getSession } })
 };
 
 export const actions: Actions = {
-	delete: async ({ request, locals: { supabase, getSession } }) => {
-		const session = await getSession();
+	delete: async ({ request, locals: { auth, prisma } }) => {
+		const session = await auth.validate();
 
 		if (!session) {
 			throw redirect(303, '/login');
@@ -34,12 +42,11 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const id = Number(data.get('id'));
 
-		const { error } = await supabase.from('raw').delete().eq('id', id);
-
-		if (error) {
-			console.error({ error });
-			throw returnError(500, 'Could not delete raw');
-		}
+		await prisma.raw.delete({
+			where: {
+				id
+			}
+		});
 
 		console.log('Deleted from raw ', id);
 

@@ -3,13 +3,10 @@ import type { PageServerLoad } from './$types';
 import { fail, redirect, error as returnError, type Actions } from '@sveltejs/kit';
 import { editRecipeSchema } from '$lib/schemas';
 import { fromDB } from '$lib/types';
+import { notNull, notNullOrUndefined } from '$lib/utils';
 
-function notNull<T>(value: T | null): value is T {
-	return value !== null;
-}
-
-export const load: PageServerLoad = async ({ params, locals: { getSession, supabase } }) => {
-	const session = await getSession();
+export const load: PageServerLoad = async ({ params, locals: { auth, prisma } }) => {
+	const session = await auth.validate();
 
 	if (!session) {
 		throw redirect(303, '/login');
@@ -17,35 +14,32 @@ export const load: PageServerLoad = async ({ params, locals: { getSession, supab
 
 	const id = Number(params.id);
 
-	const { error, data } = await supabase
-		.from('recipies')
-		.select(
-			'id, name, portions, steps, recipies_ingredients ( id, name, amount, unit, raw ( id, name, container, proteins, carbs, fat, created_by  ) )'
-		)
-		.eq('id', id)
-		.order('id', { foreignTable: 'recipies_ingredients', ascending: true })
-		.maybeSingle();
-
-	if (error) {
-		throw returnError(500, error.toString());
-	}
+	const data = await prisma.recipie.findUnique({
+		where: { id },
+		include: {
+			recipiesIngredients: {
+				include: {
+					raw: true
+				}
+			}
+		}
+	});
 
 	if (data === null) {
 		throw returnError(404, 'Recipe was not found');
 	}
 
-	const ingredients = data.recipies_ingredients ?? [];
+	const ingredients = data.recipiesIngredients ?? [];
 	const transformedData = {
-		id: data.id,
+		id: Number(data.id),
 		name: data.name,
-		portions: data.portions,
+		portions: Number(data.portions),
 		steps: data.steps as string[],
 		ingredients: ingredients.map((raw) => ({
-			id: raw.id,
+			id: Number(raw.id),
 			name: raw.name,
-			amount: raw.amount,
+			amount: raw.amount.toNumber(),
 			unit: raw.unit ?? undefined,
-			// raw: raw.raw ? fromDB.raw(session, raw.raw) : undefined
 			rawId: raw.raw?.id ?? undefined
 		}))
 	};
@@ -64,8 +58,8 @@ export const load: PageServerLoad = async ({ params, locals: { getSession, supab
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals: { supabase, getSession } }) => {
-		const session = await getSession();
+	default: async ({ request, locals: { auth, prisma } }) => {
+		const session = await auth.validate();
 
 		if (!session) {
 			throw redirect(303, '/login');
@@ -78,67 +72,51 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		let { error } = await supabase
-			.from('recipies')
-			.update({
+		const ingredientsToKeep = form.data.ingredients.map((i) => i.id).filter(notNullOrUndefined);
+
+		await prisma.recipie.update({
+			where: { id: form.data.id },
+			data: {
 				name: form.data.name,
 				portions: form.data.portions,
 				steps: form.data.steps
-			})
-			.eq('id', form.data.id);
+			}
+		});
 
-		if (error) {
-			console.error(error);
-			throw returnError(500, 'Could not save recipy');
-		}
-
-		const ingredientsToKeep = form.data.ingredients
-			.filter((i) => i.id !== undefined)
-			.map((i) => i.id)
-			.join(',');
-
-		({ error } = await supabase
-			.from('recipies_ingredients')
-			.delete()
-			.eq('recipe_id', form.data.id)
-			.not('id', 'in', '(' + ingredientsToKeep + ')'));
-
-		if (error) {
-			console.error(error);
-			throw returnError(500, 'Could not remove ingredient');
-		}
+		await prisma.recipiesIngredient.deleteMany({
+			where: {
+				recipe_id: form.data.id,
+				id: {
+					notIn: ingredientsToKeep
+				}
+			}
+		});
 
 		for (const ingredient of form.data.ingredients) {
 			console.log('ingredient', ingredient);
 			if (ingredient.id) {
-				const { error } = await supabase
-					.from('recipies_ingredients')
-					.update({
+				await prisma.recipiesIngredient.update({
+					data: {
 						name: ingredient.name,
 						amount: ingredient.amount,
 						unit: ingredient.unit ?? null,
 						raw_id: ingredient.rawId ?? null
-					})
-					.eq('id', ingredient.id)
-					.eq('recipe_id', form.data.id);
-
-				if (error) {
-					console.error(error);
-					throw returnError(500, 'Could not update ingredient');
-				}
-			} else {
-				const { error } = await supabase.from('recipies_ingredients').insert({
-					recipe_id: form.data.id,
-					name: ingredient.name,
-					amount: ingredient.amount,
-					unit: ingredient.unit ?? null,
-					raw_id: ingredient.rawId ?? null
+					},
+					where: {
+						id: ingredient.id,
+						recipe_id: form.data.id
+					}
 				});
-
-				if (error) {
-					console.error(error);
-					throw returnError(500, 'Could not add ingredient');
-				}
+			} else {
+				await prisma.recipiesIngredient.create({
+					data: {
+						recipe_id: form.data.id,
+						name: ingredient.name,
+						amount: ingredient.amount,
+						unit: ingredient.unit ?? null,
+						raw_id: ingredient.rawId ?? null
+					}
+				});
 			}
 		}
 

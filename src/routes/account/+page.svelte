@@ -19,14 +19,14 @@
 
 <form class="form-widget" method="POST" action="?/update" use:enhance>
 	<label class="label">
-		<span>E-mail</span>
+		<span>Username</span>
 		<input
 			class="input"
-			title="E-mail"
-			name="email"
-			type="email"
-			placeholder="john@example.com"
-			value={session.user.email}
+			title="Username"
+			name="username"
+			type="text"
+			placeholder="mighty-john"
+			value={session.user.username}
 			disabled
 		/>
 	</label>

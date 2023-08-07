@@ -3,14 +3,14 @@ import type { PageServerLoad } from './$types';
 import { addOrEditRecipeSchema } from '$lib/schemas';
 import { redirect, type Actions, fail, error as returnError } from '@sveltejs/kit';
 import * as typechat from 'typechat';
-import { PRIVATE_OPENAI_API_KEY } from '$env/static/private'
+import { PRIVATE_OPENAI_API_KEY } from '$env/static/private';
 
 import aiSchema from '$lib/ai.ts?raw';
 import generateRecipePrompt from '$lib/prompts/generateRecipe.txt?raw';
 import type { RecipeResponse } from '$lib/ai';
 
-export const load: PageServerLoad = async ({ locals: { getSession } }) => {
-	const session = await getSession();
+export const load: PageServerLoad = async ({ locals: { auth } }) => {
+	const session = await auth.validate();
 
 	if (!session) {
 		throw redirect(303, '/login');
@@ -22,8 +22,8 @@ export const load: PageServerLoad = async ({ locals: { getSession } }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals: { supabase, getSession } }) => {
-		const session = await getSession();
+	default: async ({ request, locals: { auth, prisma } }) => {
+		const session = await auth.validate();
 
 		if (!session) {
 			throw redirect(303, '/login');
@@ -35,20 +35,23 @@ export const actions: Actions = {
 		const form = await superValidate(request, addOrEditRecipeSchema);
 
 		if (form.data.askGPT) {
-			const model = typechat.createOpenAILanguageModel(
-				PRIVATE_OPENAI_API_KEY,
-				'gpt-3.5-turbo'
+			const model = typechat.createOpenAILanguageModel(PRIVATE_OPENAI_API_KEY, 'gpt-3.5-turbo');
+
+			const translator = typechat.createJsonTranslator<RecipeResponse>(
+				model,
+				aiSchema,
+				'RecipeResponse'
 			);
 
-			const translator =  typechat.createJsonTranslator<RecipeResponse>(model, aiSchema, 'RecipeResponse');
-
-			const response = await translator.translate(generateRecipePrompt
-				+ '\n' + JSON.stringify({
-					ingredients: form.data.ingredients,
-					steps: form.data.steps,
-					name: form.data.name,
-					portions: form.data.portions
-				})
+			const response = await translator.translate(
+				generateRecipePrompt +
+					'\n' +
+					JSON.stringify({
+						ingredients: form.data.ingredients,
+						steps: form.data.steps,
+						name: form.data.name,
+						portions: form.data.portions
+					})
 			);
 
 			if (!response.success) {
@@ -73,37 +76,28 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		const { error, data } = await supabase
-			.from('recipies')
-			.insert({
+		const data = await prisma.recipie.create({
+			data: {
 				name: form.data.name,
 				portions: form.data.portions,
 				steps: form.data.steps
-			})
-			.select('id')
-			.single();
+			},
+			select: { id: true }
+		});
 
-		if (error) {
-			console.error(error);
-			throw returnError(500, 'Could not create recipe');
-		}
-
-		const id = data?.id as number;
+		const id = data?.id as bigint;
 
 		for (const ingredient of form.data.ingredients) {
 			console.log('ingredient', ingredient);
-			const { error } = await supabase.from('recipies_ingredients').insert({
-				recipe_id: id,
-				name: ingredient.name,
-				amount: ingredient.amount,
-				unit: ingredient.unit ?? null,
-				raw_id: ingredient.rawId ?? null
+			await prisma.recipiesIngredient.create({
+				data: {
+					recipe_id: id,
+					name: ingredient.name,
+					amount: ingredient.amount,
+					unit: ingredient.unit ?? null,
+					raw_id: ingredient.rawId ?? null
+				}
 			});
-
-			if (error) {
-				console.error(error);
-				throw returnError(500, 'Could not add ingredient');
-			}
 		}
 
 		throw redirect(303, '/browse/recipe');

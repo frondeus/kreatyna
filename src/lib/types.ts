@@ -1,7 +1,9 @@
 //
-import type { Database } from '$lib/database.types';
-import type { Session } from '@supabase/supabase-js';
 
+import type { Raw as PrismaRaw } from '@prisma/client';
+import type { Session } from 'lucia';
+
+export type RawIngredientRow = PrismaRaw;
 export interface Nutrients {
 	proteins: number;
 	carbs: number;
@@ -15,8 +17,8 @@ export interface RawIngredient extends Nutrients {
 	createdByMe: boolean | undefined;
 }
 
-export type RawIngredientRow = Database['public']['Tables']['raw']['Row'];
-export type RawIngredientInsert = Database['public']['Tables']['raw']['Insert'];
+// export type RawIngredientRow = Database['public']['Tables']['raw']['Row'];
+// export type RawIngredientInsert = Database['public']['Tables']['raw']['Insert'];
 
 export interface WithIngredients {
 	ingredients: WithRawAndAmount[];
@@ -46,10 +48,16 @@ export interface Ingredient {
 export const fromDB = {
 	raw(session: Session | undefined, dbEntry: RawIngredientRow): RawIngredient {
 		const by = dbEntry.created_by;
-		const createdByMe = session ? by === session?.user?.id : undefined;
+		const createdByMe = session ? by === session?.user?.userId : undefined;
+		// const createdByMe = false;
 		return {
 			createdByMe,
-			...dbEntry
+			id: dbEntry.id,
+			name: dbEntry.name,
+			container: dbEntry.container,
+			proteins: dbEntry.proteins.toNumber(),
+			carbs: dbEntry.carbs.toNumber(),
+			fat: dbEntry.fat.toNumber()
 		};
 	}
 };

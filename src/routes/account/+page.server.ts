@@ -1,3 +1,4 @@
+import { auth } from '$lib/server/lucia';
 import {
 	fail,
 	redirect,
@@ -15,33 +16,33 @@ const updateSchema = z.object({
 
 const signoutSchema = z.object({});
 
-export const load = async ({ locals: { supabase, getSession } }: RequestEvent) => {
-	const session = await getSession();
+export const load = async ({ locals: { auth, prisma } }: RequestEvent) => {
+	const session = await auth.validate();
 
 	if (!session) {
 		throw redirect(303, '/');
 	}
 
-	const { data: profile } = await supabase
-		.from('profiles')
-		.select(`full_name`)
-		.eq('id', session.user.id)
-		.single();
+	const user = await prisma.user.findUnique({
+		where: {
+			id: session.user.userId
+		}
+	});
 
 	const updateForm = await superValidate(
 		{
-			fullName: profile?.full_name ?? undefined
+			fullName: user?.full_name ?? undefined
 		},
 		updateSchema
 	);
-	console.log({ profile, updateForm });
+	// console.log({ profile, updateForm });
 	const signoutForm = await superValidate(signoutSchema);
 
 	return { session, updateForm, signoutForm };
 };
 
 export const actions: Actions = {
-	update: async ({ request, locals: { supabase, getSession } }) => {
+	update: async ({ request, locals: { auth, prisma } }) => {
 		const form = await superValidate(request, updateSchema);
 
 		console.log('POST update', form);
@@ -50,33 +51,32 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		const session = await getSession();
+		const session = await auth.validate();
 
 		if (!session) {
 			return redirect(303, '/login');
 		}
 
-		const { error } = await supabase.from('profiles').upsert({
-			id: session.user.id,
-			full_name: form.data.fullName,
-			updated_at: new Date().toISOString()
+		await prisma.user.update({
+			where: {
+				id: session.user.userId
+			},
+			data: {
+				full_name: form.data.fullName
+			}
 		});
-
-		if (error) {
-			console.log('Failure', { error, request, session });
-			throw returnError(500, 'Failed to update profile');
-		}
 
 		return {
 			form
 		};
 	},
-	signout: async ({ locals: { supabase, getSession } }) => {
+	signout: async ({ locals }) => {
 		console.log('Signout action');
-		const session = await getSession();
+		const session = await locals.auth.validate();
 		if (session) {
-			await supabase.auth.signOut();
-			throw redirect(303, '/');
+			await auth.invalidateSession(session.sessionId);
+			locals.auth.setSession(null);
+			throw redirect(303, '/login');
 		}
 	}
 };

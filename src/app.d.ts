@@ -1,12 +1,18 @@
-import { SupabaseClient, Session } from '@supabase/supabase-js';
-
-import { Database } from '$lib/database.types';
+import type { PrismaClient } from '@prisma/client';
+import type { AuthRequest } from 'lucia';
 
 declare global {
+	namespace Lucia {
+		type Auth = import('$lib/server/lucia').Auth;
+		type DatabaseUserAttributes = {
+			username: string;
+		};
+		type DatabaseSessionAttributes = {};
+	}
 	namespace App {
 		interface Locals {
-			supabase: SupabaseClient<Database>;
-			getSession(): Promise<Session | null>;
+			prisma: PrismaClient;
+			auth: AuthRequest<Lucia.Auth>;
 		}
 		interface PageData {
 			session: Session | null;

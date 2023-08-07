@@ -39,8 +39,8 @@
 	const { enhance, delayed, form: _form } = parentForm;
 
 	$: title = id ? 'Edit Recipe' : 'Add Recipe';
-	$: submitDelayed = $_form.askGPT ? 'Asking...' : (id ? 'Updating...' : 'Adding...');
-	$: submit = $_form.askGPT ? 'Ask' : (id ? 'Update' : 'Add');
+	$: submitDelayed = $_form.askGPT ? 'Asking...' : id ? 'Updating...' : 'Adding...';
+	$: submit = $_form.askGPT ? 'Ask' : id ? 'Update' : 'Add';
 
 	const addStep = (event: MouseEvent) => {
 		event.preventDefault();

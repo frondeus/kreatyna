@@ -1,19 +1,14 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import { fromDB, type RawIngredient, type RawIngredientRow } from '$lib/types';
+	import type { RawIngredient } from '$lib/types';
 	import { modalStore, type AutocompleteOption, Autocomplete } from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
 	import { derived, writable, type Readable, type Writable } from 'svelte/store';
 
-	// export let form: SuperForm<AddRecipeSchema | EditRecipeSchema>;
-	// export let idx: number;
 	export let name: string;
 
-	$: supabase = $page.data.supabase;
 	const raw: Writable<RawIngredient[]> = writable([]);
 
 	const autocomplete: Readable<AutocompleteOption[]> = derived(raw, ($raw) => {
-		// return $raw.filter((row) => row.name.toLowerCase().includes(name.toLowerCase()));
 		return $raw.map((r) => ({
 			label: r.name,
 			value: r.name,
@@ -22,14 +17,16 @@
 	});
 
 	onMount(async () => {
-		const { data } = await supabase.from('raw').select('*');
-		$raw = (data ?? []).map((r: RawIngredientRow) => fromDB.raw(undefined, r));
+		const response = await fetch('/browse/raw/search', {
+			method: 'GET'
+		});
+
+		$raw = await response.json();
 	});
 
 	const onSelection = (event: CustomEvent<{ meta: RawIngredient }>) => {
 		$modalStore?.[0]?.response?.(event.detail.meta);
 		modalStore.close();
-		// parent.onClose(666);
 	};
 </script>
 

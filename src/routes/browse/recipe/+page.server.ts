@@ -1,25 +1,30 @@
-import { redirect, type Actions, error as returnError } from '@sveltejs/kit';
+import { redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { RecipeSummaryMap } from '$lib/mappers/recipe';
 
-export const load: PageServerLoad = async ({ locals: { getSession, supabase } }) => {
-	const session = await getSession();
+export const load: PageServerLoad = async ({ locals: { auth, prisma } }) => {
+	const session = await auth.validate();
 
 	if (!session) {
 		throw redirect(303, '/login');
 	}
 
-	const recipies = async () => {
-		const { data } = await supabase.from('recipies').select('id, name');
+	const map = new RecipeSummaryMap();
 
-		return data ?? [];
+	const recipies = async () => {
+		const data = await prisma.recipie.findMany({
+			select: { id: true, name: true }
+		});
+
+		return data.map((r) => map.toDomain(r)) ?? [];
 	};
 
 	return { session, recipies: recipies() };
 };
 
 export const actions: Actions = {
-	delete: async ({ request, locals: { supabase, getSession } }) => {
-		const session = await getSession();
+	delete: async ({ request, locals: { auth, prisma } }) => {
+		const session = await auth.validate();
 
 		if (!session) {
 			throw redirect(303, '/login');
@@ -28,12 +33,7 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const id = Number(data.get('id'));
 
-		const { error } = await supabase.from('recipies').delete().eq('id', id);
-
-		if (error) {
-			console.error({ error });
-			throw returnError(500, 'Could not delete recipy');
-		}
+		await prisma.recipie.delete({ where: { id } });
 
 		console.log('Deleted from recipies ', id);
 

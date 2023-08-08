@@ -10,9 +10,7 @@ const updateSchema = z.object({
 
 const signoutSchema = z.object({});
 
-export const load = async ({ locals: { auth, prisma } }: RequestEvent) => {
-	const session = await auth.validate();
-
+export const load = async ({ locals: { session, prisma } }: RequestEvent) => {
 	if (!session) {
 		throw redirect(303, '/');
 	}
@@ -36,7 +34,7 @@ export const load = async ({ locals: { auth, prisma } }: RequestEvent) => {
 };
 
 export const actions: Actions = {
-	update: async ({ request, locals: { auth, prisma } }) => {
+	update: async ({ request, locals: { session, prisma } }) => {
 		const form = await superValidate(request, updateSchema);
 
 		console.log('POST update', form);
@@ -44,8 +42,6 @@ export const actions: Actions = {
 		if (!form.valid) {
 			return fail(400, { form });
 		}
-
-		const session = await auth.validate();
 
 		if (!session) {
 			return redirect(303, '/login');
@@ -64,12 +60,11 @@ export const actions: Actions = {
 			form
 		};
 	},
-	signout: async ({ locals }) => {
+	signout: async ({ locals: { session, setSession } }) => {
 		console.log('Signout action');
-		const session = await locals.auth.validate();
 		if (session) {
 			await auth.invalidateSession(session.sessionId);
-			locals.auth.setSession(null);
+			setSession(null);
 			throw redirect(303, '/login');
 		}
 	}

@@ -3,22 +3,18 @@ import type { PageServerLoad } from './$types';
 import { addRawSchema } from '$lib/schemas';
 import { redirect, type Actions, fail } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ locals: { auth } }) => {
-	const session = await auth.validate();
-
+export const load: PageServerLoad = async ({ locals: { session } }) => {
 	if (!session) {
 		throw redirect(303, '/login');
 	}
 
-	const form = await superValidate(undefined, addRawSchema);
+	const form = superValidate(undefined, addRawSchema);
 
 	return { form, session };
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals: { auth, prisma } }) => {
-		const session = await auth.validate();
-
+	default: async ({ request, locals: { session, services } }) => {
 		if (!session) {
 			throw redirect(303, '/login');
 		}
@@ -29,16 +25,7 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		await prisma.raw.create({
-			data: {
-				name: form.data.name,
-				container: form.data.container,
-				proteins: form.data.proteins,
-				carbs: form.data.carbs,
-				fat: form.data.fat,
-				created_by: session.user?.userId
-			}
-		});
+		await services.raw.create(form.data);
 
 		throw redirect(303, '/browse/raw');
 	}

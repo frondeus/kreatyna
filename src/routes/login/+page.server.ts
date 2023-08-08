@@ -11,8 +11,7 @@ const schema = z.object({
 	password: z.string()
 });
 
-export const load = (async ({ locals }) => {
-	const session = await locals.auth.validate();
+export const load = (async ({ locals: { session } }) => {
 	if (session) throw redirect(302, '/');
 	const form = superValidate(schema);
 	return { form };
@@ -36,7 +35,7 @@ export const actions: Actions = {
 				attributes: {}
 			});
 
-			locals.auth.setSession(session);
+			locals.setSession(session);
 		} catch (e) {
 			if (
 				e instanceof LuciaError &&

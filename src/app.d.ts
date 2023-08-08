@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import type { AuthRequest } from 'lucia';
+import RawService from '$lib/server/domains/raw/service';
 
 declare global {
 	namespace Lucia {
@@ -12,7 +12,11 @@ declare global {
 	namespace App {
 		interface Locals {
 			prisma: PrismaClient;
-			auth: AuthRequest<Lucia.Auth>;
+			session: Session | null;
+			setSession: (session: Session | null) => void;
+			services: {
+				raw: RawService;
+			};
 		}
 		interface PageData {
 			session: Session | null;

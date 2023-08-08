@@ -16,8 +16,7 @@ const signupSchema = z
 		path: ['passwordConfirm']
 	});
 
-export const load = (async ({ locals: { auth } }) => {
-	const session = await auth.validate();
+export const load = (async ({ locals: { session } }) => {
 	if (session) {
 		throw redirect(302, '/');
 	}
@@ -48,7 +47,7 @@ export const actions: Actions = {
 				userId: user.userId,
 				attributes: {}
 			});
-			locals.auth.setSession(session);
+			locals.setSession(session);
 		} catch (e) {
 			console.error(e);
 			throw error(500, { message: 'An unknown error occurred.' });

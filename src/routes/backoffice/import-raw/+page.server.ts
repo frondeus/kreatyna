@@ -1,10 +1,9 @@
 import { addRawSchema } from '$lib/schemas';
-import { importRawIngredients } from '$lib/import';
+import { importRawIngredients } from '$lib/server/import';
 import { fail, type Actions, redirect } from '@sveltejs/kit';
 
 export const actions: Actions = {
-	default: async ({ request, locals: { auth, prisma } }) => {
-		const session = await auth.validate();
+	default: async ({ request, locals: { session, prisma } }) => {
 		if (!session) {
 			return redirect(303, '/login');
 		}

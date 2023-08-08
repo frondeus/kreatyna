@@ -9,9 +9,7 @@ import aiSchema from '$lib/ai.ts?raw';
 import generateRecipePrompt from '$lib/prompts/generateRecipe.txt?raw';
 import type { RecipeResponse } from '$lib/ai';
 
-export const load: PageServerLoad = async ({ locals: { auth } }) => {
-	const session = await auth.validate();
-
+export const load: PageServerLoad = async ({ locals: { session } }) => {
 	if (!session) {
 		throw redirect(303, '/login');
 	}
@@ -22,9 +20,7 @@ export const load: PageServerLoad = async ({ locals: { auth } }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals: { auth, prisma } }) => {
-		const session = await auth.validate();
-
+	default: async ({ request, locals: { session, prisma } }) => {
 		if (!session) {
 			throw redirect(303, '/login');
 		}

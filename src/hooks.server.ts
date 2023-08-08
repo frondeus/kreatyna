@@ -1,11 +1,27 @@
+import { RawMap } from '$lib/server/domains/raw/map';
+import { RawService } from '$lib/server/domains/raw/service';
 import { auth } from '$lib/server/lucia';
 import { PrismaClient } from '@prisma/client';
 import type { Handle } from '@sveltejs/kit';
 
 export const handle: Handle = async ({ event, resolve }) => {
-	const prismaClient = new PrismaClient();
-	event.locals.prisma = prismaClient;
-	event.locals.auth = auth.handleRequest(event);
+	const prisma = new PrismaClient();
+
+	const requestAuth = auth.handleRequest(event);
+	const session = await requestAuth.validate();
+
+	const rawMap = new RawMap(session);
+
+	const services = {
+		raw: new RawService(rawMap, prisma)
+	};
+
+	event.locals = {
+		prisma,
+		session,
+		services,
+		setSession: requestAuth.setSession
+	};
 
 	return resolve(event, {
 		filterSerializedResponseHeaders(name) {

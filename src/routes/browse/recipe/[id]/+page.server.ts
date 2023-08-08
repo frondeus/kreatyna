@@ -2,12 +2,10 @@ import { superValidate } from 'sveltekit-superforms/server';
 import type { PageServerLoad } from './$types';
 import { fail, redirect, error as returnError, type Actions } from '@sveltejs/kit';
 import { editRecipeSchema } from '$lib/schemas';
-import { fromDB } from '$lib/types';
 import { notNull, notNullOrUndefined } from '$lib/utils';
+import { RawMap } from '$lib/server/domains/raw/map';
 
-export const load: PageServerLoad = async ({ params, locals: { auth, prisma } }) => {
-	const session = await auth.validate();
-
+export const load: PageServerLoad = async ({ params, locals: { session, prisma } }) => {
 	if (!session) {
 		throw redirect(303, '/login');
 	}
@@ -44,11 +42,13 @@ export const load: PageServerLoad = async ({ params, locals: { auth, prisma } })
 		}))
 	};
 
+	const map = new RawMap(session);
+
 	const relatedIngredients = new Map(
 		ingredients
 			.map((i) => i.raw)
 			.filter(notNull)
-			.map((raw) => fromDB.raw(session, raw))
+			.map((raw) => map.toDomain(raw))
 			.map((raw) => [raw.id, raw] as const)
 	);
 
@@ -58,9 +58,7 @@ export const load: PageServerLoad = async ({ params, locals: { auth, prisma } })
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals: { auth, prisma } }) => {
-		const session = await auth.validate();
-
+	default: async ({ request, locals: { session, prisma } }) => {
 		if (!session) {
 			throw redirect(303, '/login');
 		}

@@ -2,9 +2,7 @@ import { redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { RecipeSummaryMap } from '$lib/mappers/recipe';
 
-export const load: PageServerLoad = async ({ locals: { auth, prisma } }) => {
-	const session = await auth.validate();
-
+export const load: PageServerLoad = async ({ locals: { session, prisma } }) => {
 	if (!session) {
 		throw redirect(303, '/login');
 	}
@@ -23,9 +21,7 @@ export const load: PageServerLoad = async ({ locals: { auth, prisma } }) => {
 };
 
 export const actions: Actions = {
-	delete: async ({ request, locals: { auth, prisma } }) => {
-		const session = await auth.validate();
-
+	delete: async ({ request, locals: { session, prisma } }) => {
 		if (!session) {
 			throw redirect(303, '/login');
 		}

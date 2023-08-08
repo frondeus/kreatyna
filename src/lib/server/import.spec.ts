@@ -1,4 +1,4 @@
-import { importRawIngredients } from '$lib/import';
+import { importRawIngredients } from '$lib/server/import';
 import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 

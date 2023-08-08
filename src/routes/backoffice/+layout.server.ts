@@ -1,8 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ locals: { auth, prisma } }) => {
-	const session = await auth.validate();
+export const load: LayoutServerLoad = async ({ locals: { session, prisma } }) => {
 	const userId = session?.user?.userId;
 
 	if (!userId) {

@@ -1,7 +1,7 @@
 import { error as returnError, redirect, type Actions, fail } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { superValidate } from 'sveltekit-superforms/server';
-import { editRawSchema } from '$lib/schemas';
+import { editRawSchema } from '$lib/shared/domains/raw/schema';
 
 export const load: PageServerLoad = async ({ params, locals: { session, services } }) => {
 	if (!session) {

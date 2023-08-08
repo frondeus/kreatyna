@@ -1,28 +1,5 @@
 import { z } from 'zod';
 
-export const editRawSchema = z.object({
-	id: z.number().int(),
-	name: z.string().default(''),
-	container: z.number().default(100),
-	proteins: z.number().default(0),
-	carbs: z.number().default(0),
-	fat: z.number().default(0)
-});
-
-export type EditRawSchema = typeof editRawSchema;
-
-export const addRawSchema = editRawSchema.extend({
-	id: editRawSchema.shape.id.optional()
-});
-
-export type AddRawSchema = typeof addRawSchema;
-
-export const deleteRawSchema = z.object({
-	id: z.number().int()
-});
-
-export type DeleteRawSchema = typeof deleteRawSchema;
-
 export const editIngredientSchema = z.object({
 	id: z.number().optional(),
 	name: z.string().default(''),

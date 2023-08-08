@@ -1,20 +1,13 @@
-export interface Nutrients {
-	proteins: number;
-	carbs: number;
-	fat: number;
-}
-
-export interface RawIngredient extends Nutrients {
-	id: number;
-	name: string;
-	container: number;
-	createdByMe: boolean | undefined;
-}
+import type { RawIngredient } from '../raw/models';
 
 export interface WithIngredients {
 	ingredients: WithRawAndAmount[];
 }
 
+export interface RecipySummary {
+	id: number;
+	name: string;
+}
 export interface Recipy {
 	id: number;
 	name: string;

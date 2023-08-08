@@ -3,16 +3,19 @@
 	import TextInput from '$lib/components/atoms/forms/TextInput.svelte';
 	import NumberInput from '$lib/components/atoms/forms/NumberInput.svelte';
 	import Submit from '$lib/components/atoms/forms/Submit.svelte';
-	import { editIngredientSchema, type AddOrEditRecipeSchema } from '$lib/schemas';
 	import type { SuperValidated } from 'sveltekit-superforms';
 	import IconAdd from '~icons/mdi/add';
 	import IconRemove from '~icons/mdi/remove';
 	import IngredientForm from './IngredientForm.svelte';
 	import Textarea from '../atoms/forms/Textarea.svelte';
 	import { toastStore } from '@skeletonlabs/skeleton';
-	import type { RawIngredient } from '$lib/types';
-	import { Calculator } from '$lib/calc';
+	import { Calculator } from '$lib/shared/calc';
 	import Checkbox from '../atoms/forms/Checkbox.svelte';
+	import type { RawIngredient } from '$lib/shared/domains/raw/models';
+	import {
+		editIngredientSchema,
+		type AddOrEditRecipeSchema
+	} from '$lib/shared/domains/recipe/schema';
 
 	export let id: number | undefined = undefined;
 	export let form: SuperValidated<AddOrEditRecipeSchema>;

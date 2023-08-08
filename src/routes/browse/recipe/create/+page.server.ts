@@ -1,13 +1,13 @@
 import { superValidate } from 'sveltekit-superforms/server';
 import type { PageServerLoad } from './$types';
-import { addOrEditRecipeSchema } from '$lib/schemas';
 import { redirect, type Actions, fail, error as returnError } from '@sveltejs/kit';
 import * as typechat from 'typechat';
 import { PRIVATE_OPENAI_API_KEY } from '$env/static/private';
 
 import aiSchema from '$lib/ai.ts?raw';
 import generateRecipePrompt from '$lib/prompts/generateRecipe.txt?raw';
-import type { RecipeResponse } from '$lib/ai';
+import { addOrEditRecipeSchema } from '$lib/shared/domains/recipe/schema';
+import type { RecipeResponse } from '$lib/server/ai';
 
 export const load: PageServerLoad = async ({ locals: { session } }) => {
 	if (!session) {

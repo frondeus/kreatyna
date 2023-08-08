@@ -1,9 +1,9 @@
 import { superValidate } from 'sveltekit-superforms/server';
 import type { PageServerLoad } from './$types';
 import { fail, redirect, error as returnError, type Actions } from '@sveltejs/kit';
-import { editRecipeSchema } from '$lib/schemas';
-import { notNull, notNullOrUndefined } from '$lib/utils';
 import { RawMap } from '$lib/server/domains/raw/map';
+import { notNull, notNullOrUndefined } from '$lib/shared/utils';
+import { editRecipeSchema } from '$lib/shared/domains/recipe/schema';
 
 export const load: PageServerLoad = async ({ params, locals: { session, prisma } }) => {
 	if (!session) {

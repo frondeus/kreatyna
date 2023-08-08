@@ -1,6 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
 import type { RawMap } from './map';
-import type { RawIngredient } from '$lib/types';
+import type {
+	RawIngredient,
+	RawIngredientCreate,
+	RawIngredientUpdate
+} from '$lib/shared/domains/raw/models';
 
 export class RawService {
 	map: RawMap;
@@ -37,20 +41,20 @@ export class RawService {
 		return this.map.toDomain(data);
 	}
 
-	async update(raw: RawIngredient): Promise<void> {
+	async update(raw: RawIngredientUpdate): Promise<void> {
 		await this.prisma.raw.update({
 			where: { id: raw.id },
-			data: this.map.toDB(raw)
+			data: this.map.toUpdateInput(raw)
 		});
 	}
 
-	async create(raw: RawIngredient): Promise<void> {
+	async create(raw: RawIngredientCreate): Promise<void> {
 		await this.prisma.raw.create({
-			data: this.map.toDB(raw)
+			data: this.map.toCreateInput(raw)
 		});
 	}
 
-	async deleteOne(id: number): Promise<void> {
+	async remove(id: number): Promise<void> {
 		await this.prisma.raw.delete({
 			where: { id }
 		});

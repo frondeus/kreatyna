@@ -7,7 +7,7 @@
 	import ConfirmDelete from '$lib/components/molecules/modals/ConfirmDelete.svelte';
 	import { readable } from 'svelte/store';
 	import { invalidateAll } from '$app/navigation';
-	import type { RawIngredient } from '$lib/types';
+	import type { RawIngredient } from '$lib/shared/domains/raw/models';
 
 	export let data: PageData;
 

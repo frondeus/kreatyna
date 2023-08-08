@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { RawIngredient } from '$lib/types';
+	import type { RawIngredient } from '$lib/shared/domains/raw/models';
 	import { modalStore, type AutocompleteOption, Autocomplete } from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
 	import { derived, writable, type Readable, type Writable } from 'svelte/store';

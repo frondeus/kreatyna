@@ -21,7 +21,7 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const id = Number(data.get('id'));
 
-		await services.raw.deleteOne(id);
+		await services.raw.remove(id);
 
 		return {};
 	}

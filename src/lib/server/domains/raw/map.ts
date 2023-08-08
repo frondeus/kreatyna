@@ -1,5 +1,9 @@
-import type { RawIngredient } from '$lib/types';
-import type { Raw as PrismaRaw } from '@prisma/client';
+import type {
+	RawIngredient,
+	RawIngredientCreate,
+	RawIngredientUpdate
+} from '$lib/shared/domains/raw/models';
+import type { Prisma, Raw as PrismaRaw } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import type { Session } from 'lucia';
 
@@ -24,15 +28,33 @@ export class RawMap {
 		};
 	}
 
-	public toDB(domain: RawIngredient): PrismaRaw {
+	public toCreateInput(domain: RawIngredientCreate): Prisma.RawCreateInput {
 		return {
-			id: domain.id,
 			name: domain.name,
 			container: domain.container,
 			proteins: new Decimal(domain.proteins),
 			carbs: new Decimal(domain.carbs),
 			fat: new Decimal(domain.fat),
-			created_by: this.session?.user?.userId ?? null
+			creator: {
+				connect: {
+					id: this.session?.user?.userId
+				}
+			}
+		};
+	}
+
+	public toUpdateInput(domain: RawIngredientUpdate): Prisma.RawUpdateInput {
+		return {
+			name: domain.name,
+			container: domain.container,
+			proteins: new Decimal(domain.proteins),
+			carbs: new Decimal(domain.carbs),
+			fat: new Decimal(domain.fat),
+			creator: {
+				connect: {
+					id: this.session?.user?.userId
+				}
+			}
 		};
 	}
 }

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { AddOrEditRecipeSchema } from '$lib/schemas';
 	import { createEventDispatcher } from 'svelte';
 	import IconRemove from '~icons/mdi/remove';
 	import IconLink from '~icons/mdi/link-variant-plus';
@@ -10,8 +9,9 @@
 	import HiddenInput from '../atoms/forms/HiddenInput.svelte';
 	import { modalStore } from '@skeletonlabs/skeleton';
 	import SearchForRawIngredient from '../molecules/modals/SearchForRawIngredient.svelte';
-	import type { RawIngredient } from '$lib/types';
 	import WithShim from '../atoms/forms-look/WithShim.svelte';
+	import type { RawIngredient } from '$lib/shared/domains/raw/models';
+	import type { AddOrEditRecipeSchema } from '$lib/shared/domains/recipe/schema';
 
 	export let relatedIngredients: Map<number, RawIngredient>;
 	export let form: SuperForm<AddOrEditRecipeSchema>;

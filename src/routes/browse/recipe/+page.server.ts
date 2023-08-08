@@ -1,23 +1,19 @@
 import { redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { RecipeSummaryMap } from '$lib/mappers/recipe';
 
-export const load: PageServerLoad = async ({ locals: { session, prisma } }) => {
+export const load: PageServerLoad = async ({ locals: { session, services } }) => {
 	if (!session) {
 		throw redirect(303, '/login');
 	}
+	// const recipies = async () => {
+	// 	const data = await prisma.recipie.findMany({
+	// 		select: { id: true, name: true }
+	// 	});
 
-	const map = new RecipeSummaryMap();
+	// 	return data.map((r) => map.toDomain(r)) ?? [];
+	// };
 
-	const recipies = async () => {
-		const data = await prisma.recipie.findMany({
-			select: { id: true, name: true }
-		});
-
-		return data.map((r) => map.toDomain(r)) ?? [];
-	};
-
-	return { session, recipies: recipies() };
+	return { session, recipies: services.recipy.getAll() };
 };
 
 export const actions: Actions = {

@@ -1,4 +1,6 @@
-import type { Nutrients, RawIngredient, WithIngredients, WithRawAndAmount } from './types';
+import type { RawIngredient } from './domains/raw/models';
+import type { WithIngredients, WithRawAndAmount } from './domains/recipe/models';
+import type { Nutrients } from './models';
 
 const round2 = (num: number) => {
 	return Math.round((num + Number.EPSILON) * 100) / 100;

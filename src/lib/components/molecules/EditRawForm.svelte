@@ -3,11 +3,11 @@
 	import TextInput from '$lib/components/atoms/forms/TextInput.svelte';
 	import NumberInput from '$lib/components/atoms/forms/NumberInput.svelte';
 	import Submit from '$lib/components/atoms/forms/Submit.svelte';
-	import type { AddRawSchema, EditRawSchema } from '$lib/schemas';
+	import type { AddRawSchema, EditRawSchema } from '$lib/shared/domains/raw/schema';
 	import type { SuperValidated } from 'sveltekit-superforms';
 	import { toastStore } from '@skeletonlabs/skeleton';
 	import WithShim from '../atoms/forms-look/WithShim.svelte';
-	import { Calculator } from '$lib/calc';
+	import { Calculator } from '$lib/shared/calc';
 
 	export let id: number | undefined = undefined;
 	export let form: SuperValidated<AddRawSchema | EditRawSchema>;

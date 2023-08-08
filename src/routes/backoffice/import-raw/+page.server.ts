@@ -1,4 +1,4 @@
-import { addRawSchema } from '$lib/schemas';
+import { addRawSchema } from '$lib/shared/domains/raw/schema';
 import { importRawIngredients } from '$lib/server/import';
 import { fail, type Actions, redirect } from '@sveltejs/kit';
 

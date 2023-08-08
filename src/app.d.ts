@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
-import RawService from '$lib/server/domains/raw/service';
+import type { RawService } from '$lib/server/domains/raw/service';
+import type { RecipeService } from '$lib/server/domains/recipe/service';
 
 declare global {
 	namespace Lucia {
@@ -16,6 +17,7 @@ declare global {
 			setSession: (session: Session | null) => void;
 			services: {
 				raw: RawService;
+				recipy: RecipeService;
 			};
 		}
 		interface PageData {
@@ -31,5 +33,6 @@ declare global {
 /// <reference types="unplugin-icons/types/svelte" />
 
 import type * as Icons from 'unplugin-icons/types/svelte';
+import type { RecipeService } from '$lib/server/domains/recipe/service';
 export default Icons;
 export {};

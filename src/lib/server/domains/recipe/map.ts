@@ -1,4 +1,4 @@
-import type { Recipy } from '$lib/types';
+import type { Recipy } from '$lib/shared/domains/recipe/models';
 import type { Recipie as PrismaRecipie } from '@prisma/client';
 
 export class RecipeMap {

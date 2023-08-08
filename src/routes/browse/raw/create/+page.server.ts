@@ -1,6 +1,6 @@
 import { superValidate } from 'sveltekit-superforms/server';
 import type { PageServerLoad } from './$types';
-import { addRawSchema } from '$lib/schemas';
+import { addRawSchema } from '$lib/shared/domains/raw/schema';
 import { redirect, type Actions, fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals: { session } }) => {

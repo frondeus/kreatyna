@@ -1,4 +1,11 @@
+import type { z } from 'zod';
 import type { RawIngredient } from '../raw/models';
+import type {
+	AddOrEditRecipeSchema,
+	AddRecipeSchema,
+	EditIngredientSchema,
+	EditRecipeSchema
+} from './schema';
 
 export interface WithIngredients {
 	ingredients: WithRawAndAmount[];
@@ -15,6 +22,11 @@ export interface Recipy {
 	steps: string[];
 	ingredients: Ingredient[];
 }
+
+export type RecipeCreateOrUpdate = z.infer<AddOrEditRecipeSchema>;
+export type RecipyCreate = z.infer<AddRecipeSchema>;
+export type RecipyUpdate = z.infer<EditRecipeSchema>;
+export type IngredientUpdate = z.infer<EditIngredientSchema>;
 
 export interface WithRawAndAmount {
 	raw?: RawIngredient;

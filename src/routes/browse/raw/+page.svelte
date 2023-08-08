@@ -3,10 +3,9 @@
 	import IconEdit from '~icons/mdi/edit';
 	import IconDelete from '~icons/mdi/delete';
 	import type { PageData } from './$types';
-	// import { fromDB, type RawIngredient, type RawIngredientRow } from '$lib/types';
 	import { modalStore } from '@skeletonlabs/skeleton';
 	import ConfirmDelete from '$lib/components/molecules/modals/ConfirmDelete.svelte';
-	import { readable, type Readable } from 'svelte/store';
+	import { readable } from 'svelte/store';
 	import { invalidateAll } from '$app/navigation';
 	import type { RawIngredient } from '$lib/types';
 

@@ -1,4 +1,4 @@
-import { redirect, type Actions, error as returnError } from '@sveltejs/kit';
+import { redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { fromDB } from '$lib/types';
 

@@ -1,11 +1,5 @@
 import { auth } from '$lib/server/lucia';
-import {
-	fail,
-	redirect,
-	error as returnError,
-	type Actions,
-	type RequestEvent
-} from '@sveltejs/kit';
+import { fail, redirect, type Actions, type RequestEvent } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms/server';
 
 import { z } from 'zod';

@@ -5,9 +5,6 @@
 
 	import { AppShell, Modal, Toast } from '@skeletonlabs/skeleton';
 
-	import { invalidate } from '$app/navigation';
-	import { onMount } from 'svelte';
-
 	import { computePosition, autoUpdate, offset, shift, flip, arrow } from '@floating-ui/dom';
 	import Sidebar from '$lib/components/molecules/Sidebar.svelte';
 	import BottomBar from '$lib/components/molecules/BottomBar.svelte';

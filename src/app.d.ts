@@ -7,7 +7,7 @@ declare global {
 		type DatabaseUserAttributes = {
 			username: string;
 		};
-		type DatabaseSessionAttributes = {};
+		// type DatabaseSessionAttributes = {};
 	}
 	namespace App {
 		interface Locals {

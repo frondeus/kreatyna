@@ -40,7 +40,9 @@ export const actions: Actions = {
 					password: form.data.password
 				},
 				attributes: {
-					username: form.data.username
+					username: form.data.username,
+					is_admin: false,
+					full_name: ''
 				}
 			});
 			const session = await auth.createSession({

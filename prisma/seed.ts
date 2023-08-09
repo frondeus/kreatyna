@@ -27,7 +27,9 @@ async function main() {
 			password: 'kreatyna123'
 		},
 		attributes: {
-			username: 'frondeus'
+			username: 'frondeus',
+			is_admin: true,
+			full_name: 'Wojciech Polak'
 		}
 	});
 
@@ -38,14 +40,9 @@ async function main() {
 			password: 'kreatyna123'
 		},
 		attributes: {
-			username: 'klaudia'
-		}
-	});
-
-	await db.user.update({
-		where: { id: wojtek.userId },
-		data: {
-			is_admin: true
+			username: 'klaudia',
+			is_admin: false,
+			full_name: 'Klaudia Polak'
 		}
 	});
 

@@ -2,8 +2,10 @@ import type {
 	Ingredient,
 	IngredientUpdate,
 	RecipeCreateOrUpdate,
+	RecipeSummarySelect,
 	Recipy,
 	RecipyCreate,
+	RecipySummary,
 	RecipyUpdate
 } from '$lib/shared/domains/recipe/models';
 import type {
@@ -107,10 +109,15 @@ export class RecipeMap {
 }
 
 export class RecipeSummaryMap {
-	public toDomain(dbEntry: { id: bigint; name: string }): { id: number; name: string } {
+	public toDomain(dbEntry: RecipeSummarySelect): RecipySummary {
 		return {
 			id: Number(dbEntry.id),
-			name: dbEntry.name
+			name: dbEntry.name,
+			tags: dbEntry.tags.map((t) => ({
+				id: Number(t.id),
+				name: t.name,
+				category: t.category.name
+			}))
 		};
 	}
 }

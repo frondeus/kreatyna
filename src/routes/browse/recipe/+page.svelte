@@ -1,68 +1,52 @@
 <script lang="ts">
-	import { modalStore } from '@skeletonlabs/skeleton';
 	import type { PageData } from './$types';
 	import IconAdd from '~icons/mdi/add';
-	import IconEdit from '~icons/mdi/edit';
-	import IconDelete from '~icons/mdi/delete';
-	import ConfirmDelete from '$components/organisms/modals/ConfirmDelete.svelte';
-	import { invalidateAll } from '$app/navigation';
+	import Table from '$components/atoms/tables/Table.svelte';
+	import TableRow from '$components/atoms/tables/TableRow.svelte';
+	import { writable, type Writable } from 'svelte/store';
+	import type { AutocompleteOption } from '@skeletonlabs/skeleton';
+	import InputChipSearch from '$components/molecules/InputChipSearch.svelte';
+	import { onMount } from 'svelte';
+	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
 
 	export let data: PageData;
-	let { recipies } = data;
-	$: ({ recipies } = data);
 
-	const openDeleteModal = (event: MouseEvent, row: { id: number; name: string }) => {
-		event.preventDefault();
-		event.stopPropagation();
-		modalStore.trigger({
-			type: 'component',
-			component: {
-				ref: ConfirmDelete,
-				props: {
-					resource: 'recipe',
-					id: row.id,
-					name: row.name
-				}
-			},
-			response: () => {
-				invalidateAll();
-			}
-		});
-	};
+	let { recipies, related } = data;
+	let autocomplete: Writable<AutocompleteOption[]> = writable([]);
+
+	$: ({ recipies, related } = data);
+	onMount(async () => {
+		const tags = await related.tags;
+		$autocomplete = (tags ?? []).map((r) => ({
+			label: r.category + ': ' + r.name,
+			value: r.id,
+			meta: r
+		}));
+	});
 </script>
 
-<div class="table-container">
-	<table class="table max-md:table-compact">
-		<thead>
-			<tr>
-				<th>Name</th>
-				<th class="flex justify-end">
-					<a class="btn-icon variant-soft" href="./recipe/create">
-						<IconAdd />
-					</a>
-				</th>
-			</tr>
-		</thead>
-		<tbody>
-			{#if !recipies}
-				...Loading
-			{:else}
-				{#each recipies as row (row.id)}
-					<tr>
-						<td>
-							<a href="./recipe/{row.id}">{row.name}</a>
-						</td>
-						<td class="flex justify-end gap-2">
-							<a class="btn-icon variant-soft" href="./recipe/{row.id}">
-								<IconEdit />
-							</a>
-							<button class="btn-icon variant-soft-error" on:click={(e) => openDeleteModal(e, row)}>
-								<IconDelete />
-							</button>
-						</td>
-					</tr>
-				{/each}
-			{/if}
-		</tbody>
-	</table>
+<div class="space-y-4">
+	<InputChipSearch
+		options={$autocomplete}
+		on:select={(e) => {
+			console.log('select', e.detail);
+		}}
+		on:remove={(e) => {
+			console.log('remove', e.detail);
+		}}
+	/>
+
+	<Table columns={[{ name: 'Name' }]}>
+		<svelte:fragment slot="headerActions">
+			<ActionIconButton href="./recipe/create"><IconAdd /></ActionIconButton>
+		</svelte:fragment>
+
+		{#if !recipies}
+			Loading...
+		{:else}
+			{#each recipies as row (row.id)}
+				<TableRow id={row.id} href="./recipe" name={row.name} editable deletable />
+			{/each}
+		{/if}
+	</Table>
 </div>

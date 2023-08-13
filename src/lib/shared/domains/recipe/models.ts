@@ -6,7 +6,27 @@ import type {
 	EditIngredientSchema,
 	EditRecipeSchema
 } from './schema';
-import type { TagConnect } from '../tags/models';
+import type { TagConnect, TagSelect } from '../tags/models';
+import { Prisma } from '@prisma/client';
+
+const recipeSummarySelect = Prisma.validator<Prisma.RecipieFindManyArgs>()({
+	select: {
+		id: true,
+		name: true,
+		tags: {
+			select: {
+				id: true,
+				name: true,
+				category: {
+					select: {
+						name: true
+					}
+				}
+			}
+		}
+	}
+});
+export type RecipeSummarySelect = Prisma.RecipieGetPayload<typeof recipeSummarySelect>;
 
 export interface WithIngredients {
 	ingredients: WithRawAndAmount[];
@@ -15,6 +35,7 @@ export interface WithIngredients {
 export interface RecipySummary {
 	id: number;
 	name: string;
+	tags: TagSelect[];
 }
 export interface Recipy {
 	id: number;

@@ -6,7 +6,25 @@ export const load: PageServerLoad = async ({ locals: { session, services } }) =>
 		throw redirect(303, '/login');
 	}
 
-	return { session, recipies: services.recipy.getAll() };
+	const recipies = services.recipy.getAll();
+
+	const tags = recipies
+		.then((recipies) => {
+			return recipies.flatMap((recipy) => recipy.tags);
+		})
+		.then((tags) => {
+			const uniqueTags = [...new Map(tags.map((item) => [item.id, item])).values()];
+
+			return uniqueTags;
+		});
+
+	return {
+		session,
+		recipies,
+		related: {
+			tags
+		}
+	};
 };
 
 export const actions: Actions = {

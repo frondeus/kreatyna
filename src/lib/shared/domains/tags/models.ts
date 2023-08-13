@@ -13,6 +13,12 @@ interface TagCreateOne {
 	category: string;
 }
 
+interface TagSelect {
+	id: number;
+	name: string;
+	category: string;
+}
+
 type TagConnect = z.infer<typeof TagConnectSchema>;
 
-export type { Tag, TagCategory, TagWithCategory, TagCreateOne, TagConnect };
+export type { Tag, TagCategory, TagWithCategory, TagCreateOne, TagConnect, TagSelect };

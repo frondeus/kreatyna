@@ -6,9 +6,9 @@
 	import type { SuperValidated } from 'sveltekit-superforms';
 	import IconAdd from '~icons/mdi/add';
 	import IconRemove from '~icons/mdi/remove';
-	import IngredientForm from './IngredientForm.svelte';
+	import IngredientForm from '../molecules/IngredientForm.svelte';
 	import Textarea from '../atoms/forms/Textarea.svelte';
-	import { toastStore } from '@skeletonlabs/skeleton';
+	import { toastStore, type PopupSettings, popup } from '@skeletonlabs/skeleton';
 	import { Calculator } from '$lib/shared/calc';
 	import Checkbox from '../atoms/forms/Checkbox.svelte';
 	import type { RawIngredient } from '$lib/shared/domains/raw/models';
@@ -16,8 +16,10 @@
 		editIngredientSchema,
 		type AddOrEditRecipeSchema
 	} from '$lib/shared/domains/recipe/schema';
+	import Tag from '$components/atoms/Tag.svelte';
+	import SearchForTag from './SearchForTag.svelte';
+	import type { TagWithCategory } from '$shared/domains/tags/models';
 
-	export let id: number | undefined = undefined;
 	export let form: SuperValidated<AddOrEditRecipeSchema>;
 	export let relatedIngredients: Map<number, RawIngredient>;
 
@@ -41,9 +43,15 @@
 	});
 	const { enhance, delayed, form: _form } = parentForm;
 
+	$: id = $_form.id;
 	$: title = id ? 'Edit Recipe' : 'Add Recipe';
 	$: submitDelayed = $_form.askGPT ? 'Asking...' : id ? 'Updating...' : 'Adding...';
 	$: submit = $_form.askGPT ? 'Ask' : id ? 'Update' : 'Add';
+	const addTagPopup: PopupSettings = {
+		event: 'click',
+		target: 'tagPopupClick',
+		placement: 'bottom-start'
+	};
 
 	const addStep = (event: MouseEvent) => {
 		event.preventDefault();
@@ -60,13 +68,18 @@
 		event.preventDefault();
 		event.stopPropagation();
 		const def = defaultValues(editIngredientSchema);
-		console.log({ def });
 		$_form.ingredients = [...$_form.ingredients, def];
 	};
 	const removeIngredient = (event: CustomEvent<number>) => {
 		const idx = event.detail;
 		$_form.ingredients.splice(idx, 1);
 		$_form.ingredients = $_form.ingredients;
+	};
+	const addTag = (event: CustomEvent<TagWithCategory>) => {
+		$_form.tags = [
+			...$_form.tags,
+			{ id: event.detail.id, name: event.detail.name, category: event.detail.category.name }
+		];
 	};
 
 	$: nutrients = Calculator.calcNutrientsForIngredients({
@@ -78,16 +91,30 @@
 </script>
 
 <form class="card lg:p-4 shadow-xl space-y-4" method="post" use:enhance>
-	<div class="p-2">
-		<h2 class="h2 mb-4">{title}</h2>
+	<div class="p-2 space-y-4">
+		<h2 class="h2">{title}</h2>
 
 		{#if id}
-			<input type="hidden" name="id" value={id} />
+			<input type="hidden" name="id" bind:value={$_form.id} />
 		{/if}
 
-		<div class="mb-2"><TextInput form={parentForm} title="Name" name="name" /></div>
+		<div class="mb-2"><TextInput form={parentForm} title="Name" field="name" /></div>
 
 		<NumberInput form={parentForm} title="Portions" name="portions" />
+
+		<div class="flex gap-2">
+			{#each $_form.tags as _, i (i)}
+				<Tag form={parentForm} idx={i} />
+			{/each}
+
+			<span class="badge variant-filled-primary cursor-pointer" use:popup={addTagPopup}>
+				<IconAdd /> Add tag
+			</span>
+		</div>
+
+		<div class="card p-4 variant-filled-surface z-10" data-popup="tagPopupClick">
+			<SearchForTag on:add={addTag} />
+		</div>
 	</div>
 	<div class="grid lg:grid-cols-2 gap-2">
 		<div class="card lg:p-4">

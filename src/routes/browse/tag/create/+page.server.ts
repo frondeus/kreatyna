@@ -1,0 +1,36 @@
+import { redirect, type Actions, fail } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
+import { superValidate } from 'sveltekit-superforms/server';
+import { TagCreateOneSchema } from '$shared/domains/tags/schema';
+
+export const load: PageServerLoad = async ({ locals: { session } }) => {
+	if (!session) {
+		throw redirect(303, '/login');
+	}
+
+	const form = superValidate(undefined, TagCreateOneSchema);
+
+	return { form, session };
+};
+
+export const actions: Actions = {
+	default: async ({ request, locals: { session, services } }) => {
+		if (!session) {
+			throw redirect(303, '/login');
+		}
+		const form = await superValidate(request, TagCreateOneSchema);
+
+		if (!form.valid) {
+			return fail(400, { form });
+		}
+
+		const [cat, name] = form.data.name.split(':');
+
+		await services.tag.create({
+			name: name,
+			category: cat
+		});
+
+		throw redirect(303, '/browse/tag');
+	}
+};

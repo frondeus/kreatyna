@@ -26,9 +26,11 @@ export const load: PageServerLoad = async ({ params, locals: { session, services
 			.map((r) => [r.id, r] as const)
 	);
 
-	const form: SuperValidated<EditRecipeSchema> = await superValidate(data, editRecipeSchema);
+	const formData = services.recipy.map.toFormSchema(data);
 
-	return { session, form, id, relatedIngredients };
+	const form: SuperValidated<EditRecipeSchema> = await superValidate(formData, editRecipeSchema);
+
+	return { session, form, relatedIngredients };
 };
 
 export const actions: Actions = {
@@ -40,7 +42,6 @@ export const actions: Actions = {
 		const form = await superValidate(request, editRecipeSchema);
 
 		if (!form.valid) {
-			console.error(form);
 			return fail(400, { form });
 		}
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TagConnectSchema } from '../tags/schema';
 
 export const editIngredientSchema = z.object({
 	id: z.number().optional(),
@@ -14,7 +15,8 @@ export const editRecipeSchema = z.object({
 	name: z.string().default(''),
 	portions: z.number().min(1).default(1),
 	ingredients: editIngredientSchema.array(),
-	steps: z.string().nonempty().array()
+	steps: z.string().nonempty().array(),
+	tags: TagConnectSchema.array()
 });
 
 export type EditRecipeSchema = typeof editRecipeSchema;

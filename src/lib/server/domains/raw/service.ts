@@ -16,17 +16,7 @@ export class RawService {
 	}
 
 	async getAll(): Promise<RawIngredient[]> {
-		const rawIngredients = await this.prisma.raw.findMany({
-			select: {
-				id: true,
-				name: true,
-				container: true,
-				proteins: true,
-				carbs: true,
-				fat: true,
-				created_by: true
-			}
-		});
+		const rawIngredients = await this.prisma.raw.findMany();
 
 		return rawIngredients?.map((r) => this.map.toDomain(r));
 	}

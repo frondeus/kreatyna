@@ -12,5 +12,10 @@ export default defineConfig({
 	test: {
 		testTimeout: 10000,
 		include: ['src/**/*.{test,spec}.{js,ts}']
+	},
+	server: {
+		fs: {
+			allow: ['prisma/generated']
+		}
 	}
 });

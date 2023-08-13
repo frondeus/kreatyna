@@ -6,6 +6,7 @@ import type {
 	EditIngredientSchema,
 	EditRecipeSchema
 } from './schema';
+import type { TagConnect } from '../tags/models';
 
 export interface WithIngredients {
 	ingredients: WithRawAndAmount[];
@@ -21,6 +22,7 @@ export interface Recipy {
 	portions: number;
 	steps: string[];
 	ingredients: Ingredient[];
+	tags: TagConnect[];
 }
 
 export type RecipeCreateOrUpdate = z.infer<AddOrEditRecipeSchema>;

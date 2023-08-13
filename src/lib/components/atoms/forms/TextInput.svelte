@@ -4,9 +4,10 @@
 
 	export let form;
 	export let title: string;
-	export let name: string;
+	export let field: string;
+	export let name: string | undefined = undefined;
 
-	const { path, value, errors, constraints } = formFieldProxy(form, name);
+	const { path, value, errors, constraints } = formFieldProxy(form, field);
 </script>
 
 {#if $$slots.shim}
@@ -14,7 +15,7 @@
 		<input
 			class="input"
 			{title}
-			name={path}
+			name={name ?? path}
 			type="text"
 			placeholder={title}
 			bind:value={$value}

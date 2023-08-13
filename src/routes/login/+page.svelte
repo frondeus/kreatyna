@@ -12,7 +12,7 @@
 
 <h1 class="h1">Sign in</h1>
 <form method="post" use:enhance class="space-y-4">
-	<TextInput {form} title="Username" name="username" />
+	<TextInput {form} title="Username" field="username" />
 	<PasswordInput {form} title="Password" name="password" />
 	<div class="grid grid-cols-2 gap-4">
 		<Submit value="Sign in" />

@@ -8,7 +8,7 @@
 	import type { SuperForm } from 'sveltekit-superforms/client';
 	import HiddenInput from '../atoms/forms/HiddenInput.svelte';
 	import { modalStore } from '@skeletonlabs/skeleton';
-	import SearchForRawIngredient from '../molecules/modals/SearchForRawIngredient.svelte';
+	import SearchForRawIngredient from '../organisms/modals/SearchForRawIngredient.svelte';
 	import WithShim from '../atoms/forms-look/WithShim.svelte';
 	import type { RawIngredient } from '$lib/shared/domains/raw/models';
 	import type { AddOrEditRecipeSchema } from '$lib/shared/domains/recipe/schema';
@@ -80,7 +80,7 @@
 				</button>
 			</WithShim>
 		{:else}
-			<TextInput {form} title="Name" name={`ingredients[${idx}].name`}>
+			<TextInput {form} title="Name" field={`ingredients[${idx}].name`}>
 				<svelte:fragment slot="shim">
 					<button title="Link to raw ingredient" class="variant-filled-primary" on:click={onLink}>
 						<IconLink />
@@ -93,7 +93,7 @@
 		<NumberInput {form} step="0.1" title="Amount" nolabel name={`ingredients[${idx}].amount`} />
 	</td>
 	<td>
-		<TextInput {form} title="Unit" name={`ingredients[${idx}].unit`} />
+		<TextInput {form} title="Unit" field={`ingredients[${idx}].unit`} />
 	</td>
 
 	<td>

@@ -21,7 +21,6 @@ export const load = (async ({ locals: { session } }) => {
 		throw redirect(302, '/');
 	}
 	const form = superValidate(signupSchema);
-	// console.log(form);
 	return { form };
 }) satisfies PageServerLoad;
 
@@ -51,7 +50,6 @@ export const actions: Actions = {
 			});
 			locals.setSession(session);
 		} catch (e) {
-			console.error(e);
 			throw error(500, { message: 'An unknown error occurred.' });
 		}
 

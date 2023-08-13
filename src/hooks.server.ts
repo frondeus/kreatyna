@@ -1,11 +1,12 @@
-import { AIMap } from '$lib/server/domains/ai/map';
-import { AIService } from '$lib/server/domains/ai/service';
-import { RawMap } from '$lib/server/domains/raw/map';
-import { RawService } from '$lib/server/domains/raw/service';
-import { RecipeIngredientMap, RecipeMap, RecipeSummaryMap } from '$lib/server/domains/recipe/map';
-import { RecipeService } from '$lib/server/domains/recipe/service';
-import { auth } from '$lib/server/lucia';
+import { AIMap } from '$server/domains/ai/map';
+import { AIService } from '$server/domains/ai/service';
+import { auth } from '$server/lucia';
 import { PrismaClient } from '@prisma/client';
+import { RawMap } from '$server/domains/raw/map';
+import { RawService } from '$server/domains/raw/service';
+import { RecipeIngredientMap, RecipeMap, RecipeSummaryMap } from '$server/domains/recipe/map';
+import { RecipeService } from '$server/domains/recipe/service';
+import { TagService } from '$server/domains/tag/service';
 import type { Handle } from '@sveltejs/kit';
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -25,7 +26,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const services = {
 		raw: new RawService(maps.raw, prisma),
 		recipy: new RecipeService(maps.recipe, maps.summary, prisma),
-		ai: new AIService(maps.recipe, maps.ai)
+		ai: new AIService(maps.recipe, maps.ai),
+		tag: new TagService(prisma)
 	};
 
 	event.locals = {

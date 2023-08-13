@@ -3,8 +3,6 @@
 	import Submit from '$lib/components/atoms/forms/Submit.svelte';
 
 	export let form;
-
-	$: console.log(form?.error);
 </script>
 
 <h1 class="h1">Import Raw Ingredients</h1>

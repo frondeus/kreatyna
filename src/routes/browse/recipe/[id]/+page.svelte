@@ -1,13 +1,13 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import EditRecipeForm from '$lib/components/molecules/EditRecipeForm.svelte';
+	import EditRecipeForm from '$components/organisms/EditRecipeForm.svelte';
 	import type { SuperValidated } from 'sveltekit-superforms';
 	import type { EditRecipeSchema } from '$lib/shared/domains/recipe/schema';
 
 	export let data: PageData;
 
-	let { id, form }: { id: number; form: SuperValidated<EditRecipeSchema> } = data;
-	$: ({ id, form } = data);
+	let { form }: { form: SuperValidated<EditRecipeSchema> } = data;
+	$: ({ form } = data);
 </script>
 
-<EditRecipeForm {id} {form} relatedIngredients={data.relatedIngredients} />
+<EditRecipeForm {form} relatedIngredients={data.relatedIngredients} />

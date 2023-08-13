@@ -35,6 +35,14 @@ export class RecipeService {
 					include: {
 						raw: true
 					}
+				},
+				tags: {
+					select: {
+						name: true,
+						categoryId: true,
+						id: true,
+						category: true
+					}
 				}
 			}
 		});
@@ -53,9 +61,10 @@ export class RecipeService {
 	async update(recipe: RecipyUpdate) {
 		const ingredientsToKeep = recipe.ingredients.map((i) => i.id).filter(notNullOrUndefined);
 
+		const update = this.map.toUpdateInput(recipe);
 		await this.prisma.recipie.update({
 			where: { id: recipe.id },
-			data: this.map.toUpdateInput(recipe)
+			data: update
 		});
 
 		await this.prisma.recipiesIngredient.deleteMany({

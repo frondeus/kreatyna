@@ -45,7 +45,7 @@
 		<input type="hidden" name="id" value={id} />
 	{/if}
 
-	<TextInput form={parentForm} title="Name" name="name" />
+	<TextInput form={parentForm} title="Name" field="name" />
 
 	<NumberInput form={parentForm} title="Container" name="container" />
 

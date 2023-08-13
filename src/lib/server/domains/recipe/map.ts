@@ -1,6 +1,7 @@
 import type {
 	Ingredient,
 	IngredientUpdate,
+	RecipeCreateOrUpdate,
 	Recipy,
 	RecipyCreate,
 	RecipyUpdate
@@ -9,6 +10,8 @@ import type {
 	Raw as PrismaRaw,
 	Recipie as PrismaRecipie,
 	RecipiesIngredient as PrismaRecipiesIngredient,
+	Tag as PrismaTag,
+	TagCategory as PrismaTagCategory,
 	Prisma
 } from '@prisma/client';
 import type { RawMap } from '../raw/map';
@@ -29,13 +32,15 @@ export class RecipeMap {
 				name: i.name,
 				amount: i.amount,
 				unit: i.unit
-			}))
+			})),
+			tags: []
 		};
 	}
 
 	public fromSelect(
 		dbEntry: PrismaRecipie & {
 			recipiesIngredients: (PrismaRecipiesIngredient & { raw: PrismaRaw | null })[];
+			tags: (PrismaTag & { category: PrismaTagCategory })[];
 		}
 	): Recipy {
 		return {
@@ -43,7 +48,29 @@ export class RecipeMap {
 			name: dbEntry.name,
 			portions: Number(dbEntry.portions),
 			steps: dbEntry.steps as string[],
+			tags: dbEntry.tags.map((t) => ({
+				id: t.id,
+				name: t.name,
+				category: t.category.name
+			})),
 			ingredients: dbEntry.recipiesIngredients.map((r) => this.ingredientMap.toDomain(r))
+		};
+	}
+
+	public toFormSchema(recipy: Recipy): RecipeCreateOrUpdate {
+		return {
+			id: recipy.id,
+			name: recipy.name,
+			portions: recipy.portions,
+			steps: recipy.steps,
+			tags: recipy.tags,
+			ingredients: recipy.ingredients.map((i) => ({
+				name: i.name,
+				amount: i.amount,
+				unit: i.unit,
+				rawId: i.raw?.id
+			})),
+			askGPT: false
 		};
 	}
 
@@ -64,7 +91,17 @@ export class RecipeMap {
 		return {
 			name: domain.name,
 			portions: domain.portions,
-			steps: domain.steps
+			steps: domain.steps,
+			tags: {
+				deleteMany: {},
+				connect:
+					domain.tags.length > 0
+						? domain.tags.map((t) => {
+								const { id } = t;
+								return { id };
+						  })
+						: undefined
+			}
 		};
 	}
 }
@@ -85,7 +122,11 @@ export class RecipeIngredientMap {
 		this.rawMap = rawMap;
 	}
 
-	public toDomain(dbEntry: PrismaRecipiesIngredient & { raw: PrismaRaw | null }): Ingredient {
+	public toDomain(
+		dbEntry: PrismaRecipiesIngredient & {
+			raw: PrismaRaw | null;
+		}
+	): Ingredient {
 		return {
 			id: Number(dbEntry.id),
 			name: dbEntry.name,

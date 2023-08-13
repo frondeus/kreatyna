@@ -9,7 +9,8 @@
 
 	const anchors: Anchor[] = [
 		{ href: '/browse/recipe', title: 'Recipes' },
-		{ href: '/browse/raw', title: 'Raw ingredients' }
+		{ href: '/browse/raw', title: 'Raw ingredients' },
+		{ href: '/browse/tag', title: 'Tags' }
 	];
 </script>
 

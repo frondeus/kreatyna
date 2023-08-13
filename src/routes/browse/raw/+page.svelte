@@ -4,7 +4,7 @@
 	import IconDelete from '~icons/mdi/delete';
 	import type { PageData } from './$types';
 	import { modalStore } from '@skeletonlabs/skeleton';
-	import ConfirmDelete from '$lib/components/molecules/modals/ConfirmDelete.svelte';
+	import ConfirmDelete from '$components/organisms/modals/ConfirmDelete.svelte';
 	import { readable } from 'svelte/store';
 	import { invalidateAll } from '$app/navigation';
 	import type { RawIngredient } from '$lib/shared/domains/raw/models';

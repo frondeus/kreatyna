@@ -19,9 +19,10 @@ model User {
 
 model Session {
   id             String @id @unique
-  user_id        String 
+  user_id        String
   active_expires BigInt
   idle_expires   BigInt
+  // Relations
   user           User   @relation(references: [id], fields: [user_id], onDelete: Cascade)
 
   @@index([user_id])
@@ -30,7 +31,8 @@ model Session {
 model Key {
   id              String  @id @unique
   hashed_password String?
-  user_id         String 
+  user_id         String
+  // Relations
   user            User    @relation(references: [id], fields: [user_id], onDelete: Cascade)
 
   @@index([user_id])
@@ -38,14 +40,17 @@ model Key {
 
 model Raw {
   id                  Int                  @id @default(autoincrement())
-  created_by          String?              
+  created_by          String?
   name                String
   container           Int
   proteins            Decimal              @db.Decimal
   carbs               Decimal              @db.Decimal
   fat                 Decimal              @db.Decimal
+  tagId               Int?
+  // Relations
   creator                User?             @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   recipiesIngredients RecipiesIngredient[]
+  tags                Tag[]
 }
 
 model Recipie {
@@ -54,7 +59,9 @@ model Recipie {
   name                String               @default("")
   portions            BigInt               @default(1)
   steps               Json                 @default("[]") @db.Json
+  // Relations
   recipiesIngredients RecipiesIngredient[]
+  tags                 Tag[]
 }
 
 model RecipiesIngredient {
@@ -64,6 +71,27 @@ model RecipiesIngredient {
   name      String  @default("")
   amount    Decimal @default(0) @db.Decimal
   unit      String?
+  // Relations
   raw       Raw?    @relation(fields: [raw_id], references: [id], onUpdate: NoAction)
   recipies  Recipie @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
+
+model TagCategory {
+  id        Int     @id @unique @default(autoincrement())
+  name      String  @default("") @unique
+  // Relations
+  tags      Tag[]
+}
+
+model Tag {
+  id        Int     @id @unique @default(autoincrement())
+  name      String  @default("")
+  categoryId Int
+  // Relations
+  category  TagCategory @relation(fields: [categoryId], references: [id], onUpdate: NoAction, onDelete: Cascade)
+  raws      Raw[]
+  recipies  Recipie[]
+
+  @@unique([name, categoryId])
+}
+

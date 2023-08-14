@@ -18,7 +18,43 @@ export class RecipeService {
 		this.prisma = prisma;
 		this.summaryMap = summaryMap;
 	}
-	async getAll(): Promise<RecipySummary[]> {
+
+	async getAll(tags: number[]): Promise<RecipySummary[]> {
+		if (tags.length === 0) {
+			return await this.getAllUnfiltered();
+		}
+
+		const summaries = await this.prisma.recipie.findMany({
+			where: {
+				tags: {
+					some: {
+						id: {
+							in: tags
+						}
+					}
+				}
+			},
+			select: {
+				id: true,
+				name: true,
+				tags: {
+					select: {
+						id: true,
+						name: true,
+						category: {
+							select: {
+								name: true
+							}
+						}
+					}
+				}
+			}
+		});
+
+		return summaries.map((recipe) => this.summaryMap.toDomain(recipe));
+	}
+
+	private async getAllUnfiltered(): Promise<RecipySummary[]> {
 		const summaries = await this.prisma.recipie.findMany({
 			select: {
 				id: true,

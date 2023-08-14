@@ -8,13 +8,18 @@
 	import InputChipSearch from '$components/molecules/InputChipSearch.svelte';
 	import { onMount } from 'svelte';
 	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
+	import type { RecipeFilter } from '$shared/domains/recipe/models';
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 
 	export let data: PageData;
 
-	let { recipies, related } = data;
 	let autocomplete: Writable<AutocompleteOption[]> = writable([]);
+	let filters: Writable<RecipeFilter[]> = writable([]);
 
+	let { recipies, related } = data;
 	$: ({ recipies, related } = data);
+
 	onMount(async () => {
 		const tags = await related.tags;
 		$autocomplete = (tags ?? []).map((r) => ({
@@ -22,6 +27,15 @@
 			value: r.id,
 			meta: r
 		}));
+
+		filters.subscribe((filters) => {
+			let query = new URLSearchParams($page.url.searchParams.toString());
+			query.delete('tag');
+			for (const tag of filters) {
+				query.append('tag', tag.tagId.toString());
+			}
+			goto(`?${query.toString()}`);
+		});
 	});
 </script>
 
@@ -29,10 +43,11 @@
 	<InputChipSearch
 		options={$autocomplete}
 		on:select={(e) => {
-			console.log('select', e.detail);
+			$filters.push({ tagId: e.detail.id });
+			$filters = $filters;
 		}}
 		on:remove={(e) => {
-			console.log('remove', e.detail);
+			$filters = $filters.filter((f) => f.tagId !== e.detail.id);
 		}}
 	/>
 

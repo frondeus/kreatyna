@@ -1,12 +1,15 @@
 import { redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals: { session, services } }) => {
+export const load: PageServerLoad = async ({ url, locals: { session, services } }) => {
 	if (!session) {
 		throw redirect(303, '/login');
 	}
 
-	const recipies = services.recipy.getAll();
+	const filter = url.searchParams.getAll('tag');
+	const filterTags = filter.map((tag) => Number(tag));
+
+	const recipies = services.recipy.getAll(filterTags);
 
 	const tags = recipies
 		.then((recipies) => {

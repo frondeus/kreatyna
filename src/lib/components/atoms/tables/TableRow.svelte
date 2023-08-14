@@ -11,7 +11,7 @@
 
 	export let name: string;
 
-    export let extra: ComponentType<SvelteComponent>[] = [];
+	export let extra: ComponentType<SvelteComponent>[] = [];
 
 	export let editable = false;
 	export let deletable = false;

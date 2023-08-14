@@ -14,6 +14,8 @@
 	let filters: string[] = [];
 	let metas: unknown[] = [];
 
+	$: filteredOptions = options.filter((option) => !metas.includes(option.meta));
+
 	const randomId = () => Math.random().toString(36).substring(7);
 	const targetId = 'popupAutocomplete' + randomId();
 	const searchPopup: PopupSettings = {
@@ -62,5 +64,5 @@
 </div>
 
 <div class="card p-4 z-10" data-popup={targetId}>
-	<Autocomplete bind:input={search} {options} on:selection={onSelect} />
+	<Autocomplete bind:input={search} options={filteredOptions} on:selection={onSelect} />
 </div>

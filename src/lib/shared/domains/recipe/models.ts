@@ -63,3 +63,7 @@ export interface Ingredient {
 	amount: number;
 	raw?: RawIngredient;
 }
+
+export interface RecipeFilter {
+	tagId: number;
+}

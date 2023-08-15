@@ -15,7 +15,7 @@
 		"lint:watch": "npm run lint && onchange **/* -- npm run lint",
 		"lint:watch-fmt": "npm run lint:fmt && onchange **/* -- npm run lint:fmt",
 		"lint:watch-ts": "npm run lint:ts && onchange **/* -- npm run lint:ts",
-		"format": "prettier --plugin-search-dir . --write .",
+		"format": "prettier --plugin-search-dir . --write . && prisma format",
 		"format:watch": "npm run format && onchange **/* -- npm run format",
 		"prisma:studio": "npm run docker:up && prisma studio &",
 		"prisma:seed": "prisma db seed",

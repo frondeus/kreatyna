@@ -51,7 +51,7 @@ export const actions: Actions = {
 			name: form.data.name as string
 		};
 
-		await services.recipy.create(data);
+		await services.recipe.create(data);
 
 		throw redirect(303, '/browse/recipe');
 	}

@@ -22,7 +22,7 @@ declare global {
 			setSession: (session: Session | null) => void;
 			services: {
 				raw: RawService;
-				recipy: RecipeService;
+				recipe: RecipeService;
 				ai: AIService;
 				tag: TagService;
 			};

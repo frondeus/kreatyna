@@ -9,7 +9,7 @@ import type {
 import type { TagConnect, TagSelect } from '../tags/models';
 import { Prisma } from '@prisma/client';
 
-const recipeSummarySelect = Prisma.validator<Prisma.RecipieFindManyArgs>()({
+const recipeSummarySelect = Prisma.validator<Prisma.RecipeFindManyArgs>()({
 	select: {
 		id: true,
 		name: true,
@@ -26,18 +26,18 @@ const recipeSummarySelect = Prisma.validator<Prisma.RecipieFindManyArgs>()({
 		}
 	}
 });
-export type RecipeSummarySelect = Prisma.RecipieGetPayload<typeof recipeSummarySelect>;
+export type RecipeSummarySelect = Prisma.RecipeGetPayload<typeof recipeSummarySelect>;
 
 export interface WithIngredients {
 	ingredients: WithRawAndAmount[];
 }
 
-export interface RecipySummary {
+export interface RecipeSummary {
 	id: number;
 	name: string;
 	tags: TagSelect[];
 }
-export interface Recipy {
+export interface Recipe {
 	id: number;
 	name: string;
 	portions: number;
@@ -47,8 +47,8 @@ export interface Recipy {
 }
 
 export type RecipeCreateOrUpdate = z.infer<AddOrEditRecipeSchema>;
-export type RecipyCreate = z.infer<AddRecipeSchema>;
-export type RecipyUpdate = z.infer<EditRecipeSchema>;
+export type RecipeCreate = z.infer<AddRecipeSchema>;
+export type RecipeUpdate = z.infer<EditRecipeSchema>;
 export type IngredientUpdate = z.infer<EditIngredientSchema>;
 
 export interface WithRawAndAmount {

@@ -9,11 +9,11 @@ export const load: PageServerLoad = async ({ url, locals: { session, services } 
 	const filter = url.searchParams.getAll('tag');
 	const filterTags = filter.map((tag) => Number(tag));
 
-	const recipies = services.recipy.getAll(filterTags);
+	const recipes = services.recipe.getAll(filterTags);
 
-	const tags = recipies
-		.then((recipies) => {
-			return recipies.flatMap((recipy) => recipy.tags);
+	const tags = recipes
+		.then((recipes) => {
+			return recipes.flatMap((recipe) => recipe.tags);
 		})
 		.then((tags) => {
 			const uniqueTags = [...new Map(tags.map((item) => [item.id, item])).values()];
@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ url, locals: { session, services } 
 
 	return {
 		session,
-		recipies,
+		recipes,
 		related: {
 			tags
 		}
@@ -39,7 +39,7 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const id = Number(data.get('id'));
 
-		await services.recipy.remove(id);
+		await services.recipe.remove(id);
 
 		return {};
 	}

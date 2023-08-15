@@ -17,8 +17,8 @@
 	let autocomplete: Writable<AutocompleteOption[]> = writable([]);
 	let filters: Writable<RecipeFilter[]> = writable([]);
 
-	let { recipies, related } = data;
-	$: ({ recipies, related } = data);
+	let { recipes, related } = data;
+	$: ({ recipes, related } = data);
 
 	onMount(async () => {
 		const tags = await related.tags;
@@ -56,10 +56,10 @@
 			<ActionIconButton href="./recipe/create"><IconAdd /></ActionIconButton>
 		</svelte:fragment>
 
-		{#if !recipies}
+		{#if !recipes}
 			Loading...
 		{:else}
-			{#each recipies as row (row.id)}
+			{#each recipes as row (row.id)}
 				<TableRow id={row.id} href="./recipe" name={row.name} editable deletable />
 			{/each}
 		{/if}

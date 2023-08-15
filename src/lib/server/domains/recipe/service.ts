@@ -1,10 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
 import type { RecipeMap, RecipeSummaryMap } from './map';
 import type {
-	Recipy,
-	RecipyCreate,
-	RecipySummary,
-	RecipyUpdate
+	Recipe,
+	RecipeCreate,
+	RecipeSummary,
+	RecipeUpdate
 } from '$lib/shared/domains/recipe/models';
 import { notNullOrUndefined } from '$lib/shared/utils';
 
@@ -19,12 +19,12 @@ export class RecipeService {
 		this.summaryMap = summaryMap;
 	}
 
-	async getAll(tags: number[]): Promise<RecipySummary[]> {
+	async getAll(tags: number[]): Promise<RecipeSummary[]> {
 		if (tags.length === 0) {
 			return await this.getAllUnfiltered();
 		}
 
-		const summaries = await this.prisma.recipie.findMany({
+		const summaries = await this.prisma.recipe.findMany({
 			where: {
 				tags: {
 					some: {
@@ -54,8 +54,8 @@ export class RecipeService {
 		return summaries.map((recipe) => this.summaryMap.toDomain(recipe));
 	}
 
-	private async getAllUnfiltered(): Promise<RecipySummary[]> {
-		const summaries = await this.prisma.recipie.findMany({
+	private async getAllUnfiltered(): Promise<RecipeSummary[]> {
+		const summaries = await this.prisma.recipe.findMany({
 			select: {
 				id: true,
 				name: true,
@@ -76,13 +76,13 @@ export class RecipeService {
 		return summaries.map((recipe) => this.summaryMap.toDomain(recipe));
 	}
 
-	async getOne(id: number): Promise<Recipy | null> {
-		const recipe = await this.prisma.recipie.findUnique({
+	async getOne(id: number): Promise<Recipe | null> {
+		const recipe = await this.prisma.recipe.findUnique({
 			where: {
 				id
 			},
 			include: {
-				recipiesIngredients: {
+				recipesIngredients: {
 					include: {
 						raw: true
 					}
@@ -103,22 +103,22 @@ export class RecipeService {
 		return this.map.fromSelect(recipe);
 	}
 
-	async create(recipe: RecipyCreate) {
-		await this.prisma.recipie.create({
+	async create(recipe: RecipeCreate) {
+		await this.prisma.recipe.create({
 			data: this.map.toCreateInput(recipe)
 		});
 	}
 
-	async update(recipe: RecipyUpdate) {
+	async update(recipe: RecipeUpdate) {
 		const ingredientsToKeep = recipe.ingredients.map((i) => i.id).filter(notNullOrUndefined);
 
 		const update = this.map.toUpdateInput(recipe);
-		await this.prisma.recipie.update({
+		await this.prisma.recipe.update({
 			where: { id: recipe.id },
 			data: update
 		});
 
-		await this.prisma.recipiesIngredient.deleteMany({
+		await this.prisma.recipesIngredient.deleteMany({
 			where: {
 				recipe_id: recipe.id,
 				id: {
@@ -129,7 +129,7 @@ export class RecipeService {
 
 		for (const ingredient of recipe.ingredients) {
 			if (ingredient.id) {
-				await this.prisma.recipiesIngredient.update({
+				await this.prisma.recipesIngredient.update({
 					data: this.map.ingredientMap.toUpdateInput(recipe.id, ingredient),
 					where: {
 						id: ingredient.id,
@@ -137,7 +137,7 @@ export class RecipeService {
 					}
 				});
 			} else {
-				await this.prisma.recipiesIngredient.create({
+				await this.prisma.recipesIngredient.create({
 					data: this.map.ingredientMap.toCreateInput(recipe.id, ingredient)
 				});
 			}
@@ -145,7 +145,7 @@ export class RecipeService {
 	}
 
 	async remove(id: number) {
-		await this.prisma.recipie.delete({
+		await this.prisma.recipe.delete({
 			where: {
 				id
 			}

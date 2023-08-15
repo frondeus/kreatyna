@@ -27,8 +27,8 @@ export class Calculator {
 		};
 	}
 
-	static calcNutrientsForIngredients(recipy: WithIngredients): Nutrients {
-		return recipy.ingredients
+	static calcNutrientsForIngredients(recipe: WithIngredients): Nutrients {
+		return recipe.ingredients
 			.map(
 				(ingredient) =>
 					Calculator.calcNutrientsForIngredient(ingredient) ?? { proteins: 0, carbs: 0, fat: 0 }

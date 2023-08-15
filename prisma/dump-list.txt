@@ -1,7 +1,7 @@
 Raw
-Recipie
-RecipiesIngredient
+Recipe
+RecipesIngredient
 TagCategory
 Tag
 _RawToTag
-_RecipieToTag
+_RecipeToTag

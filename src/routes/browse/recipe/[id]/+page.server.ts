@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ params, locals: { session, services
 
 	const id = Number(params.id);
 
-	const data = await services.recipy.getOne(id);
+	const data = await services.recipe.getOne(id);
 
 	if (data === null) {
 		throw returnError(404, 'Recipe was not found');
@@ -26,7 +26,7 @@ export const load: PageServerLoad = async ({ params, locals: { session, services
 			.map((r) => [r.id, r] as const)
 	);
 
-	const formData = services.recipy.map.toFormSchema(data);
+	const formData = services.recipe.map.toFormSchema(data);
 
 	const form: SuperValidated<EditRecipeSchema> = await superValidate(formData, editRecipeSchema);
 
@@ -45,7 +45,7 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		await services.recipy.update(form.data);
+		await services.recipe.update(form.data);
 
 		return { form };
 	}

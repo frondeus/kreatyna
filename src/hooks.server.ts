@@ -25,7 +25,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	const services = {
 		raw: new RawService(maps.raw, prisma),
-		recipy: new RecipeService(maps.recipe, maps.summary, prisma),
+		recipe: new RecipeService(maps.recipe, maps.summary, prisma),
 		ai: new AIService(maps.recipe, maps.ai),
 		tag: new TagService(prisma)
 	};

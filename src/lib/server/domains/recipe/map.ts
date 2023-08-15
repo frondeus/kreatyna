@@ -3,15 +3,15 @@ import type {
 	IngredientUpdate,
 	RecipeCreateOrUpdate,
 	RecipeSummarySelect,
-	Recipy,
-	RecipyCreate,
-	RecipySummary,
-	RecipyUpdate
+	Recipe,
+	RecipeCreate,
+	RecipeSummary,
+	RecipeUpdate
 } from '$lib/shared/domains/recipe/models';
 import type {
 	Raw as PrismaRaw,
-	Recipie as PrismaRecipie,
-	RecipiesIngredient as PrismaRecipiesIngredient,
+	Recipe as PrismaRecipe,
+	RecipesIngredient as PrismaRecipesIngredient,
 	Tag as PrismaTag,
 	TagCategory as PrismaTagCategory,
 	Prisma
@@ -25,7 +25,7 @@ export class RecipeMap {
 		this.ingredientMap = ingredientMap;
 	}
 
-	public fromAI(model: RecipeResponse): RecipyCreate {
+	public fromAI(model: RecipeResponse): RecipeCreate {
 		return {
 			name: model.name,
 			steps: model.steps,
@@ -40,11 +40,11 @@ export class RecipeMap {
 	}
 
 	public fromSelect(
-		dbEntry: PrismaRecipie & {
-			recipiesIngredients: (PrismaRecipiesIngredient & { raw: PrismaRaw | null })[];
+		dbEntry: PrismaRecipe & {
+			recipesIngredients: (PrismaRecipesIngredient & { raw: PrismaRaw | null })[];
 			tags: (PrismaTag & { category: PrismaTagCategory })[];
 		}
-	): Recipy {
+	): Recipe {
 		return {
 			id: Number(dbEntry.id),
 			name: dbEntry.name,
@@ -55,18 +55,18 @@ export class RecipeMap {
 				name: t.name,
 				category: t.category.name
 			})),
-			ingredients: dbEntry.recipiesIngredients.map((r) => this.ingredientMap.toDomain(r))
+			ingredients: dbEntry.recipesIngredients.map((r) => this.ingredientMap.toDomain(r))
 		};
 	}
 
-	public toFormSchema(recipy: Recipy): RecipeCreateOrUpdate {
+	public toFormSchema(recipe: Recipe): RecipeCreateOrUpdate {
 		return {
-			id: recipy.id,
-			name: recipy.name,
-			portions: recipy.portions,
-			steps: recipy.steps,
-			tags: recipy.tags,
-			ingredients: recipy.ingredients.map((i) => ({
+			id: recipe.id,
+			name: recipe.name,
+			portions: recipe.portions,
+			steps: recipe.steps,
+			tags: recipe.tags,
+			ingredients: recipe.ingredients.map((i) => ({
 				name: i.name,
 				amount: i.amount,
 				unit: i.unit,
@@ -77,19 +77,19 @@ export class RecipeMap {
 	}
 
 	public toCreateInput(
-		domain: RecipyCreate & { ingredients: IngredientUpdate[] }
-	): Prisma.RecipieCreateInput {
+		domain: RecipeCreate & { ingredients: IngredientUpdate[] }
+	): Prisma.RecipeCreateInput {
 		return {
 			name: domain.name,
 			portions: domain.portions,
 			steps: domain.steps,
-			recipiesIngredients: {
+			recipesIngredients: {
 				create: domain.ingredients.map((i) => this.ingredientMap.toCreateInputUnconnected(i))
 			}
 		};
 	}
 
-	public toUpdateInput(domain: RecipyUpdate): Prisma.RecipieUpdateInput {
+	public toUpdateInput(domain: RecipeUpdate): Prisma.RecipeUpdateInput {
 		return {
 			name: domain.name,
 			portions: domain.portions,
@@ -109,7 +109,7 @@ export class RecipeMap {
 }
 
 export class RecipeSummaryMap {
-	public toDomain(dbEntry: RecipeSummarySelect): RecipySummary {
+	public toDomain(dbEntry: RecipeSummarySelect): RecipeSummary {
 		return {
 			id: Number(dbEntry.id),
 			name: dbEntry.name,
@@ -130,7 +130,7 @@ export class RecipeIngredientMap {
 	}
 
 	public toDomain(
-		dbEntry: PrismaRecipiesIngredient & {
+		dbEntry: PrismaRecipesIngredient & {
 			raw: PrismaRaw | null;
 		}
 	): Ingredient {
@@ -145,7 +145,7 @@ export class RecipeIngredientMap {
 
 	public toCreateInputUnconnected(
 		domain: IngredientUpdate
-	): Prisma.RecipiesIngredientCreateWithoutRecipiesInput {
+	): Prisma.RecipesIngredientCreateWithoutRecipesInput {
 		return {
 			name: domain.name,
 			amount: domain.amount,
@@ -162,10 +162,10 @@ export class RecipeIngredientMap {
 	public toCreateInput(
 		recipe_id: number,
 		domain: IngredientUpdate
-	): Prisma.RecipiesIngredientCreateInput {
+	): Prisma.RecipesIngredientCreateInput {
 		return {
 			...this.toCreateInputUnconnected(domain),
-			recipies: {
+			recipes: {
 				connect: {
 					id: recipe_id
 				}
@@ -176,12 +176,12 @@ export class RecipeIngredientMap {
 	public toUpdateInput(
 		recipe_id: number,
 		domain: IngredientUpdate
-	): Prisma.RecipiesIngredientUpdateInput {
+	): Prisma.RecipesIngredientUpdateInput {
 		return {
 			name: domain.name,
 			amount: domain.amount,
 			unit: domain.unit ?? null,
-			recipies: {
+			recipes: {
 				connect: {
 					id: recipe_id
 				}

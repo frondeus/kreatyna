@@ -4,8 +4,13 @@
 
 	export let href: string;
 	export let title: string | undefined = undefined;
+
+	let pathname = "";
+	$: {
+		pathname = $page?.url?.pathname ?? "";
+	}
 </script>
 
-<AppRailAnchor selected={$page.url.pathname === href} {href} {title}>
+<AppRailAnchor selected={pathname === href} {href} {title}>
 	<slot />
 </AppRailAnchor>

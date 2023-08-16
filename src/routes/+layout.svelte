@@ -17,8 +17,6 @@
 	$: ({ session } = data);
 </script>
 
-<Modal />
-
 <AppShell slotSidebarLeft="w-0 lg:w-64" slotFooter="lg:hidden">
 	<svelte:fragment slot="sidebarLeft">
 		<Sidebar isLoggedIn={!!session} />
@@ -31,4 +29,5 @@
 	</svelte:fragment>
 </AppShell>
 
+<Modal />
 <Toast />

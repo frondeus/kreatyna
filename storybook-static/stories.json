@@ -1,0 +1,1 @@
+{"v":3,"stories":{"pages-plan--default":{"id":"pages-plan--default","name":"Default","title":"Pages/Plan","importPath":"./src/stories/templates/plan.stories.ts","tags":["story"],"kind":"Pages/Plan","story":"Default","parameters":{"__id":"pages-plan--default","docsOnly":false,"fileName":"./src/stories/templates/plan.stories.ts"}}}}

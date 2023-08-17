@@ -1,14 +1,11 @@
 <script lang="ts">
 	import { AppRailAnchor } from '@skeletonlabs/skeleton';
-	import { page } from '$app/stores';
+	import { getContext, onMount } from 'svelte';
 
 	export let href: string;
 	export let title: string | undefined = undefined;
 
-	let pathname = "";
-	$: {
-		pathname = $page?.url?.pathname ?? "";
-	}
+	let pathname = getContext<URL>('url')?.pathname ?? "";
 </script>
 
 <AppRailAnchor selected={pathname === href} {href} {title}>

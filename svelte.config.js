@@ -16,7 +16,8 @@ const config = {
 			$components: './src/lib/components',
 			$shared: './src/lib/shared',
 			$server: './src/lib/server',
-			$schemas: './prisma/generated/schemas'
+			$schemas: './prisma/generated/schemas',
+			$root: './src'
 		}
 	}
 };

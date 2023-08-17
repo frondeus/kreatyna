@@ -1,14 +1,56 @@
 <script lang="ts">
 	import { AppRail } from '@skeletonlabs/skeleton';
 	import NavAnchor from '../atoms/NavAnchor.svelte';
+	import { getContext } from 'svelte';
 
 	export let isLoggedIn: boolean;
+
+	const links = [
+		{
+			href: '/plan',
+			title: 'Plan',
+		},
+		// {
+		// 	href: '/shop',
+		// 	title: 'Shop',
+		// },
+		// {
+		// 	href: '/store',
+		// 	title: 'Store',
+		// },
+		// {
+		// 	href: '/cook',
+		// 	title: 'Cook',
+		// },
+		// {
+		// 	href: '/log',
+		// 	title: 'Log',
+		// },
+		{
+			href: '/browse',
+			title: 'Browse',
+		},
+	];
+
+	let pathname = getContext<URL>('url')?.pathname ?? "";
+	$: classesActive = (href: string) => (href === pathname ? '!bg-primary-500' : '');
 </script>
 
-<AppRail>
+<nav class="list-nav p-4">
+	<ul>
+		{#each links as { href, title }}
+			<li>
+				<a 	class="{classesActive(href)}"
+					{href}
+					{title}
+				>{title}</a>
+			</li>
+		{/each}
+	</ul>
+</nav>
+<!-- <AppRail>
 	<svelte:fragment slot="lead">
 		<NavAnchor href="/">
-			<!-- <IconAccountBox style={{ fontSize: '20em', color: 'red' }} /> -->
 			Kreatyna
 		</NavAnchor>
 	</svelte:fragment>
@@ -23,14 +65,12 @@
 	<svelte:fragment slot="trail">
 		{#if isLoggedIn}
 			<NavAnchor href="/account" title="Account">
-				<!-- <IconAccountBox style={{ fontSize: '20em', color: 'red' }} /> -->
 				Account
 			</NavAnchor>
 		{:else}
 			<NavAnchor href="/login" title="Login">
-				<!-- <IconAccountBox style={{ fontSize: '20em', color: 'red' }} /> -->
 				Login
 			</NavAnchor>
 		{/if}
 	</svelte:fragment>
-</AppRail>
+</AppRail> -->

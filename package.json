@@ -25,7 +25,7 @@
     "test:integration": "npm run docker:up && playwright test",
     "test:unit": "vitest",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "storybook:build": "storybook build"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -38,6 +38,7 @@
     "@storybook/addon-interactions": "^7.3.1",
     "@storybook/addon-links": "^7.3.1",
     "@storybook/addon-styling": "^1.3.6",
+    "@storybook/addon-svelte-csf": "^3.0.7",
     "@storybook/blocks": "^7.3.1",
     "@storybook/svelte": "^7.3.1",
     "@storybook/sveltekit": "^7.3.1",

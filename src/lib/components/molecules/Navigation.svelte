@@ -1,14 +1,10 @@
 <script lang="ts">
-	import { AppRail } from '@skeletonlabs/skeleton';
-	import NavAnchor from '../atoms/NavAnchor.svelte';
-	import { getContext } from 'svelte';
-
-	export let isLoggedIn: boolean;
+	import { getContext } from '$shared/context';
 
 	const links = [
 		{
 			href: '/plan',
-			title: 'Plan',
+			title: 'Plan'
 		},
 		// {
 		// 	href: '/shop',
@@ -28,22 +24,20 @@
 		// },
 		{
 			href: '/browse',
-			title: 'Browse',
-		},
+			title: 'Browse'
+		}
 	];
 
-	let pathname = getContext<URL>('url')?.pathname ?? "";
-	$: classesActive = (href: string) => (href === pathname ? '!bg-primary-500' : '');
+	const page = getContext().page;
+	$: classesActive = (href: string) =>
+		$page.url.pathname.startsWith(href) ? '!bg-primary-500' : '';
 </script>
 
 <nav class="list-nav p-4">
 	<ul>
 		{#each links as { href, title }}
 			<li>
-				<a 	class="{classesActive(href)}"
-					{href}
-					{title}
-				>{title}</a>
+				<a class={classesActive(href)} {href} {title}>{title}</a>
 			</li>
 		{/each}
 	</ul>

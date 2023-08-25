@@ -1,3 +1,3 @@
-<div class="lg:mx-auto lg:p-8 lg:space-y-8">
-    <slot />
+<div class="lg:mx-auto p-2 xl:p-4 lg:space-y-8 h-full">
+	<slot />
 </div>

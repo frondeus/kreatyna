@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { getContext } from '$shared/context';
 	import { TabAnchor } from '@skeletonlabs/skeleton';
-	import { getContext } from 'svelte';
 
 	export let href: string;
 
-	let pathname = getContext<URL>('url')?.pathname ?? "";
+	const page = getContext().page;
+
+	let pathname = $page.url.pathname ?? '';
 </script>
 
 <TabAnchor {href} selected={pathname === href}>

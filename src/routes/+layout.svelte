@@ -1,9 +1,9 @@
 <script>
-	import { setContext } from 'svelte';
 	import { page } from '$app/stores';
 	import RootLayout from '$components/organisms/layouts/RootLayout.svelte';
+	import { setContext } from '$shared/context';
 
-	setContext('url', $page.url);
+	setContext({ page });
 
 	export let data;
 	let session = data.session;

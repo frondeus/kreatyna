@@ -1,4 +1,4 @@
-// import { redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
@@ -8,5 +8,6 @@ export const load: PageServerLoad = async () => {
 	// 	throw redirect(303, '/login');
 	// }
 
-	return {};
+	throw redirect(303, '/plan');
+	// return {};
 };

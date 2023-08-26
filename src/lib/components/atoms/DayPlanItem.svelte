@@ -1,8 +1,6 @@
 <script lang="ts" context="module">
-	export interface Size {
-		index: number;
-		size?: number;
-	}
+	import type { Size } from "$shared/domains/plan/models";
+
 	export interface DayItem {
 		day: Size; // From 1 to 7
 		slot: Size; // From 1 to 12

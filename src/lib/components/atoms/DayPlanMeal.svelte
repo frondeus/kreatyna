@@ -1,18 +1,18 @@
-<script lang="ts" context="module">
-	export type MealWithDay = {
-		name: string;
-		recipe?: string;
-	} & DayItem;
-</script>
-
 <script lang="ts">
+	import type { MealForDay } from "$shared/domains/plan/models";
 	import DayPlanItem, { type DayItem } from "./DayPlanItem.svelte";
 	import IconLink from '~icons/mdi/link-variant-plus';
 
-    export let meal: MealWithDay;
+    export let meal: MealForDay;
+
+	$: item = {
+		day: { index: meal.day },
+		slot: meal.slot,
+		variant: 'primary' as const
+	};
 </script>
 
-<DayPlanItem item={meal}>
+<DayPlanItem {item}>
 	<div class="min-w-0 whitespace-nowrap">
 		<header class="flex">
 			<span class="grow h5"> {meal.name} </span>
@@ -22,7 +22,7 @@
 		</header>
 		{#if meal.recipe}
 		<span class="truncate block">
-				{meal.recipe}
+			{meal.recipe.name}
 		</span>
 		{/if}
 	</div>

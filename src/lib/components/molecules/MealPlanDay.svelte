@@ -1,8 +1,9 @@
 <script lang="ts">
-	import DayPlanMeal, { type MealWithDay } from '$components/atoms/DayPlanMeal.svelte';
+	import DayPlanMeal from '$components/atoms/DayPlanMeal.svelte';
+	import type { MealForDay } from '$shared/domains/plan/models';
 
 	export let name: string;
-	export let meals: MealWithDay[] = [];
+	export let meals: MealForDay[] = [];
 
 	export let maxSize = meals.reduce((acc, meal) => acc + (meal.slot.size ?? 1), 0);
 </script>

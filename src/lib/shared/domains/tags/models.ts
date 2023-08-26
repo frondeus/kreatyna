@@ -8,6 +8,11 @@ const tagWithCategory = Prisma.validator<Prisma.TagFindManyArgs>()({
 
 type TagWithCategory = Prisma.TagGetPayload<typeof tagWithCategory>;
 
+interface TagSearch {
+	name: string;
+	category: string;
+}
+
 interface TagCreateOne {
 	name: string;
 	category: string;
@@ -21,4 +26,12 @@ interface TagSelect {
 
 type TagConnect = z.infer<typeof TagConnectSchema>;
 
-export type { Tag, TagCategory, TagWithCategory, TagCreateOne, TagConnect, TagSelect };
+export type { 
+	Tag, 
+	TagCategory, 
+	TagWithCategory, 
+	TagCreateOne, 
+	TagConnect, 
+	TagSelect,
+	TagSearch 
+};

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
-	import MealPlanDay, { type MealWithDay } from '$components/molecules/MealPlanDay.svelte';
+	import MealPlanDay from '$components/molecules/MealPlanDay.svelte';
+	import type { MealForDay } from '$shared/domains/plan/models';
 	import IconDice from '~icons/mdi/dice-5';
 
 	interface Day {
@@ -31,16 +32,11 @@
 		}
 	];
 
-	const dayIndices = [...Array(7).keys()].map((day) => day + 1);
-	const atWork = [4, 6];
-	const weekend = [1, 7];
+	export let meals: MealForDay[] = [];
 
-	export let meals: MealWithDay[] = [];
-
-	console.log({ meals });
 	//Group meals per day
-	const mealsPerDay: Map<number, MealWithDay[]> = meals.reduce((acc, meal) => {
-		const day = meal.day.index;
+	const mealsPerDay: Map<number, MealForDay[]> = meals.reduce((acc, meal) => {
+		const day = meal.day;
 		if (!acc.has(day)) {
 			acc.set(day, []);
 		}
@@ -48,7 +44,15 @@
 		acc.get(day)?.push(meal);
 
 		return acc;
-	}, new Map<number, MealWithDay[]>());
+	}, new Map<number, MealForDay[]>());
+
+	const sortItem = (a: MealForDay, b: MealForDay): number => {
+		if (a.day === b.day) {
+			return a.slot.index - b.slot.index;
+		}
+
+		return a.day - b.day;
+	};
 </script>
 
 <div class="space-y-2 lg:flex lg:flex-col lg:h-full p-2 card overflow-hidden">
@@ -59,7 +63,7 @@
 	</div>
 	<div class="lg:grid lg:grid-cols-7 overflow-hidden max-h-full">
 		{#each days as day, idx}
-			<MealPlanDay name={day.name} meals={mealsPerDay.get(idx + 1)} />
+			<MealPlanDay name={day.name} meals={mealsPerDay.get(idx + 1)?.sort(sortItem)} />
 		{/each}
 	</div>
 </div>

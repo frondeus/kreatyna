@@ -10,7 +10,7 @@
 </script>
 
 <DefaultContext>
-	<div style="display: contents" class="h-full overflow-hidden">
+	<div class="h-full overflow-hidden">
 		<RootLayout {isLoggedIn}>
 			<slot />
 		</RootLayout>

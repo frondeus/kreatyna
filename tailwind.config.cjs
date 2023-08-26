@@ -13,8 +13,6 @@ const gridTemplateRows = Object.fromEntries(
 	Array.from({ length: 18 }, (_, i) => [i + 1, `repeat(${i + 1}, minmax(0, 1fr))`])
 );
 
-console.log(gridTemplateRows);
-
 const config = {
 	darkMode: 'class',
 	content: [

@@ -7,6 +7,17 @@ export const weekPlanMeal = Prisma.validator<Prisma.WeekPlanMealFindManyArgs>()(
 		slot: true,
 		size: true,
 		name: true,
+		tags: {
+			select: {
+				id: true,
+				name: true,
+				category: {
+					select: {
+						name: true
+					}
+				}
+			}
+		},
 		recipe: {
 			select: {
 				id: true,
@@ -50,6 +61,5 @@ export interface MealForDay {
 	slot: Size;
 
 	tags: number[];
-	recipeId?: number;
 	recipe?: RecipeSummary;
 }

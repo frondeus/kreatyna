@@ -24,6 +24,20 @@ export class TagService {
 		).map((t) => t.id);
 	}
 
+	async find(search: TagSearch): Promise<TagWithCategory[]> {
+		return await this.prisma.tag.findMany({
+			include: {
+				category: true
+			},
+			where: {
+				name: search.name,
+				category: {
+					name: search.category
+				}
+			}
+		});
+	}
+
 	async getAll(): Promise<TagWithCategory[]> {
 		return await this.prisma.tag.findMany({
 			include: {

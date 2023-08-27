@@ -43,6 +43,9 @@ export class WeekPlanMealMap {
 			slot: meal.slot,
 			name: meal.name,
 			size: meal.size,
+			tags: {
+				connect: meal.tags.map((t) => ({ id: t.id }))
+			},
 			recipe
 		};
 	}

@@ -23,9 +23,9 @@
 			{/if}
 		</header>
 		{#if meal.recipe}
-			<span class="truncate block whitespace-break-spaces">
+			<a class="truncate block whitespace-break-spaces" href={`/browse/recipe/${meal.recipe.id}`}>
 				{meal.recipe.name}
-			</span>
+			</a>
 		{/if}
 	</div>
 </DayPlanItem>

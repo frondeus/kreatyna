@@ -55,8 +55,9 @@ export class WeekPlanService {
 
 		const getRecipiesFor = async (tags: string[]) => {
 			const getForTag = async (tag: string) => {
-				const forTag = await this.tagService.findIds({ category: 'for', name: tag });
-				const recipies = await this.recipeService.getAll(forTag);
+				const forTag = await this.tagService.find({ category: 'for', name: tag });
+				const forTagIds = forTag.map((t) => t.id);
+				const recipies = await this.recipeService.getAll(forTagIds);
 				return [forTag, recipies] as const;
 			};
 			const results = await Promise.all(tags.map(getForTag));

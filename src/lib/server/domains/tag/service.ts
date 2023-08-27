@@ -9,17 +9,19 @@ export class TagService {
 	}
 
 	async findIds(search: TagSearch): Promise<number[]> {
-		return (await this.prisma.tag.findMany({
-			select: {
-				id: true
-			},
-			where: {
-				name: search.name,
-				category: {
-					name: search.category
+		return (
+			await this.prisma.tag.findMany({
+				select: {
+					id: true
+				},
+				where: {
+					name: search.name,
+					category: {
+						name: search.category
+					}
 				}
-			}
-		})).map(t => t.id);
+			})
+		).map((t) => t.id);
 	}
 
 	async getAll(): Promise<TagWithCategory[]> {

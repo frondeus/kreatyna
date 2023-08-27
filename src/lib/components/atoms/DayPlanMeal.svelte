@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { MealForDay } from "$shared/domains/plan/models";
-	import DayPlanItem, { type DayItem } from "./DayPlanItem.svelte";
+	import type { MealForDay } from '$shared/domains/plan/models';
+	import DayPlanItem from './DayPlanItem.svelte';
 	import IconLink from '~icons/mdi/link-variant-plus';
 
-    export let meal: MealForDay;
+	export let meal: MealForDay;
 
 	$: item = {
 		day: { index: meal.day },
@@ -23,9 +23,9 @@
 			{/if}
 		</header>
 		{#if meal.recipe}
-		<span class="truncate block whitespace-break-spaces">
-			{meal.recipe.name}
-		</span>
+			<span class="truncate block whitespace-break-spaces">
+				{meal.recipe.name}
+			</span>
 		{/if}
 	</div>
 </DayPlanItem>

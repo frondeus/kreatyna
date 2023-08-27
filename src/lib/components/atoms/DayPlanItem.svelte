@@ -1,5 +1,5 @@
 <script lang="ts" context="module">
-	import type { Size } from "$shared/domains/plan/models";
+	import type { Size } from '$shared/domains/plan/models';
 
 	export interface DayItem {
 		day: Size; // From 1 to 7

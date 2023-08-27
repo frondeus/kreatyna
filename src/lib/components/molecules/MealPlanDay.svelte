@@ -15,7 +15,7 @@
 
 	<div class="grid grid-cols-1 grid-rows-{maxSize} xl:grid-rows-18 py-4 lg:py-0 overflow-auto">
 		{#each meals as meal}
-			<DayPlanMeal {meal}/>
+			<DayPlanMeal {meal} />
 		{/each}
 	</div>
 </div>

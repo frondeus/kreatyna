@@ -97,24 +97,24 @@ model Tag {
 }
 
 model WeekPlan {
-  year      Int
-  week      Int
+  year  Int
+  week  Int
   // Relations
-  meals     WeekPlanMeal[]
+  meals WeekPlanMeal[]
 
-  @@id ([year, week])
+  @@id([year, week])
 }
 
 model WeekPlanMeal {
-  id        Int         @id @unique @default(autoincrement())
+  id        Int      @id @unique @default(autoincrement())
   year      Int
   week      Int
   day       Int
-  name      String      
+  name      String
   slot      Int
-  size      Int         @default(1)
+  size      Int      @default(1)
   recipe_id BigInt?
   // Relations
-  weekPlan  WeekPlan    @relation(fields: [year, week], references: [year, week], onUpdate: NoAction, onDelete: Cascade)
-  recipe    Recipe?     @relation(fields: [recipe_id], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  weekPlan  WeekPlan @relation(fields: [year, week], references: [year, week], onUpdate: NoAction, onDelete: Cascade)
+  recipe    Recipe?  @relation(fields: [recipe_id], references: [id], onUpdate: NoAction, onDelete: NoAction)
 }

@@ -12,15 +12,15 @@
 		...dayIndices.map((day) => ({
 			day,
 			slot: { index: 2, size: 2 },
-            tags: [],
-			name: 'Breakfast',
+			tags: [],
+			name: 'Breakfast'
 			// recipe: 'Spinach and feta cheese omelet with a side of toasted bread'
 		})),
 		...dayIndices.map((day) => ({
 			day,
 			slot: { index: 6 },
-            tags: [],
-			name: 'Snack',
+			tags: [],
+			name: 'Snack'
 			// recipe: 'Greek yogurth with a drizzle of honey'
 		})),
 		// ...dayIndices
@@ -35,15 +35,15 @@
 		...dayIndices.map((day) => ({
 			day,
 			slot: { index: 10, size: 2 },
-            tags: [],
-			name: 'Lunch',
+			tags: [],
+			name: 'Lunch'
 			// recipe: 'Chicken breast with a side of rice and vegetables',
 		})),
 		...dayIndices.map((day) => ({
 			day,
 			slot: { index: 14 },
-            tags: [],
-			name: 'Desert',
+			tags: [],
+			name: 'Desert'
 			// recipe: 'Frozen grapes'
 		})),
 		// ...dayIndices
@@ -58,8 +58,8 @@
 		...dayIndices.map((day) => ({
 			day,
 			slot: { index: 17, size: 2 },
-            tags: [],
-			name: 'Dinner',
+			tags: [],
+			name: 'Dinner'
 			// recipe: 'Grilled Tofu with stir-fried vegetables',
 		}))
 	];
@@ -70,17 +70,17 @@
 			.map((day) => ({
 				day,
 				slot: { index: 8 },
-	            tags: [],
+				tags: [],
 				name: 'Workout',
 				variant: 'tertiary' // Workout
 			})),
 		...atWork.map((day) => ({
 			day,
-            tags: [],
+			tags: [],
 			slot: { index: 16 },
 			name: 'Workout',
 			variant: 'tertiary' // Workout
-		})),
+		}))
 	];
 </script>
 
@@ -94,9 +94,9 @@
 	</StorybookLayout>
 </Template>
 
-<Story name="Default" source args={{meals: onlyMeals}} />
+<Story name="Default" source args={{ meals: onlyMeals }} />
 
-<Story name="WithWorkout" source args={{meals: withWorkout}} />
+<Story name="WithWorkout" source args={{ meals: withWorkout }} />
 
 <Story
 	name="Small"

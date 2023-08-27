@@ -26,12 +26,4 @@ interface TagSelect {
 
 type TagConnect = z.infer<typeof TagConnectSchema>;
 
-export type { 
-	Tag, 
-	TagCategory, 
-	TagWithCategory, 
-	TagCreateOne, 
-	TagConnect, 
-	TagSelect,
-	TagSearch 
-};
+export type { Tag, TagCategory, TagWithCategory, TagCreateOne, TagConnect, TagSelect, TagSearch };

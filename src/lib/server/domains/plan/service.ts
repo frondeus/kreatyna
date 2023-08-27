@@ -4,6 +4,9 @@ import type { RecipeService } from '../recipe/service';
 import type { TagService } from '../tag/service';
 import type { RecipeSummaryMap } from '../recipe/map';
 import type { WeekPlanMap } from './map';
+import type { RecipeSummary } from '$shared/domains/recipe/models';
+import { notNull } from '$shared/utils';
+import type { TagWithCategory } from '$shared/domains/tags/models';
 
 export class WeekPlanService {
 	prisma: PrismaClient;
@@ -38,57 +41,28 @@ export class WeekPlanService {
 		});
 	}
 
-	async generateAndSaveWeekPlan(year: number, week: number): Promise<WeekPlan> {
+	async generatePopulateAndSaveWeekPlan(year: number, week: number): Promise<WeekPlan> {
 		const weekPlan = await this.generateWeekPlan(year, week);
 
-		const createInput = this.weekPlanMap.toCreateInput(weekPlan);
+		const populatedPlan = await this.populateWeekPlan(weekPlan);
+
+		const createInput = this.weekPlanMap.toCreateInput(populatedPlan);
 
 		await this.prisma.weekPlan.create({
 			data: createInput
 		});
 
-		return weekPlan;
+		return populatedPlan;
 	}
 
 	async generateWeekPlan(year: number, week: number): Promise<WeekPlan> {
-		const dayIndices = [...Array(7).keys()].map((day) => day + 1).filter((day) => day % 2 === 1);
+		const forTag = async (tag: string) =>
+			await this.tagService.find({ category: 'for', name: tag });
 
-		const getRecipiesFor = async (tags: string[]) => {
-			const getForTag = async (tag: string) => {
-				const forTag = await this.tagService.find({ category: 'for', name: tag });
-				const forTagIds = forTag.map((t) => t.id);
-				const recipies = await this.recipeService.getAll(forTagIds);
-				return [forTag, recipies] as const;
-			};
-			const results = await Promise.all(tags.map(getForTag));
-
-			return results.map(([forTag, recipies], idx) => {
-				const others = results
-					.slice(0, idx)
-					.concat(results.slice(idx + 1))
-					.map(([, recipies]) => recipies);
-				const takeOneFrom = () => {
-					const chosen = recipies.splice(Math.floor(Math.random() * recipies.length), 1)[0];
-					others.forEach((other) => {
-						const index = other.findIndex((recipe) => recipe.id === chosen.id);
-						if (index > -1) {
-							other.splice(index, 1);
-						}
-					});
-					return this.recipeSummaryMap.toDb(chosen);
-				};
-				return [forTag, takeOneFrom] as const;
-			});
-		};
-
-		const [
-			[forBreakfast, breakfast],
-			[forSnack, snack],
-			[forLunch, lunch],
-			[forDinner, dinner],
-			[forDesert, desert]
-		] = await getRecipiesFor(['breakfast', 'snack', 'lunch', 'dinner', 'desert']);
-
+		const [forBreakfast, forSnack, forLunch, forDesert, forDinner] = await Promise.all(
+			['breakfast', 'snack', 'lunch', 'desert', 'dinner'].map(forTag)
+		);
+		const dayIndices = [...Array(7).keys()].map((day) => day + 1);
 		const meals: WeekPlanMeal[] = [
 			...dayIndices.map((day) => ({
 				day,
@@ -96,7 +70,7 @@ export class WeekPlanService {
 				size: 2,
 				tags: [...forBreakfast],
 				name: 'Breakfast',
-				recipe: breakfast()
+				recipe: null
 			})),
 			...dayIndices.map((day) => ({
 				day,
@@ -104,7 +78,7 @@ export class WeekPlanService {
 				size: 1,
 				tags: [...forSnack],
 				name: 'Snack',
-				recipe: snack()
+				recipe: null
 			})),
 			...dayIndices.map((day) => ({
 				day,
@@ -112,7 +86,7 @@ export class WeekPlanService {
 				size: 2,
 				tags: [...forLunch],
 				name: 'Lunch',
-				recipe: lunch()
+				recipe: null
 			})),
 			...dayIndices.map((day) => ({
 				day,
@@ -120,7 +94,7 @@ export class WeekPlanService {
 				size: 1,
 				tags: [...forDesert],
 				name: 'Desert',
-				recipe: desert()
+				recipe: null
 			})),
 			...dayIndices.map((day) => ({
 				day,
@@ -128,17 +102,84 @@ export class WeekPlanService {
 				size: 2,
 				tags: [...forDinner],
 				name: 'Dinner',
-				recipe: dinner()
+				recipe: null
 			}))
-		].flatMap((meal) => {
-			if (meal.day < 7) {
-				return [meal, { ...meal, day: meal.day + 1 }];
-			} else return [meal];
-		});
+		];
+
 		return {
 			year,
 			week,
 			meals
 		};
+	}
+
+	async populateWeekPlan(weekPlan: WeekPlan): Promise<WeekPlan> {
+		interface ChosenRecipe {
+			recipe: RecipeSummary;
+			day: number;
+			used: number;
+		}
+		const chosenRecipes: ChosenRecipe[] =
+			weekPlan.meals
+				?.map((meal) =>
+					meal.recipe
+						? {
+								recipe: this.recipeSummaryMap.toDomain(meal.recipe),
+								day: meal.day,
+								used: 1
+						  }
+						: null
+				)
+				.filter(notNull) ?? [];
+		const chosenRecipeIds: number[] = chosenRecipes.map((recipe) => recipe.recipe.id);
+
+		const findChosenRecipe = async (tags: TagWithCategory[], forDay: number) => {
+			const chosen = chosenRecipes
+				.sort((a, b) => a.day - b.day)
+				.find((recipe) => {
+					const recipeTags = recipe.recipe.tags.map((tag) => tag.id);
+					if (recipe.used >= 2) {
+						return false;
+					}
+					if (!tags.every((tag) => recipeTags.includes(tag.id))) {
+						return false;
+					}
+					const dayDist = Math.abs(recipe.day - forDay);
+					if (dayDist >= 2) {
+						return false;
+					}
+					return true;
+				});
+			if (chosen) {
+				chosen.used++;
+				return chosen;
+			} else {
+				const recipes = await this.recipeService.getNotIn(
+					chosenRecipeIds,
+					tags.map((tag) => tag.id)
+				);
+				// get random recipe
+				const recipe =
+					recipes.length > 0 ? recipes[Math.floor(Math.random() * recipes.length)] : null;
+				if (recipe) {
+					chosenRecipes.push({ recipe, used: 1, day: forDay });
+					chosenRecipeIds.push(recipe.id);
+					// console.log('Add', { chosenRecipeIds });
+					return { recipe, used: 1 };
+				}
+			}
+			return null;
+		};
+
+		for (const idx in weekPlan.meals) {
+			const meal = weekPlan.meals[idx];
+			if (meal.recipe === null) {
+				const recipe = await findChosenRecipe(meal.tags, meal.day);
+				meal.recipe = recipe?.recipe ? this.recipeSummaryMap.toDb(recipe.recipe) : null;
+			}
+			weekPlan.meals[idx] = meal;
+		}
+
+		return weekPlan;
 	}
 }

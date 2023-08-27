@@ -11,8 +11,10 @@ export const weekPlanMeal = Prisma.validator<Prisma.WeekPlanMealFindManyArgs>()(
 			select: {
 				id: true,
 				name: true,
+				categoryId: true,
 				category: {
 					select: {
+						id: true,
 						name: true
 					}
 				}

@@ -19,6 +19,71 @@ export class RecipeService {
 		this.summaryMap = summaryMap;
 	}
 
+	async getNotIn(ids: number[], tags: number[]): Promise<RecipeSummary[]> {
+		if (tags.length === 0) {
+			return await this.getNotInUnfiltered(ids);
+		}
+
+		const summaries = await this.prisma.recipe.findMany({
+			where: {
+				tags: {
+					some: {
+						id: {
+							in: tags
+						}
+					}
+				},
+				id: {
+					notIn: ids
+				}
+			},
+			select: {
+				id: true,
+				name: true,
+				tags: {
+					select: {
+						id: true,
+						name: true,
+						category: {
+							select: {
+								name: true
+							}
+						}
+					}
+				}
+			}
+		});
+
+		return summaries.map((recipe) => this.summaryMap.toDomain(recipe));
+	}
+
+	async getNotInUnfiltered(ids: number[]): Promise<RecipeSummary[]> {
+		const summaries = await this.prisma.recipe.findMany({
+			select: {
+				id: true,
+				name: true,
+				tags: {
+					select: {
+						id: true,
+						name: true,
+						category: {
+							select: {
+								name: true
+							}
+						}
+					}
+				}
+			},
+			where: {
+				id: {
+					notIn: ids
+				}
+			}
+		});
+
+		return summaries.map((recipe) => this.summaryMap.toDomain(recipe));
+	}
+
 	async getAll(tags: number[]): Promise<RecipeSummary[]> {
 		if (tags.length === 0) {
 			return await this.getAllUnfiltered();

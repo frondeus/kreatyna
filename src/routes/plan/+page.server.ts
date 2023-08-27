@@ -38,7 +38,7 @@ export const load: PageServerLoad = async ({ locals: { session, services, maps }
 	let weekPlan = await services.weekPlan.getWeekPlan(year, week);
 
 	if (weekPlan === null) {
-		weekPlan = await services.weekPlan.generateAndSaveWeekPlan(year, week);
+		weekPlan = await services.weekPlan.generatePopulateAndSaveWeekPlan(year, week);
 	}
 
 	const meals: MealForDay[] = weekPlan.meals.map((meal) => maps.weekPlanMeal.toDomain(meal));

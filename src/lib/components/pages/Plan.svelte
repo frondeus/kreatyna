@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
 	import MealPlanDay from '$components/molecules/MealPlanDay.svelte';
-	import type { MealForDay } from '$shared/domains/plan/models';
+	import type { WeekPlan, WeekPlanMeal } from '$shared/domains/plan/models';
 	import IconDice from '~icons/mdi/dice-5';
 
 	interface Day {
@@ -32,10 +32,10 @@
 		}
 	];
 
-	export let meals: MealForDay[] = [];
+	export let weekPlan: WeekPlan;
 
 	//Group meals per day
-	const mealsPerDay: Map<number, MealForDay[]> = meals.reduce((acc, meal) => {
+	const mealsPerDay: Map<number, WeekPlanMeal[]> = weekPlan.meals.reduce((acc, meal) => {
 		const day = meal.day;
 		if (!acc.has(day)) {
 			acc.set(day, []);
@@ -44,11 +44,11 @@
 		acc.get(day)?.push(meal);
 
 		return acc;
-	}, new Map<number, MealForDay[]>());
+	}, new Map<number, WeekPlanMeal[]>());
 
-	const sortItem = (a: MealForDay, b: MealForDay): number => {
+	const sortItem = (a: WeekPlanMeal, b: WeekPlanMeal): number => {
 		if (a.day === b.day) {
-			return a.slot.index - b.slot.index;
+			return a.slot - b.slot;
 		}
 
 		return a.day - b.day;

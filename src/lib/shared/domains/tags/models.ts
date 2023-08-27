@@ -1,11 +1,9 @@
-import { Prisma, type Tag, type TagCategory } from '@prisma/client';
+import type { Prisma, Tag, TagCategory } from '@prisma/client';
 import type { z } from 'zod';
 import type { TagConnectSchema } from './schema';
+import type { tagWithCategory, tagWithCategoryName } from './queries';
 
-const tagWithCategory = Prisma.validator<Prisma.TagFindManyArgs>()({
-	include: { category: true }
-});
-
+type TagWithCategoryName = Prisma.TagGetPayload<typeof tagWithCategoryName>;
 type TagWithCategory = Prisma.TagGetPayload<typeof tagWithCategory>;
 
 interface TagSearch {
@@ -26,4 +24,13 @@ interface TagSelect {
 
 type TagConnect = z.infer<typeof TagConnectSchema>;
 
-export type { Tag, TagCategory, TagWithCategory, TagCreateOne, TagConnect, TagSelect, TagSearch };
+export type {
+	Tag,
+	TagCategory,
+	TagWithCategory,
+	TagWithCategoryName,
+	TagCreateOne,
+	TagConnect,
+	TagSelect,
+	TagSearch
+};

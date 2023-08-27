@@ -1,4 +1,4 @@
-import type { MealForDay, WeekPlan, WeekPlanMeal } from '$shared/domains/plan/models';
+import type { WeekPlan, WeekPlanMeal } from '$shared/domains/plan/models';
 import type { Prisma } from '@prisma/client';
 import type { RecipeSummaryMap } from '../recipe/map';
 
@@ -42,13 +42,8 @@ export class WeekPlanMealMap {
 		};
 	}
 
-	public toDomain(meal: WeekPlanMeal): MealForDay {
-		return {
-			name: meal.name,
-			day: meal.day,
-			slot: { index: meal.slot, size: meal.size },
-			tags: meal.recipe?.tags?.map((tag) => tag.id) ?? [],
-			recipe: meal.recipe ? this.summaryMap.toDomain(meal.recipe) : undefined
-		};
+	// For now DB & domain are the same
+	public toDomain(meal: WeekPlanMeal): WeekPlanMeal {
+		return meal;
 	}
 }

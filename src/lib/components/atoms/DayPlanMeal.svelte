@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { MealForDay } from '$shared/domains/plan/models';
+	import type { WeekPlanMeal } from '$shared/domains/plan/models';
 	import DayPlanItem from './DayPlanItem.svelte';
 	import IconLink from '~icons/mdi/link-variant-plus';
 
-	export let meal: MealForDay;
+	export let meal: WeekPlanMeal;
 
 	$: item = {
 		day: { index: meal.day },
-		slot: meal.slot,
+		slot: { index: meal.slot, size: meal.size },
 		variant: 'primary' as const
 	};
 </script>

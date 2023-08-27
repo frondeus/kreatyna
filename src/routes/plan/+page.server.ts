@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import type { MealForDay } from '$shared/domains/plan/models';
+import type { WeekPlan } from '$shared/domains/plan/models';
 
 // This script is released to the public domain and may be used, modified and
 // distributed without restrictions. Attribution not necessary but appreciated.
@@ -35,13 +35,11 @@ export const load: PageServerLoad = async ({ locals: { session, services, maps }
 		week += 1;
 	}
 
-	let weekPlan = await services.weekPlan.getWeekPlan(year, week);
+	let weekPlan: WeekPlan | null = await services.weekPlan.getWeekPlan(year, week);
 
 	if (weekPlan === null) {
 		weekPlan = await services.weekPlan.generatePopulateAndSaveWeekPlan(year, week);
 	}
 
-	const meals: MealForDay[] = weekPlan.meals.map((meal) => maps.weekPlanMeal.toDomain(meal));
-
-	return { session, meals };
+	return { session, weekPlan };
 };

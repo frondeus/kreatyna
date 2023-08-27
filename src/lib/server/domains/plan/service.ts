@@ -1,4 +1,4 @@
-import { type WeekPlan, type WeekPlanMeal, weekPlan } from '$shared/domains/plan/models';
+import type { WeekPlan, WeekPlanMeal } from '$shared/domains/plan/models';
 import type { PrismaClient } from '@prisma/client';
 import type { RecipeService } from '../recipe/service';
 import type { TagService } from '../tag/service';
@@ -7,6 +7,7 @@ import type { WeekPlanMap } from './map';
 import type { RecipeSummary } from '$shared/domains/recipe/models';
 import { notNull } from '$shared/utils';
 import type { TagWithCategory } from '$shared/domains/tags/models';
+import { weekPlan } from '$shared/domains/plan/queries';
 
 export class WeekPlanService {
 	constructor(

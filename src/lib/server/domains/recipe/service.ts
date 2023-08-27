@@ -7,6 +7,7 @@ import type {
 	RecipeUpdate
 } from '$lib/shared/domains/recipe/models';
 import { notNullOrUndefined } from '$lib/shared/utils';
+import { recipeSelect, recipeSummarySelect } from '$shared/domains/recipe/queries';
 
 export class RecipeService {
 	constructor(
@@ -21,6 +22,7 @@ export class RecipeService {
 		}
 
 		const summaries = await this.prisma.recipe.findMany({
+			...recipeSummarySelect,
 			where: {
 				tags: {
 					some: {
@@ -32,21 +34,6 @@ export class RecipeService {
 				id: {
 					notIn: ids
 				}
-			},
-			select: {
-				id: true,
-				name: true,
-				tags: {
-					select: {
-						id: true,
-						name: true,
-						category: {
-							select: {
-								name: true
-							}
-						}
-					}
-				}
 			}
 		});
 
@@ -55,21 +42,7 @@ export class RecipeService {
 
 	async getNotInUnfiltered(ids: number[]): Promise<RecipeSummary[]> {
 		const summaries = await this.prisma.recipe.findMany({
-			select: {
-				id: true,
-				name: true,
-				tags: {
-					select: {
-						id: true,
-						name: true,
-						category: {
-							select: {
-								name: true
-							}
-						}
-					}
-				}
-			},
+			...recipeSummarySelect,
 			where: {
 				id: {
 					notIn: ids
@@ -86,26 +59,12 @@ export class RecipeService {
 		}
 
 		const summaries = await this.prisma.recipe.findMany({
+			...recipeSummarySelect,
 			where: {
 				tags: {
 					some: {
 						id: {
 							in: tags
-						}
-					}
-				}
-			},
-			select: {
-				id: true,
-				name: true,
-				tags: {
-					select: {
-						id: true,
-						name: true,
-						category: {
-							select: {
-								name: true
-							}
 						}
 					}
 				}
@@ -117,21 +76,7 @@ export class RecipeService {
 
 	private async getAllUnfiltered(): Promise<RecipeSummary[]> {
 		const summaries = await this.prisma.recipe.findMany({
-			select: {
-				id: true,
-				name: true,
-				tags: {
-					select: {
-						id: true,
-						name: true,
-						category: {
-							select: {
-								name: true
-							}
-						}
-					}
-				}
-			}
+			...recipeSummarySelect
 		});
 
 		return summaries.map((recipe) => this.summaryMap.toDomain(recipe));
@@ -139,23 +84,9 @@ export class RecipeService {
 
 	async getOne(id: number): Promise<Recipe | null> {
 		const recipe = await this.prisma.recipe.findUnique({
+			...recipeSelect,
 			where: {
 				id
-			},
-			include: {
-				recipesIngredients: {
-					include: {
-						raw: true
-					}
-				},
-				tags: {
-					select: {
-						name: true,
-						categoryId: true,
-						id: true,
-						category: true
-					}
-				}
 			}
 		});
 

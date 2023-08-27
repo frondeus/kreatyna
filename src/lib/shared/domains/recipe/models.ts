@@ -7,25 +7,9 @@ import type {
 	EditRecipeSchema
 } from './schema';
 import type { TagConnect, TagSelect } from '../tags/models';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+import type { recipeSummarySelect } from './queries';
 
-const recipeSummarySelect = Prisma.validator<Prisma.RecipeFindManyArgs>()({
-	select: {
-		id: true,
-		name: true,
-		tags: {
-			select: {
-				id: true,
-				name: true,
-				category: {
-					select: {
-						name: true
-					}
-				}
-			}
-		}
-	}
-});
 export type RecipeSummarySelect = Prisma.RecipeGetPayload<typeof recipeSummarySelect>;
 
 export interface WithIngredients {

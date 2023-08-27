@@ -8,6 +8,7 @@ import { RecipeIngredientMap, RecipeMap, RecipeSummaryMap } from '$server/domain
 import { RecipeService } from '$server/domains/recipe/service';
 import { TagService } from '$server/domains/tag/service';
 import type { Handle } from '@sveltejs/kit';
+import { WeekPlanService } from '$server/domains/plan/service';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const prisma = new PrismaClient();
@@ -22,18 +23,25 @@ export const handle: Handle = async ({ event, resolve }) => {
 		summary: new RecipeSummaryMap(),
 		ai: new AIMap()
 	};
+	const raw = new RawService(maps.raw, prisma);
+	const recipe = new RecipeService(maps.recipe, maps.summary, prisma);
+	const ai = new AIService(maps.recipe, maps.ai);
+	const tag = new TagService(prisma);
+	const weekPlan = new WeekPlanService(prisma, recipe, tag, maps.summary);
 
 	const services = {
-		raw: new RawService(maps.raw, prisma),
-		recipe: new RecipeService(maps.recipe, maps.summary, prisma),
-		ai: new AIService(maps.recipe, maps.ai),
-		tag: new TagService(prisma)
+		raw,
+		recipe,
+		ai,
+		tag,
+		weekPlan
 	};
 
 	event.locals = {
 		prisma,
 		session,
 		services,
+		maps,
 		setSession: requestAuth.setSession
 	};
 

@@ -13,15 +13,17 @@
 </script>
 
 <DayPlanItem {item}>
-	<div class="min-w-0 whitespace-nowrap">
+	<div class="min-w-0">
 		<header class="flex">
-			<span class="grow h5"> {meal.name} </span>
-			<span role="link" class="cursor-pointer">
-				<IconLink />
-			</span>
+			<span class="grow h4"> {meal.name} </span>
+			{#if !meal.recipe}
+				<span role="link" class="cursor-pointer">
+					<IconLink />
+				</span>
+			{/if}
 		</header>
 		{#if meal.recipe}
-		<span class="truncate block">
+		<span class="truncate block whitespace-break-spaces">
 			{meal.recipe.name}
 		</span>
 		{/if}

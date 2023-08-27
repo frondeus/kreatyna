@@ -4,8 +4,15 @@ import type { RawService } from '$server/domains/raw/service';
 import type { RecipeService } from '$server/domains/recipe/service';
 import type { AIService } from '$server/domains/ai/service';
 import type { TagService } from '$server/domains/tag/service';
+import type { WeekPlanService } from '$server/domains/plan/service';
+import type { RawMap } from '$server/domains/raw/map';
+import type { RecipeMap, RecipeSummaryMap } from '$server/domains/recipe/map';
+import type { AIMap } from '$server/domains/ai/map';
 
 declare global {
+	interface Date {
+		getWeek(): number;
+	}
 	namespace Lucia {
 		type Auth = import('$lib/server/lucia').Auth;
 		type DatabaseUserAttributes = {
@@ -25,7 +32,14 @@ declare global {
 				recipe: RecipeService;
 				ai: AIService;
 				tag: TagService;
+				weekPlan: WeekPlanService
 			};
+			maps: {
+				raw: RawMap;
+				recipe: RecipeMap;
+				summary: RecipeSummaryMap;
+				ai: AIMap;
+			}
 		}
 		interface PageData {
 			session: Session | null;

@@ -1,76 +1,51 @@
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 import type { MealForDay } from "$shared/domains/plan/models";
-import type { RecipeSummary } from "$shared/domains/recipe/models";
 
-export const load: PageServerLoad = async ({ locals: { session, services } }) => {
+// This script is released to the public domain and may be used, modified and
+// distributed without restrictions. Attribution not necessary but appreciated.
+// Source: https://weeknumber.com/how-to/javascript
+
+// Returns the ISO week of the date.
+Date.prototype.getWeek = function() {
+    const date = new Date(this.getTime());
+    date.setHours(0, 0, 0, 0);
+    // Thursday in current week decides the year.
+    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+    // January 4 is always in week 1.
+    const week1 = new Date(date.getFullYear(), 0, 4);
+    // Adjust to Thursday in week 1 and count number of weeks from date to week1.
+    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000
+                          - 3 + (week1.getDay() + 6) % 7) / 7);
+  }
+
+export const load: PageServerLoad = async ({ locals: { session, services, maps } }) => {
     if (!session) {
         throw redirect(303, '/login');
     }
-	const dayIndices = [...Array(7).keys()]
-        .map((day) => day + 1)
-        .filter((day) => day % 2 === 1);
+    const date = new Date();
+    const year = date.getFullYear();
+    const dayOfWeek = date.getDay();
+    let week = new Date().getWeek();
 
-    const forBreakfast = await services.tag    .findIds({ category: 'for', name: 'breakfast' });
-    const forSnack = await services.tag        .findIds({ category: 'for', name: 'snack' });
-    const forLunch = await services.tag        .findIds({ category: 'for', name: 'lunch' });
-    const forDinner = await services.tag       .findIds({ category: 'for', name: 'dinner' });
-    const forDesert = await services.tag       .findIds({ category: 'for', name: 'desert' });
+    /// If its saturday or sunday, get the next week
+    if(dayOfWeek === 0 || dayOfWeek === 6) {
+        week += 1;
+    }
 
+    let weekPlan = await services.weekPlan.getWeekPlan(year, week);
 
-    const breakfasts = await services.recipe.getAll(forBreakfast);
-    const snacks = await services.recipe.getAll(forSnack);
-    const lunches = await services.recipe.getAll(forLunch);
-    const dinners = await services.recipe.getAll(forDinner);
-    const deserts = await services.recipe.getAll(forDesert);
+    if (weekPlan === null) {
+        weekPlan = await services.weekPlan.generateWeekPlan(year, week);
+    }
 
-   
-    const breakfast = () => breakfasts.splice(Math.floor(Math.random() * breakfasts.length), 1)[0];
-    const snack = () => snacks.splice(Math.floor(Math.random() * snacks.length), 1)[0];
-
-	const meals: MealForDay[] = [
-		...dayIndices.map((day) => ({
-    		day,
-    		slot: { index: 2, size: 2 },
-            tags: [...forBreakfast],
-    		name: 'Breakfast',
-            recipe: breakfast()
-        })),
-		...dayIndices.map((day) => ({
-			day,
-			slot: { index: 6 },
-            tags: [...forSnack],
-			name: 'Snack',
-            recipe: snack()
-		})),
-		...dayIndices.map((day) => ({
-			day,
-			slot: { index: 10, size: 2 },
-            tags: [...forLunch],
-			name: 'Lunch',
-			// recipe: 'Chicken breast with a side of rice and vegetables',
-		})),
-		...dayIndices.map((day) => ({
-			day,
-			slot: { index: 14 },
-            tags: [...forDesert],
-			name: 'Desert',
-			// recipe: 'Frozen grapes'
-		})),
-		...dayIndices.map((day) => ({
-			day,
-			slot: { index: 17, size: 2 },
-            tags: [...forDinner],
-			name: 'Dinner',
-			// recipe: 'Grilled Tofu with stir-fried vegetables',
-		}))
-	]
-    .flatMap(meal => {
-        if (meal.day < 7) {
-            return [ meal, { ...meal, day: meal.day + 1 }];
-        } else return [ meal ]
-    })
-    ;
+    const meals: MealForDay[] = weekPlan.meals.map((meal) => ({
+        name: meal.name,
+        day: meal.day,
+        slot: { index: meal.slot, size: meal.size },
+        tags: meal.recipe?.tags?.map((tag) => tag.id) ?? [],
+        recipe: meal.recipe ? maps.summary.toDomain(meal.recipe) : undefined
+    }));
 
     return { session, meals }
 };

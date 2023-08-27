@@ -62,6 +62,7 @@ model Recipe {
   // Relations
   recipesIngredients RecipesIngredient[]
   tags               Tag[]
+  weekPlanMeals      WeekPlanMeal[]
 }
 
 model RecipesIngredient {
@@ -93,4 +94,27 @@ model Tag {
   recipes    Recipe[]
 
   @@unique([name, categoryId])
+}
+
+model WeekPlan {
+  year      Int
+  week      Int
+  // Relations
+  meals     WeekPlanMeal[]
+
+  @@id ([year, week])
+}
+
+model WeekPlanMeal {
+  id        Int         @id @unique @default(autoincrement())
+  year      Int
+  week      Int
+  day       Int
+  name      String      
+  slot      Int
+  size      Int         @default(1)
+  recipe_id BigInt?
+  // Relations
+  weekPlan  WeekPlan    @relation(fields: [year, week], references: [year, week], onUpdate: NoAction, onDelete: Cascade)
+  recipe    Recipe?     @relation(fields: [recipe_id], references: [id], onUpdate: NoAction, onDelete: NoAction)
 }

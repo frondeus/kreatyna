@@ -114,9 +114,22 @@ export class RecipeSummaryMap {
 			id: Number(dbEntry.id),
 			name: dbEntry.name,
 			tags: dbEntry.tags.map((t) => ({
-				id: Number(t.id),
+				id: t.id,
 				name: t.name,
 				category: t.category.name
+			}))
+		};
+	}
+	public toDb(domain: RecipeSummary): RecipeSummarySelect {
+		return {
+			id: BigInt(domain.id),
+			name: domain.name,
+			tags: domain.tags.map((t) => ({
+				id: t.id,
+				name: t.name,
+				category: {
+					name: t.category
+				}
 			}))
 		};
 	}

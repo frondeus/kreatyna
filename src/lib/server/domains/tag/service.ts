@@ -1,9 +1,12 @@
 import type { PrismaClient } from '@prisma/client';
 import type { TagCreateOne, TagSearch, TagWithCategory } from '$shared/domains/tags/models';
 import { tagWithCategory } from '$shared/domains/tags/queries';
+import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 
+@scoped(Lifecycle.ContainerScoped)
+@injectable()
 export class TagService {
-	constructor(readonly prisma: PrismaClient) {}
+	constructor(@inject('prisma') readonly prisma: PrismaClient) {}
 
 	async find(search: TagSearch): Promise<TagWithCategory[]> {
 		return await this.prisma.tag.findMany({

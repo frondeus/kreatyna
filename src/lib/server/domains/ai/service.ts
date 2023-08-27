@@ -6,9 +6,15 @@ import aiSchema from '$lib/server/domains/ai/models.ts?raw';
 import generateRecipePrompt from '$lib/server/domains/ai/generateRecipe.prompt?raw';
 import type { RecipeCreateOrUpdate } from '$lib/shared/domains/recipe/models';
 import type { AIMap } from './map';
+import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 
+@scoped(Lifecycle.ContainerScoped)
+@injectable()
 export class AIService {
-	constructor(readonly recipeMap: RecipeMap, readonly aiMap: AIMap) {}
+	constructor(
+		@inject('recipeMap') readonly recipeMap: RecipeMap,
+		@inject('aiMap') readonly aiMap: AIMap
+	) {}
 
 	async getRecipe(prompt: RecipeCreateOrUpdate) {
 		const model = typechat.createOpenAILanguageModel(PRIVATE_OPENAI_API_KEY, 'gpt-3.5-turbo');

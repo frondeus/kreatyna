@@ -2,6 +2,7 @@ import { superValidate } from 'sveltekit-superforms/server';
 import type { PageServerLoad } from './$types';
 import { addRawSchema } from '$lib/shared/domains/raw/schema';
 import { redirect, type Actions, fail } from '@sveltejs/kit';
+import { RawService } from '$server/domains/raw/service';
 
 export const load: PageServerLoad = async ({ locals: { session } }) => {
 	if (!session) {
@@ -14,7 +15,7 @@ export const load: PageServerLoad = async ({ locals: { session } }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals: { session, services } }) => {
+	default: async ({ request, locals: { session, container } }) => {
 		if (!session) {
 			throw redirect(303, '/login');
 		}
@@ -25,7 +26,8 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		await services.raw.create(form.data);
+		const raw = container.resolve(RawService);
+		await raw.create(form.data);
 
 		throw redirect(303, '/browse/raw');
 	}

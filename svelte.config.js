@@ -1,3 +1,4 @@
+import { esbuildDecorators } from '@anatine/esbuild-decorators';
 import adapter from '@sveltejs/adapter-auto';
 import { vitePreprocess } from '@sveltejs/kit/vite';
 
@@ -18,6 +19,20 @@ const config = {
 			$server: './src/lib/server',
 			$schemas: './prisma/generated/schemas',
 			$root: './src'
+		}
+	},
+	vite: {
+		optimizeDeps: {
+			esbuildOptions: {
+				plugins: [
+					esbuildDecorators({
+						tsconfig: './tsconfig.json'
+					})
+				]
+			}
+		},
+		ssr: {
+			external: ['reflect-metadata']
 		}
 	}
 };

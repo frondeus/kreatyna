@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { WeekPlan } from '$shared/domains/plan/models';
+import { WeekPlanService } from '$server/domains/plan/service';
 
 // This script is released to the public domain and may be used, modified and
 // distributed without restrictions. Attribution not necessary but appreciated.
@@ -21,7 +22,7 @@ Date.prototype.getWeek = function () {
 	);
 };
 
-export const load: PageServerLoad = async ({ locals: { session, services, maps } }) => {
+export const load: PageServerLoad = async ({ locals: { session, container } }) => {
 	if (!session) {
 		throw redirect(303, '/login');
 	}
@@ -35,10 +36,11 @@ export const load: PageServerLoad = async ({ locals: { session, services, maps }
 		week += 1;
 	}
 
-	let weekPlan: WeekPlan | null = await services.weekPlan.getWeekPlan(year, week);
+	const service = container.resolve(WeekPlanService);
+	let weekPlan: WeekPlan | null = await service.getWeekPlan(year, week);
 
 	if (weekPlan === null) {
-		weekPlan = await services.weekPlan.generatePopulateAndSaveWeekPlan(year, week);
+		weekPlan = await service.generatePopulateAndSaveWeekPlan(year, week);
 	}
 
 	return { session, weekPlan };

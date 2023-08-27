@@ -8,14 +8,17 @@ import type { RecipeSummary } from '$shared/domains/recipe/models';
 import { notNull } from '$shared/utils';
 import type { TagWithCategory } from '$shared/domains/tags/models';
 import { weekPlan } from '$shared/domains/plan/queries';
+import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 
+@scoped(Lifecycle.ContainerScoped)
+@injectable()
 export class WeekPlanService {
 	constructor(
-		readonly prisma: PrismaClient,
-		readonly recipeService: RecipeService,
-		readonly tagService: TagService,
-		readonly recipeSummaryMap: RecipeSummaryMap,
-		readonly weekPlanMap: WeekPlanMap
+		@inject('prisma') readonly prisma: PrismaClient,
+		@inject('recipeService') readonly recipeService: RecipeService,
+		@inject('tagService') readonly tagService: TagService,
+		@inject('recipeSummaryMap') readonly recipeSummaryMap: RecipeSummaryMap,
+		@inject('weekPlanMap') readonly weekPlanMap: WeekPlanMap
 	) {}
 
 	async getWeekPlan(year: number, week: number): Promise<WeekPlan | null> {

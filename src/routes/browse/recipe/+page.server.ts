@@ -1,7 +1,8 @@
 import { redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { RecipeService } from '$server/domains/recipe/service';
 
-export const load: PageServerLoad = async ({ url, locals: { session, services } }) => {
+export const load: PageServerLoad = async ({ url, locals: { session, container } }) => {
 	if (!session) {
 		throw redirect(303, '/login');
 	}
@@ -9,7 +10,8 @@ export const load: PageServerLoad = async ({ url, locals: { session, services } 
 	const filter = url.searchParams.getAll('tag');
 	const filterTags = filter.map((tag) => Number(tag));
 
-	const recipes = services.recipe.getAll(filterTags);
+	const recipe = container.resolve(RecipeService);
+	const recipes = recipe.getAll(filterTags);
 
 	const tags = recipes
 		.then((recipes) => {
@@ -31,7 +33,7 @@ export const load: PageServerLoad = async ({ url, locals: { session, services } 
 };
 
 export const actions: Actions = {
-	delete: async ({ request, locals: { session, services } }) => {
+	delete: async ({ request, locals: { session, container } }) => {
 		if (!session) {
 			throw redirect(303, '/login');
 		}
@@ -39,7 +41,8 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const id = Number(data.get('id'));
 
-		await services.recipe.remove(id);
+		const recipe = container.resolve(RecipeService);
+		await recipe.remove(id);
 
 		return {};
 	}

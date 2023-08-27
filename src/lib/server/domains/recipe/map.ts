@@ -18,9 +18,12 @@ import type {
 } from '@prisma/client';
 import type { RawMap } from '../raw/map';
 import type { RecipeResponse } from '../ai/models';
+import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 
+@scoped(Lifecycle.ContainerScoped)
+@injectable()
 export class RecipeMap {
-	constructor(readonly ingredientMap: RecipeIngredientMap) {}
+	constructor(@inject('recipeIngredientMap') readonly ingredientMap: RecipeIngredientMap) {}
 
 	public fromAI(model: RecipeResponse): RecipeCreate {
 		return {
@@ -105,6 +108,8 @@ export class RecipeMap {
 	}
 }
 
+@scoped(Lifecycle.ContainerScoped)
+@injectable()
 export class RecipeSummaryMap {
 	public toDomain(dbEntry: RecipeSummarySelect): RecipeSummary {
 		return {
@@ -132,8 +137,9 @@ export class RecipeSummaryMap {
 	}
 }
 
+@injectable()
 export class RecipeIngredientMap {
-	constructor(readonly rawMap: RawMap) {}
+	constructor(@inject('rawMap') readonly rawMap: RawMap) {}
 
 	public toDomain(
 		dbEntry: PrismaRecipesIngredient & {

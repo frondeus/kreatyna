@@ -5,9 +5,15 @@ import type {
 	RawIngredientCreate,
 	RawIngredientUpdate
 } from '$lib/shared/domains/raw/models';
+import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 
+@scoped(Lifecycle.ContainerScoped)
+@injectable()
 export class RawService {
-	constructor(readonly map: RawMap, readonly prisma: PrismaClient) {}
+	constructor(
+		@inject('rawMap') readonly map: RawMap,
+		@inject('prisma') readonly prisma: PrismaClient
+	) {}
 
 	async getAll(): Promise<RawIngredient[]> {
 		const rawIngredients = await this.prisma.raw.findMany();

@@ -1,6 +1,9 @@
 import type { RecipeCreateOrUpdate } from '$lib/shared/domains/recipe/models';
+import { Lifecycle, injectable, scoped } from 'tsyringe';
 import type { RecipeResponse } from './models';
 
+@scoped(Lifecycle.ContainerScoped)
+@injectable()
 export class AIMap {
 	public toExample(recipe: RecipeCreateOrUpdate): RecipeResponse {
 		return {

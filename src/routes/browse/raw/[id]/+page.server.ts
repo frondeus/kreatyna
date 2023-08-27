@@ -2,15 +2,17 @@ import { error as returnError, redirect, type Actions, fail } from '@sveltejs/ki
 import type { PageServerLoad } from './$types';
 import { superValidate } from 'sveltekit-superforms/server';
 import { editRawSchema } from '$lib/shared/domains/raw/schema';
+import { RawService } from '$server/domains/raw/service';
 
-export const load: PageServerLoad = async ({ params, locals: { session, services } }) => {
+export const load: PageServerLoad = async ({ params, locals: { session, container } }) => {
 	if (!session) {
 		throw redirect(303, '/login');
 	}
 
 	const id = Number(params.id);
+	const raw = container.resolve(RawService);
 
-	const data = await services.raw.getOne(id);
+	const data = await raw.getOne(id);
 	if (data === null) {
 		throw returnError(404, 'Raw ingredient was not found');
 	}
@@ -21,7 +23,7 @@ export const load: PageServerLoad = async ({ params, locals: { session, services
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals: { session, services } }) => {
+	default: async ({ request, locals: { session, container } }) => {
 		if (!session) {
 			throw redirect(303, '/login');
 		}
@@ -32,7 +34,9 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		await services.raw.update(form.data);
+		const raw = container.resolve(RawService);
+
+		await raw.update(form.data);
 
 		return { form, id: form.data.id };
 	}

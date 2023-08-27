@@ -9,15 +9,11 @@ import type {
 import { notNullOrUndefined } from '$lib/shared/utils';
 
 export class RecipeService {
-	map: RecipeMap;
-	summaryMap: RecipeSummaryMap;
-	prisma: PrismaClient;
-
-	constructor(map: RecipeMap, summaryMap: RecipeSummaryMap, prisma: PrismaClient) {
-		this.map = map;
-		this.prisma = prisma;
-		this.summaryMap = summaryMap;
-	}
+	constructor(
+		readonly map: RecipeMap,
+		readonly summaryMap: RecipeSummaryMap,
+		readonly prisma: PrismaClient
+	) {}
 
 	async getNotIn(ids: number[], tags: number[]): Promise<RecipeSummary[]> {
 		if (tags.length === 0) {

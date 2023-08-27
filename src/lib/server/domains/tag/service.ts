@@ -2,11 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { TagCreateOne, TagSearch, TagWithCategory } from '$shared/domains/tags/models';
 
 export class TagService {
-	prisma: PrismaClient;
-
-	constructor(prisma: PrismaClient) {
-		this.prisma = prisma;
-	}
+	constructor(readonly prisma: PrismaClient) {}
 
 	async findIds(search: TagSearch): Promise<number[]> {
 		return (

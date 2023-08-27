@@ -9,25 +9,13 @@ import { notNull } from '$shared/utils';
 import type { TagWithCategory } from '$shared/domains/tags/models';
 
 export class WeekPlanService {
-	prisma: PrismaClient;
-	recipeService: RecipeService;
-	tagService: TagService;
-	recipeSummaryMap: RecipeSummaryMap;
-	weekPlanMap: WeekPlanMap;
-
 	constructor(
-		prisma: PrismaClient,
-		recipeService: RecipeService,
-		tagService: TagService,
-		recipeSummaryMap: RecipeSummaryMap,
-		weekPlanMap: WeekPlanMap
-	) {
-		this.prisma = prisma;
-		this.recipeService = recipeService;
-		this.tagService = tagService;
-		this.recipeSummaryMap = recipeSummaryMap;
-		this.weekPlanMap = weekPlanMap;
-	}
+		readonly prisma: PrismaClient,
+		readonly recipeService: RecipeService,
+		readonly tagService: TagService,
+		readonly recipeSummaryMap: RecipeSummaryMap,
+		readonly weekPlanMap: WeekPlanMap
+	) {}
 
 	async getWeekPlan(year: number, week: number): Promise<WeekPlan | null> {
 		return await this.prisma.weekPlan.findUnique({

@@ -7,13 +7,7 @@ import type {
 } from '$lib/shared/domains/raw/models';
 
 export class RawService {
-	map: RawMap;
-	prisma: PrismaClient;
-
-	constructor(map: RawMap, prisma: PrismaClient) {
-		this.map = map;
-		this.prisma = prisma;
-	}
+	constructor(readonly map: RawMap, readonly prisma: PrismaClient) {}
 
 	async getAll(): Promise<RawIngredient[]> {
 		const rawIngredients = await this.prisma.raw.findMany();

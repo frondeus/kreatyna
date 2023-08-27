@@ -3,11 +3,7 @@ import type { Prisma } from '@prisma/client';
 import type { RecipeSummaryMap } from '../recipe/map';
 
 export class WeekPlanMap {
-	private mealMap: WeekPlanMealMap;
-
-	constructor(mealMap: WeekPlanMealMap) {
-		this.mealMap = mealMap;
-	}
+	constructor(readonly mealMap: WeekPlanMealMap) {}
 
 	public toCreateInput(weekPlan: WeekPlan): Prisma.WeekPlanCreateInput {
 		return {
@@ -21,11 +17,7 @@ export class WeekPlanMap {
 }
 
 export class WeekPlanMealMap {
-	private summaryMap: RecipeSummaryMap;
-
-	constructor(summaryMap: RecipeSummaryMap) {
-		this.summaryMap = summaryMap;
-	}
+	constructor(readonly summaryMap: RecipeSummaryMap) {}
 
 	public toCreateInputUnconnected(
 		meal: WeekPlanMeal

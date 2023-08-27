@@ -20,10 +20,7 @@ import type { RawMap } from '../raw/map';
 import type { RecipeResponse } from '../ai/models';
 
 export class RecipeMap {
-	ingredientMap: RecipeIngredientMap;
-	constructor(ingredientMap: RecipeIngredientMap) {
-		this.ingredientMap = ingredientMap;
-	}
+	constructor(readonly ingredientMap: RecipeIngredientMap) {}
 
 	public fromAI(model: RecipeResponse): RecipeCreate {
 		return {
@@ -136,11 +133,7 @@ export class RecipeSummaryMap {
 }
 
 export class RecipeIngredientMap {
-	rawMap: RawMap;
-
-	constructor(rawMap: RawMap) {
-		this.rawMap = rawMap;
-	}
+	constructor(readonly rawMap: RawMap) {}
 
 	public toDomain(
 		dbEntry: PrismaRecipesIngredient & {

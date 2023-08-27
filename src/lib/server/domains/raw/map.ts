@@ -8,11 +8,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import type { Session } from 'lucia';
 
 export class RawMap {
-	session: Session | null;
-
-	constructor(session: Session | null) {
-		this.session = session;
-	}
+	constructor(readonly session: Session | null) {}
 
 	public toDomain(dbEntry: PrismaRaw): RawIngredient {
 		const by = dbEntry.created_by;

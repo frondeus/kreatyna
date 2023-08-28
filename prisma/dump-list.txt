@@ -5,3 +5,6 @@ TagCategory
 Tag
 _RawToTag
 _RecipeToTag
+WeekPlan
+WeekPlanMeal
+_TagToWeekPlanMeal

@@ -1,0 +1,37 @@
+
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (7, 176);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (7, 177);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (7, 178);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (7, 179);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (7, 180);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (7, 181);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (7, 182);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (10, 183);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (10, 184);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (10, 185);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (10, 186);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (10, 187);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (10, 188);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (10, 189);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (6, 190);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (6, 191);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (6, 192);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (6, 193);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (6, 194);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (6, 195);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (6, 196);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (9, 197);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (9, 198);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (9, 199);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (9, 200);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (9, 201);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (9, 202);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (9, 203);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (5, 204);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (5, 205);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (5, 206);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (5, 207);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (5, 208);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (5, 209);
+INSERT INTO public."_TagToWeekPlanMeal" VALUES (5, 210);
+

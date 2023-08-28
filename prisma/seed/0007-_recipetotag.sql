@@ -54,4 +54,6 @@ INSERT INTO public."_RecipeToTag" VALUES (46, 6);
 INSERT INTO public."_RecipeToTag" VALUES (46, 7);
 INSERT INTO public."_RecipeToTag" VALUES (45, 6);
 INSERT INTO public."_RecipeToTag" VALUES (45, 7);
+INSERT INTO public."_RecipeToTag" VALUES (61, 6);
+INSERT INTO public."_RecipeToTag" VALUES (61, 7);
 

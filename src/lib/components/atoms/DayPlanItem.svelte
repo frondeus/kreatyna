@@ -20,7 +20,6 @@
 	class="
 rounded-md
 m-1
-p-1
 variant-glass-{variant} variant-ringed-{variant}
 row-span-{slotSize}
 xl:row-start-{item.slot.index}

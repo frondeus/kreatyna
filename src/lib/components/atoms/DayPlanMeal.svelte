@@ -13,19 +13,27 @@
 </script>
 
 <DayPlanItem {item}>
-	<div class="min-w-0">
-		<header class="flex">
-			<span class="grow h4"> {meal.name} </span>
-			{#if !meal.recipe}
-				<span role="link" class="cursor-pointer">
-					<IconLink />
-				</span>
+	<div class="min-w-0 flex h-full divide-solid divide-x-2 divide-emerald-500">
+		<div class="flex items-center">
+			<span class="px-2"> {meal.name} </span>
+		</div>
+		<div class="flex justify-end items-center grow p-2">
+			{#if meal.recipe}
+				<a
+					class="px-2 grow truncate block whitespace-break-spaces text-xs"
+					href={`/browse/recipe/${meal.recipe.id}`}
+				>
+					{meal.recipe.name}
+				</a>
 			{/if}
-		</header>
-		{#if meal.recipe}
-			<a class="truncate block whitespace-break-spaces" href={`/browse/recipe/${meal.recipe.id}`}>
-				{meal.recipe.name}
-			</a>
-		{/if}
+			<div class="self-start justify-self-end items-center justify-end flex gap-2">
+				{#if !meal.recipe}
+					<span role="link" class="cursor-pointer text-right text-xs">
+						<IconLink />
+					</span>
+				{/if}
+				<input type="checkbox" class="checkbox" />
+			</div>
+		</div>
 	</div>
 </DayPlanItem>

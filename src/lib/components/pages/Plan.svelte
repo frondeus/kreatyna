@@ -55,13 +55,13 @@
 	};
 </script>
 
-<div class="space-y-2 lg:flex lg:flex-col lg:h-full p-2 card overflow-hidden">
-	<div class="max-lg:hidden card lg:flex-initial p-2">
+<div class="space-y-2 lg:flex lg:flex-col lg:h-full p-2 card">
+	<div class="max-lg:hidden card lg:flex-initial p-1">
 		<ActionIconButton>
 			<IconDice />
 		</ActionIconButton>
 	</div>
-	<div class="lg:grid lg:grid-cols-7 overflow-hidden max-h-full">
+	<div class="lg:grid lg:grid-cols-7">
 		{#each days as day, idx}
 			<MealPlanDay name={day.name} meals={mealsPerDay.get(idx + 1)?.sort(sortItem)} />
 		{/each}

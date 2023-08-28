@@ -95,8 +95,7 @@ export class RecipeMap {
 			portions: domain.portions,
 			steps: domain.steps,
 			tags: {
-				deleteMany: {},
-				connect:
+				set:
 					domain.tags.length > 0
 						? domain.tags.map((t) => {
 								const { id } = t;

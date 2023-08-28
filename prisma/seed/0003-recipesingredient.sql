@@ -44,7 +44,6 @@ INSERT INTO public."RecipesIngredient" VALUES (241, 38, 5415, 'pepper', 1, 'pinc
 INSERT INTO public."RecipesIngredient" VALUES (242, 56, NULL, 'fresh parsley', 1, 'bunch');
 INSERT INTO public."RecipesIngredient" VALUES (243, 56, NULL, 'black pepper', 1, 'teaspoon');
 INSERT INTO public."RecipesIngredient" VALUES (244, 56, 5324, 'mozar', 100.1, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (245, 56, 5567, '', 100, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (246, 56, 5523, 'salt', 4, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (247, 56, 5433, 'lemon juice', 2, 'tablespoons');
 INSERT INTO public."RecipesIngredient" VALUES (248, 56, 6269, 'olive oil', 60, 'milliliters');
@@ -93,20 +92,18 @@ INSERT INTO public."RecipesIngredient" VALUES (301, 28, 6003, 'dark chocolate', 
 INSERT INTO public."RecipesIngredient" VALUES (361, 51, 6377, 'Cottage cheese', 200, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (362, 51, 5528, 'pineapple', 200, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (366, 49, 6545, 'Hummus', 100, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (213, 26, 6447, '', 20, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (214, 26, 5567, '', 20, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (276, 41, 6543, '', 350, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (299, 27, 5245, 'Apple', 140, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (300, 27, 6116, 'peanut butter', 40, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (302, 29, 5244, '', 100, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (303, 29, 5605, '', 100, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (245, 56, 5567, 'Lettuce, iceberg (incl. crisphead types), raw', 100, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (213, 26, 6447, 'Cream yoghurt, plain, 10% fat (Greek and Turkey style)', 20, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (214, 26, 5567, 'Lettuce, iceberg (incl. crisphead types), raw', 20, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (276, 41, 6543, 'Wholewheat tortilla', 350, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (302, 29, 5244, 'Strawberry, raw', 100, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (303, 29, 5605, 'Blueberry, frozen, unsweetened', 100, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (307, 30, 5245, 'apple', 100, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (308, 30, 5528, 'pineapple', 100, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (309, 30, 5536, 'peach', 100, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (310, 30, 5289, 'grape', 100, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (311, 30, 5888, '', 20, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (312, 31, 5590, '', 450, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (313, 32, 6447, '', 250, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (314, 32, 6126, 'honey', 10, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (315, 33, 6495, 'chickpea', 400, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (316, 33, 5503, 'cucumber', 300, 'g');
@@ -204,12 +201,13 @@ INSERT INTO public."RecipesIngredient" VALUES (331, 36, 5567, 'mixed greens', 20
 INSERT INTO public."RecipesIngredient" VALUES (332, 36, 5544, 'cherry tomatoes', 200, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (333, 36, 5503, 'cucumber', 200, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (337, 36, 5523, 'salt', 2, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (304, 29, 6532, '', 100, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (305, 29, 6533, '', 100, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (306, 29, 6447, '', 130, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (358, 52, 6447, '', 200, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (359, 52, 5334, '', 50, 'g');
-INSERT INTO public."RecipesIngredient" VALUES (360, 52, 5888, '', 10, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (311, 30, 5888, 'Raisin , seedless', 20, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (312, 31, 5590, 'Grape, green, raw', 450, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (313, 32, 6447, 'Cream yoghurt, plain, 10% fat (Greek and Turkey style)', 250, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (304, 29, 6532, 'Blackberry, raw', 100, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (305, 29, 6533, 'Raspberry, raw', 100, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (306, 29, 6447, 'Cream yoghurt, plain, 10% fat (Greek and Turkey style)', 130, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (359, 52, 5334, 'Chestnut, raw', 50, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (459, 65, 5656, 'Tomato, cann', 800, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (460, 65, 5756, 'Onion', 200, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (340, 55, 5285, 'spinach', 100, 'g');
@@ -230,6 +228,8 @@ INSERT INTO public."RecipesIngredient" VALUES (289, 44, 5909, 'Ground Turkey', 4
 INSERT INTO public."RecipesIngredient" VALUES (290, 44, 5384, 'Breadcrumbs', 10, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (338, 36, 5415, 'pepper', 2, 'g');
 INSERT INTO public."RecipesIngredient" VALUES (382, 46, 5436, 'Tofu', 400, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (358, 52, 6447, 'Cream yoghurt, plain, 10% fat (Greek and Turkey style)', 200, 'g');
+INSERT INTO public."RecipesIngredient" VALUES (360, 52, 5888, 'Raisin , seedless', 10, 'g');
 
 SELECT pg_catalog.setval('public."RecipesIngredient_id_seq"', 460, true);
 

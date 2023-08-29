@@ -1,4 +1,9 @@
-import type { WeekPlan, WeekPlanMeal } from '$shared/domains/plan/models';
+import type {
+	WeekPlanWithId,
+	WeekPlan,
+	WeekPlanMealWithId,
+	WeekPlanMeal
+} from '$shared/domains/plan/models';
 import type { Prisma } from '@prisma/client';
 import type { RecipeSummaryMap } from '../recipe/map';
 import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
@@ -7,6 +12,21 @@ import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 @injectable()
 export class WeekPlanMap {
 	constructor(@inject('weekPlanMealMap') readonly mealMap: WeekPlanMealMap) {}
+
+	public toUpdateInput(weekPlan: WeekPlanWithId): Prisma.WeekPlanUpdateInput {
+		return {
+			year: weekPlan.year,
+			week: weekPlan.week,
+			meals: {
+				deleteMany: {
+					id: {
+						notIn: weekPlan.meals.map((meal) => meal.id)
+					}
+				},
+				upsert: weekPlan.meals.map((meal) => this.mealMap.toUpsertInputUnconnected(meal))
+			}
+		};
+	}
 
 	public toCreateInput(weekPlan: WeekPlan): Prisma.WeekPlanCreateInput {
 		return {
@@ -23,6 +43,35 @@ export class WeekPlanMap {
 @injectable()
 export class WeekPlanMealMap {
 	constructor(@inject('recipeSummaryMap') readonly summaryMap: RecipeSummaryMap) {}
+
+	public toUpsertInputUnconnected(
+		meal: WeekPlanMealWithId
+	): Prisma.WeekPlanMealUpsertWithWhereUniqueWithoutWeekPlanInput {
+		const recipe = meal.recipe
+			? {
+					connect: {
+						id: meal.recipe.id
+					}
+			  }
+			: undefined;
+
+		return {
+			where: {
+				id: meal.id
+			},
+			update: {
+				day: meal.day,
+				slot: meal.slot,
+				name: meal.name,
+				size: meal.size,
+				tags: {
+					set: meal.tags.map((t) => ({ id: t.id }))
+				},
+				recipe
+			},
+			create: this.toCreateInputUnconnected(meal)
+		};
+	}
 
 	public toCreateInputUnconnected(
 		meal: WeekPlanMeal
@@ -48,7 +97,7 @@ export class WeekPlanMealMap {
 	}
 
 	// For now DB & domain are the same
-	public toDomain(meal: WeekPlanMeal): WeekPlanMeal {
+	public toDomain(meal: WeekPlanMealWithId): WeekPlanMealWithId {
 		return meal;
 	}
 }

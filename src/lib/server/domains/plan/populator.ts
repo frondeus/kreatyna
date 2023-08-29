@@ -105,7 +105,7 @@ export class WeekPlanPopulatorFactory {
 		);
 	}
 
-	async populateWeekPlan(weekPlan: WeekPlan): Promise<WeekPlan> {
+	async populateWeekPlan<W extends WeekPlan>(weekPlan: W): Promise<W> {
 		const populator = this.forWeekPlan(weekPlan);
 
 		for (const idx in weekPlan.meals) {

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
 	import MealPlanDay from '$components/molecules/MealPlanDay.svelte';
 	import type { WeekPlan, WeekPlanMeal } from '$shared/domains/plan/models';
@@ -36,7 +37,7 @@
 	export let currentDate: Date;
 
 	//Group meals per day
-	const mealsPerDay: Map<number, WeekPlanMeal[]> = weekPlan.meals.reduce((acc, meal) => {
+	$: mealsPerDay = weekPlan.meals.reduce((acc, meal) => {
 		const day = meal.day;
 		if (!acc.has(day)) {
 			acc.set(day, []);
@@ -54,16 +55,35 @@
 
 		return a.day - b.day;
 	};
+
+	const handlePopulate = async () => {
+		const res = await fetch('/plan/populate', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				year: weekPlan.year,
+				week: weekPlan.week
+			})
+		});
+		if (res.status !== 200) {
+			console.error('Error populating plan');
+			return;
+		}
+		console.log('refreshing');
+		await invalidateAll();
+	};
 </script>
 
 <div class="space-y-2 lg:flex lg:flex-col lg:h-full p-2 card">
 	<div class="max-lg:hidden card lg:flex-initial p-1">
-		<ActionIconButton>
+		<ActionIconButton on:click={handlePopulate} on:keypress={handlePopulate}>
 			<IconDice />
 		</ActionIconButton>
 	</div>
 	<div class="lg:grid lg:grid-cols-7">
-		{#each days as day, idx}
+		{#each days as day, idx (idx)}
 			<MealPlanDay
 				{currentDate}
 				day={idx + 1}

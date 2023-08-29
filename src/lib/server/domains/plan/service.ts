@@ -1,7 +1,7 @@
-import type { WeekPlan } from '$shared/domains/plan/models';
+import type { WeekPlanWithId, WeekPlan } from '$shared/domains/plan/models';
 import type { PrismaClient } from '@prisma/client';
 import type { WeekPlanMap } from './map';
-import { weekPlan } from '$shared/domains/plan/queries';
+import { selectWeekPlan } from '$shared/domains/plan/queries';
 import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 import type { WeekPlanGenerator } from './generator';
 import type { WeekPlanPopulatorFactory } from './populator';
@@ -16,9 +16,9 @@ export class WeekPlanService {
 		@inject('weekPlanPopulator') readonly weekPlanPopulator: WeekPlanPopulatorFactory
 	) {}
 
-	async getWeekPlan(year: number, week: number): Promise<WeekPlan | null> {
+	async getWeekPlan(year: number, week: number): Promise<WeekPlanWithId | null> {
 		return await this.prisma.weekPlan.findUnique({
-			...weekPlan,
+			...selectWeekPlan,
 			where: {
 				year_week: {
 					year: year,
@@ -28,7 +28,7 @@ export class WeekPlanService {
 		});
 	}
 
-	async createWeekPlan(weekPlan: WeekPlan): Promise<WeekPlan> {
+	async createWeekPlan<W extends WeekPlan>(weekPlan: W): Promise<W> {
 		const createInput = this.weekPlanMap.toCreateInput(weekPlan);
 
 		await this.prisma.weekPlan.create({
@@ -38,10 +38,35 @@ export class WeekPlanService {
 		return weekPlan;
 	}
 
+	async updateWeekPlan(weekPlan: WeekPlanWithId): Promise<WeekPlanWithId> {
+		const updateInput = this.weekPlanMap.toUpdateInput(weekPlan);
+		await this.prisma.weekPlan.update({
+			data: updateInput,
+			where: {
+				year_week: {
+					year: weekPlan.year,
+					week: weekPlan.week
+				}
+			}
+		});
+		return weekPlan;
+	}
+
+	async generateAndSaveWeekPlan(year: number, week: number): Promise<WeekPlan> {
+		const weekPlan = await this.weekPlanGenerator.generateWeekPlan(year, week);
+		return await this.createWeekPlan(weekPlan);
+	}
+
 	async generatePopulateAndSaveWeekPlan(year: number, week: number): Promise<WeekPlan> {
 		const weekPlan = await this.weekPlanGenerator.generateWeekPlan(year, week);
 		const populatedPlan = await this.weekPlanPopulator.populateWeekPlan(weekPlan);
 
 		return await this.createWeekPlan(populatedPlan);
+	}
+
+	async populateAndUpdateWeekPlan(weekPlan: WeekPlanWithId): Promise<WeekPlanWithId> {
+		const populatedPlan = await this.weekPlanPopulator.populateWeekPlan(weekPlan);
+
+		return await this.updateWeekPlan(populatedPlan);
 	}
 }

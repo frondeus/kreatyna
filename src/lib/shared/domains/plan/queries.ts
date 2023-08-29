@@ -2,8 +2,9 @@ import { Prisma } from '@prisma/client';
 import { tagWithCategory } from '../tags/queries';
 import { recipeSummarySelect } from '../recipe/queries';
 
-export const weekPlanMeal = Prisma.validator<Prisma.WeekPlanMealFindManyArgs>()({
+export const selectWeekPlanMeal = Prisma.validator<Prisma.WeekPlanMealFindManyArgs>()({
 	select: {
+		id: true,
 		day: true,
 		slot: true,
 		size: true,
@@ -13,10 +14,10 @@ export const weekPlanMeal = Prisma.validator<Prisma.WeekPlanMealFindManyArgs>()(
 	}
 });
 
-export const weekPlan = Prisma.validator<Prisma.WeekPlanFindManyArgs>()({
+export const selectWeekPlan = Prisma.validator<Prisma.WeekPlanFindManyArgs>()({
 	select: {
 		week: true,
 		year: true,
-		meals: weekPlanMeal
+		meals: selectWeekPlanMeal
 	}
 });

@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import type { WeekPlan } from '$shared/domains/plan/models';
+import type { WeekPlanWithId } from '$shared/domains/plan/models';
 import { WeekPlanService } from '$server/domains/plan/service';
 
 export const load: PageServerLoad = async ({ locals: { session, container } }) => {
@@ -18,10 +18,11 @@ export const load: PageServerLoad = async ({ locals: { session, container } }) =
 	}
 
 	const service = container.resolve(WeekPlanService);
-	let weekPlan: WeekPlan | null = await service.getWeekPlan(year, week);
+	const weekPlan: WeekPlanWithId | null = await service.getWeekPlan(year, week);
 
 	if (weekPlan === null) {
-		weekPlan = await service.generatePopulateAndSaveWeekPlan(year, week);
+		const createdWeekPlan = await service.generatePopulateAndSaveWeekPlan(year, week);
+		return { session, weekPlan: createdWeekPlan };
 	}
 
 	return { session, weekPlan };

@@ -4,16 +4,30 @@
 	import IconLink from '~icons/mdi/link-variant-plus';
 
 	export let meal: WeekPlanMeal;
+	export let variant: 'primary' | 'secondary' | 'surface';
 
 	$: item = {
 		day: { index: meal.day },
 		slot: { index: meal.slot, size: meal.size },
-		variant: 'primary' as const
+		variant
 	};
+
+	let divideColor = 'divide-emerald-500';
+	switch (variant) {
+		case 'primary':
+			divideColor = 'divide-emerald-500';
+			break;
+		case 'secondary':
+			divideColor = 'divide-indigo-500';
+			break;
+		case 'surface':
+			divideColor = 'divide-surface-500';
+			break;
+	}
 </script>
 
 <DayPlanItem {item}>
-	<div class="min-w-0 flex h-full divide-solid divide-x-2 divide-emerald-500">
+	<div class="min-w-0 flex h-full divide-solid divide-x-2 {divideColor}">
 		<div class="flex items-center">
 			<span class="px-2"> {meal.name} </span>
 		</div>

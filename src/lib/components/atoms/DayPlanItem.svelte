@@ -4,16 +4,30 @@
 	export interface DayItem {
 		day: Size; // From 1 to 7
 		slot: Size; // From 1 to 12
-		variant?: 'primary' | 'secondary' | 'tertiary';
+		variant?: 'primary' | 'secondary' | 'surface';
 	}
 </script>
 
 <script lang="ts">
 	export let item: DayItem;
 
+	let variant = 'primary';
 	// $: daySize = meal.day.size ?? 1;
 	$: slotSize = item.slot.size ?? 1;
-	$: variant = item.variant ?? 'primary';
+	// $: variant = item.variant ?? 'primary';
+	$: {
+		switch (item.variant) {
+			case 'primary':
+				variant = 'primary';
+				break;
+			case 'secondary':
+				variant = 'secondary';
+				break;
+			case 'surface':
+				variant = 'surface';
+				break;
+		}
+	}
 </script>
 
 <div

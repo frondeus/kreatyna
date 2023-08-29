@@ -33,6 +33,7 @@
 	];
 
 	export let weekPlan: WeekPlan;
+	export let currentDate: Date;
 
 	//Group meals per day
 	const mealsPerDay: Map<number, WeekPlanMeal[]> = weekPlan.meals.reduce((acc, meal) => {
@@ -63,7 +64,14 @@
 	</div>
 	<div class="lg:grid lg:grid-cols-7">
 		{#each days as day, idx}
-			<MealPlanDay name={day.name} meals={mealsPerDay.get(idx + 1)?.sort(sortItem)} />
+			<MealPlanDay
+				{currentDate}
+				day={idx + 1}
+				year={weekPlan.year}
+				week={weekPlan.week}
+				name={day.name}
+				meals={mealsPerDay.get(idx + 1)?.sort(sortItem)}
+			/>
 		{/each}
 	</div>
 </div>

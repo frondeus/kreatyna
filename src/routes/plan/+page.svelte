@@ -6,6 +6,9 @@
 	export let data: PageData;
 	let { weekPlan }: { weekPlan: WeekPlan } = data;
 	$: ({ weekPlan } = data);
+	const date = new Date();
+	/// Set to midnight
+	date.setHours(0, 0, 0, 0);
 </script>
 
-<Plan {weekPlan} />
+<Plan {weekPlan} currentDate={date} />

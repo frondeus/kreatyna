@@ -10,6 +10,9 @@ import type { Handle } from '@sveltejs/kit';
 import { WeekPlanMap, WeekPlanMealMap } from '$server/domains/plan/map';
 import { container as globalContainer } from 'tsyringe';
 import type { Session } from 'lucia';
+import { WeekPlanGenerator } from '$server/domains/plan/generator';
+import { WeekPlanPopulatorFactory } from '$server/domains/plan/populator';
+import { ExistingRecipeSelector } from '$server/domains/plan/selector';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const prisma = new PrismaClient();
@@ -29,6 +32,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 	container.register<AIMap>('aiMap', { useClass: AIMap });
 	container.register<RecipeService>('recipeService', { useClass: RecipeService });
 	container.register<TagService>('tagService', { useClass: TagService });
+	container.register<WeekPlanGenerator>('weekPlanGenerator', { useClass: WeekPlanGenerator });
+	container.register<WeekPlanPopulatorFactory>('weekPlanPopulator', {
+		useClass: WeekPlanPopulatorFactory
+	});
+	container.register<ExistingRecipeSelector>('existingRecipeSelector', {
+		useClass: ExistingRecipeSelector
+	});
 
 	event.locals = {
 		prisma,

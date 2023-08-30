@@ -1,8 +1,8 @@
 import type {
 	WeekPlanWithId,
-	WeekPlan,
 	WeekPlanMealWithId,
-	WeekPlanMeal
+	WeekPlanCreate,
+	WeekPlanMealWithoutId
 } from '$shared/domains/plan/models';
 import type { Prisma } from '@prisma/client';
 import type { RecipeSummaryMap } from '../recipe/map';
@@ -28,7 +28,7 @@ export class WeekPlanMap {
 		};
 	}
 
-	public toCreateInput(weekPlan: WeekPlan): Prisma.WeekPlanCreateInput {
+	public toCreateInput(weekPlan: WeekPlanCreate): Prisma.WeekPlanCreateInput {
 		return {
 			year: weekPlan.year,
 			week: weekPlan.week,
@@ -74,7 +74,7 @@ export class WeekPlanMealMap {
 	}
 
 	public toCreateInputUnconnected(
-		meal: WeekPlanMeal
+		meal: WeekPlanMealWithoutId
 	): Prisma.WeekPlanMealCreateWithoutWeekPlanInput {
 		const recipe = meal.recipe
 			? {

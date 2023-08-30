@@ -1,4 +1,4 @@
-import type { WeekPlanWithId, WeekPlan } from '$shared/domains/plan/models';
+import type { WeekPlanWithId, WeekPlan, WeekPlanCreate } from '$shared/domains/plan/models';
 import type { PrismaClient } from '@prisma/client';
 import type { WeekPlanMap } from './map';
 import { selectWeekPlan } from '$shared/domains/plan/queries';
@@ -28,14 +28,13 @@ export class WeekPlanService {
 		});
 	}
 
-	async createWeekPlan<W extends WeekPlan>(weekPlan: W): Promise<W> {
+	async createWeekPlan(weekPlan: WeekPlanCreate): Promise<WeekPlan> {
 		const createInput = this.weekPlanMap.toCreateInput(weekPlan);
 
-		await this.prisma.weekPlan.create({
-			data: createInput
+		return await this.prisma.weekPlan.create({
+			data: createInput,
+			...selectWeekPlan
 		});
-
-		return weekPlan;
 	}
 
 	async updateWeekPlan(weekPlan: WeekPlanWithId): Promise<WeekPlanWithId> {

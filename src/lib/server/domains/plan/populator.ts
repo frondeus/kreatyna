@@ -1,6 +1,6 @@
 import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 import type { TagService } from '../tag/service';
-import type { WeekPlan } from '$shared/domains/plan/models';
+import type { WeekPlanCreate } from '$shared/domains/plan/models';
 import type { RecipeSummary } from '$shared/domains/recipe/models';
 import type { RecipeSummaryMap } from '../recipe/map';
 import { notNull } from '$shared/utils';
@@ -28,7 +28,7 @@ export class WeekPlanPopulator {
 		@inject('recipeSummaryMap') readonly recipeSummaryMap: RecipeSummaryMap,
 		@inject('recipeService') readonly recipeService: RecipeService,
 		@inject('existingRecipeSelector') readonly existingRecipeSelector: ExistingRecipeSelector,
-		readonly weekPlan: WeekPlan
+		readonly weekPlan: WeekPlanCreate
 	) {
 		const chosen = (weekPlan.meals ?? [])
 			.map((meal) => (meal.recipe ? ([meal.recipe, meal.day] as const) : null))
@@ -95,7 +95,7 @@ export class WeekPlanPopulatorFactory {
 		@inject('existingRecipeSelector') readonly existingRecipeSelector: ExistingRecipeSelector
 	) {}
 
-	forWeekPlan(weekPlan: WeekPlan): WeekPlanPopulator {
+	forWeekPlan(weekPlan: WeekPlanCreate): WeekPlanPopulator {
 		return new WeekPlanPopulator(
 			this.tagService,
 			this.recipeSummaryMap,
@@ -105,7 +105,7 @@ export class WeekPlanPopulatorFactory {
 		);
 	}
 
-	async populateWeekPlan<W extends WeekPlan>(weekPlan: W): Promise<W> {
+	async populateWeekPlan<W extends WeekPlanCreate>(weekPlan: W): Promise<W> {
 		const populator = this.forWeekPlan(weekPlan);
 
 		for (const idx in weekPlan.meals) {

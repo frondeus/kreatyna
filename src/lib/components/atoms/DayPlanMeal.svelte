@@ -5,6 +5,13 @@
 
 	export let meal: WeekPlanMeal;
 	export let variant: 'primary' | 'secondary' | 'surface';
+	export let selected: Map<number, boolean>;
+
+	const onInput = ({target}: any) => {
+		const { checked } = target;
+		selected.set(meal.id, checked);
+		selected = selected;
+	};
 
 	$: item = {
 		day: { index: meal.day },
@@ -46,7 +53,11 @@
 						<IconLink />
 					</span>
 				{/if}
-				<input type="checkbox" class="checkbox" />
+				<input type="checkbox" 
+					class="checkbox"
+					checked={selected.get(meal.id) ?? false}
+					on:change={onInput}
+				/>
 			</div>
 		</div>
 	</div>

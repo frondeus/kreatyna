@@ -4,6 +4,7 @@
 	import MealPlanDay from '$components/molecules/MealPlanDay.svelte';
 	import type { WeekPlan, WeekPlanMeal } from '$shared/domains/plan/models';
 	import IconDice from '~icons/mdi/dice-5';
+	import IconUnlink from '~icons/mdi/link-variant-off';
 
 	interface Day {
 		name: string;
@@ -48,6 +49,23 @@
 		return acc;
 	}, new Map<number, WeekPlanMeal[]>());
 
+	let selectedMeals = new Map(weekPlan.meals
+		.map((m) => [m.id, false as boolean] as const));
+
+	$: selectedAny = Array.from(selectedMeals.values()).some((v) => v);
+	$: selectedAll = Array.from(selectedMeals.values()).every((v) => v);
+	$: isIndeterminate = selectedAny && !selectedAll;
+	
+	const onSelectAll = () => {
+		if (selectedAll) {
+			selectedMeals = new Map(weekPlan.meals
+				.map((m) => [m.id, false] as const));
+		} else {
+			selectedMeals = new Map(weekPlan.meals
+				.map((m) => [m.id, true] as const));
+		}
+	};
+
 	const sortItem = (a: WeekPlanMeal, b: WeekPlanMeal): number => {
 		if (a.day === b.day) {
 			return a.slot - b.slot;
@@ -77,10 +95,18 @@
 </script>
 
 <div class="space-y-2 lg:flex lg:flex-col lg:h-full p-2 card">
-	<div class="max-lg:hidden card lg:flex-initial p-1">
-		<ActionIconButton on:click={handlePopulate} on:keypress={handlePopulate}>
+	<div class="max-lg:hidden card lg:flex-initial p-1 flex items-center gap-2 justify-end px-2">
+		<ActionIconButton title="Populate" on:click={handlePopulate} on:keypress={handlePopulate}>
 			<IconDice />
 		</ActionIconButton>
+		<ActionIconButton title="Unlink">
+			<IconUnlink/>
+		</ActionIconButton>
+		<input type="checkbox" class="checkbox" 
+			checked={selectedAll} 
+			bind:indeterminate={isIndeterminate}
+			on:change={onSelectAll}
+		/>
 	</div>
 	<div class="lg:grid lg:grid-cols-7">
 		{#each days as day, idx (idx)}
@@ -91,6 +117,7 @@
 				week={weekPlan.week}
 				name={day.name}
 				meals={mealsPerDay.get(idx + 1)?.sort(sortItem)}
+				bind:selected={selectedMeals}
 			/>
 		{/each}
 	</div>

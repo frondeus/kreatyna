@@ -1,13 +1,13 @@
 import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 import type { TagService } from '../tag/service';
-import type { WeekPlan, WeekPlanMeal } from '$shared/domains/plan/models';
+import type { WeekPlanCreate, WeekPlanMealWithoutId } from '$shared/domains/plan/models';
 
 @scoped(Lifecycle.ContainerScoped)
 @injectable()
 export class WeekPlanGenerator {
 	constructor(@inject('tagService') readonly tagService: TagService) {}
 
-	async generateWeekPlan(year: number, week: number): Promise<WeekPlan> {
+	async generateWeekPlan(year: number, week: number): Promise<WeekPlanCreate> {
 		const forTag = async (tag: string) =>
 			await this.tagService.find({ category: 'for', name: tag });
 
@@ -15,7 +15,7 @@ export class WeekPlanGenerator {
 			['breakfast', 'snack', 'lunch', 'desert', 'dinner'].map(forTag)
 		);
 		const dayIndices = [...Array(7).keys()].map((day) => day + 1);
-		const meals: WeekPlanMeal[] = [
+		const meals: WeekPlanMealWithoutId[] = [
 			...dayIndices.map((day) => ({
 				day,
 				slot: 2,

@@ -3,12 +3,12 @@
 	import Plan from './Plan.svelte';
 	import StorybookLayout from '$components/storybook/StorybookLayout.svelte';
 	import WithRoute from '$components/storybook/WithRoute.svelte';
-	import type { WeekPlanMeal } from '$shared/domains/plan/models';
+	import type { WeekPlanMealWithoutId } from '$shared/domains/plan/models';
 
 	const dayIndices = [...Array(7).keys()].map((day) => day + 1);
 	const atWork = [4, 6];
 	const weekend = [1, 7];
-	const onlyMeals: WeekPlanMeal[] = [
+	const onlyMeals: WeekPlanMealWithoutId[] = [
 		...dayIndices.map((day) => ({
 			day,
 			slot: 2,
@@ -73,7 +73,7 @@
 			// recipe: 'Grilled Tofu with stir-fried vegetables',
 		}))
 	];
-	const withWorkout: WeekPlanMeal[] = [
+	const withWorkout: WeekPlanMealWithoutId[] = [
 		...onlyMeals,
 		...dayIndices
 			.filter((d) => !atWork.includes(d) && !weekend.includes(d))

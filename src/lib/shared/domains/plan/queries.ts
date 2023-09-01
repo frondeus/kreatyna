@@ -21,3 +21,10 @@ export const selectWeekPlan = Prisma.validator<Prisma.WeekPlanFindManyArgs>()({
 		meals: selectWeekPlanMeal
 	}
 });
+
+export const selectWeekPlanSummary = Prisma.validator<Prisma.WeekPlanFindManyArgs>()({
+	select: {
+		week: true,
+		year: true
+	}
+});

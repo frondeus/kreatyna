@@ -1,29 +1,19 @@
-import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { WeekPlanWithId } from '$shared/domains/plan/models';
 import { WeekPlanService } from '$server/domains/plan/service';
 
-export const load: PageServerLoad = async ({ locals: { session, container } }) => {
-	if (!session) {
-		throw redirect(303, '/login');
-	}
-	const date = new Date();
-	const year = date.getFullYear();
-	const dayOfWeek = date.getDay();
-	let week = new Date().getWeek();
-
-	/// If its saturday or sunday, get the next week
-	if (dayOfWeek === 0 || dayOfWeek === 6) {
-		week += 1;
-	}
+export const load: PageServerLoad = async ({ locals: { container }, parent }) => {
+	const {
+		current: { year, week }
+	} = await parent();
 
 	const service = container.resolve(WeekPlanService);
 	const weekPlan: WeekPlanWithId | null = await service.getWeekPlan(year, week);
 
 	if (weekPlan === null) {
 		const createdWeekPlan = await service.generatePopulateAndSaveWeekPlan(year, week);
-		return { session, weekPlan: createdWeekPlan };
+		return { weekPlan: createdWeekPlan };
 	}
 
-	return { session, weekPlan };
+	return { weekPlan };
 };

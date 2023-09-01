@@ -1,13 +1,8 @@
-import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { WeekPlanWithId } from '$shared/domains/plan/models';
 import { WeekPlanService } from '$server/domains/plan/service';
 
-export const load: PageServerLoad = async ({ params, locals: { session, container } }) => {
-	if (!session) {
-		throw redirect(303, '/login');
-	}
-
+export const load: PageServerLoad = async ({ params, locals: { container } }) => {
 	const year = Number(params.year);
 	const week = Number(params.week);
 
@@ -16,8 +11,8 @@ export const load: PageServerLoad = async ({ params, locals: { session, containe
 
 	if (weekPlan === null) {
 		const createdWeekPlan = await service.generateAndSaveWeekPlan(year, week);
-		return { session, weekPlan: createdWeekPlan };
+		return { weekPlan: createdWeekPlan };
 	}
 
-	return { session, weekPlan };
+	return { weekPlan };
 };

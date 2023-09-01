@@ -1,7 +1,12 @@
-import type { WeekPlanWithId, WeekPlan, WeekPlanCreate } from '$shared/domains/plan/models';
+import type {
+	WeekPlanWithId,
+	WeekPlan,
+	WeekPlanCreate,
+	WeekPlanSummary
+} from '$shared/domains/plan/models';
 import type { PrismaClient } from '@prisma/client';
 import type { WeekPlanMap } from './map';
-import { selectWeekPlan } from '$shared/domains/plan/queries';
+import { selectWeekPlan, selectWeekPlanSummary } from '$shared/domains/plan/queries';
 import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 import type { WeekPlanGenerator } from './generator';
 import type { WeekPlanPopulatorFactory } from './populator';
@@ -15,6 +20,21 @@ export class WeekPlanService {
 		@inject('weekPlanGenerator') readonly weekPlanGenerator: WeekPlanGenerator,
 		@inject('weekPlanPopulator') readonly weekPlanPopulator: WeekPlanPopulatorFactory
 	) {}
+
+	async getWeekPlanSummaries(): Promise<WeekPlanSummary[]> {
+		return await this.prisma.weekPlan.findMany({
+			...selectWeekPlanSummary,
+			orderBy: [
+				{
+					year: 'desc'
+				},
+				{
+					week: 'desc'
+				}
+			],
+			take: 5
+		});
+	}
 
 	async getWeekPlan(year: number, week: number): Promise<WeekPlanWithId | null> {
 		return await this.prisma.weekPlan.findUnique({

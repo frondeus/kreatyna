@@ -11,6 +11,20 @@
 	export let day: number;
 	export let selected: Map<number, boolean>;
 
+	$: mealsIds = meals.map((m) => m.id);
+
+	$: maybeSelectedMealsInThisColumn = Array.from(selected.entries()).filter(([id, _]) =>
+		mealsIds.includes(id)
+	);
+
+	$: maybeSelectedMealsInThisColumnBool = maybeSelectedMealsInThisColumn.map(
+		([_, selected]) => selected
+	);
+
+	$: selectedAny = maybeSelectedMealsInThisColumnBool.some((v) => v);
+	$: selectedAll = maybeSelectedMealsInThisColumnBool.every((v) => v) && maybeSelectedMealsInThisColumnBool.length > 0;
+	$: isIndeterminate = selectedAny && !selectedAll;
+
 	$: dayDate = getDateOfIsoWeek(week, year, day - 2);
 	let variant: 'primary' | 'secondary' | 'surface';
 	$: {
@@ -24,11 +38,27 @@
 		if (isFuture) variant = 'secondary';
 	}
 	$: maxSize = meals.reduce((acc, meal) => acc + (meal.size ?? 1), 0);
+	const onSelectAll = () => {
+		for (const id of mealsIds) {
+			selected.set(id, !selectedAll);
+		}
+		selected = selected;
+	};
 </script>
 
 <div class="bg-surface-800 even:bg-surface-700 text-center my-4 lg:my-0 h-full flex flex-col">
-	<div class="p-2 xl:p-4 lg:flex-initial">
+	<div class="p-2 xl:py-4 xl:px-3 lg:flex-initial lg:flex lg:justify-between">
+		<span />
+
 		{name}
+
+		<input
+			type="checkbox"
+			class="checkbox max-lg:hidden"
+			checked={selectedAll}
+			bind:indeterminate={isIndeterminate}
+			on:change={onSelectAll}
+		/>
 	</div>
 
 	<div

@@ -96,7 +96,6 @@
 			console.error('Error populating plan');
 			return;
 		}
-		console.log('refreshing');
 		await invalidateAll();
 	};
 
@@ -135,7 +134,7 @@
 		{/if}
 		<input
 			type="checkbox"
-			class="checkbox"
+			class="checkbox m-2"
 			checked={selectedAll}
 			bind:indeterminate={isIndeterminate}
 			on:change={onSelectAll}

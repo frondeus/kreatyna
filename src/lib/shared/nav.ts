@@ -53,7 +53,6 @@ export const getLinks: (page: Readable<Page>) => Readable<Link[]> = ($page) => {
 			subLinks:
 				isActive(def.href) && def.onActive
 					? def.onActive().then((sublinks) => {
-							console.log({ url: $page.url.pathname, sublinks, def: def.href });
 							return sublinks.map((sublink: LinkDefinition) => ({
 								href: sublink.href,
 								title: sublink.title,

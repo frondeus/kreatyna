@@ -4,8 +4,6 @@
 
 	const page = getContext().page;
 	const links = getLinks(page);
-
-	$: console.log({ links: $links });
 </script>
 
 <nav class="list-nav p-4">

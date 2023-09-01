@@ -31,5 +31,5 @@ export const POST = (async ({ request, locals: { session, container } }) => {
 
 	await service.populateAndUpdateWeekPlan(weekPlan);
 
-	return json("ok");
+	return json('ok');
 }) satisfies RequestHandler;

@@ -51,6 +51,23 @@ export class WeekPlanService {
 		return weekPlan;
 	}
 
+	async unlinkMeals(meals: number[], year: number, week: number): Promise<void> {
+		await this.prisma.weekPlanMeal.updateMany({
+			data: {
+				recipe_id: null
+			},
+			where: {
+				id: {
+					in: meals
+				},
+				weekPlan: {
+					year,
+					week
+				}
+			}
+		});
+	}
+
 	async generateAndSaveWeekPlan(year: number, week: number): Promise<WeekPlan> {
 		const weekPlan = await this.weekPlanGenerator.generateWeekPlan(year, week);
 		return await this.createWeekPlan(weekPlan);

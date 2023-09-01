@@ -49,20 +49,27 @@
 		return acc;
 	}, new Map<number, WeekPlanMeal[]>());
 
-	let selectedMeals = new Map(weekPlan.meals
-		.map((m) => [m.id, false as boolean] as const));
+	const setSelectedMeals = (weekPlan: WeekPlan) => {
+		return new Map(weekPlan.meals.map((m) => [m.id, false as boolean] as const));
+	};
+
+	let selectedMeals = setSelectedMeals(weekPlan);
+
+	$: selectedMealsArrayOfIds = Array.from(selectedMeals.entries())
+		.filter(([, selected]) => selected)
+		.map(([id]) => id);
+
+	$: selectedMealsArray = weekPlan.meals.filter((m) => selectedMealsArrayOfIds.includes(m.id));
 
 	$: selectedAny = Array.from(selectedMeals.values()).some((v) => v);
 	$: selectedAll = Array.from(selectedMeals.values()).every((v) => v);
 	$: isIndeterminate = selectedAny && !selectedAll;
-	
+
 	const onSelectAll = () => {
 		if (selectedAll) {
-			selectedMeals = new Map(weekPlan.meals
-				.map((m) => [m.id, false] as const));
+			selectedMeals = new Map(weekPlan.meals.map((m) => [m.id, false] as const));
 		} else {
-			selectedMeals = new Map(weekPlan.meals
-				.map((m) => [m.id, true] as const));
+			selectedMeals = new Map(weekPlan.meals.map((m) => [m.id, true] as const));
 		}
 	};
 
@@ -92,18 +99,44 @@
 		console.log('refreshing');
 		await invalidateAll();
 	};
+
+	const handleUnlink = async () => {
+		const res = await fetch('/plan/unlink', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				year: weekPlan.year,
+				week: weekPlan.week,
+				meals: selectedMealsArrayOfIds
+			})
+		});
+		if (res.status !== 200) {
+			console.error('Error unlinking meals');
+			return;
+		}
+		await invalidateAll();
+		selectedMeals = setSelectedMeals(weekPlan);
+	};
 </script>
 
 <div class="space-y-2 lg:flex lg:flex-col lg:h-full p-2 card">
 	<div class="max-lg:hidden card lg:flex-initial p-1 flex items-center gap-2 justify-end px-2">
-		<ActionIconButton title="Populate" on:click={handlePopulate} on:keypress={handlePopulate}>
-			<IconDice />
-		</ActionIconButton>
-		<ActionIconButton title="Unlink">
-			<IconUnlink/>
-		</ActionIconButton>
-		<input type="checkbox" class="checkbox" 
-			checked={selectedAll} 
+		{#if weekPlan.meals.some((meal) => meal.recipe === null)}
+			<ActionIconButton title="Populate" on:click={handlePopulate} on:keypress={handlePopulate}>
+				<IconDice />
+			</ActionIconButton>
+		{/if}
+		{#if selectedMealsArray.some((meal) => meal.recipe !== null)}
+			<ActionIconButton title="Unlink" on:click={handleUnlink} on:keypress={handleUnlink}>
+				<IconUnlink />
+			</ActionIconButton>
+		{/if}
+		<input
+			type="checkbox"
+			class="checkbox"
+			checked={selectedAll}
 			bind:indeterminate={isIndeterminate}
 			on:change={onSelectAll}
 		/>

@@ -35,7 +35,7 @@
 		class="grid h-full grow grid-cols-1 grid-rows-{maxSize} xl:grid-rows-18 py-4 lg:py-0 justify-items-stretch"
 	>
 		{#each meals as meal (meal.id)}
-			<DayPlanMeal {meal} {variant} bind:selected={selected} />
+			<DayPlanMeal {meal} {variant} bind:selected />
 		{/each}
 	</div>
 </div>

@@ -7,7 +7,7 @@
 	export let variant: 'primary' | 'secondary' | 'surface';
 	export let selected: Map<number, boolean>;
 
-	const onInput = ({target}: any) => {
+	const onInput = ({ target }: any) => {
 		const { checked } = target;
 		selected.set(meal.id, checked);
 		selected = selected;
@@ -53,7 +53,8 @@
 						<IconLink />
 					</span>
 				{/if}
-				<input type="checkbox" 
+				<input
+					type="checkbox"
 					class="checkbox"
 					checked={selected.get(meal.id) ?? false}
 					on:change={onInput}

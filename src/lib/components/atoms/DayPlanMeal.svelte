@@ -55,7 +55,7 @@
 				{/if}
 				<input
 					type="checkbox"
-					class="checkbox"
+					class="checkbox max-lg:hidden"
 					checked={selected.get(meal.id) ?? false}
 					on:change={onInput}
 				/>

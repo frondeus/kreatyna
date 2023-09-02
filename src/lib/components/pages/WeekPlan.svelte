@@ -3,6 +3,7 @@
 	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
 	import MealPlanDay from '$components/molecules/MealPlanDay.svelte';
 	import { daysInWeek, type WeekPlan, type WeekPlanMeal } from '$shared/domains/plan/models';
+	import { sortMeals } from '$shared/domains/plan/utils';
 	import IconDice from '~icons/mdi/dice-5';
 	import IconUnlink from '~icons/mdi/link-variant-off';
 
@@ -43,14 +44,6 @@
 		} else {
 			selectedMeals = new Map(weekPlan.meals.map((m) => [m.id, true] as const));
 		}
-	};
-
-	const sortItem = (a: WeekPlanMeal, b: WeekPlanMeal): number => {
-		if (a.day === b.day) {
-			return a.slot - b.slot;
-		}
-
-		return a.day - b.day;
 	};
 
 	const handlePopulate = async () => {
@@ -120,7 +113,7 @@
 				year={weekPlan.year}
 				week={weekPlan.week}
 				name={day.name}
-				meals={mealsPerDay.get(idx + 1)?.sort(sortItem)}
+				meals={mealsPerDay.get(idx + 1)?.sort(sortMeals)}
 				bind:selected={selectedMeals}
 			/>
 		{/each}

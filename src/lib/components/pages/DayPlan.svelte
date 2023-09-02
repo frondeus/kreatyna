@@ -8,13 +8,15 @@
 	$: day = currentDate.getDay();
 </script>
 
-<MealPlanDay
-	{currentDate}
-	day={day + 1}
-	year={weekPlan.year}
-	week={weekPlan.week}
-	name={daysInWeek[day].name + ' in week ' + weekPlan.week}
-	meals={weekPlan.meals.filter((m) => m.day === day + 1).sort(sortMeals)}
-	selected={new Map()}
-	noCheckbox
-/>
+<div class="h-full pt-4">
+	<MealPlanDay
+		{currentDate}
+		day={day + 1}
+		year={weekPlan.year}
+		week={weekPlan.week}
+		name={daysInWeek[day].name + ' in week ' + weekPlan.week}
+		meals={weekPlan.meals.filter((m) => m.day === day + 1).sort(sortMeals)}
+		selected={new Map()}
+		noCheckbox
+	/>
+</div>

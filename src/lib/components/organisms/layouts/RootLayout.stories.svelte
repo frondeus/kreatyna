@@ -7,7 +7,7 @@
 <Meta title="Organisms/Layouts/RootLayout" component={RootLayout} />
 
 <Template let:args>
-	<StorybookLayout isLoggedIn={args.isLoggedIn} />
+	<StorybookLayout isLoggedIn={args.isLoggedIn}>Here is content</StorybookLayout>
 </Template>
 
 <Story name="Default" args={{ isLoggedIn: true }} />

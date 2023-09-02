@@ -49,7 +49,7 @@
 	};
 </script>
 
-<div class="bg-surface-800 even:bg-surface-700 text-center my-4 lg:my-0 h-full flex flex-col">
+<div class="bg-surface-800 even:bg-surface-700 text-center lg:my-0 h-full flex flex-col">
 	<div class="p-2 xl:py-4 xl:px-3 lg:flex-initial lg:flex lg:justify-between">
 		<span />
 

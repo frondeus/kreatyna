@@ -3,13 +3,14 @@
 	import Plan from './WeekPlan.svelte';
 	import StorybookLayout from '$components/storybook/StorybookLayout.svelte';
 	import WithRoute from '$components/storybook/WithRoute.svelte';
-	import type { WeekPlanMealWithoutId } from '$shared/domains/plan/models';
+	import type { WeekPlanMealWithId } from '$shared/domains/plan/models';
 
 	const dayIndices = [...Array(7).keys()].map((day) => day + 1);
 	const atWork = [4, 6];
 	const weekend = [1, 7];
-	const onlyMeals: WeekPlanMealWithoutId[] = [
+	const onlyMeals: WeekPlanMealWithId[] = [
 		...dayIndices.map((day) => ({
+			id: 0,
 			day,
 			slot: 2,
 			size: 2,
@@ -19,6 +20,7 @@
 			// recipe: 'Spinach and feta cheese omelet with a side of toasted bread'
 		})),
 		...dayIndices.map((day) => ({
+			id: 1,
 			day,
 			slot: 6,
 			size: 1,
@@ -37,6 +39,7 @@
 		// 		variant: 'secondary' // Cook
 		// 	})),
 		...dayIndices.map((day) => ({
+			id: 2,
 			day,
 			slot: 10,
 			size: 2,
@@ -46,6 +49,7 @@
 			// recipe: 'Chicken breast with a side of rice and vegetables',
 		})),
 		...dayIndices.map((day) => ({
+			id: 3,
 			day,
 			slot: 14,
 			size: 1,
@@ -64,6 +68,7 @@
 		// 		variant: 'secondary' // Cook
 		// 	})),
 		...dayIndices.map((day) => ({
+			id: 4,
 			day,
 			slot: 17,
 			size: 2,
@@ -73,11 +78,12 @@
 			// recipe: 'Grilled Tofu with stir-fried vegetables',
 		}))
 	];
-	const withWorkout: WeekPlanMealWithoutId[] = [
+	const withWorkout: WeekPlanMealWithId[] = [
 		...onlyMeals,
 		...dayIndices
 			.filter((d) => !atWork.includes(d) && !weekend.includes(d))
 			.map((day) => ({
+				id: 5,
 				day,
 				slot: 8,
 				size: 1,
@@ -87,6 +93,7 @@
 				variant: 'tertiary' // Workout
 			})),
 		...atWork.map((day) => ({
+			id: 6,
 			day,
 			tags: [],
 			slot: 16,
@@ -98,7 +105,17 @@
 	];
 </script>
 
-<Meta title="Pages/Plan" component={Plan} />
+<Meta
+	title="Pages/Plan"
+	component={Plan}
+	args={{
+		weekPlan: {
+			meals: onlyMeals,
+			week: 1,
+			year: 2022
+		}
+	}}
+/>
 
 <Template let:args>
 	<StorybookLayout isLoggedIn={true}>
@@ -108,9 +125,9 @@
 	</StorybookLayout>
 </Template>
 
-<Story name="Default" source args={{ weekPlan: { meals: onlyMeals } }} />
+<Story name="Default" source args={{ weekPlan: { meals: onlyMeals, week: 1, year: 2022 } }} />
 
-<Story name="WithWorkout" source args={{ weekPlan: { meals: withWorkout } }} />
+<Story name="WithWorkout" source args={{ weekPlan: { meals: withWorkout, week: 1, year: 2022 } }} />
 
 <Story
 	name="Small"

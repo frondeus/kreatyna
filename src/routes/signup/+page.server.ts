@@ -17,6 +17,8 @@ const signupSchema = z
 	});
 
 export const load = (async ({ locals: { session } }) => {
+	throw redirect(302, '/login');
+
 	if (session) {
 		throw redirect(302, '/');
 	}
@@ -26,6 +28,8 @@ export const load = (async ({ locals: { session } }) => {
 
 export const actions: Actions = {
 	default: async ({ request, locals }) => {
+		throw redirect(302, '/login');
+
 		const form = await superValidate(request, signupSchema);
 		if (!form.valid) {
 			return fail(400, { form });

@@ -10,13 +10,13 @@
 	$: ({ enhance } = form);
 </script>
 
-<h1 class="h1">Sign in</h1>
-<form method="post" use:enhance class="space-y-4">
+<form method="post" use:enhance class="space-y-4 p-2">
+	<h1 class="h1 text-center">Sign in</h1>
 	<TextInput {form} title="Username" field="username" />
 	<PasswordInput {form} title="Password" name="password" />
-	<div class="grid grid-cols-2 gap-4">
+	<div class="grid grid-cols-1 gap-4">
 		<Submit value="Sign in" />
 
-		<a class="btn variant-filled-surface" href="/signup">Create an account</a>
+		<!-- <a class="btn variant-filled-surface" href="/signup">Create an account</a> -->
 	</div>
 </form>

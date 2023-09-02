@@ -120,3 +120,19 @@ model WeekPlanMeal {
   recipe    Recipe?  @relation(fields: [recipe_id], references: [id], onUpdate: NoAction, onDelete: NoAction)
   tags      Tag[]
 }
+
+enum ShoppingListState {
+  TODO
+  IN_CART
+  BOUGHT
+  NOT_BUING
+}
+
+model ShoppingListItem {
+  id     Int               @id @unique @default(autoincrement())
+  name   String            @default("")
+  amount Decimal           @default(0) @db.Decimal
+  unit   String?
+  state  ShoppingListState @default(TODO)
+  order  Int               @default(autoincrement())
+}

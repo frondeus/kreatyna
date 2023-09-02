@@ -35,6 +35,10 @@ export const getLinks: (page: Readable<Page>) => Readable<Link[]> = ($page) => {
 			}
 		},
 		{
+			href: '/shop',
+			title: 'Shop'
+		},
+		{
 			href: '/browse',
 			title: 'Browse',
 			onActive: async () => {

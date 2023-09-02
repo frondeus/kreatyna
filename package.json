@@ -21,7 +21,7 @@
 		"prisma:seed": "prisma db seed",
 		"prisma:reset": "prisma migrate reset",
 		"prisma:dump": "tsx prisma/dump.ts",
-		"prisma:migrate": "prisma migrate dev",
+		"prisma:migrate": "npm run docker:up && prisma migrate dev",
 		"test": "npm run test:integration && npm run test:unit",
 		"test:integration": "npm run docker:up && playwright test",
 		"test:unit": "vitest",

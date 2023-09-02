@@ -132,7 +132,7 @@ export class RecipeSummaryMap {
 }
 
 export class RecipeIngredientMap {
-	constructor( readonly rawMap: RawMap) {}
+	constructor(readonly rawMap: RawMap) {}
 
 	public toDomain(
 		dbEntry: PrismaRecipesIngredient & {

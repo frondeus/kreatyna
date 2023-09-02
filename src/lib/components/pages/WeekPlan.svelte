@@ -2,37 +2,9 @@
 	import { invalidateAll } from '$app/navigation';
 	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
 	import MealPlanDay from '$components/molecules/MealPlanDay.svelte';
-	import type { WeekPlan, WeekPlanMeal } from '$shared/domains/plan/models';
+	import { daysInWeek, type WeekPlan, type WeekPlanMeal } from '$shared/domains/plan/models';
 	import IconDice from '~icons/mdi/dice-5';
 	import IconUnlink from '~icons/mdi/link-variant-off';
-
-	interface Day {
-		name: string;
-	}
-
-	const days: Day[] = [
-		{
-			name: 'Sunday'
-		},
-		{
-			name: 'Monday'
-		},
-		{
-			name: 'Tuesday'
-		},
-		{
-			name: 'Wednesday'
-		},
-		{
-			name: 'Thursday'
-		},
-		{
-			name: 'Friday'
-		},
-		{
-			name: 'Saturday'
-		}
-	];
 
 	export let weekPlan: WeekPlan;
 	export let currentDate: Date;
@@ -141,7 +113,7 @@
 		/>
 	</div>
 	<div class="lg:grid lg:grid-cols-7">
-		{#each days as day, idx (idx)}
+		{#each daysInWeek as day, idx (idx)}
 			<MealPlanDay
 				{currentDate}
 				day={idx + 1}

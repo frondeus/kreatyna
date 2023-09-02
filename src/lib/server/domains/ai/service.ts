@@ -8,10 +8,7 @@ import type { RecipeCreateOrUpdate } from '$lib/shared/domains/recipe/models';
 import type { AIMap } from './map';
 
 export class AIService {
-	constructor(
-		readonly recipeMap: RecipeMap,
-		readonly aiMap: AIMap
-	) {}
+	constructor(readonly recipeMap: RecipeMap, readonly aiMap: AIMap) {}
 
 	async getRecipe(prompt: RecipeCreateOrUpdate) {
 		const model = typechat.createOpenAILanguageModel(PRIVATE_OPENAI_API_KEY, 'gpt-3.5-turbo');

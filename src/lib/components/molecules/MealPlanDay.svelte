@@ -10,6 +10,7 @@
 	export let week: number;
 	export let day: number;
 	export let selected: Map<number, boolean>;
+	export let noCheckbox = false;
 
 	$: mealsIds = meals.map((m) => m.id);
 
@@ -22,7 +23,9 @@
 	);
 
 	$: selectedAny = maybeSelectedMealsInThisColumnBool.some((v) => v);
-	$: selectedAll = maybeSelectedMealsInThisColumnBool.every((v) => v) && maybeSelectedMealsInThisColumnBool.length > 0;
+	$: selectedAll =
+		maybeSelectedMealsInThisColumnBool.every((v) => v) &&
+		maybeSelectedMealsInThisColumnBool.length > 0;
 	$: isIndeterminate = selectedAny && !selectedAll;
 
 	$: dayDate = getDateOfIsoWeek(week, year, day - 2);
@@ -52,20 +55,24 @@
 
 		{name}
 
-		<input
-			type="checkbox"
-			class="checkbox max-lg:hidden"
-			checked={selectedAll}
-			bind:indeterminate={isIndeterminate}
-			on:change={onSelectAll}
-		/>
+		{#if !noCheckbox}
+			<input
+				type="checkbox"
+				class="checkbox max-lg:hidden"
+				checked={selectedAll}
+				bind:indeterminate={isIndeterminate}
+				on:change={onSelectAll}
+			/>
+		{:else}
+			<span />
+		{/if}
 	</div>
 
 	<div
 		class="grid h-full grow grid-cols-1 grid-rows-{maxSize} xl:grid-rows-18 py-4 lg:py-0 justify-items-stretch"
 	>
 		{#each meals as meal (meal.id)}
-			<DayPlanMeal {meal} {variant} bind:selected />
+			<DayPlanMeal {meal} {variant} bind:selected {noCheckbox} />
 		{/each}
 	</div>
 </div>

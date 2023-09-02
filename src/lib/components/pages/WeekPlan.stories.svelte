@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Meta, Story, Template } from '@storybook/addon-svelte-csf';
-	import Plan from './Plan.svelte';
+	import Plan from './WeekPlan.svelte';
 	import StorybookLayout from '$components/storybook/StorybookLayout.svelte';
 	import WithRoute from '$components/storybook/WithRoute.svelte';
 	import type { WeekPlanMealWithoutId } from '$shared/domains/plan/models';

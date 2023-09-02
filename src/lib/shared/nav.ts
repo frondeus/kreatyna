@@ -21,13 +21,17 @@ export const getLinks: (page: Readable<Page>) => Readable<Link[]> = ($page) => {
 			href: '/plan',
 			title: 'Plan',
 			onActive: async () => {
-				const current = $page.data.current;
-				const isCurrent = (plan: WeekPlanSummary) =>
-					plan.week === current.week && plan.year === current.year;
-				return $page.data.plans.map((plan: WeekPlanSummary) => ({
-					title: 'Week ' + plan.week,
-					href: isCurrent(plan) ? '/plan' : '/plan/' + plan.year + '/' + plan.week
-				}));
+				const today = {
+					title: 'Today',
+					href: '/plan/today'
+				};
+				return [
+					today,
+					...$page.data.plans.map((plan: WeekPlanSummary) => ({
+						title: 'Week ' + plan.week,
+						href: '/plan/' + plan.year + '/' + plan.week
+					}))
+				];
 			}
 		},
 		{

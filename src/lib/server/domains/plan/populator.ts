@@ -21,10 +21,10 @@ export class WeekPlanPopulator {
 	}
 
 	constructor(
-		 readonly tagService: TagService,
-		 readonly recipeSummaryMap: RecipeSummaryMap,
-		 readonly recipeService: RecipeService,
-		 readonly existingRecipeSelector: ExistingRecipeSelector,
+		readonly tagService: TagService,
+		readonly recipeSummaryMap: RecipeSummaryMap,
+		readonly recipeService: RecipeService,
+		readonly existingRecipeSelector: ExistingRecipeSelector,
 		readonly weekPlan: WeekPlanCreate
 	) {
 		const chosen = (weekPlan.meals ?? [])
@@ -84,10 +84,10 @@ export class WeekPlanPopulator {
 
 export class WeekPlanPopulatorFactory {
 	constructor(
-		 readonly tagService: TagService,
-		 readonly recipeSummaryMap: RecipeSummaryMap,
-		 readonly recipeService: RecipeService,
-		 readonly existingRecipeSelector: ExistingRecipeSelector
+		readonly tagService: TagService,
+		readonly recipeSummaryMap: RecipeSummaryMap,
+		readonly recipeService: RecipeService,
+		readonly existingRecipeSelector: ExistingRecipeSelector
 	) {}
 
 	forWeekPlan(weekPlan: WeekPlanCreate): WeekPlanPopulator {

@@ -10,6 +10,10 @@
 	import { storePopup } from '@skeletonlabs/skeleton';
 	import PageContainer from '$components/atoms/PageContainer.svelte';
 	import PageHeader from '$components/molecules/PageHeader.svelte';
+	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
+
+	import ArrowLeft from '~icons/mdi/arrow-left';
+
 	storePopup.set({ computePosition, autoUpdate, offset, shift, flip, arrow });
 
 	export let isLoggedIn: boolean;
@@ -17,9 +21,15 @@
 	const onHamburger = () => {
 		drawerStore.open({});
 	};
+	const onHamburgerClose = () => {
+		drawerStore.close();
+	};
 </script>
 
-<Drawer>
+<Drawer regionDrawer="p-4 space-y-2">
+	<ActionIconButton on:click={onHamburgerClose} on:keypress={onHamburgerClose}>
+		<ArrowLeft />
+	</ActionIconButton>
 	<Navigation />
 </Drawer>
 <Modal />
@@ -30,7 +40,9 @@
 		<PageHeader {isLoggedIn} on:hamburger={onHamburger} />
 	</svelte:fragment>
 	<svelte:fragment slot="sidebarLeft">
-		<Navigation />
+		<div class="p-4">
+			<Navigation />
+		</div>
 	</svelte:fragment>
 	<PageContainer>
 		<slot />

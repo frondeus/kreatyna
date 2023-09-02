@@ -6,6 +6,7 @@
 	export let meal: WeekPlanMeal;
 	export let variant: 'primary' | 'secondary' | 'surface';
 	export let selected: Map<number, boolean>;
+	export let noCheckbox = false;
 
 	const onInput = ({ target }: any) => {
 		const { checked } = target;
@@ -35,10 +36,10 @@
 
 <DayPlanItem {item}>
 	<div class="min-w-0 flex h-full divide-solid divide-x-2 {divideColor}">
-		<div class="flex items-center">
+		<div class="flex items-center basis-1/4">
 			<span class="px-2"> {meal.name} </span>
 		</div>
-		<div class="flex justify-end items-center grow p-2">
+		<div class="flex justify-end items-center grow p-2 basis-3/4">
 			{#if meal.recipe}
 				<a
 					class="px-2 grow truncate block whitespace-break-spaces text-xs"
@@ -53,12 +54,14 @@
 						<IconLink />
 					</span>
 				{/if}
-				<input
-					type="checkbox"
-					class="checkbox max-lg:hidden"
-					checked={selected.get(meal.id) ?? false}
-					on:change={onInput}
-				/>
+				{#if !noCheckbox}
+					<input
+						type="checkbox"
+						class="checkbox max-lg:hidden"
+						checked={selected.get(meal.id) ?? false}
+						on:change={onInput}
+					/>
+				{/if}
 			</div>
 		</div>
 	</div>

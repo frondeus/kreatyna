@@ -6,7 +6,7 @@ import * as fs from 'fs';
 const db = new PrismaClient();
 
 async function main() {
-	const env: Env  = process.argv[2] === "PROD" ? "PROD" : 'DEV';
+	const env: Env = process.argv[2] === 'PROD' ? 'PROD' : 'DEV';
 	const auth = lucia({
 		env,
 		adapter: prisma(db, {

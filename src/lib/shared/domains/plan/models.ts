@@ -19,3 +19,30 @@ export interface Size {
 	index: number;
 	size?: number;
 }
+export interface Day {
+	name: string;
+}
+
+export const daysInWeek: Day[] = [
+	{
+		name: 'Sunday'
+	},
+	{
+		name: 'Monday'
+	},
+	{
+		name: 'Tuesday'
+	},
+	{
+		name: 'Wednesday'
+	},
+	{
+		name: 'Thursday'
+	},
+	{
+		name: 'Friday'
+	},
+	{
+		name: 'Saturday'
+	}
+];

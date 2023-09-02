@@ -32,7 +32,7 @@
 				{#each $links as { href, title, subLinks, active }}
 					{#if active}
 						<li class="crumb">
-							<a class="anchor" {href}>
+							<a class="anchor whitespace-nowrap" {href}>
 								{title}
 							</a>
 						</li>
@@ -45,7 +45,7 @@
 								{#each sublinks as { href, title, active }}
 									{#if active}
 										<li class="crumb">
-											<a class="anchor" {href}>
+											<a class="anchor whitespace-nowrap" {href}>
 												{title}
 											</a>
 										</li>

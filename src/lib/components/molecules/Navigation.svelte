@@ -6,7 +6,7 @@
 	const links = getLinks(page);
 </script>
 
-<nav class="list-nav p-4">
+<nav class="list-nav">
 	<ul>
 		{#each $links as { href, title, subLinks, active }}
 			<li>

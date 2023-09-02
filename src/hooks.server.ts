@@ -1,6 +1,5 @@
 import { AIMap } from '$server/domains/ai/map';
 import { auth } from '$server/lucia';
-import { PrismaClient } from '@prisma/client';
 import { RawMap } from '$server/domains/raw/map';
 import { RecipeIngredientMap, RecipeMap, RecipeSummaryMap } from '$server/domains/recipe/map';
 import { RecipeService } from '$server/domains/recipe/service';
@@ -13,10 +12,9 @@ import { ExistingRecipeSelector } from '$server/domains/plan/selector';
 import { RawService } from '$server/domains/raw/service';
 import { AIService } from '$server/domains/ai/service';
 import { WeekPlanService } from '$server/domains/plan/service';
+import { prisma } from '$server/prisma';
 
 export const handle: Handle = async ({ event, resolve }) => {
-	const prisma = new PrismaClient();
-
 	const requestAuth = auth.handleRequest(event);
 	const session = await requestAuth.validate();
 

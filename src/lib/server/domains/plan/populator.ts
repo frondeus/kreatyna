@@ -1,4 +1,3 @@
-import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 import type { TagService } from '../tag/service';
 import type { WeekPlanCreate } from '$shared/domains/plan/models';
 import type { RecipeSummary } from '$shared/domains/recipe/models';
@@ -14,8 +13,6 @@ export interface ChosenRecipe {
 	used: number;
 }
 
-@scoped(Lifecycle.ContainerScoped)
-@injectable()
 export class WeekPlanPopulator {
 	private chosenRecipes: ChosenRecipe[];
 
@@ -24,10 +21,10 @@ export class WeekPlanPopulator {
 	}
 
 	constructor(
-		@inject('tagService') readonly tagService: TagService,
-		@inject('recipeSummaryMap') readonly recipeSummaryMap: RecipeSummaryMap,
-		@inject('recipeService') readonly recipeService: RecipeService,
-		@inject('existingRecipeSelector') readonly existingRecipeSelector: ExistingRecipeSelector,
+		 readonly tagService: TagService,
+		 readonly recipeSummaryMap: RecipeSummaryMap,
+		 readonly recipeService: RecipeService,
+		 readonly existingRecipeSelector: ExistingRecipeSelector,
 		readonly weekPlan: WeekPlanCreate
 	) {
 		const chosen = (weekPlan.meals ?? [])
@@ -85,14 +82,12 @@ export class WeekPlanPopulator {
 	}
 }
 
-@scoped(Lifecycle.ContainerScoped)
-@injectable()
 export class WeekPlanPopulatorFactory {
 	constructor(
-		@inject('tagService') readonly tagService: TagService,
-		@inject('recipeSummaryMap') readonly recipeSummaryMap: RecipeSummaryMap,
-		@inject('recipeService') readonly recipeService: RecipeService,
-		@inject('existingRecipeSelector') readonly existingRecipeSelector: ExistingRecipeSelector
+		 readonly tagService: TagService,
+		 readonly recipeSummaryMap: RecipeSummaryMap,
+		 readonly recipeService: RecipeService,
+		 readonly existingRecipeSelector: ExistingRecipeSelector
 	) {}
 
 	forWeekPlan(weekPlan: WeekPlanCreate): WeekPlanPopulator {

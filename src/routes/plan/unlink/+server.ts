@@ -1,6 +1,5 @@
 import { error, json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { WeekPlanService } from '$server/domains/plan/service';
 import { z } from 'zod';
 import type { WeekPlanWithId } from '$shared/domains/plan/models';
 
@@ -22,7 +21,7 @@ export const POST = (async ({ request, locals: { session, container } }) => {
 	}
 
 	const { meals, week, year } = validatedBody.data;
-	const service = container.resolve(WeekPlanService);
+	const service = container.weekPlanService;
 
 	const weekPlan: WeekPlanWithId | null = await service.getWeekPlan(year, week);
 

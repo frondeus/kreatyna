@@ -6,12 +6,9 @@ import type {
 } from '$shared/domains/plan/models';
 import type { Prisma } from '@prisma/client';
 import type { RecipeSummaryMap } from '../recipe/map';
-import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 
-@scoped(Lifecycle.ContainerScoped)
-@injectable()
 export class WeekPlanMap {
-	constructor(@inject('weekPlanMealMap') readonly mealMap: WeekPlanMealMap) {}
+	constructor(readonly mealMap: WeekPlanMealMap) {}
 
 	public toUpdateInput(weekPlan: WeekPlanWithId): Prisma.WeekPlanUpdateInput {
 		return {
@@ -39,10 +36,8 @@ export class WeekPlanMap {
 	}
 }
 
-@scoped(Lifecycle.ContainerScoped)
-@injectable()
 export class WeekPlanMealMap {
-	constructor(@inject('recipeSummaryMap') readonly summaryMap: RecipeSummaryMap) {}
+	constructor(readonly summaryMap: RecipeSummaryMap) {}
 
 	public toUpsertInputUnconnected(
 		meal: WeekPlanMealWithId

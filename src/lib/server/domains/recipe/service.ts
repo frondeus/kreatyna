@@ -8,15 +8,12 @@ import type {
 } from '$lib/shared/domains/recipe/models';
 import { notNullOrUndefined } from '$lib/shared/utils';
 import { recipeSelect, recipeSummarySelect } from '$shared/domains/recipe/queries';
-import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 
-@scoped(Lifecycle.ContainerScoped)
-@injectable()
 export class RecipeService {
 	constructor(
-		@inject('recipeMap') readonly map: RecipeMap,
-		@inject('recipeSummaryMap') readonly summaryMap: RecipeSummaryMap,
-		@inject('prisma') readonly prisma: PrismaClient
+		readonly map: RecipeMap,
+		readonly summaryMap: RecipeSummaryMap,
+		readonly prisma: PrismaClient
 	) {}
 
 	async getNotIn(ids: number[], tags: number[]): Promise<RecipeSummary[]> {

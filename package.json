@@ -88,8 +88,6 @@
 		"@prisma/client": "^5.0.0",
 		"lucia": "^2.0.0",
 		"openai": "^3.3.0",
-		"reflect-metadata": "^0.1.13",
-		"tsyringe": "^4.8.0",
 		"typechat": "^0.0.10",
 		"uuid": "^9.0.0",
 		"xlsx-import": "^2.4.4"

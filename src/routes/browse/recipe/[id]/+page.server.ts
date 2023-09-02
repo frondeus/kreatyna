@@ -4,7 +4,6 @@ import { fail, redirect, error as returnError, type Actions } from '@sveltejs/ki
 import { notNullOrUndefined } from '$lib/shared/utils';
 import { editRecipeSchema, type EditRecipeSchema } from '$lib/shared/domains/recipe/schema';
 import type { SuperValidated } from 'sveltekit-superforms';
-import { RecipeService } from '$server/domains/recipe/service';
 
 export const load: PageServerLoad = async ({ params, locals: { session, container } }) => {
 	if (!session) {
@@ -13,7 +12,7 @@ export const load: PageServerLoad = async ({ params, locals: { session, containe
 
 	const id = Number(params.id);
 
-	const recipe = container.resolve(RecipeService);
+	const recipe = container.recipeService;
 	const data = await recipe.getOne(id);
 
 	if (data === null) {
@@ -47,7 +46,7 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		const recipe = container.resolve(RecipeService);
+		const recipe = container.recipeService;
 		await recipe.update(form.data);
 
 		return { form };

@@ -1,6 +1,5 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
-import { WeekPlanService } from '$server/domains/plan/service';
 import type { WeekPlanSummary } from '$shared/domains/plan/models';
 
 export const load: LayoutServerLoad = async ({ locals: { session, container } }) => {
@@ -18,7 +17,7 @@ export const load: LayoutServerLoad = async ({ locals: { session, container } })
 		week += 1;
 	}
 
-	const service = container.resolve(WeekPlanService);
+	const service = container.weekPlanService;
 
 	const plans: WeekPlanSummary[] = await service.getWeekPlanSummaries();
 

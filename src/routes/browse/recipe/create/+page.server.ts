@@ -3,8 +3,6 @@ import type { PageServerLoad } from './$types';
 import { redirect, type Actions, fail, error as returnError } from '@sveltejs/kit';
 
 import { addOrEditRecipeSchema } from '$lib/shared/domains/recipe/schema';
-import { AIService } from '$server/domains/ai/service';
-import { RecipeService } from '$server/domains/recipe/service';
 
 export const load: PageServerLoad = async ({ locals: { session } }) => {
 	if (!session) {
@@ -23,8 +21,8 @@ export const actions: Actions = {
 		}
 
 		const form = await superValidate(request, addOrEditRecipeSchema);
-		const ai = container.resolve(AIService);
-		const recipe = container.resolve(RecipeService);
+		const ai = container.aiService;
+		const recipe = container.recipeService;
 
 		if (form.data.askGPT) {
 			try {

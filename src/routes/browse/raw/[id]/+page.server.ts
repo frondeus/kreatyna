@@ -2,7 +2,6 @@ import { error as returnError, redirect, type Actions, fail } from '@sveltejs/ki
 import type { PageServerLoad } from './$types';
 import { superValidate } from 'sveltekit-superforms/server';
 import { editRawSchema } from '$lib/shared/domains/raw/schema';
-import { RawService } from '$server/domains/raw/service';
 
 export const load: PageServerLoad = async ({ params, locals: { session, container } }) => {
 	if (!session) {
@@ -10,7 +9,7 @@ export const load: PageServerLoad = async ({ params, locals: { session, containe
 	}
 
 	const id = Number(params.id);
-	const raw = container.resolve(RawService);
+	const raw = container.rawService;
 
 	const data = await raw.getOne(id);
 	if (data === null) {
@@ -34,7 +33,7 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		const raw = container.resolve(RawService);
+		const raw = container.rawService;
 
 		await raw.update(form.data);
 

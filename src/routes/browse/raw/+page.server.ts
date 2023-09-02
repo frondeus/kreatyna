@@ -1,13 +1,12 @@
 import { redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { RawService } from '$server/domains/raw/service';
 
 export const load: PageServerLoad = async ({ locals: { session, container } }) => {
 	if (!session) {
 		throw redirect(303, '/login');
 	}
 
-	const raw = container.resolve(RawService);
+	const raw = container.rawService;
 
 	return {
 		session,
@@ -23,7 +22,7 @@ export const actions: Actions = {
 
 		const data = await request.formData();
 		const id = Number(data.get('id'));
-		const raw = container.resolve(RawService);
+		const raw = container.rawService;
 
 		await raw.remove(id);
 

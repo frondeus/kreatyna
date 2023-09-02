@@ -1,11 +1,8 @@
-import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 import type { TagService } from '../tag/service';
 import type { WeekPlanCreate, WeekPlanMealWithoutId } from '$shared/domains/plan/models';
 
-@scoped(Lifecycle.ContainerScoped)
-@injectable()
 export class WeekPlanGenerator {
-	constructor(@inject('tagService') readonly tagService: TagService) {}
+	constructor(readonly tagService: TagService) {}
 
 	async generateWeekPlan(year: number, week: number): Promise<WeekPlanCreate> {
 		const forTag = async (tag: string) =>

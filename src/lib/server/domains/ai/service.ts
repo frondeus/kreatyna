@@ -6,14 +6,11 @@ import aiSchema from '$lib/server/domains/ai/models.ts?raw';
 import generateRecipePrompt from '$lib/server/domains/ai/generateRecipe.prompt?raw';
 import type { RecipeCreateOrUpdate } from '$lib/shared/domains/recipe/models';
 import type { AIMap } from './map';
-import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 
-@scoped(Lifecycle.ContainerScoped)
-@injectable()
 export class AIService {
 	constructor(
-		@inject('recipeMap') readonly recipeMap: RecipeMap,
-		@inject('aiMap') readonly aiMap: AIMap
+		readonly recipeMap: RecipeMap,
+		readonly aiMap: AIMap
 	) {}
 
 	async getRecipe(prompt: RecipeCreateOrUpdate) {

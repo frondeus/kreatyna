@@ -1,6 +1,17 @@
+import type { AIMap } from '$server/domains/ai/map';
+import type { AIService } from '$server/domains/ai/service';
+import type { WeekPlanGenerator } from '$server/domains/plan/generator';
+import type { WeekPlanMap, WeekPlanMealMap } from '$server/domains/plan/map';
+import type { WeekPlanPopulatorFactory } from '$server/domains/plan/populator';
+import type { ExistingRecipeSelector } from '$server/domains/plan/selector';
+import type { WeekPlanService } from '$server/domains/plan/service';
+import type { RawMap } from '$server/domains/raw/map';
+import type { RawService } from '$server/domains/raw/service';
+import type { RecipeIngredientMap, RecipeMap, RecipeSummaryMap } from '$server/domains/recipe/map';
+import type { RecipeService } from '$server/domains/recipe/service';
+import type { TagService } from '$server/domains/tag/service';
 import type { PrismaClient } from '@prisma/client';
 import type * as Icons from 'unplugin-icons/types/svelte';
-import type { DependencyContainer } from 'tsyringe';
 
 declare global {
 	interface Date {
@@ -20,7 +31,25 @@ declare global {
 			prisma: PrismaClient;
 			session: Session | null;
 			setSession: (session: Session | null) => void;
-			container: DependencyContainer;
+			container: {
+				prisma: PrismaClient;
+				session: Session | null;
+				rawMap: RawMap;
+				recipeIngredientMap: RecipeIngredientMap;
+				recipeMap: RecipeMap;
+				recipeSummaryMap: RecipeSummaryMap;
+				weekPlanMealMap: WeekPlanMealMap;
+				weekPlanMap: WeekPlanMap;
+				aiMap: AIMap;
+				recipeService: RecipeService;
+				tagService: TagService;
+				weekPlanGenerator: WeekPlanGenerator;
+				weekPlanPopulator: WeekPlanPopulatorFactory;
+				existingRecipeSelector: ExistingRecipeSelector;
+				rawService: RawService;
+				aiService: AIService;
+				weekPlanService: WeekPlanService;
+			};
 		}
 		interface PageData {
 			session: Session | null;

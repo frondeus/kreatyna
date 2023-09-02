@@ -6,12 +6,9 @@ import type {
 import type { Prisma, Raw as PrismaRaw } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import type { Session } from 'lucia';
-import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 
-@scoped(Lifecycle.ContainerScoped)
-@injectable()
 export class RawMap {
-	constructor(@inject('session') readonly session: Session | null) {}
+	constructor(readonly session: Session | null) {}
 
 	public toDomain(dbEntry: PrismaRaw): RawIngredient {
 		const by = dbEntry.created_by;

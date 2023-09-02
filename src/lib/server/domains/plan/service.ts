@@ -7,18 +7,15 @@ import type {
 import type { PrismaClient } from '@prisma/client';
 import type { WeekPlanMap } from './map';
 import { selectWeekPlan, selectWeekPlanSummary } from '$shared/domains/plan/queries';
-import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 import type { WeekPlanGenerator } from './generator';
 import type { WeekPlanPopulatorFactory } from './populator';
 
-@scoped(Lifecycle.ContainerScoped)
-@injectable()
 export class WeekPlanService {
 	constructor(
-		@inject('prisma') readonly prisma: PrismaClient,
-		@inject('weekPlanMap') readonly weekPlanMap: WeekPlanMap,
-		@inject('weekPlanGenerator') readonly weekPlanGenerator: WeekPlanGenerator,
-		@inject('weekPlanPopulator') readonly weekPlanPopulator: WeekPlanPopulatorFactory
+		readonly prisma: PrismaClient,
+		readonly weekPlanMap: WeekPlanMap,
+		readonly weekPlanGenerator: WeekPlanGenerator,
+		readonly weekPlanPopulator: WeekPlanPopulatorFactory
 	) {}
 
 	async getWeekPlanSummaries(): Promise<WeekPlanSummary[]> {

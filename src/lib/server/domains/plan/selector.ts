@@ -1,9 +1,6 @@
 import type { TagWithCategory } from '$shared/domains/tags/models';
-import { Lifecycle, injectable, scoped } from 'tsyringe';
 import type { ChosenRecipe } from './populator';
 
-@scoped(Lifecycle.ContainerScoped)
-@injectable()
 export class ExistingRecipeSelector {
 	selectChosenRecipe(recipe: ChosenRecipe, tags: TagWithCategory[], forDay: number): boolean {
 		const recipeTags = recipe.recipe.tags.map((tag) => tag.id);

@@ -5,14 +5,11 @@ import type {
 	RawIngredientCreate,
 	RawIngredientUpdate
 } from '$lib/shared/domains/raw/models';
-import { Lifecycle, inject, injectable, scoped } from 'tsyringe';
 
-@scoped(Lifecycle.ContainerScoped)
-@injectable()
 export class RawService {
 	constructor(
-		@inject('rawMap') readonly map: RawMap,
-		@inject('prisma') readonly prisma: PrismaClient
+		readonly map: RawMap,
+		readonly prisma: PrismaClient
 	) {}
 
 	async getAll(): Promise<RawIngredient[]> {

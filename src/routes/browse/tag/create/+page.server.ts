@@ -2,7 +2,6 @@ import { redirect, type Actions, fail } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { superValidate } from 'sveltekit-superforms/server';
 import { TagCreateOneSchema } from '$shared/domains/tags/schema';
-import { TagService } from '$server/domains/tag/service';
 
 export const load: PageServerLoad = async ({ locals: { session } }) => {
 	if (!session) {
@@ -27,7 +26,7 @@ export const actions: Actions = {
 
 		const [cat, name] = form.data.name.split(':');
 
-		const tag = container.resolve(TagService);
+		const tag = container.tagService;
 
 		await tag.create({
 			name: name,

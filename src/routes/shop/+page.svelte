@@ -1,30 +1,10 @@
 <script lang="ts">
 	import type { ShoppingListItem } from '$shared/domains/shopping/models';
-	import { Prisma } from '@prisma/client';
+	import type { PageData } from './$types';
 
-	const sortByState: (a: ShoppingListItem, b: ShoppingListItem) => number = (a, b) => {
-		if (a.state !== b.state) {
-			if (a.state === 'TODO') return -1;
-			if (b.state === 'TODO') return 1;
-
-			if (a.state === 'IN_CART') return -1;
-			if (b.state === 'IN_CART') return 1;
-		}
-
-		return a.order - b.order;
-	};
-
-	const items: ShoppingListItem[] = [
-		// from 0..20 to array of items
-		...Array.from(Array(20).keys()).map((i) => ({
-			id: i,
-			name: `Item ${i}`,
-			amount: new Prisma.Decimal((i + 1) * 100),
-			unit: 'g',
-			state: i % 5 == 0 ? ('IN_CART' as const) : ('TODO' as const),
-			order: i
-		}))
-	].sort(sortByState);
+	export let data: PageData;
+	let { items }: { items: ShoppingListItem[] } = data;
+	$: ({ items } = data);
 </script>
 
 <ul class="divide-y">

@@ -1,7 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { ShoppingListItem } from '$shared/domains/shopping/models';
-import { Prisma } from '@prisma/client';
 
 const sortByState: (a: ShoppingListItem, b: ShoppingListItem) => number = (a, b) => {
 	if (a.state !== b.state) {
@@ -25,10 +24,10 @@ export const load: PageServerLoad = async ({ locals: { session } }) => {
 		...Array.from(Array(20).keys()).map((i) => ({
 			id: i,
 			name: `Item ${i}`,
-			amount: new Prisma.Decimal((i + 1) * 100),
+			amount: (i + 1) * 100,
 			unit: 'g',
-			state: i % 5 == 0 ? ('IN_CART' as const) : ('TODO' as const),
-			order: i
+			order: i,
+			state: i % 5 == 0 ? ('IN_CART' as const) : ('TODO' as const)
 		}))
 	].sort(sortByState);
 

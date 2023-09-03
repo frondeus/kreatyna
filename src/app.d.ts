@@ -9,6 +9,7 @@ import type { RawMap } from '$server/domains/raw/map';
 import type { RawService } from '$server/domains/raw/service';
 import type { RecipeIngredientMap, RecipeMap, RecipeSummaryMap } from '$server/domains/recipe/map';
 import type { RecipeService } from '$server/domains/recipe/service';
+import type { ShoppingListService } from '$server/domains/shopping/service';
 import type { TagService } from '$server/domains/tag/service';
 import type { PrismaClient } from '@prisma/client';
 import type * as Icons from 'unplugin-icons/types/svelte';
@@ -49,6 +50,7 @@ declare global {
 				rawService: RawService;
 				aiService: AIService;
 				weekPlanService: WeekPlanService;
+				shoppingListService: ShoppingListService;
 			};
 		}
 		interface PageData {

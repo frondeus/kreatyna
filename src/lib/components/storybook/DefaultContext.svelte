@@ -1,4 +1,6 @@
 <script lang="ts">
+	import '@skeletonlabs/skeleton/themes/theme-skeleton.css';
+	import '@skeletonlabs/skeleton/styles/skeleton.css';
 	import { setContext } from '$shared/context';
 	import { writable } from 'svelte/store';
 

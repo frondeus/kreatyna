@@ -16,7 +16,7 @@
 	name="Default"
 	source
 	args={{
-		meal: {
+		item: {
 			day: { index: 1 },
 			slot: { index: 1 },
 			variant: 'primary'

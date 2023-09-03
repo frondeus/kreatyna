@@ -29,7 +29,7 @@
 	});
 
 	const dispatcher = createEventDispatcher();
-	const onSelect = (event: CustomEvent<{ label: string; meta: unknown }>) => {
+	const onSelect = (event: CustomEvent<AutocompleteOption>) => {
 		filters = [...filters, event.detail.label];
 		metas = [...metas, event.detail.meta];
 		dispatcher('select', event.detail.meta);

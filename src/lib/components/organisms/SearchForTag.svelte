@@ -25,7 +25,7 @@
 	});
 
 	const dispatch = createEventDispatcher();
-	const onSelection = (event: CustomEvent<{ meta: TagWithCategory }>) => {
+	const onSelection = (event: CustomEvent<AutocompleteOption>) => {
 		dispatch('add', event.detail.meta);
 	};
 </script>

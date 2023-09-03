@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { WeekPlanMeal } from '$shared/domains/plan/models';
-	import DayPlanItem from './DayPlanItem.svelte';
+	import DayPlanItem from '../atoms/DayPlanItem.svelte';
 	import IconLink from '~icons/mdi/link-variant-plus';
 
 	export let meal: WeekPlanMeal;

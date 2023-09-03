@@ -37,3 +37,11 @@
 		state: 'archived'
 	}}
 />
+
+<Story
+	name="Processing"
+	source
+	args={{
+		state: 'processing'
+	}}
+/>

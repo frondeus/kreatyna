@@ -24,7 +24,7 @@
 		$raw = await response.json();
 	});
 
-	const onSelection = (event: CustomEvent<{ meta: RawIngredient }>) => {
+	const onSelection = (event: CustomEvent<AutocompleteOption>) => {
 		$modalStore?.[0]?.response?.(event.detail.meta);
 		modalStore.close();
 	};

@@ -13,6 +13,8 @@ import { RawService } from '$server/domains/raw/service';
 import { AIService } from '$server/domains/ai/service';
 import { WeekPlanService } from '$server/domains/plan/service';
 import { prisma } from '$server/prisma';
+import { ShoppingListItemMap } from '$server/domains/shopping/map';
+import { ShoppingListService } from '$server/domains/shopping/service';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const requestAuth = auth.handleRequest(event);
@@ -43,6 +45,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		weekPlanGenerator,
 		weekPlanPopulator
 	);
+	const shoppingListItemMap = new ShoppingListItemMap();
+	const shoppingListService = new ShoppingListService(prisma, shoppingListItemMap);
 	const container = {
 		prisma,
 		session,
@@ -60,7 +64,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		existingRecipeSelector,
 		rawService,
 		aiService,
-		weekPlanService
+		weekPlanService,
+		shoppingListService
 	};
 
 	event.locals = {

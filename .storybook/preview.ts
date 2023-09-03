@@ -1,7 +1,6 @@
 import type { Preview } from '@storybook/svelte';
 import '@skeletonlabs/skeleton/themes/theme-skeleton.css';
 import '@skeletonlabs/skeleton/styles/skeleton.css';
-import '../src/app.postcss';
 import { INITIAL_VIEWPORTS } from '@storybook/addon-viewport';
 
 export const customViewports = {
@@ -64,7 +63,7 @@ const preview: Preview = {
 				date: /Date$/
 			}
 		},
-		layout: 'fullscreen',
+		// layout: 'fullscreen',
 		viewport: {
 			viewports: {
 				...INITIAL_VIEWPORTS,

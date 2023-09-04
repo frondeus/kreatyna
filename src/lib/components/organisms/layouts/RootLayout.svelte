@@ -8,7 +8,7 @@
 
 	import { computePosition, autoUpdate, offset, shift, flip, arrow } from '@floating-ui/dom';
 	import { storePopup } from '@skeletonlabs/skeleton';
-	import PageContainer from '$components/atoms/PageContainer.svelte';
+	import PageContainer from '$components/atoms/layout/PageContainer.svelte';
 	import PageHeader from '$components/molecules/PageHeader.svelte';
 	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
 

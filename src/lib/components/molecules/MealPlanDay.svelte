@@ -1,5 +1,5 @@
 <script lang="ts">
-	import DayPlanMeal from '$components/atoms/DayPlanMeal.svelte';
+	import DayPlanMeal from '$components/molecules/DayPlanMeal.svelte';
 	import type { WeekPlanMeal } from '$shared/domains/plan/models';
 	import { getDateOfIsoWeek } from '$shared/utils';
 

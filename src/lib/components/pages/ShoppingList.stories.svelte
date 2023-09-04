@@ -12,34 +12,33 @@
 		items: [
 			{
 				id: 1,
-				name: 'Test',
-				amount: 1,
-				unit: 'g',
+				name: 'Apples',
+				amount: 10,
 				state: 'TODO'
 			},
 			{
 				id: 2,
-				name: 'Test 2',
-				amount: 2,
+				name: 'Carrots',
+				amount: 20,
 				unit: 'g',
 				state: 'TODO'
 			},
 			{
 				id: 3,
-				name: 'Test 3',
-				amount: 3,
+				name: 'Chicken',
+				amount: 300,
 				unit: 'g',
 				state: 'IN_CART'
 			},
 			{
 				id: 4,
-				name: 'Test 4',
+				name: 'Butter',
 				amount: 1,
 				state: 'BOUGHT'
 			},
 			{
 				id: 5,
-				name: 'Test 5',
+				name: 'Bell pepper',
 				amount: 5,
 				state: 'NOT_BUING'
 			}

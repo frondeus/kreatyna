@@ -22,11 +22,13 @@
 
 <AppBar gridColumns="grid-cols-3" slotDefault="place-self-center" slotTrail="place-content-end">
 	<svelte:fragment slot="lead">
-		<div class="xl:hidden flex gap-2 items-center">
+		<div class="xl:hidden gap-2 flex">
 			{#if isLoggedIn}
-				<ActionIconButton on:click={onHamburger} on:keypress={onHamburger}>
-					<IconMenu />
-				</ActionIconButton>
+				<span>
+					<ActionIconButton on:click={onHamburger} on:keypress={onHamburger}>
+						<IconMenu />
+					</ActionIconButton>
+				</span>
 			{/if}
 			<ol class="breadcrumb ml-4">
 				{#each $links as { href, title, subLinks, active }}

@@ -7,7 +7,7 @@
 	import DefaultContext from '$components/storybook/DefaultContext.svelte';
 </script>
 
-<Meta title="Atoms/ActionIconButton" component={ActionIconButton} />
+<Meta title="Atoms/Buttons/ActionIconButton" component={ActionIconButton} />
 
 <Template let:args>
 	<DefaultContext>

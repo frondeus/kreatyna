@@ -14,7 +14,7 @@
 
 	onMount(() => {
 		const interval = setInterval(async () => {
-			await invalidate('data:now');
+			await invalidate('data:shopping-items');
 			// console.log('invalidated');
 		}, 1000);
 
@@ -23,15 +23,17 @@
 		};
 	});
 
-	const onStateChange = async (event: CustomEvent<{ state: ShoppingListState; id: number }>) => {
+	const onStateChange = async (
+		event: CustomEvent<{ state: ShoppingListState; id: string; amount: number }>
+	) => {
 		// console.log('onStateChange', event.detail);
-		await invalidate('data:now');
+		await invalidate('data:shopping-items');
 		const res = await fetch('/shop/update', {
 			method: 'PUT',
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify(event.detail)
+			body: JSON.stringify([event.detail])
 		});
 		if (res.status !== 200) {
 			console.error('Error updating item');

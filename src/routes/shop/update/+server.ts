@@ -1,12 +1,7 @@
+import { UpdateShoppingListItemSchema } from '$shared/domains/shopping/schema';
 import { error, json, redirect, type RequestHandler } from '@sveltejs/kit';
-import { z } from 'zod';
 
-const StateSchema = z.enum(['TODO', 'IN_CART', 'BOUGHT', 'NOT_BUING']);
-
-const BodySchema = z.object({
-	id: z.number(),
-	state: StateSchema
-});
+const BodySchema = UpdateShoppingListItemSchema.array();
 
 export const PUT = (async ({ request, locals: { session, container } }) => {
 	if (!session) {
@@ -19,18 +14,18 @@ export const PUT = (async ({ request, locals: { session, container } }) => {
 		throw error(400, validatedBody.error.message);
 	}
 
-	const { id, state } = validatedBody.data;
-
 	const service = container.shoppingListService;
 
-	// TODO: Currently prisma is not very good at returning exception when updating a non-existing item.
-	// It's easier to check if the item exists before updating it.
-	const item = await service.getShoppingListItem(id);
-	if (item === null) {
-		throw error(404, 'Shopping list item not found');
-	}
+	for (const schema of validatedBody.data) {
+		// TODO: Currently prisma is not very good at returning exception when updating a non-existing item.
+		// It's easier to check if the item exists before updating it.
+		const item = await service.getShoppingListItem(schema.id);
+		if (item === null) {
+			throw error(404, 'Shopping list item not found');
+		}
 
-	await service.updateShoppingListItemState(id, state);
+		await service.updateShoppingListItem(schema);
+	}
 
 	return json('ok');
 }) satisfies RequestHandler;

@@ -129,7 +129,7 @@ enum ShoppingListState {
 }
 
 model ShoppingListItem {
-  id     Int               @id @unique @default(autoincrement())
+  id     String            @id @unique @default(uuid()) @db.Uuid
   name   String            @default("")
   amount Decimal           @default(0) @db.Decimal
   unit   String?

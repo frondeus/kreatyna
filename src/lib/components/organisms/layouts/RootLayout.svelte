@@ -10,7 +10,7 @@
 	import { storePopup } from '@skeletonlabs/skeleton';
 	import PageContainer from '$components/atoms/layout/PageContainer.svelte';
 	import PageHeader from '$components/molecules/PageHeader.svelte';
-	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
+	import ActionIconButton from '$components/atoms/buttons/ActionIconButton.svelte';
 
 	import ArrowLeft from '~icons/mdi/arrow-left';
 

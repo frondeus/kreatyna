@@ -2,9 +2,8 @@
 	import type { ShoppingListState } from '@prisma/client';
 	import ShoppingListCheckbox, { State } from '$components/atoms/ShoppingListCheckbox.svelte';
 	import { createEventDispatcher } from 'svelte';
-	import ShoppingList from '$components/pages/ShoppingList.svelte';
 
-	export let id: number;
+	export let id: string;
 	export let name: string;
 	export let amount: number;
 	export let unit: string | null;
@@ -56,7 +55,10 @@
 				return;
 		}
 		state = 'PROCESSING';
-		dispatch('stateChange', { state: newState, id });
+		if (amount <= 0) {
+			amount = 1;
+		}
+		dispatch('stateChange', { state: newState, id, amount });
 		// state = newState;
 	};
 </script>

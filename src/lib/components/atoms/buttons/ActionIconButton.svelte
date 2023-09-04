@@ -3,6 +3,7 @@
 
 	export let href: string | undefined = undefined;
 	export let title: string | undefined = undefined;
+	export let variant = 'variant-soft';
 
 	const page = getContext().page;
 	$: active = href && $page.url.pathname.startsWith(href);
@@ -20,7 +21,7 @@
 	</a>
 {:else}
 	<span
-		class="btn-icon variant-soft xl:btn-icon-sm"
+		class="btn-icon {variant} xl:btn-icon-sm"
 		on:click
 		on:keypress
 		role="button"

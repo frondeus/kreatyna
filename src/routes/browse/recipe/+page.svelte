@@ -7,7 +7,7 @@
 	import type { AutocompleteOption } from '@skeletonlabs/skeleton';
 	import InputChipSearch from '$components/molecules/InputChipSearch.svelte';
 	import { onMount } from 'svelte';
-	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
+	import ActionIconButton from '$components/atoms/buttons/ActionIconButton.svelte';
 	import type { RecipeFilter } from '$shared/domains/recipe/models';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';

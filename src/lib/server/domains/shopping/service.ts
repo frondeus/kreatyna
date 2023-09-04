@@ -1,8 +1,12 @@
-import type { PrismaClient, ShoppingListState } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import type { ShoppingListItemMap } from './map';
 import type { ShoppingListItem } from '$shared/domains/shopping/models';
 import { selectShoppingListItems } from '$shared/domains/shopping/queries';
 import { sortByState } from '$shared/domains/shopping/utils';
+import type {
+	CreateShoppingListItem,
+	UpdateShoppingListItem
+} from '$shared/domains/shopping/schema';
 
 export class ShoppingListService {
 	constructor(readonly prisma: PrismaClient, readonly itemMap: ShoppingListItemMap) {}
@@ -14,7 +18,7 @@ export class ShoppingListService {
 		return items.map((item) => this.itemMap.toDomain(item)).sort(sortByState);
 	}
 
-	async getShoppingListItem(id: number): Promise<ShoppingListItem | null> {
+	async getShoppingListItem(id: string): Promise<ShoppingListItem | null> {
 		const item = await this.prisma.shoppingListItem.findUnique({
 			...selectShoppingListItems,
 			where: {
@@ -25,13 +29,25 @@ export class ShoppingListService {
 		return item ? this.itemMap.toDomain(item) : null;
 	}
 
-	async updateShoppingListItemState(id: number, state: ShoppingListState): Promise<void> {
+	async updateShoppingListItem(update: UpdateShoppingListItem): Promise<void> {
 		await this.prisma.shoppingListItem.update({
-			data: {
-				state
+			data: this.itemMap.toUpdateInput(update),
+			where: {
+				id: update.id
+			}
+		});
+	}
+
+	async upsertShoppingListItem(update: CreateShoppingListItem): Promise<void> {
+		await this.prisma.shoppingListItem.upsert({
+			create: {
+				...this.itemMap.toCreateInput(update)
+			},
+			update: {
+				...this.itemMap.toUpdateInput(update)
 			},
 			where: {
-				id
+				id: update.id
 			}
 		});
 	}

@@ -2,8 +2,13 @@
 	import type { ShoppingListItem } from '$shared/domains/shopping/models';
 	import ShoppingListItemComponent from '$components/molecules/ShoppingListItem.svelte';
 	import { sortByState } from '$shared/domains/shopping/utils';
+	import FloatingButton from '$components/atoms/buttons/FloatingButton.svelte';
+	import IconPlus from '~icons/mdi/plus';
+	// import { createEventDispatcher } from 'svelte';
 
 	export let items: ShoppingListItem[];
+
+	// const dispatch = createEventDispatcher();
 
 	$: sortedItems = items.sort(sortByState);
 </script>
@@ -13,3 +18,7 @@
 		<ShoppingListItemComponent {id} {name} {amount} {unit} {state} on:stateChange />
 	{/each}
 </ul>
+
+<FloatingButton href="/shop/add">
+	<IconPlus />
+</FloatingButton>

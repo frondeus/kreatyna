@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
+	import ActionIconButton from '$components/atoms/buttons/ActionIconButton.svelte';
 	import { AppBar } from '@skeletonlabs/skeleton';
 	import { createEventDispatcher } from 'svelte';
 	import IconMenu from '~icons/mdi/menu';

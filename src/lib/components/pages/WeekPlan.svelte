@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import ActionIconButton from '$components/atoms/ActionIconButton.svelte';
+	import ActionIconButton from '$components/atoms/buttons/ActionIconButton.svelte';
 	import MealPlanDay from '$components/molecules/MealPlanDay.svelte';
 	import { daysInWeek, type WeekPlan, type WeekPlanMeal } from '$shared/domains/plan/models';
 	import { sortMeals } from '$shared/domains/plan/utils';

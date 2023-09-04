@@ -2,12 +2,13 @@
 	import type { ShoppingListState } from '@prisma/client';
 	import ShoppingListCheckbox, { State } from '$components/atoms/ShoppingListCheckbox.svelte';
 	import { createEventDispatcher } from 'svelte';
+	import ShoppingList from '$components/pages/ShoppingList.svelte';
 
 	export let id: number;
 	export let name: string;
 	export let amount: number;
 	export let unit: string | null;
-	export let state: ShoppingListState;
+	export let state: ShoppingListState | 'PROCESSING';
 
 	const dispatch = createEventDispatcher();
 	let checkboxState: State = State.Default;
@@ -29,24 +30,34 @@
 			case 'NOT_BUING':
 				checkboxState = State.Crossed;
 				bgColor = 'bg-surface-800';
+				break;
+			case 'PROCESSING':
+				checkboxState = State.Processing;
+				break;
 		}
 	}
 
 	const onCheck = () => {
+		let newState: ShoppingListState | 'PROCESSING';
 		switch (state) {
 			case 'TODO':
-				state = 'IN_CART';
+				newState = 'IN_CART';
 				break;
 			case 'IN_CART':
-				state = 'NOT_BUING';
+				newState = 'NOT_BUING';
 				break;
 			case 'BOUGHT':
-				state = 'TODO';
+				newState = 'TODO';
 				break;
 			case 'NOT_BUING':
-				state = 'TODO';
+				newState = 'TODO';
+				break;
+			case 'PROCESSING':
+				return;
 		}
-		dispatch('stateChange', { state, id });
+		state = 'PROCESSING';
+		dispatch('stateChange', { state: newState, id });
+		// state = newState;
 	};
 </script>
 

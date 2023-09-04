@@ -60,6 +60,6 @@
 
 <style>
 	:global(.animate-reversed) {
-		animation-direction: reverse;
+		animation-direction: reverse !important;
 	}
 </style>

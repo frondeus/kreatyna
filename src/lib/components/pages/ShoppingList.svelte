@@ -10,6 +10,6 @@
 
 <ul class="divide-y divide-surface-600">
 	{#each sortedItems as { id, name, amount, unit, state } (id)}
-		<ShoppingListItemComponent {id} {name} {amount} {unit} bind:state on:stateChange />
+		<ShoppingListItemComponent {id} {name} {amount} {unit} {state} on:stateChange />
 	{/each}
 </ul>

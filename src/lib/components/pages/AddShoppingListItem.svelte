@@ -58,7 +58,7 @@
 			class="input"
 			type="text"
 			placeholder="Add new item"
-			enterkeyhint="search"
+			enterkeyhint="done"
 			on:keyup={(e) => e.key === 'Enter' && onSubmit()}
 			bind:value={searchInput}
 			autofocus

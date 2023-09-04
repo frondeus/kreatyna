@@ -21,8 +21,8 @@
 		return {
 			id,
 			name,
-			amount: amount,
-			unit: unit ?? undefined,
+			amount: state === 'BOUGHT' ? 0 : amount,
+			unit: state === 'BOUGHT' ? undefined : unit ?? undefined,
 			state
 		};
 	};
@@ -41,7 +41,7 @@
 			body: JSON.stringify(
 				event.detail.map((p) => ({
 					...p,
-					state: p.amount === 0 ? 'NOT_BUING' : p.state
+					state: p.amount === 0 && p.state !== 'BOUGHT' ? 'NOT_BUING' : p.state
 				}))
 			)
 		});

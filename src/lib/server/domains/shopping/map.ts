@@ -31,7 +31,7 @@ export class ShoppingListItemMap {
 		return {
 			state: item.state,
 			amount: item.amount,
-			unit: item.unit ?? null
+			unit: item.unit
 		};
 	}
 }

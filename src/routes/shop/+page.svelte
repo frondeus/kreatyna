@@ -24,7 +24,12 @@
 	});
 
 	const onStateChange = async (
-		event: CustomEvent<{ state: ShoppingListState; id: string; amount: number }>
+		event: CustomEvent<{
+			state: ShoppingListState;
+			id: string;
+			amount: number;
+			unit: string | undefined;
+		}>
 	) => {
 		// console.log('onStateChange', event.detail);
 		await invalidate('data:shopping-items');

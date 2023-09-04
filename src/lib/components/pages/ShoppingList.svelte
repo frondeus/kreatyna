@@ -19,6 +19,10 @@
 	{/each}
 </ul>
 
+<div class="h-20">
+	<button class="variant-filled-secondary"> Finish </button>
+</div>
+
 <FloatingButton href="/shop/add">
 	<IconPlus />
 </FloatingButton>

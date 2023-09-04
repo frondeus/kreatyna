@@ -21,7 +21,7 @@
 		return {
 			id,
 			name,
-			amount: state !== 'TODO' ? 0 : amount,
+			amount: amount,
 			unit: unit ?? undefined,
 			state
 		};
@@ -32,7 +32,7 @@
 	}
 
 	const onSubmit = async (event: CustomEvent<Proposal[]>) => {
-		console.log('onSubmit', event.detail);
+		// console.log('onSubmit', event.detail);
 		const res = await fetch('/shop/upsert', {
 			method: 'PUT',
 			headers: {
@@ -41,7 +41,7 @@
 			body: JSON.stringify(
 				event.detail.map((p) => ({
 					...p,
-					state: p.amount === 0 ? 'NOT_BUING' : p.amount > 0 ? 'TODO' : p.state
+					state: p.amount === 0 ? 'NOT_BUING' : p.state
 				}))
 			)
 		});

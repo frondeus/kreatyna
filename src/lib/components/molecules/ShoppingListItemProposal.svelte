@@ -22,6 +22,7 @@
 	export let id: string;
 	export let name: string;
 	export let unit: string | undefined = undefined;
+	export let state: ShoppingListState;
 	export let amount = 0;
 
 	let checkboxState: CheckboxState = CheckboxState.Default;
@@ -39,13 +40,17 @@
 	const onIncrease = () => {
 		if (amount <= 0) {
 			amount = 0;
-			dispatch('add', { name, amount: amount + 1, id, unit });
+			dispatch('add', { name, amount: amount + 1, id, unit, state });
 		}
+		state = 'TODO';
 		amount += 1;
 	};
 	const onDecrease = () => {
 		if (amount > 0) {
 			amount -= 1;
+		}
+		if (amount <= 0) {
+			state = 'NOT_BUING';
 		}
 	};
 </script>

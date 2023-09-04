@@ -61,12 +61,13 @@
 			<ShoppingListItemProposal
 				name={suggestion.name}
 				bind:amount={suggestion.amount}
+				bind:state={suggestion.state}
 				id={suggestion.id}
 				on:add={onAdd}
 			/>
 		{/if}
-		{#each proposals as { name, amount, id } (id)}
-			<ShoppingListItemProposal {name} bind:amount {id} on:add={onAdd} />
+		{#each proposals as { name, amount, id, state } (id)}
+			<ShoppingListItemProposal {name} bind:amount bind:state {id} on:add={onAdd} />
 		{/each}
 	</ul>
 

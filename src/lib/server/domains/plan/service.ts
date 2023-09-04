@@ -2,13 +2,19 @@ import type {
 	WeekPlanWithId,
 	WeekPlan,
 	WeekPlanCreate,
-	WeekPlanSummary
+	WeekPlanSummary,
+	WeekPlanMealWithRecipe
 } from '$shared/domains/plan/models';
 import type { PrismaClient } from '@prisma/client';
 import type { WeekPlanMap } from './map';
-import { selectWeekPlan, selectWeekPlanSummary } from '$shared/domains/plan/queries';
+import {
+	selectWeekPlan,
+	selectWeekPlanRecipes,
+	selectWeekPlanSummary
+} from '$shared/domains/plan/queries';
 import type { WeekPlanGenerator } from './generator';
 import type { WeekPlanPopulatorFactory } from './populator';
+import type { RecipeIngredient } from '$shared/domains/recipe/models';
 
 export class WeekPlanService {
 	constructor(
@@ -68,6 +74,17 @@ export class WeekPlanService {
 		return weekPlan;
 	}
 
+	async getMeals(meals: number[]): Promise<WeekPlanMealWithRecipe[]> {
+		return await this.prisma.weekPlanMeal.findMany({
+			...selectWeekPlanRecipes,
+			where: {
+				id: {
+					in: meals
+				}
+			}
+		});
+	}
+
 	async unlinkMeals(meals: number[], year: number, week: number): Promise<void> {
 		await this.prisma.weekPlanMeal.updateMany({
 			data: {
@@ -101,5 +118,49 @@ export class WeekPlanService {
 		const populatedPlan = await this.weekPlanPopulator.populateWeekPlan(weekPlan);
 
 		return await this.updateWeekPlan(populatedPlan);
+	}
+
+	async groupRecipeIngredientsLinkedToMeals(meals: number[]): Promise<RecipeIngredient[]> {
+		const mealPlans = await this.getMeals(meals);
+		const recipes = mealPlans.flatMap((meal) => meal.recipe);
+		const ingredients: RecipeIngredient[] = recipes.flatMap((r) => r?.recipesIngredients ?? []);
+		const [ingredientsLinkedToRaw, ingredientsNotLinkedToRaw] = ingredients.reduce(
+			(acc, ingredient) => {
+				if (ingredient.raw !== null) {
+					acc[0].push(ingredient);
+				} else {
+					acc[1].push(ingredient);
+				}
+				return acc;
+			},
+			[[], []] as [RecipeIngredient[], RecipeIngredient[]]
+		);
+
+		const groupedIngredientsLinkedToRaw = ingredientsLinkedToRaw.reduce((acc, ingredient) => {
+			const key = ingredient.raw?.id.toString() + ' ' + ingredient.unit;
+			const existing = acc.get(key);
+			if (existing) {
+				existing.amount = existing.amount.plus(ingredient.amount);
+			} else {
+				acc.set(key, ingredient);
+			}
+			return acc;
+		}, new Map<string, RecipeIngredient>());
+
+		const groupedIngredientsNotLinkedToRaw = ingredientsNotLinkedToRaw.reduce((acc, ingredient) => {
+			const key = ingredient.name + ' ' + ingredient.unit;
+			const existing = acc.get(key);
+			if (existing) {
+				existing.amount = existing.amount.plus(ingredient.amount);
+			} else {
+				acc.set(key, ingredient);
+			}
+			return acc;
+		}, new Map<string, RecipeIngredient>());
+
+		return [
+			...groupedIngredientsLinkedToRaw.values(),
+			...groupedIngredientsNotLinkedToRaw.values()
+		];
 	}
 }

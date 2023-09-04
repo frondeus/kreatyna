@@ -1,6 +1,21 @@
 import { Prisma } from '@prisma/client';
 import { tagWithCategory, tagWithCategoryName } from '../tags/queries';
 
+export const ingredients = Prisma.validator<Prisma.RecipesIngredientFindManyArgs>()({
+	select: {
+		id: true,
+		amount: true,
+		unit: true,
+		name: true,
+		raw: {
+			select: {
+				id: true,
+				name: true
+			}
+		}
+	}
+});
+
 export const recipeSummarySelect = Prisma.validator<Prisma.RecipeFindManyArgs>()({
 	select: {
 		id: true,
@@ -17,5 +32,13 @@ export const recipeSelect = Prisma.validator<Prisma.RecipeFindManyArgs>()({
 			}
 		},
 		tags: tagWithCategory
+	}
+});
+
+export const recipeWithIngredients = Prisma.validator<Prisma.RecipeFindManyArgs>()({
+	select: {
+		id: true,
+		name: true,
+		recipesIngredients: ingredients
 	}
 });

@@ -51,4 +51,8 @@ export class ShoppingListService {
 			}
 		});
 	}
+
+	async pruneShoppingList(): Promise<void> {
+		await this.prisma.shoppingListItem.deleteMany({});
+	}
 }

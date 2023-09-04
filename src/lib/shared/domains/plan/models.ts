@@ -1,9 +1,16 @@
 import type { Prisma } from '@prisma/client';
-import type { selectWeekPlan, selectWeekPlanMeal, selectWeekPlanSummary } from './queries';
+import type {
+	selectWeekPlan,
+	selectWeekPlanMeal,
+	selectWeekPlanRecipes,
+	selectWeekPlanSummary
+} from './queries';
 
 export type WeekPlanMealWithId = Prisma.WeekPlanMealGetPayload<typeof selectWeekPlanMeal>;
 export type WeekPlanMeal = WeekPlanMealWithId;
 export type WeekPlanMealWithoutId = Omit<WeekPlanMealWithId, 'id'>;
+
+export type WeekPlanMealWithRecipe = Prisma.WeekPlanMealGetPayload<typeof selectWeekPlanRecipes>;
 
 export type WeekPlanWithId = Prisma.WeekPlanGetPayload<typeof selectWeekPlan>;
 export type WeekPlan = Omit<WeekPlanWithId, 'meals'> & {

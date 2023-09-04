@@ -1,11 +1,23 @@
+<script context="module" lang="ts">
+	export interface WeekPlanEvent {
+		year: number;
+		week: number;
+	}
+
+	export interface WeekPlanMealsEvent extends WeekPlanEvent {
+		meals: number[];
+	}
+</script>
+
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
 	import ActionIconButton from '$components/atoms/buttons/ActionIconButton.svelte';
 	import MealPlanDay from '$components/molecules/MealPlanDay.svelte';
 	import { daysInWeek, type WeekPlan, type WeekPlanMeal } from '$shared/domains/plan/models';
 	import { sortMeals } from '$shared/domains/plan/utils';
+	import { createEventDispatcher } from 'svelte';
 	import IconDice from '~icons/mdi/dice-5';
 	import IconUnlink from '~icons/mdi/link-variant-off';
+	import IconBasket from '~icons/mdi/basket-plus-outline';
 
 	export let weekPlan: WeekPlan;
 	export let currentDate: Date;
@@ -46,41 +58,27 @@
 		}
 	};
 
+	const dispatch = createEventDispatcher();
+
 	const handlePopulate = async () => {
-		const res = await fetch('/plan/populate', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				year: weekPlan.year,
-				week: weekPlan.week
-			})
-		});
-		if (res.status !== 200) {
-			console.error('Error populating plan');
-			return;
-		}
-		await invalidateAll();
+		dispatch('populate', { year: weekPlan.year, week: weekPlan.week });
 	};
 
 	const handleUnlink = async () => {
-		const res = await fetch('/plan/unlink', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				year: weekPlan.year,
-				week: weekPlan.week,
-				meals: selectedMealsArrayOfIds
-			})
+		dispatch('unlink', {
+			year: weekPlan.year,
+			week: weekPlan.week,
+			meals: selectedMealsArrayOfIds
 		});
-		if (res.status !== 200) {
-			console.error('Error unlinking meals');
-			return;
-		}
-		await invalidateAll();
+		selectedMeals = setSelectedMeals(weekPlan);
+	};
+
+	const handleShop = async () => {
+		dispatch('shop', {
+			year: weekPlan.year,
+			week: weekPlan.week,
+			meals: selectedMealsArrayOfIds
+		});
 		selectedMeals = setSelectedMeals(weekPlan);
 	};
 </script>
@@ -95,6 +93,10 @@
 		{#if selectedMealsArray.some((meal) => meal.recipe !== null)}
 			<ActionIconButton title="Unlink" on:click={handleUnlink} on:keypress={handleUnlink}>
 				<IconUnlink />
+			</ActionIconButton>
+
+			<ActionIconButton title="Shop" on:click={handleShop} on:keypress={handleShop}>
+				<IconBasket />
 			</ActionIconButton>
 		{/if}
 		<input

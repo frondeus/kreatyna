@@ -4,20 +4,44 @@
 	import { sortByState } from '$shared/domains/shopping/utils';
 	import FloatingButton from '$components/atoms/buttons/FloatingButton.svelte';
 	import IconPlus from '~icons/mdi/plus';
-	// import { createEventDispatcher } from 'svelte';
+	import ActionIconButton from '$components/atoms/buttons/ActionIconButton.svelte';
+	import IconBasket from '~icons/mdi/basket-unfill';
+	import { createEventDispatcher } from 'svelte';
 
 	export let items: ShoppingListItem[];
 
-	// const dispatch = createEventDispatcher();
+	const dispatch = createEventDispatcher();
 
-	$: sortedItems = items.sort(sortByState);
+	$: sortedItems = items.filter((i) => i.state !== 'BOUGHT').sort(sortByState);
+	$: areAnyTodos = sortedItems.some((item) => item.state === 'TODO');
+
+	const onFinish = () => {
+		dispatch('finish', sortedItems);
+	};
 </script>
 
-<ul class="divide-y divide-surface-600">
-	{#each sortedItems as { id, name, amount, unit, state } (id)}
-		<ShoppingListItemComponent {id} {name} {amount} {unit} {state} on:stateChange />
-	{/each}
-</ul>
+<div>
+	<header class="max-lg:hidden bg-surface-800 p-2 gap-2 flex justify-end">
+		{#if !areAnyTodos}
+			<ActionIconButton title="Finish" on:click={onFinish} on:keypress={onFinish}>
+				<IconBasket class="text-success-500" />
+			</ActionIconButton>
+		{/if}
+		<ActionIconButton title="Add" href="/shop/add">
+			<IconPlus />
+		</ActionIconButton>
+	</header>
+
+	<ul class="divide-y divide-surface-600">
+		{#each sortedItems as { id, name, amount, unit, state } (id)}
+			<ShoppingListItemComponent {id} {name} {amount} {unit} {state} on:stateChange />
+		{/each}
+	</ul>
+
+	<div class="h-20">
+		<!-- <button class="variant-filled-secondary"> Finish </button> -->
+	</div>
+</div>
 
 <FloatingButton href="/shop/add">
 	<IconPlus />

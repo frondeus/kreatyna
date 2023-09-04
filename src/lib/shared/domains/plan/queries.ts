@@ -1,6 +1,13 @@
 import { Prisma } from '@prisma/client';
 import { tagWithCategory } from '../tags/queries';
-import { recipeSummarySelect } from '../recipe/queries';
+import { recipeSummarySelect, recipeWithIngredients } from '../recipe/queries';
+
+export const selectWeekPlanRecipes = Prisma.validator<Prisma.WeekPlanMealFindManyArgs>()({
+	select: {
+		id: true,
+		recipe: recipeWithIngredients
+	}
+});
 
 export const selectWeekPlanMeal = Prisma.validator<Prisma.WeekPlanMealFindManyArgs>()({
 	select: {

@@ -8,9 +8,11 @@ import type {
 } from './schema';
 import type { TagConnect, TagSelect } from '../tags/models';
 import type { Prisma } from '@prisma/client';
-import type { recipeSummarySelect } from './queries';
+import type { ingredients, recipeSummarySelect, recipeWithIngredients } from './queries';
 
 export type RecipeSummarySelect = Prisma.RecipeGetPayload<typeof recipeSummarySelect>;
+export type RecipeWithIngredients = Prisma.RecipeGetPayload<typeof recipeWithIngredients>;
+export type RecipeIngredient = Prisma.RecipesIngredientGetPayload<typeof ingredients>;
 
 export interface WithIngredients {
 	ingredients: WithRawAndAmount[];

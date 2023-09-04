@@ -23,8 +23,35 @@
 		};
 	});
 
+	const onFinish = async (event: CustomEvent<ShoppingListItem[]>) => {
+		const items = event.detail.map((item) => ({
+			...item,
+			// amount: 0,
+			// unit: undefined,
+			state: 'BOUGHT'
+		}));
+
+		await invalidate('data:shopping-items');
+		const res = await fetch('/shop/update', {
+			method: 'PUT',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(items)
+		});
+		if (res.status !== 200) {
+			console.error('Error updating item');
+			return;
+		}
+	};
+
 	const onStateChange = async (
-		event: CustomEvent<{ state: ShoppingListState; id: string; amount: number }>
+		event: CustomEvent<{
+			state: ShoppingListState;
+			id: string;
+			amount: number;
+			unit: string | undefined;
+		}>
 	) => {
 		// console.log('onStateChange', event.detail);
 		await invalidate('data:shopping-items');
@@ -43,4 +70,4 @@
 	};
 </script>
 
-<ShoppingList {items} on:stateChange={onStateChange} />
+<ShoppingList {items} on:stateChange={onStateChange} on:finish={onFinish} />

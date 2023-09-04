@@ -71,8 +71,9 @@
 		{name}
 	</span>
 	{#if amount != 1 || unit}
-		<span class="basis-1/10">
-			{amount}{#if unit}{unit} {/if}
+		<span class="basis-1/10 whitespace-nowrap">
+			{amount}
+			{#if unit} {unit} {/if}
 		</span>
 	{/if}
 </li>

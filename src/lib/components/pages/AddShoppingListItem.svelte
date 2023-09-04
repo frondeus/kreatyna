@@ -53,7 +53,8 @@
 		<ActionIconButton on:click={onBack} on:keypress={onBack}>
 			<IconArrowLeft />
 		</ActionIconButton>
-		<input class="input" type="text" placeholder="Add new item" bind:value={searchInput} />
+        <!-- svelte-ignore a11y-autofocus -->
+		<input class="input" type="text" placeholder="Add new item" bind:value={searchInput} autofocus />
 	</header>
 
 	<ul class="space-y-2 p-2">

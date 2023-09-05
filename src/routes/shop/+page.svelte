@@ -28,7 +28,8 @@
 			...item,
 			// amount: 0,
 			// unit: undefined,
-			state: item.state === 'IN_CART' ? 'BOUGHT' : item.state
+			state: item.state === 'IN_CART' ? 'BOUGHT' : item.state,
+			unit: item.unit ?? undefined
 		}));
 
 		await invalidate('data:shopping-items');

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { WeekPlanMeal } from '$shared/domains/plan/models';
+	import type { ChangeEventHandler } from 'svelte/elements';
 	import DayPlanItem from '../atoms/DayPlanItem.svelte';
 	import IconLink from '~icons/mdi/link-variant-plus';
 
@@ -8,11 +9,11 @@
 	export let selected: Map<number, boolean>;
 	export let noCheckbox = false;
 
-	const onInput = ({ target }: any) => {
-		const { checked } = target;
+	const onInput = (({ currentTarget }) => {
+		const { checked } = currentTarget;
 		selected.set(meal.id, checked);
 		selected = selected;
-	};
+	}) satisfies ChangeEventHandler<HTMLInputElement>;
 
 	$: item = {
 		day: { index: meal.day },

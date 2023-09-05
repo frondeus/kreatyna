@@ -18,7 +18,6 @@
 		unit,
 		amount
 	}: ShoppingListItem) => {
-		console.log({ name, unit, amount, state });
 		return {
 			id,
 			name,
@@ -30,11 +29,9 @@
 
 	$: {
 		proposals = items.map(mapItemToProposal);
-		console.log({ proposals });
 	}
 
 	const onSubmit = async (event: CustomEvent<Proposal[]>) => {
-		// console.log('onSubmit', event.detail);
 		const res = await fetch('/shop/upsert', {
 			method: 'PUT',
 			headers: {

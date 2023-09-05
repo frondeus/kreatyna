@@ -10,29 +10,28 @@
 	import { storePopup } from '@skeletonlabs/skeleton';
 	import PageContainer from '$components/atoms/layout/PageContainer.svelte';
 	import PageHeader from '$components/molecules/PageHeader.svelte';
-	import ActionIconButton from '$components/atoms/buttons/ActionIconButton.svelte';
-
-	import ArrowLeft from '~icons/mdi/arrow-left';
+	import LeftDrawer from '../LeftDrawer.svelte';
 
 	storePopup.set({ computePosition, autoUpdate, offset, shift, flip, arrow });
 
 	export let isLoggedIn: boolean;
 	$: showSidebar = isLoggedIn ? 'xl:w-64' : '';
 	const onHamburger = () => {
-		drawerStore.open({});
-	};
-	const onHamburgerClose = () => {
-		drawerStore.close();
+		drawerStore.open({
+			meta: {
+				component: LeftDrawer,
+				props: {}
+			}
+		});
 	};
 </script>
 
 <Drawer regionDrawer="p-4 space-y-2">
-	<ActionIconButton on:click={onHamburgerClose} on:keypress={onHamburgerClose}>
-		<ArrowLeft />
-	</ActionIconButton>
-	<Navigation />
+	<svelte:component this={$drawerStore.meta.component} {...$drawerStore.meta.props} />
 </Drawer>
+
 <Modal />
+
 <Toast />
 
 <AppShell slotSidebarLeft="bg-surface-500/5 w-0 {showSidebar}">

@@ -18,6 +18,8 @@
 	import { createEventDispatcher } from 'svelte';
 	import type { ShoppingListState } from '@prisma/client';
 	import ShoppingListProposalUnit from '$components/atoms/ShoppingListProposalUnit.svelte';
+	import EditShoppingListProposalUnit from '$components/organisms/EditShoppingListProposalUnit.svelte';
+	import { drawerStore } from '@skeletonlabs/skeleton';
 
 	// UUID
 	export let id: string;
@@ -56,6 +58,25 @@
 			state = 'NOT_BUING';
 		}
 	};
+	const onEditUnit = () => {
+		console.log({ state });
+		drawerStore.open({
+			position: 'bottom',
+			height: '12',
+			meta: {
+				component: EditShoppingListProposalUnit,
+				props: {
+					name,
+					unit,
+					amount,
+					onSubmit: (a: number, u: string | undefined) => {
+						amount = a;
+						unit = u;
+					}
+				}
+			}
+		});
+	};
 </script>
 
 <li class="flex items-center space-x-4 justify-between h-11">
@@ -70,7 +91,13 @@
 		{name}
 	</span>
 	<span class="basis-3/10 flex gap-3 items-center">
-		<ShoppingListProposalUnit bind:amount bind:unit editable={amount > 0 && state !== 'BOUGHT'} />
+		<ShoppingListProposalUnit
+			bind:amount
+			bind:unit
+			editable={amount > 0 && state !== 'BOUGHT'}
+			on:click={onEditUnit}
+			on:keypress={onEditUnit}
+		/>
 
 		<span class="text-error-500">
 			{#if state !== 'BOUGHT'}

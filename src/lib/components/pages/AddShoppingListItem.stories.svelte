@@ -21,9 +21,10 @@
 	source
 	args={{
 		proposals: [
-			{ name: 'Chicken', amount: 0, id: uuid() },
-			{ name: 'Rice', amount: 1, id: uuid() },
-			{ name: 'Creatine', amount: 2, id: uuid() },
+			{ name: 'Chicken', amount: 0, id: uuid(), state: 'TODO' },
+			{ name: 'Rice', amount: 1, id: uuid(), state: 'IN_CART' },
+			{ name: 'Creatine', amount: 2, id: uuid(), state: 'NOT_BUING' },
+			{ name: 'Creatine', amount: 2, id: uuid(), unit: 'g', state: 'TODO' },
 			{ name: 'Carrots', amount: 10, unit: 'g', id: uuid(), state: 'BOUGHT' }
 		]
 	}}

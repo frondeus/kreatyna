@@ -13,7 +13,7 @@
 {#if editable}
 	{#if showAmount}
 		<span
-			class="btn xl:btn-sm variant-soft-surface max-lg:px-4"
+			class="btn xl:btn-sm variant-soft-surface max-lg:px-4 whitespace-nowrap"
 			role="button"
 			tabindex="0"
 			{title}
@@ -31,7 +31,7 @@
 		</ActionIconButton>
 	{/if}
 {:else}
-	<span>
+	<span class="whitespace-nowrap">
 		{#if showAmount}
 			{amount}
 			{#if unit !== undefined}

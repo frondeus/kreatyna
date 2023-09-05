@@ -17,6 +17,7 @@
 	import IconCross from '~icons/mdi/close-thick';
 	import { createEventDispatcher } from 'svelte';
 	import type { ShoppingListState } from '@prisma/client';
+	import ShoppingListProposalUnit from '$components/atoms/ShoppingListProposalUnit.svelte';
 
 	// UUID
 	export let id: string;
@@ -28,7 +29,7 @@
 	let checkboxState: CheckboxState = CheckboxState.Default;
 
 	$: {
-		if (amount > 0) {
+		if (amount > 0 && state !== 'BOUGHT') {
 			checkboxState = CheckboxState.Added;
 		} else {
 			checkboxState = CheckboxState.Default;
@@ -42,8 +43,10 @@
 			amount = 0;
 			dispatch('add', { name, amount: amount + 1, id, unit, state });
 		}
+		if (state !== 'BOUGHT') {
+			amount += 1;
+		}
 		state = 'TODO';
-		amount += 1;
 	};
 	const onDecrease = () => {
 		if (amount > 0) {
@@ -66,20 +69,20 @@
 	<span class="text-left grow">
 		{name}
 	</span>
-	<span class="basis-3/10 flex gap-2 items-center">
-		{#if amount > 1}
-			{amount}
-		{/if}
+	<span class="basis-3/10 flex gap-3 items-center">
+		<ShoppingListProposalUnit bind:amount bind:unit editable={amount > 0 && state !== 'BOUGHT'} />
 
 		<span class="text-error-500">
-			{#if amount == 1}
-				<ActionIconButton on:click={onDecrease} on:keypress={onDecrease}>
-					<IconCross class="text-error-500" />
-				</ActionIconButton>
-			{:else if amount > 1}
-				<ActionIconButton on:click={onDecrease} on:keypress={onDecrease}>
-					<IconMinus class="text-error-500" />
-				</ActionIconButton>
+			{#if state !== 'BOUGHT'}
+				{#if amount == 1}
+					<ActionIconButton on:click={onDecrease} on:keypress={onDecrease}>
+						<IconCross class="text-error-500" />
+					</ActionIconButton>
+				{:else if amount > 1}
+					<ActionIconButton on:click={onDecrease} on:keypress={onDecrease}>
+						<IconMinus class="text-error-500" />
+					</ActionIconButton>
+				{/if}
 			{/if}
 		</span>
 	</span>

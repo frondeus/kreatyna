@@ -18,17 +18,19 @@
 		unit,
 		amount
 	}: ShoppingListItem) => {
+		console.log({ name, unit, amount, state });
 		return {
 			id,
 			name,
-			amount: state === 'BOUGHT' ? 0 : amount,
-			unit: state === 'BOUGHT' ? undefined : unit ?? undefined,
+			amount,
+			unit: unit ?? undefined,
 			state
 		};
 	};
 
 	$: {
 		proposals = items.map(mapItemToProposal);
+		console.log({ proposals });
 	}
 
 	const onSubmit = async (event: CustomEvent<Proposal[]>) => {

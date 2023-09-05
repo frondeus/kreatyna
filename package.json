@@ -9,6 +9,7 @@
 		"build": "prisma generate && vite build",
 		"preview": "vite preview",
 		"ci": "npm run format:check && npm run check && npm run lint",
+		"ci:dev": "npm run format && npm run ci",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "npm run lint:fmt && npm run lint:ts",

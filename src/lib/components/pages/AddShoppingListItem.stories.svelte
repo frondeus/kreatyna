@@ -23,7 +23,8 @@
 		proposals: [
 			{ name: 'Chicken', amount: 0, id: uuid() },
 			{ name: 'Rice', amount: 1, id: uuid() },
-			{ name: 'Creatine', amount: 2, id: uuid() }
+			{ name: 'Creatine', amount: 2, id: uuid() },
+			{ name: 'Carrots', amount: 10, unit: 'g', id: uuid(), state: 'BOUGHT' }
 		]
 	}}
 	parameters={{

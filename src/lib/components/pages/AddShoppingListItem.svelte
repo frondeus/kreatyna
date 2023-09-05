@@ -17,8 +17,11 @@
 	$: trimmedSearchInput = searchInput.trim();
 
 	let suggestion: Proposal | undefined = undefined;
+
+	$: proposalMatchingSuggestion = proposals.find((p) => p.name === trimmedSearchInput);
+
 	$: {
-		if (trimmedSearchInput.length > 0 && !proposals.some((p) => p.name === trimmedSearchInput)) {
+		if (trimmedSearchInput.length > 0 && proposalMatchingSuggestion === undefined) {
 			suggestion = { name: trimmedSearchInput, amount: 0, id: uuid(), state: 'TODO' };
 		} else {
 			suggestion = undefined;
@@ -39,6 +42,11 @@
 			proposals = [suggestion, ...proposals];
 			suggestion = undefined;
 			searchInput = '';
+		} else if (proposalMatchingSuggestion) {
+			if (proposalMatchingSuggestion.state !== 'BOUGHT') {
+				proposalMatchingSuggestion.amount += 1;
+			}
+			proposalMatchingSuggestion.state = 'TODO';
 		}
 		dispatch('submit', proposals);
 	};
@@ -71,12 +79,25 @@
 				name={suggestion.name}
 				bind:amount={suggestion.amount}
 				bind:state={suggestion.state}
+				bind:unit={suggestion.unit}
 				id={suggestion.id}
 				on:add={onAdd}
 			/>
 		{/if}
-		{#each proposals as { name, amount, id, state } (id)}
-			<ShoppingListItemProposal {name} bind:amount bind:state {id} on:add={onAdd} />
+		{#if proposalMatchingSuggestion}
+			<ShoppingListItemProposal
+				name={proposalMatchingSuggestion.name}
+				bind:amount={proposalMatchingSuggestion.amount}
+				bind:state={proposalMatchingSuggestion.state}
+				bind:unit={proposalMatchingSuggestion.unit}
+				id={proposalMatchingSuggestion.id}
+				on:add={onAdd}
+			/>
+		{/if}
+		{#each proposals as { name, amount, id, state, unit } (id)}
+			{#if proposalMatchingSuggestion?.id !== id}
+				<ShoppingListItemProposal {name} bind:amount bind:state bind:unit {id} on:add={onAdd} />
+			{/if}
 		{/each}
 	</ul>
 

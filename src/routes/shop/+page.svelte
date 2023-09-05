@@ -28,7 +28,7 @@
 			...item,
 			// amount: 0,
 			// unit: undefined,
-			state: 'BOUGHT'
+			state: item.state === 'IN_CART' ? 'BOUGHT' : item.state
 		}));
 
 		await invalidate('data:shopping-items');

@@ -13,7 +13,7 @@
 	const dispatch = createEventDispatcher();
 
 	$: sortedItems = items.filter((i) => i.state !== 'BOUGHT').sort(sortByState);
-	$: areAnyTodos = sortedItems.some((item) => item.state === 'TODO');
+	$: atLeastOneInCart = sortedItems.some((i) => i.state === 'IN_CART');
 
 	const onFinish = () => {
 		dispatch('finish', sortedItems);
@@ -22,7 +22,7 @@
 
 <div>
 	<header class="max-lg:hidden bg-surface-800 p-2 gap-2 flex justify-end">
-		{#if !areAnyTodos}
+		{#if sortedItems.length > 0 && atLeastOneInCart}
 			<ActionIconButton title="Finish" on:click={onFinish} on:keypress={onFinish}>
 				<IconBasket class="text-success-500" />
 			</ActionIconButton>

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+git stash -q --keep-index
+
+npm run ci:dev
+# Replace this with fish equivalent
+set ci_status=$?
+
+git stash pop -q
+
+exit $ci_status

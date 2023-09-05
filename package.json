@@ -3,6 +3,8 @@
 	"version": "0.0.1",
 	"private": true,
 	"scripts": {
+		"setup:dev": "npm run setup:hooks && npm install && npm run prisma:generate",
+		"setup:hooks": "cp .hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit",
 		"docker:up": "docker-compose up -d",
 		"setup:ci": "npm ci && npm run prisma:generate",
 		"dev": "npm run docker:up && vite dev",

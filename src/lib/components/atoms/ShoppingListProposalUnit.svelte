@@ -1,5 +1,5 @@
 <script lang="ts">
-	import IconPencil from '~icons/mdi/pencil';
+	import IconScale from '~icons/mdi/scale-balance';
 	import ActionIconButton from './buttons/ActionIconButton.svelte';
 
 	export let amount: number;
@@ -26,7 +26,7 @@
 		</span>
 	{:else}
 		<ActionIconButton on:click on:keypress>
-			<IconPencil />
+			<IconScale />
 		</ActionIconButton>
 	{/if}
 {:else}

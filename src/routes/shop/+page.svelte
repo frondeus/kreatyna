@@ -9,13 +9,9 @@
 	let { items }: { items: ShoppingListItem[] } = data;
 	$: ({ items } = data);
 
-	// $: console.log('DATA:', data);
-	// $: console.log('ITEMS:', items[0].state);
-
 	onMount(() => {
 		const interval = setInterval(async () => {
 			await invalidate('data:shopping-items');
-			// console.log('invalidated');
 		}, 1000);
 
 		return () => {
@@ -26,9 +22,8 @@
 	const onFinish = async (event: CustomEvent<ShoppingListItem[]>) => {
 		const items = event.detail.map((item) => ({
 			...item,
-			// amount: 0,
-			// unit: undefined,
-			state: 'BOUGHT'
+			state: item.state === 'IN_CART' ? 'BOUGHT' : item.state,
+			unit: item.unit ?? undefined
 		}));
 
 		await invalidate('data:shopping-items');
@@ -53,7 +48,6 @@
 			unit: string | undefined;
 		}>
 	) => {
-		// console.log('onStateChange', event.detail);
 		await invalidate('data:shopping-items');
 		const res = await fetch('/shop/update', {
 			method: 'PUT',
@@ -66,7 +60,6 @@
 			console.error('Error updating item');
 			return;
 		}
-		// items = items;
 	};
 </script>
 

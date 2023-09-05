@@ -37,3 +37,15 @@
 		amount: 2
 	}}
 />
+
+<Story
+	name="With unit"
+	source
+	args={{
+		name: 'Pepper',
+		amount: 30,
+		unit: 'g'
+	}}
+/>
+
+<Story name="With long amount" source args={{ name: 'Rice', amount: 3000, unit: 'g' }} />

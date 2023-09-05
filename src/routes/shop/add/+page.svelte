@@ -21,8 +21,8 @@
 		return {
 			id,
 			name,
-			amount: state === 'BOUGHT' ? 0 : amount,
-			unit: state === 'BOUGHT' ? undefined : unit ?? undefined,
+			amount,
+			unit: unit ?? undefined,
 			state
 		};
 	};
@@ -32,7 +32,6 @@
 	}
 
 	const onSubmit = async (event: CustomEvent<Proposal[]>) => {
-		// console.log('onSubmit', event.detail);
 		const res = await fetch('/shop/upsert', {
 			method: 'PUT',
 			headers: {

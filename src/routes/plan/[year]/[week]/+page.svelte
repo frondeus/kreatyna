@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import WeekPlanComponent, {
 		type WeekPlanEvent,
 		type WeekPlanMealsEvent
@@ -55,7 +55,7 @@
 			console.error('Error unlinking meals');
 			return;
 		}
-		await invalidateAll();
+		goto('/shop');
 	};
 </script>
 

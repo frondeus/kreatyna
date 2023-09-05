@@ -7,6 +7,7 @@
 	export let editable: boolean = false;
 
 	$: showAmount = amount > 1 || unit !== undefined;
+	const title = 'Edit amount or unit';
 </script>
 
 {#if editable}
@@ -15,7 +16,7 @@
 			class="btn xl:btn-sm variant-soft-surface max-lg:px-4"
 			role="button"
 			tabindex="0"
-			title="Edit amount or unit"
+			{title}
 			on:click
 			on:keypress
 		>
@@ -25,7 +26,7 @@
 			{/if}
 		</span>
 	{:else}
-		<ActionIconButton on:click on:keypress>
+		<ActionIconButton {title} on:click on:keypress>
 			<IconScale />
 		</ActionIconButton>
 	{/if}

@@ -44,8 +44,6 @@ export class ShoppingListService {
 	): Promise<void> {
 		const items = ingredients.map((i) => this.itemMap.toCreateInputFromRecipeIngerdient(i));
 
-		console.log({ items });
-
 		for (const item of items) {
 			await this.prisma.shoppingListItem.create({
 				data: item

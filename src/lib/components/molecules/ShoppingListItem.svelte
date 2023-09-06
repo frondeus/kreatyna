@@ -2,14 +2,14 @@
 	import type { ShoppingListState } from '@prisma/client';
 	import ShoppingListCheckbox, { State } from '$components/atoms/ShoppingListCheckbox.svelte';
 	import { createEventDispatcher } from 'svelte';
-	import type { Ingredient } from '$shared/domains/recipe/models';
+	import type { IngredientWithRecipe } from '$shared/domains/recipe/models';
 
 	export let id: string;
 	export let name: string;
 	export let amount: number;
 	export let unit: string | null;
 	export let state: ShoppingListState | 'PROCESSING';
-	export let ingredients: Ingredient[];
+	export let ingredients: IngredientWithRecipe[];
 
 	$: console.log({ ingredients });
 

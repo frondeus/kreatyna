@@ -32,6 +32,13 @@ export const recipeSummarySelect = Prisma.validator<Prisma.RecipeFindManyArgs>()
 	}
 });
 
+export const ingredientsWithRecipes = Prisma.validator<Prisma.RecipesIngredientFindManyArgs>()({
+	select: {
+		...ingredients.select,
+		recipes: recipeSummarySelect
+	}
+});
+
 export const recipeSelect = Prisma.validator<Prisma.RecipeFindManyArgs>()({
 	include: {
 		recipesIngredients: {
@@ -47,6 +54,7 @@ export const recipeWithIngredients = Prisma.validator<Prisma.RecipeFindManyArgs>
 	select: {
 		id: true,
 		name: true,
+		tags: tagWithCategoryName,
 		recipesIngredients: ingredients
 	}
 });

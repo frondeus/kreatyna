@@ -34,7 +34,7 @@ export class ShoppingListItemMap {
 			unit: item.unit,
 			order: item.order,
 			state: item.state,
-			ingredients: item.ingredients.map((i) => this.ingredientMap.toDomain(i))
+			ingredients: item.ingredients.map((i) => this.ingredientMap.toDomainWithRecipe(i))
 		};
 	}
 

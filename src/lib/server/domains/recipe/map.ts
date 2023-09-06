@@ -6,7 +6,9 @@ import type {
 	Recipe,
 	RecipeCreate,
 	RecipeSummary,
-	RecipeUpdate
+	RecipeUpdate,
+	RecipeIngredientWithRecipe,
+	IngredientWithRecipe
 } from '$lib/shared/domains/recipe/models';
 import type {
 	Raw as PrismaRaw,
@@ -132,7 +134,18 @@ export class RecipeSummaryMap {
 }
 
 export class RecipeIngredientMap {
-	constructor(readonly rawMap: RawMap) {}
+	constructor(readonly rawMap: RawMap, readonly recipeSummaryMap: RecipeSummaryMap) {}
+
+	public toDomainWithRecipe(dbEntry: RecipeIngredientWithRecipe): IngredientWithRecipe {
+		return {
+			id: Number(dbEntry.id),
+			name: dbEntry.name,
+			amount: dbEntry.amount.toNumber(),
+			unit: dbEntry.unit ?? undefined,
+			raw: dbEntry.raw ? this.rawMap.toDomain(dbEntry.raw) : undefined,
+			recipe: this.recipeSummaryMap.toDomain(dbEntry.recipes)
+		};
+	}
 
 	public toDomain(
 		dbEntry: PrismaRecipesIngredient & {

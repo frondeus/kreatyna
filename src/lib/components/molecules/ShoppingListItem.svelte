@@ -110,9 +110,12 @@
 				{#each ingredients as ingredient}
 					<tr class="w-full">
 						<td>
-							<span class="truncate whitespace-break-spaces">
+							<a
+								class="truncate whitespace-break-spaces"
+								href={'/browse/recipe/' + ingredient.recipe.id}
+							>
 								{ingredient.recipe.name}
-							</span>
+							</a>
 						</td>
 						<td>{ingredient.amount} {ingredient.unit}</td>
 					</tr>

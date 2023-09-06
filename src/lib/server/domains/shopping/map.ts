@@ -1,4 +1,4 @@
-import type { RecipeIngredient } from '$shared/domains/recipe/models';
+import type { GroupedRecipeIngredient } from '$shared/domains/recipe/models';
 import type { ShoppingListItem, StoredShoppingListItem } from '$shared/domains/shopping/models';
 import type {
 	CreateShoppingListItem,
@@ -6,15 +6,23 @@ import type {
 } from '$shared/domains/shopping/schema';
 import type { Prisma } from '@prisma/client';
 import { v4 } from 'uuid';
+import type { RecipeIngredientMap } from '../recipe/map';
 
 export class ShoppingListItemMap {
-	toCreateInputFromRecipeIngerdient(ingredient: RecipeIngredient): CreateShoppingListItem {
+	constructor(readonly ingredientMap: RecipeIngredientMap) {}
+
+	toCreateInputFromRecipeIngerdient(
+		ingredient: GroupedRecipeIngredient
+	): Prisma.ShoppingListItemCreateInput {
 		return {
 			id: v4(),
 			name: ingredient.raw?.name ?? ingredient.name,
 			amount: ingredient.amount.toNumber(),
-			unit: ingredient.unit ?? undefined,
-			state: 'TODO'
+			unit: ingredient.unit,
+			state: 'TODO',
+			ingredients: {
+				connect: ingredient.ids.map((id) => ({ id }))
+			}
 		};
 	}
 
@@ -25,7 +33,8 @@ export class ShoppingListItemMap {
 			amount: item.amount.toNumber(),
 			unit: item.unit,
 			order: item.order,
-			state: item.state
+			state: item.state,
+			ingredients: item.ingredients.map((i) => this.ingredientMap.toDomainWithRecipe(i))
 		};
 	}
 

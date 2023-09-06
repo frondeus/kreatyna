@@ -15,6 +15,9 @@
 	$: ({ session } = data);
 </script>
 
+<svelte:head>
+	<title>Kreatyna - Profile</title>
+</svelte:head>
 <!-- <SuperDebug data={$form} /> -->
 
 <form class="form-widget" method="POST" action="?/update" use:enhance>

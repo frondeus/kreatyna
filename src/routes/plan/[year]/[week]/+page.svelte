@@ -59,6 +59,10 @@
 	};
 </script>
 
+<svelte:head>
+	<title>Kreatyna - Weekly Meal Plan</title>
+</svelte:head>
+
 <WeekPlanComponent
 	{weekPlan}
 	currentDate={date}

@@ -53,4 +53,8 @@
 	};
 </script>
 
+<svelte:head>
+	<title>Kreatyna - Adding to Shopping List</title>
+</svelte:head>
+
 <AddShoppingListItem {proposals} on:submit={onSubmit} />

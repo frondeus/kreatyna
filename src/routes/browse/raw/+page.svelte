@@ -33,6 +33,10 @@
 	};
 </script>
 
+<svelte:head>
+	<title>Kreatyna - Browse Raw</title>
+</svelte:head>
+
 <div class="table-container">
 	<table class="table-hover table max-md:table-compact">
 		<thead>

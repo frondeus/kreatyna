@@ -5,4 +5,8 @@
 	export let data: PageData;
 </script>
 
+<svelte:head>
+	<title>Kreatyna - Create Raw</title>
+</svelte:head>
+
 <EditRawForm form={data.form} />

@@ -5,4 +5,8 @@
 	export let data: PageData;
 </script>
 
+<svelte:head>
+	<title>Kreatyna - Create Tag</title>
+</svelte:head>
+
 <EditTagForm form={data.form} />

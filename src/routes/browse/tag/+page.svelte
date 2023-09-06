@@ -31,6 +31,10 @@
 	};
 </script>
 
+<svelte:head>
+	<title>Kreatyna - Browse Tags</title>
+</svelte:head>
+
 <div class="table-container">
 	<table class="table-hover table max-md:table-compact">
 		<thead>

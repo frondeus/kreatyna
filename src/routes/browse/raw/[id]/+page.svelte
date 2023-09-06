@@ -8,4 +8,8 @@
 	$: ({ id } = data);
 </script>
 
+<svelte:head>
+	<title>Kreatyna - Browse Raw</title>
+</svelte:head>
+
 <EditRawForm {id} form={data.form} />

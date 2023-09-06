@@ -66,15 +66,16 @@ model Recipe {
 }
 
 model RecipesIngredient {
-  id        BigInt  @id @unique @default(autoincrement())
-  recipe_id BigInt
-  raw_id    Int?
-  name      String  @default("")
-  amount    Decimal @default(0) @db.Decimal
-  unit      String?
+  id                BigInt             @id @unique @default(autoincrement())
+  recipe_id         BigInt
+  raw_id            Int?
+  name              String             @default("")
+  amount            Decimal            @default(0) @db.Decimal
+  unit              String?
   // Relations
-  raw       Raw?    @relation(fields: [raw_id], references: [id], onUpdate: NoAction)
-  recipes   Recipe  @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  raw               Raw?               @relation(fields: [raw_id], references: [id], onUpdate: NoAction)
+  recipes           Recipe             @relation(fields: [recipe_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  shoppingListItems ShoppingListItem[]
 }
 
 model TagCategory {
@@ -129,10 +130,12 @@ enum ShoppingListState {
 }
 
 model ShoppingListItem {
-  id     String            @id @unique @default(uuid()) @db.Uuid
-  name   String            @default("")
-  amount Decimal           @default(0) @db.Decimal
-  unit   String?
-  state  ShoppingListState @default(TODO)
-  order  Int               @default(autoincrement())
+  id          String              @id @unique @default(uuid()) @db.Uuid
+  name        String              @default("")
+  amount      Decimal             @default(0) @db.Decimal
+  unit        String?
+  state       ShoppingListState   @default(TODO)
+  order       Int                 @default(autoincrement())
+  // Relations
+  ingredients RecipesIngredient[]
 }

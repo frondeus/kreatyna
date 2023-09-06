@@ -10,6 +10,10 @@
 	$: ({ enhance } = form);
 </script>
 
+<svelte:head>
+	<title>Kreatyna - Sign In</title>
+</svelte:head>
+
 <form method="post" use:enhance class="space-y-4 p-2">
 	<h1 class="h1 text-center">Sign in</h1>
 	<TextInput {form} title="Username" field="username" />

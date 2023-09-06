@@ -14,7 +14,7 @@ import {
 } from '$shared/domains/plan/queries';
 import type { WeekPlanGenerator } from './generator';
 import type { WeekPlanPopulatorFactory } from './populator';
-import type { RecipeIngredient } from '$shared/domains/recipe/models';
+import type { GroupedRecipeIngredient, RecipeIngredient } from '$shared/domains/recipe/models';
 
 export class WeekPlanService {
 	constructor(
@@ -120,7 +120,7 @@ export class WeekPlanService {
 		return await this.updateWeekPlan(populatedPlan);
 	}
 
-	async groupRecipeIngredientsLinkedToMeals(meals: number[]): Promise<RecipeIngredient[]> {
+	async groupRecipeIngredientsLinkedToMeals(meals: number[]): Promise<GroupedRecipeIngredient[]> {
 		const mealPlans = await this.getMeals(meals);
 		const recipes = mealPlans.flatMap((meal) => meal.recipe);
 		const ingredients: RecipeIngredient[] = recipes.flatMap((r) => r?.recipesIngredients ?? []);
@@ -141,22 +141,30 @@ export class WeekPlanService {
 			const existing = acc.get(key);
 			if (existing) {
 				existing.amount = existing.amount.plus(ingredient.amount);
+				existing.ids.push(ingredient.id);
 			} else {
-				acc.set(key, ingredient);
+				acc.set(key, {
+					...ingredient,
+					ids: [ingredient.id]
+				});
 			}
 			return acc;
-		}, new Map<string, RecipeIngredient>());
+		}, new Map<string, GroupedRecipeIngredient>());
 
 		const groupedIngredientsNotLinkedToRaw = ingredientsNotLinkedToRaw.reduce((acc, ingredient) => {
 			const key = ingredient.name + ' ' + ingredient.unit;
 			const existing = acc.get(key);
 			if (existing) {
 				existing.amount = existing.amount.plus(ingredient.amount);
+				existing.ids.push(ingredient.id);
 			} else {
-				acc.set(key, ingredient);
+				acc.set(key, {
+					...ingredient,
+					ids: [ingredient.id]
+				});
 			}
 			return acc;
-		}, new Map<string, RecipeIngredient>());
+		}, new Map<string, GroupedRecipeIngredient>());
 
 		return [
 			...groupedIngredientsLinkedToRaw.values(),

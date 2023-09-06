@@ -11,4 +11,8 @@
 	date.setHours(0, 0, 0, 0);
 </script>
 
+<svelte:head>
+	<title>Kreatyna - Daily Meal Plan</title>
+</svelte:head>
+
 <DayPlan currentDate={date} {weekPlan} />

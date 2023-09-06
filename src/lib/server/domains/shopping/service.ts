@@ -7,6 +7,7 @@ import type {
 	CreateShoppingListItem,
 	UpdateShoppingListItem
 } from '$shared/domains/shopping/schema';
+import type { GroupedRecipeIngredient } from '$shared/domains/recipe/models';
 
 export class ShoppingListService {
 	constructor(readonly prisma: PrismaClient, readonly itemMap: ShoppingListItemMap) {}
@@ -36,6 +37,18 @@ export class ShoppingListService {
 				id: update.id
 			}
 		});
+	}
+
+	async createShoppingListItemFromRecipeIngredients(
+		ingredients: GroupedRecipeIngredient[]
+	): Promise<void> {
+		const items = ingredients.map((i) => this.itemMap.toCreateInputFromRecipeIngerdient(i));
+
+		for (const item of items) {
+			await this.prisma.shoppingListItem.create({
+				data: item
+			});
+		}
 	}
 
 	async upsertShoppingListItem(update: CreateShoppingListItem): Promise<void> {

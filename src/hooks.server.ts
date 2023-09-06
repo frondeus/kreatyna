@@ -21,9 +21,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const session = await requestAuth.validate();
 
 	const rawMap = new RawMap(session);
-	const recipeIngredientMap = new RecipeIngredientMap(rawMap);
-	const recipeMap = new RecipeMap(recipeIngredientMap);
 	const recipeSummaryMap = new RecipeSummaryMap();
+	const recipeIngredientMap = new RecipeIngredientMap(rawMap, recipeSummaryMap);
+	const recipeMap = new RecipeMap(recipeIngredientMap);
 	const weekPlanMealMap = new WeekPlanMealMap(recipeSummaryMap);
 	const weekPlanMap = new WeekPlanMap(weekPlanMealMap);
 	const aiMap = new AIMap();
@@ -45,7 +45,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		weekPlanGenerator,
 		weekPlanPopulator
 	);
-	const shoppingListItemMap = new ShoppingListItemMap();
+	const shoppingListItemMap = new ShoppingListItemMap(recipeIngredientMap);
 	const shoppingListService = new ShoppingListService(prisma, shoppingListItemMap);
 	const container = {
 		prisma,

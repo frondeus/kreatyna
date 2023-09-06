@@ -59,7 +59,6 @@
 		}
 	};
 	const onEditUnit = () => {
-		console.log({ state });
 		drawerStore.open({
 			position: 'bottom',
 			height: '12',

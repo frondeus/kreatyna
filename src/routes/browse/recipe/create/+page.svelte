@@ -5,4 +5,6 @@
 	export let data: PageData;
 </script>
 
+<svelte:head>Kreatyna - Create Recipe</svelte:head>
+
 <EditRecipeForm form={data.form} relatedIngredients={new Map()} />

@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { ingredientsWithRecipes } from '../recipe/queries';
 
 export const selectShoppingListItems = Prisma.validator<Prisma.ShoppingListItemFindManyArgs>()({
 	select: {
@@ -7,6 +8,7 @@ export const selectShoppingListItems = Prisma.validator<Prisma.ShoppingListItemF
 		amount: true,
 		unit: true,
 		state: true,
-		order: true
+		order: true,
+		ingredients: ingredientsWithRecipes
 	}
 });

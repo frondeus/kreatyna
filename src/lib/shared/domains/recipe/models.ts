@@ -8,11 +8,23 @@ import type {
 } from './schema';
 import type { TagConnect, TagSelect } from '../tags/models';
 import type { Prisma } from '@prisma/client';
-import type { ingredients, recipeSummarySelect, recipeWithIngredients } from './queries';
+import type {
+	ingredients,
+	ingredientsWithRecipes,
+	recipeSummarySelect,
+	recipeWithIngredients
+} from './queries';
 
 export type RecipeSummarySelect = Prisma.RecipeGetPayload<typeof recipeSummarySelect>;
 export type RecipeWithIngredients = Prisma.RecipeGetPayload<typeof recipeWithIngredients>;
 export type RecipeIngredient = Prisma.RecipesIngredientGetPayload<typeof ingredients>;
+export type RecipeIngredientWithRecipe = Prisma.RecipesIngredientGetPayload<
+	typeof ingredientsWithRecipes
+>;
+
+export type GroupedRecipeIngredient = Omit<RecipeIngredient, 'id'> & {
+	ids: bigint[];
+};
 
 export interface WithIngredients {
 	ingredients: WithRawAndAmount[];
@@ -49,6 +61,10 @@ export interface Ingredient {
 	amount: number;
 	raw?: RawIngredient;
 }
+
+export type IngredientWithRecipe = Ingredient & {
+	recipe: RecipeSummary;
+};
 
 export interface RecipeFilter {
 	tagId: number;

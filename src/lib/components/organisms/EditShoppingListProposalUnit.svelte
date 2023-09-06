@@ -36,7 +36,7 @@
 				<WithShim>
 					<input class="input" type="text" bind:value={unit} />
 					<button class="variant-filled-error" on:click={removeUnit} on:keypress={removeUnit}>
-						<IconCross class="" />
+						<IconCross />
 					</button>
 				</WithShim>
 			</label>

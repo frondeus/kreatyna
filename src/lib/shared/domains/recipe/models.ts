@@ -14,6 +14,10 @@ export type RecipeSummarySelect = Prisma.RecipeGetPayload<typeof recipeSummarySe
 export type RecipeWithIngredients = Prisma.RecipeGetPayload<typeof recipeWithIngredients>;
 export type RecipeIngredient = Prisma.RecipesIngredientGetPayload<typeof ingredients>;
 
+export type GroupedRecipeIngredient = Omit<RecipeIngredient, 'id'> & {
+	ids: bigint[];
+};
+
 export interface WithIngredients {
 	ingredients: WithRawAndAmount[];
 }

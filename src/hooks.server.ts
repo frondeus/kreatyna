@@ -45,7 +45,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		weekPlanGenerator,
 		weekPlanPopulator
 	);
-	const shoppingListItemMap = new ShoppingListItemMap();
+	const shoppingListItemMap = new ShoppingListItemMap(recipeIngredientMap);
 	const shoppingListService = new ShoppingListService(prisma, shoppingListItemMap);
 	const container = {
 		prisma,

@@ -25,10 +25,7 @@ export const POST = (async ({ request, locals: { session, container } }) => {
 	const ingredients = await mealPlanService.groupRecipeIngredientsLinkedToMeals(mealIds);
 
 	await service.pruneShoppingList();
-	for (const ingredient of ingredients.values()) {
-		const item = service.itemMap.toCreateInputFromRecipeIngerdient(ingredient);
-		await service.upsertShoppingListItem(item);
-	}
+	await service.createShoppingListItemFromRecipeIngredients(Array.from(ingredients.values()));
 
 	return json('ok');
 }) satisfies RequestHandler;

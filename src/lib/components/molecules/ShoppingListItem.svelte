@@ -120,7 +120,7 @@
 			</tbody>
 		</table>
 		<div class="flex justify-center">
-			<button>
+			<button on:click={toggleExtended} on:keypress={toggleExtended} title="Hide">
 				<IconArrowUp />
 			</button>
 		</div>

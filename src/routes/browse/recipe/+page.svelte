@@ -39,6 +39,8 @@
 	});
 </script>
 
+<svelte:head>Kreatyna - Browse Recipes</svelte:head>
+
 <div class="space-y-4">
 	<InputChipSearch
 		options={$autocomplete}

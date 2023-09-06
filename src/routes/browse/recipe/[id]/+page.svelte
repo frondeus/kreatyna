@@ -10,4 +10,5 @@
 	$: ({ form } = data);
 </script>
 
+<svelte:head>Kreatyna - Browse Recipes</svelte:head>
 <EditRecipeForm {form} relatedIngredients={data.relatedIngredients} />

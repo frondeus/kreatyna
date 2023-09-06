@@ -5,6 +5,10 @@
 	export let form;
 </script>
 
+<svelte:head>
+	<title>Kreatyna - Import Raw</title>
+</svelte:head>
+
 <h1 class="h1">Import Raw Ingredients</h1>
 
 {#if form?.error}

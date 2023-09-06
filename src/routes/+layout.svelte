@@ -10,6 +10,10 @@
 	$: ({ session } = data);
 </script>
 
+<svelte:head>
+	<title>Kreatyna</title>
+</svelte:head>
+
 <RootLayout isLoggedIn={!!session}>
 	<slot />
 </RootLayout>

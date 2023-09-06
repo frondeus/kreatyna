@@ -63,4 +63,8 @@
 	};
 </script>
 
+<svelte:head>
+	<title>Kreatyna - Shopping List</title>
+</svelte:head>
+
 <ShoppingList {items} on:stateChange={onStateChange} on:finish={onFinish} />

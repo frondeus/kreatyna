@@ -22,10 +22,12 @@ export const POST = (async ({ request, locals: { session, container } }) => {
 	const service = container.shoppingListService;
 
 	const mealIds = validatedBody.data.meals;
-	const ingredients = await mealPlanService.groupRecipeIngredientsLinkedToMeals(mealIds);
+	const ingredients = Array.from(
+		(await mealPlanService.groupRecipeIngredientsLinkedToMeals(mealIds)).values()
+	);
 
 	await service.pruneShoppingList();
-	await service.createShoppingListItemFromRecipeIngredients(Array.from(ingredients.values()));
+	await service.createShoppingListItemFromRecipeIngredients(ingredients);
 
 	return json('ok');
 }) satisfies RequestHandler;

@@ -42,13 +42,42 @@ export class ShoppingListService {
 	async createShoppingListItemFromRecipeIngredients(
 		ingredients: GroupedRecipeIngredient[]
 	): Promise<void> {
-		const items = ingredients.map((i) => this.itemMap.toCreateInputFromRecipeIngerdient(i));
+		await Promise.all(
+			ingredients.map((i) => this.updateOrCreateShoppingListItemLinkedToIngredient(i))
+		);
+	}
 
-		for (const item of items) {
-			await this.prisma.shoppingListItem.create({
-				data: item
+	private async updateOrCreateShoppingListItemLinkedToIngredient(
+		ingredient: GroupedRecipeIngredient
+	): Promise<void> {
+		const existing = await this.prisma.shoppingListItem.findFirst({
+			...selectShoppingListItems,
+			where: {
+				ingredients: {
+					some: {
+						raw_id: ingredient.raw_id,
+						unit: ingredient.unit
+					}
+				}
+			}
+		});
+
+		if (existing) {
+			await this.prisma.shoppingListItem.update({
+				data: this.itemMap.toUpdateInputFromRecipeIngerdient(
+					ingredient,
+					existing.state === 'BOUGHT'
+				),
+				where: {
+					id: existing.id
+				}
 			});
+			return;
 		}
+
+		await this.prisma.shoppingListItem.create({
+			data: this.itemMap.toCreateInputFromRecipeIngerdient(ingredient)
+		});
 	}
 
 	async upsertShoppingListItem(update: CreateShoppingListItem): Promise<void> {
@@ -66,6 +95,13 @@ export class ShoppingListService {
 	}
 
 	async pruneShoppingList(): Promise<void> {
-		await this.prisma.shoppingListItem.deleteMany({});
+		await this.prisma.shoppingListItem.updateMany({
+			data: {
+				state: 'BOUGHT'
+			},
+			where: {
+				state: 'IN_CART'
+			}
+		});
 	}
 }

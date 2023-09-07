@@ -26,6 +26,29 @@ export class ShoppingListItemMap {
 		};
 	}
 
+	toUpdateInputFromRecipeIngerdient(
+		ingredient: GroupedRecipeIngredient,
+		clear: boolean
+	): Prisma.ShoppingListItemUpdateInput {
+		return {
+			name: ingredient.raw?.name ?? ingredient.name,
+			amount: clear
+				? ingredient.amount.toNumber()
+				: {
+						increment: ingredient.amount.toNumber()
+				  },
+			unit: ingredient.unit,
+			state: 'TODO',
+			ingredients: clear
+				? {
+						set: ingredient.ids.map((id) => ({ id }))
+				  }
+				: {
+						connect: ingredient.ids.map((id) => ({ id }))
+				  }
+		};
+	}
+
 	toDomain(item: StoredShoppingListItem): ShoppingListItem {
 		return {
 			id: item.id,

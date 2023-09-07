@@ -5,6 +5,7 @@
 	import type { IngredientWithRecipe } from '$shared/domains/recipe/models';
 	import IconArrowUp from '~icons/mdi/menu-up';
 	import { slide } from 'svelte/transition';
+	import type { ShoppingListCategoryForItem } from '$shared/domains/shopping/models';
 
 	export let id: string;
 	export let name: string;
@@ -12,11 +13,15 @@
 	export let unit: string | null;
 	export let state: ShoppingListState | 'PROCESSING';
 	export let ingredients: IngredientWithRecipe[];
+	export let category: ShoppingListCategoryForItem | null;
 
 	const dispatch = createEventDispatcher();
 	let checkboxState: State = State.Default;
 	let bgColor = 'bg-surface-700';
 	let extended = false;
+
+	$: console.log({ category, name, ingredients });
+
 	$: {
 		switch (state) {
 			case 'TODO':

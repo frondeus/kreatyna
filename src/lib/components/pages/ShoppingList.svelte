@@ -33,8 +33,17 @@
 	</header>
 
 	<ul class="divide-y divide-surface-600">
-		{#each sortedItems as { id, name, amount, unit, state, ingredients } (id)}
-			<ShoppingListItemComponent {id} {name} {amount} {unit} {state} {ingredients} on:stateChange />
+		{#each sortedItems as { id, name, amount, unit, state, ingredients, category } (id)}
+			<ShoppingListItemComponent
+				{id}
+				{name}
+				{amount}
+				{unit}
+				{state}
+				{ingredients}
+				{category}
+				on:stateChange
+			/>
 		{/each}
 	</ul>
 

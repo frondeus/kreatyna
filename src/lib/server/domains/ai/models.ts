@@ -5,8 +5,8 @@ export type RecipeResponse = {
 	ingredients: Ingredient[];
 };
 
-type Ingredient = {
+export type Ingredient = {
 	name: string;
 	amount: number;
-	unit?: string;
+	unit?: 'g' | 'ml' | 'l' | 'kg' | 'tsp' | 'tbsp' | 'pn';
 };

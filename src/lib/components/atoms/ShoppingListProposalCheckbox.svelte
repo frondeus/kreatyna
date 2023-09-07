@@ -26,7 +26,7 @@
 				break;
 		}
 	}
-	$: klass = color + ' ' + animationClasses;
+	$: klass = color + ' z-0 ' + animationClasses;
 	$: isChecked = state !== State.Default;
 </script>
 

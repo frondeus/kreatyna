@@ -19,7 +19,8 @@
 	import type { ShoppingListState } from '@prisma/client';
 	import ShoppingListProposalUnit from '$components/atoms/ShoppingListProposalUnit.svelte';
 	import EditShoppingListProposalUnit from '$components/organisms/EditShoppingListProposalUnit.svelte';
-	import { drawerStore } from '@skeletonlabs/skeleton';
+	import { drawerStore, popup, type PopupSettings } from '@skeletonlabs/skeleton';
+	import { v4 } from 'uuid';
 
 	// UUID
 	export let id: string;
@@ -37,6 +38,13 @@
 			checkboxState = CheckboxState.Default;
 		}
 	}
+
+	const popupId = v4();
+	const namePopup: PopupSettings = {
+		event: 'click',
+		target: popupId,
+		placement: 'bottom'
+	};
 
 	const dispatch = createEventDispatcher();
 
@@ -86,9 +94,12 @@
 			on:keypress={onIncrease}
 		/>
 	</span>
-	<span class="text-left grow">
+	<span class="text-left grow truncate" use:popup={namePopup}>
 		{name}
 	</span>
+	<div class="card p-2 variant-filled-surface z-10" data-popup={popupId}>
+		{name}
+	</div>
 	<span class="basis-3/10 flex gap-3 items-center">
 		<ShoppingListProposalUnit
 			bind:amount

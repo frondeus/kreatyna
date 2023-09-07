@@ -6,8 +6,7 @@ Follow dietary wishes:
 * Living in Denmark (so please avoid hard-to-obtain ingredients).
 * Trying to lose weight and not feel hungry all the time.
 
-Use SI units. Use grams as a unit for weight. Use milliliters as a unit for volume.
-Never use "piece", "cup", "large" or any other not precise, non-SI units. The only exception is "pinch" and "teaspoon".
+Units: "pn" means "pinch". The rest is always in SI units.
 Name of the recipe should be in the title case. It should look like from a good cookbook.
 Preferably use the name of main ingredient, or a type of a dish.
 Steps and ingredients cannot be empty. Steps should not include `Step 1`. or any other enumeration.

@@ -3,7 +3,10 @@ Based on json data provided after three dashes (`---`) you categorize product to
 
 Below there is a list of category IDs in the database. Please reuse it if possible.
 If none matches the product, you can create a new one.
-Every category HAS to have matching emoji.
+Every category HAS to have matching emoji. 
+Category id has to be a snake_case variant of the category name
+Category name has to be meaningful, cannot be a placeholder.
+No field can be empty.
 
 {{categories}}
 

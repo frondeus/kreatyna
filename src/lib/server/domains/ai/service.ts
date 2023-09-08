@@ -51,15 +51,18 @@ export class AIService {
 					id: true
 				}
 			})
-		).map((c) => c.id);
+		)
+			.map((c) => `* "${c.id}"`)
+			.join('\n');
 
 		const promptInstance = generateCategoryPrompt
 			.replace('{{item}}', JSON.stringify(prompt))
-			.replace('{{categories}}', JSON.stringify(categories));
+			.replace('{{categories}}', categories);
 
 		const response = await translator.translate(promptInstance);
 
 		if (!response.success) {
+			console.error({ promptInstance });
 			throw new Error('GPT Error' + response.message);
 		}
 

@@ -62,7 +62,7 @@ export class AIService {
 		const response = await translator.translate(promptInstance);
 
 		if (!response.success) {
-			console.error(PRIVATE_OPENAI_API_KEY);
+			// console.error(PRIVATE_OPENAI_API_KEY);
 			console.error({ promptInstance });
 			throw new Error('GPT Error' + response.message);
 		}

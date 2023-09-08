@@ -17,5 +17,29 @@ export const CreateShoppingListItemSchema = z.object({
 	unit: z.string().optional()
 });
 
+export const CategorySchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	emoji: z.string()
+});
+
+export type Category = z.infer<typeof CategorySchema>;
+
 export type UpdateShoppingListItem = z.infer<typeof UpdateShoppingListItemSchema>;
 export type CreateShoppingListItem = z.infer<typeof CreateShoppingListItemSchema>;
+
+export const CreateShoppingListItemWithCategorySchema = CreateShoppingListItemSchema.extend({
+	category: CategorySchema
+});
+
+export type CreateShoppingListItemWithCategory = z.infer<
+	typeof CreateShoppingListItemWithCategorySchema
+>;
+
+export const UpdateShoppingListItemWithCategorySchema = UpdateShoppingListItemSchema.extend({
+	category: CategorySchema.optional()
+});
+
+export type UpdateShoppingListItemWithCategory = z.infer<
+	typeof UpdateShoppingListItemWithCategorySchema
+>;

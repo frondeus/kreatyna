@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { TagWithCategory } from '$shared/domains/tags/models';
-	import { Autocomplete, type AutocompleteOption } from '@skeletonlabs/skeleton';
+	import { Autocomplete, toastStore, type AutocompleteOption } from '@skeletonlabs/skeleton';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { derived, writable, type Readable, type Writable } from 'svelte/store';
 
@@ -20,6 +20,14 @@
 		const response = await fetch('/browse/tag/search', {
 			method: 'GET'
 		});
+
+		if (response.status !== 200) {
+			toastStore.trigger({
+				message: 'Could not fetch tags',
+				background: 'variant-filled-error'
+			});
+			return;
+		}
 
 		$tags = await response.json();
 	});

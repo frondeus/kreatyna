@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import { invalidate } from '$app/navigation';
+	import { toastStore } from '@skeletonlabs/skeleton';
 
 	export let data: PageData;
 	let { items }: { items: ShoppingListItem[] } = data;
@@ -36,6 +37,10 @@
 		});
 		if (res.status !== 200) {
 			console.error('Error updating item');
+			toastStore.trigger({
+				message: 'Could not update items',
+				background: 'variant-filled-error'
+			});
 			return;
 		}
 	};
@@ -58,6 +63,10 @@
 		});
 		if (res.status !== 200) {
 			console.error('Error updating item');
+			toastStore.trigger({
+				message: 'Could not update item',
+				background: 'variant-filled-error'
+			});
 			return;
 		}
 	};

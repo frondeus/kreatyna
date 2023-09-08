@@ -1,8 +1,10 @@
 import type { GroupedRecipeIngredient } from '$shared/domains/recipe/models';
 import type { ShoppingListItem, StoredShoppingListItem } from '$shared/domains/shopping/models';
 import type {
-	CreateShoppingListItem,
-	UpdateShoppingListItem
+	Category,
+	CreateShoppingListItemWithCategory,
+	UpdateShoppingListItem,
+	UpdateShoppingListItemWithCategory
 } from '$shared/domains/shopping/schema';
 import type { Prisma } from '@prisma/client';
 import { v4 } from 'uuid';
@@ -12,7 +14,8 @@ export class ShoppingListItemMap {
 	constructor(readonly ingredientMap: RecipeIngredientMap) {}
 
 	toCreateInputFromRecipeIngerdient(
-		ingredient: GroupedRecipeIngredient
+		ingredient: GroupedRecipeIngredient,
+		category: Category
 	): Prisma.ShoppingListItemCreateInput {
 		return {
 			id: v4(),
@@ -20,6 +23,18 @@ export class ShoppingListItemMap {
 			amount: ingredient.amount.toNumber(),
 			unit: ingredient.unit,
 			state: 'TODO',
+			category: {
+				connectOrCreate: {
+					where: {
+						id: category.id
+					},
+					create: {
+						id: category.id,
+						name: category.name,
+						icon: category.emoji
+					}
+				}
+			},
 			ingredients: {
 				connect: ingredient.ids.map((id) => ({ id }))
 			}
@@ -28,6 +43,7 @@ export class ShoppingListItemMap {
 
 	toUpdateInputFromRecipeIngerdient(
 		ingredient: GroupedRecipeIngredient,
+		category: Category,
 		clear: boolean
 	): Prisma.ShoppingListItemUpdateInput {
 		return {
@@ -39,6 +55,18 @@ export class ShoppingListItemMap {
 				  },
 			unit: ingredient.unit,
 			state: 'TODO',
+			category: {
+				connectOrCreate: {
+					where: {
+						id: category.id
+					},
+					create: {
+						id: category.id,
+						name: category.name,
+						icon: category.emoji
+					}
+				}
+			},
 			ingredients: clear
 				? {
 						set: ingredient.ids.map((id) => ({ id }))
@@ -57,17 +85,54 @@ export class ShoppingListItemMap {
 			unit: item.unit,
 			order: item.order,
 			state: item.state,
-			ingredients: item.ingredients.map((i) => this.ingredientMap.toDomainWithRecipe(i))
+			ingredients: item.ingredients.map((i) => this.ingredientMap.toDomainWithRecipe(i)),
+			category: item.category
 		};
 	}
 
-	toCreateInput(item: CreateShoppingListItem): Prisma.ShoppingListItemCreateInput {
+	toCreateInput(item: CreateShoppingListItemWithCategory): Prisma.ShoppingListItemCreateInput {
 		return {
 			id: item.id,
 			name: item.name,
 			state: item.state,
 			amount: item.amount,
-			unit: item.unit ?? null
+			unit: item.unit ?? null,
+			category: {
+				connectOrCreate: {
+					where: {
+						id: item.category.id
+					},
+					create: {
+						id: item.category.id,
+						name: item.category.name,
+						icon: item.category.emoji
+					}
+				}
+			}
+		};
+	}
+
+	toUpdateInputWithCategory(
+		item: UpdateShoppingListItemWithCategory
+	): Prisma.ShoppingListItemUpdateInput {
+		return {
+			state: item.state,
+			amount: item.amount,
+			unit: item.unit,
+			category: item.category
+				? {
+						connectOrCreate: {
+							where: {
+								id: item.category.id
+							},
+							create: {
+								id: item.category.id,
+								name: item.category.name,
+								icon: item.category.emoji
+							}
+						}
+				  }
+				: undefined
 		};
 	}
 

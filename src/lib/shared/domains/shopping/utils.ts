@@ -12,5 +12,9 @@ export const sortByState: (a: ShoppingListItem, b: ShoppingListItem) => number =
 		if (b.state === 'IN_CART') return 1;
 	}
 
-	return a.order - b.order;
+	if (a.category?.order === b.category?.order || a.category === null || b.category === null) {
+		return a.order - b.order;
+	}
+
+	return a.category.order - b.category.order;
 };

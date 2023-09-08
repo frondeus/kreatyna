@@ -4,17 +4,29 @@ import type { ShoppingListItem } from '$shared/domains/shopping/models';
 import { selectShoppingListItems } from '$shared/domains/shopping/queries';
 import { sortByState } from '$shared/domains/shopping/utils';
 import type {
-	CreateShoppingListItem,
+	CreateShoppingListItemWithCategory,
 	UpdateShoppingListItem
 } from '$shared/domains/shopping/schema';
 import type { GroupedRecipeIngredient } from '$shared/domains/recipe/models';
+import type { AIService } from '../ai/service';
+import type { AIMap } from '../ai/map';
 
 export class ShoppingListService {
-	constructor(readonly prisma: PrismaClient, readonly itemMap: ShoppingListItemMap) {}
+	constructor(
+		readonly prisma: PrismaClient,
+		readonly itemMap: ShoppingListItemMap,
+		readonly ai: AIService,
+		readonly aiMap: AIMap
+	) {}
 
 	async getShoppingListItems(): Promise<ShoppingListItem[]> {
 		const items = await this.prisma.shoppingListItem.findMany({
-			...selectShoppingListItems
+			...selectShoppingListItems,
+			orderBy: {
+				category: {
+					order: 'asc'
+				}
+			}
 		});
 		return items.map((item) => this.itemMap.toDomain(item)).sort(sortByState);
 	}
@@ -63,9 +75,15 @@ export class ShoppingListService {
 		});
 
 		if (existing) {
+			let category = this.aiMap.toCategoryResponse(existing);
+			if (category === null) {
+				category = await this.ai.categorizeGroupedShoppingListItem(ingredient);
+			}
+
 			await this.prisma.shoppingListItem.update({
 				data: this.itemMap.toUpdateInputFromRecipeIngerdient(
 					ingredient,
+					this.aiMap.toCategory(category),
 					existing.state === 'BOUGHT'
 				),
 				where: {
@@ -75,18 +93,23 @@ export class ShoppingListService {
 			return;
 		}
 
+		const category = await this.ai.categorizeGroupedShoppingListItem(ingredient);
+
 		await this.prisma.shoppingListItem.create({
-			data: this.itemMap.toCreateInputFromRecipeIngerdient(ingredient)
+			data: this.itemMap.toCreateInputFromRecipeIngerdient(
+				ingredient,
+				this.aiMap.toCategory(category)
+			)
 		});
 	}
 
-	async upsertShoppingListItem(update: CreateShoppingListItem): Promise<void> {
+	async upsertShoppingListItem(update: CreateShoppingListItemWithCategory): Promise<void> {
 		await this.prisma.shoppingListItem.upsert({
 			create: {
 				...this.itemMap.toCreateInput(update)
 			},
 			update: {
-				...this.itemMap.toUpdateInput(update)
+				...this.itemMap.toUpdateInputWithCategory(update)
 			},
 			where: {
 				id: update.id

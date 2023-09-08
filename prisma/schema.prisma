@@ -130,12 +130,23 @@ enum ShoppingListState {
 }
 
 model ShoppingListItem {
-  id          String              @id @unique @default(uuid()) @db.Uuid
-  name        String              @default("")
-  amount      Decimal             @default(0) @db.Decimal
+  id          String                @id @unique @default(uuid()) @db.Uuid
+  name        String                @default("")
+  amount      Decimal               @default(0) @db.Decimal
   unit        String?
-  state       ShoppingListState   @default(TODO)
-  order       Int                 @default(autoincrement())
+  state       ShoppingListState     @default(TODO)
+  order       Int                   @default(autoincrement())
+  category_id String?
   // Relations
+  category    ShoppingListCategory? @relation(fields: [category_id], references: [id], onUpdate: NoAction, onDelete: NoAction)
   ingredients RecipesIngredient[]
+}
+
+model ShoppingListCategory {
+  id    String             @id @unique
+  name  String             @unique
+  icon  String
+  order Int                @default(autoincrement())
+  // Relations
+  items ShoppingListItem[]
 }

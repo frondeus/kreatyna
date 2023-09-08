@@ -1,6 +1,11 @@
 <script lang="ts">
 	import type { RawIngredient } from '$lib/shared/domains/raw/models';
-	import { modalStore, type AutocompleteOption, Autocomplete } from '@skeletonlabs/skeleton';
+	import {
+		modalStore,
+		type AutocompleteOption,
+		Autocomplete,
+		toastStore
+	} from '@skeletonlabs/skeleton';
 	import { onMount } from 'svelte';
 	import { derived, writable, type Readable, type Writable } from 'svelte/store';
 
@@ -21,6 +26,13 @@
 			method: 'GET'
 		});
 
+		if (response.status !== 200) {
+			toastStore.trigger({
+				message: 'Could not fetch raw ingredients',
+				background: 'variant-filled-error'
+			});
+			return;
+		}
 		$raw = await response.json();
 	});
 

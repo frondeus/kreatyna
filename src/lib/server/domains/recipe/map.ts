@@ -19,24 +19,9 @@ import type {
 	Prisma
 } from '@prisma/client';
 import type { RawMap } from '../raw/map';
-import type { RecipeResponse } from '../ai/models';
 
 export class RecipeMap {
 	constructor(readonly ingredientMap: RecipeIngredientMap) {}
-
-	public fromAI(model: RecipeResponse): RecipeCreate {
-		return {
-			name: model.name,
-			steps: model.steps,
-			portions: model.portions,
-			ingredients: model.ingredients.map((i) => ({
-				name: i.name,
-				amount: i.amount,
-				unit: i.unit
-			})),
-			tags: []
-		};
-	}
 
 	public fromSelect(
 		dbEntry: PrismaRecipe & {

@@ -1,4 +1,7 @@
-import { CreateShoppingListItemSchema } from '$shared/domains/shopping/schema';
+import {
+	CreateShoppingListItemSchema,
+	type CreateShoppingListItem
+} from '$shared/domains/shopping/schema';
 import { error, json, redirect, type RequestHandler } from '@sveltejs/kit';
 
 const BodySchema = CreateShoppingListItemSchema.array();
@@ -17,9 +20,27 @@ export const PUT = (async ({ request, locals: { session, container } }) => {
 
 	const service = container.shoppingListService;
 
-	for (const schema of validatedBody.data) {
-		await service.upsertShoppingListItem(schema);
-	}
+	const processItem = async (schema: CreateShoppingListItem) => {
+		const item = await service.getShoppingListItem(schema.id);
+		let category = container.aiMap.toCategoryResponse(item);
+
+		if (category === null) {
+			category = await (item === null
+				? container.aiService.categorizeUnlinkedShoppingListItem(schema.name)
+				: container.aiService.categorizeLinkedShoppingListItem(item));
+		}
+
+		const schemaWithCategory = {
+			...schema,
+			category: container.aiMap.toCategory(category)
+		};
+
+		await service.upsertShoppingListItem(schemaWithCategory);
+	};
+
+	await Promise.all(validatedBody.data.map((i) => processItem(i)));
+
+	console.log('done');
 
 	return json('ok');
 }) satisfies RequestHandler;

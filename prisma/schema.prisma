@@ -136,14 +136,14 @@ model ShoppingListItem {
   unit        String?
   state       ShoppingListState     @default(TODO)
   order       Int                   @default(autoincrement())
-  category_id Int?
+  category_id String?
   // Relations
   category    ShoppingListCategory? @relation(fields: [category_id], references: [id], onUpdate: NoAction, onDelete: NoAction)
   ingredients RecipesIngredient[]
 }
 
 model ShoppingListCategory {
-  id    Int                @id @unique @default(autoincrement())
+  id    String             @id @unique
   name  String             @unique
   icon  String
   order Int                @default(autoincrement())

@@ -38,7 +38,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		existingRecipeSelector
 	);
 	const rawService = new RawService(rawMap, prisma);
-	const aiService = new AIService(recipeMap, aiMap);
+	const aiService = new AIService(aiMap, prisma);
 	const weekPlanService = new WeekPlanService(
 		prisma,
 		weekPlanMap,
@@ -46,7 +46,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 		weekPlanPopulator
 	);
 	const shoppingListItemMap = new ShoppingListItemMap(recipeIngredientMap);
-	const shoppingListService = new ShoppingListService(prisma, shoppingListItemMap);
+	const shoppingListService = new ShoppingListService(
+		prisma,
+		shoppingListItemMap,
+		aiService,
+		aiMap
+	);
 	const container = {
 		prisma,
 		session,

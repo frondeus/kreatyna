@@ -34,7 +34,13 @@
 		name: 'Test',
 		amount: 1,
 		unit: 'g',
-		state: 'TODO'
+		state: 'TODO',
+		category: {
+			id: 1,
+			name: 'Fruits',
+			order: 0,
+			icon: '🍎'
+		}
 	}}
 />
 
@@ -45,7 +51,13 @@
 		id: 2,
 		name: 'Test',
 		amount: 2,
-		state: 'TODO'
+		state: 'TODO',
+		category: {
+			id: 1,
+			name: 'Fruits',
+			order: 0,
+			icon: '🍎'
+		}
 	}}
 />
 
@@ -56,7 +68,13 @@
 		id: 3,
 		name: 'Test',
 		amount: 1,
-		state: 'TODO'
+		state: 'TODO',
+		category: {
+			id: 1,
+			name: 'Fruits',
+			order: 0,
+			icon: '🍎'
+		}
 	}}
 />
 

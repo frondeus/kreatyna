@@ -20,7 +20,7 @@
 	let bgColor = 'bg-surface-700';
 	let extended = false;
 
-	$: console.log({ category, name, ingredients });
+	// $: console.log({ category, name, ingredients });
 
 	$: {
 		switch (state) {
@@ -97,6 +97,15 @@
 			<span class="basis-1/10 whitespace-nowrap">
 				{amount}
 				{#if unit} {unit} {/if}
+			</span>
+		{/if}
+		{#if category}
+			<span class="basis-1/10 text-2xl" title={category.name}>
+				{#if category.icon.trim().length > 0}
+					{category.icon}
+				{:else}
+					&#x2753;
+				{/if}
 			</span>
 		{/if}
 	</div>

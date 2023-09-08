@@ -20,8 +20,6 @@
 	let bgColor = 'bg-surface-700';
 	let extended = false;
 
-	// $: console.log({ category, name, ingredients });
-
 	$: {
 		switch (state) {
 			case 'TODO':

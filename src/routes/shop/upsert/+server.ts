@@ -40,7 +40,5 @@ export const PUT = (async ({ request, locals: { session, container } }) => {
 
 	await Promise.all(validatedBody.data.map((i) => processItem(i)));
 
-	console.log('done');
-
 	return json('ok');
 }) satisfies RequestHandler;

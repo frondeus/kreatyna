@@ -4,6 +4,7 @@
 	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
 	import type { ShoppingListItem } from '$shared/domains/shopping/models';
+	import { toastStore } from '@skeletonlabs/skeleton';
 
 	export let data: PageData;
 	let { items } = data;
@@ -46,6 +47,10 @@
 		});
 		if (res.status !== 200) {
 			console.error('Error updating item');
+			toastStore.trigger({
+				message: 'Could not update items',
+				background: 'variant-filled-error'
+			});
 			return;
 		}
 

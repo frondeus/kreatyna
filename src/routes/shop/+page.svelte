@@ -32,7 +32,14 @@
 		const items = event.detail.map((item) => ({
 			...item,
 			state: item.state === 'IN_CART' ? 'BOUGHT' : item.state,
-			unit: item.unit ?? undefined
+			unit: item.unit ?? undefined,
+			category: item.category
+				? {
+						id: item.category.id,
+						name: item.category.name,
+						emoji: item.category.icon
+				  }
+				: undefined
 		}));
 
 		await invalidate('data:shopping-items');

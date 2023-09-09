@@ -71,7 +71,7 @@
 		if (amount <= 0) {
 			amount = 1;
 		}
-		dispatch('stateChange', { state: newState, id, amount });
+		dispatch('update', { state: newState, id, amount });
 		// state = newState;
 	};
 
@@ -91,7 +91,18 @@
 					category,
 					categories,
 					onSubmit: (cat: ShoppingListCategoryForItem) => {
+						console.log('New category', cat);
 						category = cat;
+						dispatch('update', {
+							id,
+							category: category
+								? {
+										id: category.id,
+										name: category.name,
+										emoji: category.icon
+								  }
+								: undefined
+						});
 					}
 				}
 			}

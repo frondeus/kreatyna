@@ -47,7 +47,7 @@
 				{ingredients}
 				{category}
 				{categories}
-				on:stateChange
+				on:update
 			/>
 		{/each}
 	</ul>

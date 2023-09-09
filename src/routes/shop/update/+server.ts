@@ -1,7 +1,7 @@
-import { UpdateShoppingListItemSchema } from '$shared/domains/shopping/schema';
+import { UpdateShoppingListItemWithCategorySchema } from '$shared/domains/shopping/schema';
 import { error, json, redirect, type RequestHandler } from '@sveltejs/kit';
 
-const BodySchema = UpdateShoppingListItemSchema.array();
+const BodySchema = UpdateShoppingListItemWithCategorySchema.array();
 
 export const PUT = (async ({ request, locals: { session, container } }) => {
 	if (!session) {

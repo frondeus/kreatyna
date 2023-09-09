@@ -11,7 +11,7 @@ import {
 import { sortByState } from '$shared/domains/shopping/utils';
 import type {
 	CreateShoppingListItemWithCategory,
-	UpdateShoppingListItem
+	UpdateShoppingListItemWithCategory
 } from '$shared/domains/shopping/schema';
 import type { GroupedRecipeIngredient } from '$shared/domains/recipe/models';
 import type { AIService } from '../ai/service';
@@ -57,9 +57,9 @@ export class ShoppingListService {
 		return item ? this.itemMap.toDomain(item) : null;
 	}
 
-	async updateShoppingListItem(update: UpdateShoppingListItem): Promise<void> {
+	async updateShoppingListItem(update: UpdateShoppingListItemWithCategory): Promise<void> {
 		await this.prisma.shoppingListItem.update({
-			data: this.itemMap.toUpdateInput(update),
+			data: this.itemMap.toUpdateInputWithCategory(update),
 			where: {
 				id: update.id
 			}

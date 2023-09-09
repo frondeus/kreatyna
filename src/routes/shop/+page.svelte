@@ -9,6 +9,7 @@
 	import type { PageData } from './$types';
 	import { invalidate } from '$app/navigation';
 	import { toastStore } from '@skeletonlabs/skeleton';
+	import type { Category } from '$shared/domains/shopping/schema';
 
 	export let data: PageData;
 	let {
@@ -52,12 +53,13 @@
 		}
 	};
 
-	const onStateChange = async (
+	const onUpdate = async (
 		event: CustomEvent<{
 			state: ShoppingListState;
 			id: string;
 			amount: number;
 			unit: string | undefined;
+			category: Category | undefined;
 		}>
 	) => {
 		await invalidate('data:shopping-items');
@@ -83,4 +85,4 @@
 	<title>Kreatyna - Shopping List</title>
 </svelte:head>
 
-<ShoppingList {items} {categories} on:stateChange={onStateChange} on:finish={onFinish} />
+<ShoppingList {items} {categories} on:update={onUpdate} on:finish={onFinish} />

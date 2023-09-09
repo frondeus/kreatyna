@@ -6,6 +6,8 @@
 	import IconArrowUp from '~icons/mdi/menu-up';
 	import { slide } from 'svelte/transition';
 	import type { ShoppingListCategoryForItem } from '$shared/domains/shopping/models';
+	import { drawerStore } from '@skeletonlabs/skeleton';
+	import EditShoppingListItemCategory from '$components/organisms/EditShoppingListItemCategory.svelte';
 
 	export let id: string;
 	export let name: string;
@@ -14,6 +16,7 @@
 	export let state: ShoppingListState | 'PROCESSING';
 	export let ingredients: IngredientWithRecipe[];
 	export let category: ShoppingListCategoryForItem | null;
+	export let categories: ShoppingListCategoryForItem[];
 
 	const dispatch = createEventDispatcher();
 	let checkboxState: State = State.Default;
@@ -68,12 +71,42 @@
 		if (amount <= 0) {
 			amount = 1;
 		}
-		dispatch('stateChange', { state: newState, id, amount });
+		dispatch('update', { state: newState, id, amount });
 		// state = newState;
 	};
 
 	const toggleExtended = () => {
 		extended = !extended;
+	};
+
+	const onCategoryChange = (event: Event) => {
+		event.stopPropagation();
+		drawerStore.open({
+			position: 'bottom',
+			height: '12',
+			meta: {
+				component: EditShoppingListItemCategory,
+				props: {
+					name,
+					category,
+					categories,
+					onSubmit: (cat: ShoppingListCategoryForItem) => {
+						console.log('New category', cat);
+						category = cat;
+						dispatch('update', {
+							id,
+							category: category
+								? {
+										id: category.id,
+										name: category.name,
+										emoji: category.icon
+								  }
+								: undefined
+						});
+					}
+				}
+			}
+		});
 	};
 </script>
 
@@ -98,13 +131,18 @@
 			</span>
 		{/if}
 		{#if category}
-			<span class="basis-1/10 text-2xl" title={category.name}>
+			<button
+				class="basis-1/10 text-2xl"
+				title={category.name}
+				on:click={onCategoryChange}
+				on:keypress={onCategoryChange}
+			>
 				{#if category.icon.trim().length > 0}
 					{category.icon}
 				{:else}
 					&#x2753;
 				{/if}
-			</span>
+			</button>
 		{/if}
 	</div>
 </li>

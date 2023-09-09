@@ -1,14 +1,22 @@
 <script lang="ts">
 	import ShoppingList from '$components/pages/ShoppingList.svelte';
-	import type { ShoppingListItem, ShoppingListState } from '$shared/domains/shopping/models';
+	import type {
+		ShoppingListCategoryForItem,
+		ShoppingListItem,
+		ShoppingListState
+	} from '$shared/domains/shopping/models';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import { invalidate } from '$app/navigation';
 	import { toastStore } from '@skeletonlabs/skeleton';
+	import type { Category } from '$shared/domains/shopping/schema';
 
 	export let data: PageData;
-	let { items }: { items: ShoppingListItem[] } = data;
-	$: ({ items } = data);
+	let {
+		items,
+		categories
+	}: { items: ShoppingListItem[]; categories: ShoppingListCategoryForItem[] } = data;
+	$: ({ items, categories } = data);
 
 	onMount(() => {
 		const interval = setInterval(async () => {
@@ -45,12 +53,13 @@
 		}
 	};
 
-	const onStateChange = async (
+	const onUpdate = async (
 		event: CustomEvent<{
 			state: ShoppingListState;
 			id: string;
 			amount: number;
 			unit: string | undefined;
+			category: Category | undefined;
 		}>
 	) => {
 		await invalidate('data:shopping-items');
@@ -76,4 +85,4 @@
 	<title>Kreatyna - Shopping List</title>
 </svelte:head>
 
-<ShoppingList {items} on:stateChange={onStateChange} on:finish={onFinish} />
+<ShoppingList {items} {categories} on:update={onUpdate} on:finish={onFinish} />

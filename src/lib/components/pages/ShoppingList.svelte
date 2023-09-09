@@ -1,5 +1,8 @@
 <script lang="ts">
-	import type { ShoppingListItem } from '$shared/domains/shopping/models';
+	import type {
+		ShoppingListCategoryForItem,
+		ShoppingListItem
+	} from '$shared/domains/shopping/models';
 	import ShoppingListItemComponent from '$components/molecules/ShoppingListItem.svelte';
 	import { sortByState } from '$shared/domains/shopping/utils';
 	import FloatingButton from '$components/atoms/buttons/FloatingButton.svelte';
@@ -9,6 +12,7 @@
 	import { createEventDispatcher } from 'svelte';
 
 	export let items: ShoppingListItem[];
+	export let categories: ShoppingListCategoryForItem[];
 
 	const dispatch = createEventDispatcher();
 
@@ -42,7 +46,8 @@
 				{state}
 				{ingredients}
 				{category}
-				on:stateChange
+				{categories}
+				on:update
 			/>
 		{/each}
 	</ul>

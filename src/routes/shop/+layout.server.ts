@@ -10,8 +10,10 @@ export const load: LayoutServerLoad = async ({ depends, locals: { session, conta
 
 	const shopping = container.shoppingListService;
 	const items = shopping.getShoppingListItems();
+	const categories = shopping.getShoppingListCategories();
 
 	return {
-		items
+		items,
+		categories
 	};
 };

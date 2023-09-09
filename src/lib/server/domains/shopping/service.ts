@@ -1,11 +1,17 @@
 import type { PrismaClient } from '@prisma/client';
 import type { ShoppingListItemMap } from './map';
-import type { ShoppingListItem } from '$shared/domains/shopping/models';
-import { selectShoppingListItems } from '$shared/domains/shopping/queries';
+import type {
+	ShoppingListCategoryForItem,
+	ShoppingListItem
+} from '$shared/domains/shopping/models';
+import {
+	selectShoppingListCategoryForItem,
+	selectShoppingListItems
+} from '$shared/domains/shopping/queries';
 import { sortByState } from '$shared/domains/shopping/utils';
 import type {
 	CreateShoppingListItemWithCategory,
-	UpdateShoppingListItem
+	UpdateShoppingListItemWithCategory
 } from '$shared/domains/shopping/schema';
 import type { GroupedRecipeIngredient } from '$shared/domains/recipe/models';
 import type { AIService } from '../ai/service';
@@ -31,6 +37,15 @@ export class ShoppingListService {
 		return items.map((item) => this.itemMap.toDomain(item)).sort(sortByState);
 	}
 
+	async getShoppingListCategories(): Promise<ShoppingListCategoryForItem[]> {
+		return await this.prisma.shoppingListCategory.findMany({
+			...selectShoppingListCategoryForItem,
+			orderBy: {
+				order: 'asc'
+			}
+		});
+	}
+
 	async getShoppingListItem(id: string): Promise<ShoppingListItem | null> {
 		const item = await this.prisma.shoppingListItem.findUnique({
 			...selectShoppingListItems,
@@ -42,9 +57,9 @@ export class ShoppingListService {
 		return item ? this.itemMap.toDomain(item) : null;
 	}
 
-	async updateShoppingListItem(update: UpdateShoppingListItem): Promise<void> {
+	async updateShoppingListItem(update: UpdateShoppingListItemWithCategory): Promise<void> {
 		await this.prisma.shoppingListItem.update({
-			data: this.itemMap.toUpdateInput(update),
+			data: this.itemMap.toUpdateInputWithCategory(update),
 			where: {
 				id: update.id
 			}

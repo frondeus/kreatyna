@@ -6,6 +6,8 @@
 	import IconArrowUp from '~icons/mdi/menu-up';
 	import { slide } from 'svelte/transition';
 	import type { ShoppingListCategoryForItem } from '$shared/domains/shopping/models';
+	import { drawerStore } from '@skeletonlabs/skeleton';
+	import EditShoppingListItemCategory from '$components/organisms/EditShoppingListItemCategory.svelte';
 
 	export let id: string;
 	export let name: string;
@@ -14,6 +16,7 @@
 	export let state: ShoppingListState | 'PROCESSING';
 	export let ingredients: IngredientWithRecipe[];
 	export let category: ShoppingListCategoryForItem | null;
+	export let categories: ShoppingListCategoryForItem[];
 
 	const dispatch = createEventDispatcher();
 	let checkboxState: State = State.Default;
@@ -75,6 +78,25 @@
 	const toggleExtended = () => {
 		extended = !extended;
 	};
+
+	const onCategoryChange = (event: Event) => {
+		event.stopPropagation();
+		drawerStore.open({
+			position: 'bottom',
+			height: '12',
+			meta: {
+				component: EditShoppingListItemCategory,
+				props: {
+					name,
+					category,
+					categories,
+					onSubmit: (cat: ShoppingListCategoryForItem) => {
+						category = cat;
+					}
+				}
+			}
+		});
+	};
 </script>
 
 <li>
@@ -98,13 +120,18 @@
 			</span>
 		{/if}
 		{#if category}
-			<span class="basis-1/10 text-2xl" title={category.name}>
+			<button
+				class="basis-1/10 text-2xl"
+				title={category.name}
+				on:click={onCategoryChange}
+				on:keypress={onCategoryChange}
+			>
 				{#if category.icon.trim().length > 0}
 					{category.icon}
 				{:else}
 					&#x2753;
 				{/if}
-			</span>
+			</button>
 		{/if}
 	</div>
 </li>

@@ -1,7 +1,13 @@
 import type { PrismaClient } from '@prisma/client';
 import type { ShoppingListItemMap } from './map';
-import type { ShoppingListItem } from '$shared/domains/shopping/models';
-import { selectShoppingListItems } from '$shared/domains/shopping/queries';
+import type {
+	ShoppingListCategoryForItem,
+	ShoppingListItem
+} from '$shared/domains/shopping/models';
+import {
+	selectShoppingListCategoryForItem,
+	selectShoppingListItems
+} from '$shared/domains/shopping/queries';
 import { sortByState } from '$shared/domains/shopping/utils';
 import type {
 	CreateShoppingListItemWithCategory,
@@ -29,6 +35,15 @@ export class ShoppingListService {
 			}
 		});
 		return items.map((item) => this.itemMap.toDomain(item)).sort(sortByState);
+	}
+
+	async getShoppingListCategories(): Promise<ShoppingListCategoryForItem[]> {
+		return await this.prisma.shoppingListCategory.findMany({
+			...selectShoppingListCategoryForItem,
+			orderBy: {
+				order: 'asc'
+			}
+		});
 	}
 
 	async getShoppingListItem(id: string): Promise<ShoppingListItem | null> {

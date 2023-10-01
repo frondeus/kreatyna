@@ -57,6 +57,7 @@
 			});
 			return;
 		}
+		await new Promise((resolve) => setTimeout(resolve, 1000));
 		await invalidate('data:shopping-items');
 	};
 
@@ -84,6 +85,7 @@
 			});
 			return;
 		}
+		await new Promise((resolve) => setTimeout(resolve, 1000));
 		await invalidate('data:shopping-items');
 	};
 </script>

@@ -42,7 +42,6 @@
 				: undefined
 		}));
 
-		await invalidate('data:shopping-items');
 		const res = await fetch('/shop/update', {
 			method: 'PUT',
 			headers: {
@@ -58,6 +57,7 @@
 			});
 			return;
 		}
+		await invalidate('data:shopping-items');
 	};
 
 	const onUpdate = async (
@@ -69,7 +69,6 @@
 			category: Category | undefined;
 		}>
 	) => {
-		await invalidate('data:shopping-items');
 		const res = await fetch('/shop/update', {
 			method: 'PUT',
 			headers: {
@@ -85,6 +84,7 @@
 			});
 			return;
 		}
+		await invalidate('data:shopping-items');
 	};
 </script>
 

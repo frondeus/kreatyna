@@ -11,7 +11,7 @@ async function main() {
 	const dumpList = fs.readFileSync(dirname + '/prisma/dump-list.txt', 'utf8').split('\n');
 
 	const outputDir = '/prisma/seed/';
-	let connectionString = process.env.DATABASE_URL;
+	let connectionString = process.env.POSTGRES_URL;
 	if (connectionString?.includes('?')) {
 		connectionString = connectionString?.split('?')[0];
 	}

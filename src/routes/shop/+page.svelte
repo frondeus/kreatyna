@@ -5,7 +5,6 @@
 		ShoppingListItem,
 		ShoppingListState
 	} from '$shared/domains/shopping/models';
-	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import { invalidate } from '$app/navigation';
 	import { toastStore } from '@skeletonlabs/skeleton';
@@ -18,15 +17,16 @@
 	}: { items: ShoppingListItem[]; categories: ShoppingListCategoryForItem[] } = data;
 	$: ({ items, categories } = data);
 
-	onMount(() => {
-		const interval = setInterval(async () => {
-			await invalidate('data:shopping-items');
-		}, 1000);
+	// TODO: Better way of updating the list
+	// onMount(() => {
+	// 	const interval = setInterval(async () => {
+	// 		await invalidate('data:shopping-items');
+	// 	}, 1000);
 
-		return () => {
-			clearInterval(interval);
-		};
-	});
+	// 	return () => {
+	// 		clearInterval(interval);
+	// 	};
+	// });
 
 	const onFinish = async (event: CustomEvent<ShoppingListItem[]>) => {
 		const items = event.detail.map((item) => ({

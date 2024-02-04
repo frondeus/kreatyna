@@ -8,6 +8,6 @@ _RecipeToTag
 WeekPlan
 WeekPlanMeal
 _TagToWeekPlanMeal
-ShoppingListItem
 ShoppingListCategory
+ShoppingListItem
 _RecipesIngredientToShoppingListItem

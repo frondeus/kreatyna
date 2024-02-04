@@ -12,3 +12,5 @@ vite.config.ts.timestamp-*
 /tests/.~lock*
 /storybook-static
 .vercel
+/.envrc
+/.direnv

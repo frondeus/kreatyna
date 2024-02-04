@@ -2,7 +2,7 @@
 	import type { Proposal } from '$components/molecules/ShoppingListItemProposal.svelte';
 	import AddShoppingListItem from '$components/pages/AddShoppingListItem.svelte';
 	import type { PageData } from './$types';
-	import { goto } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import type { ShoppingListItem } from '$shared/domains/shopping/models';
 	import { toastStore } from '@skeletonlabs/skeleton';
 
@@ -54,6 +54,7 @@
 			return;
 		}
 
+		await invalidate('data:shopping-items');
 		goto('/shop');
 	};
 </script>

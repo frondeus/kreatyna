@@ -1,4 +1,7 @@
-/** @type {import('tailwindcss').Config}*/
+import { join } from 'path';
+import type { Config } from 'tailwindcss';
+
+import { skeleton } from '@skeletonlabs/tw-plugin';
 
 // Creates an object with pattern 'number': 'number'
 const gridRowStart = Object.fromEntries(
@@ -17,7 +20,7 @@ const config = {
 	darkMode: 'class',
 	content: [
 		'./src/**/*.{html,js,svelte,ts}',
-		require('path').join(require.resolve('@skeletonlabs/skeleton'), '../**/*.{html,js,svelte,ts}')
+		join(require.resolve('@skeletonlabs/skeleton'), '../**/*.{html,js,svelte,ts}')
 	],
 	theme: {
 		extend: {
@@ -61,8 +64,12 @@ const config = {
 
 	plugins: [
 		require('@tailwindcss/forms'),
-		...require('@skeletonlabs/skeleton/tailwind/skeleton.cjs')()
+		skeleton({
+			themes: {
+				preset: [{ name: 'hamlindigo', enhancements: true }]
+			}
+		})
 	]
-};
+} satisfies Config;
 
 module.exports = config;

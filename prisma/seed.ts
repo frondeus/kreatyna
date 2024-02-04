@@ -3,6 +3,10 @@ import { PrismaClient } from '@prisma/client';
 import { Env, lucia } from 'lucia';
 import * as fs from 'fs';
 
+// Pollyfill for Crypto
+import { webcrypto } from 'node:crypto';
+globalThis.crypto = webcrypto as Crypto;
+
 const db = new PrismaClient();
 
 async function main() {

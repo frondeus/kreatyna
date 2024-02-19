@@ -8,6 +8,7 @@
 		"docker:up": "docker compose up -d",
 		"setup:ci": "npm ci && npm run prisma:generate",
 		"dev": "npm run docker:up && vite dev",
+		"dev:host": "npm run docker:up && vite dev --host",
 		"build": "prisma generate && vite build",
 		"preview": "vite preview",
 		"ci": "npm run format:check && npm run check && npm run lint",
@@ -63,6 +64,7 @@
 		"@types/uuid": "^9.0.3",
 		"@typescript-eslint/eslint-plugin": "^6.0.0",
 		"@typescript-eslint/parser": "^6.0.0",
+		"@vite-pwa/sveltekit": "^0.4.0",
 		"autoprefixer": "^10.4.14",
 		"css-loader": "^6.8.1",
 		"eslint": "^8.28.0",
@@ -91,6 +93,7 @@
 		"typescript": "^5.0.0",
 		"unplugin-icons": "^0.16.3",
 		"vite": "^4.3.6",
+		"vite-plugin-pwa": "^0.19.0",
 		"vitest": "^0.32.2",
 		"zod": "^3.21.4"
 	},

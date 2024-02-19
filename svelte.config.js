@@ -18,6 +18,9 @@ const config = {
 			$server: './src/lib/server',
 			$schemas: './prisma/generated/schemas',
 			$root: './src'
+		},
+		serviceWorker: {
+			register: false
 		}
 	}
 };

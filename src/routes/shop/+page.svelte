@@ -28,10 +28,10 @@
 	// 	};
 	// });
 
-	const onFinish = async (event: CustomEvent<ShoppingListItem[]>) => {
+	const onFinishInner = async (event: CustomEvent<ShoppingListItem[]>, all: boolean) => {
 		const items = event.detail.map((item) => ({
 			...item,
-			state: item.state === 'IN_CART' ? 'BOUGHT' : item.state,
+			state: all || item.state === 'IN_CART' ? 'BOUGHT' : item.state,
 			unit: item.unit ?? undefined,
 			category: item.category
 				? {
@@ -59,6 +59,14 @@
 		}
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 		await invalidate('data:shopping-items');
+	};
+
+	const onFinish = async (event: CustomEvent<ShoppingListItem[]>) => {
+		return await onFinishInner(event, false);
+	};
+
+	const onClear = async (event: CustomEvent<ShoppingListItem[]>) => {
+		return await onFinishInner(event, true);
 	};
 
 	const onUpdate = async (
@@ -94,4 +102,4 @@
 	<title>Kreatyna - Shopping List</title>
 </svelte:head>
 
-<ShoppingList {items} {categories} on:update={onUpdate} on:finish={onFinish} />
+<ShoppingList {items} {categories} on:update={onUpdate} on:finish={onFinish} on:clear={onClear} />

@@ -1,0 +1,13 @@
+Raw
+Recipe
+RecipesIngredient
+TagCategory
+Tag
+_RawToTag
+_RecipeToTag
+WeekPlan
+WeekPlanMeal
+_TagToWeekPlanMeal
+ShoppingListCategory
+ShoppingListItem
+_RecipesIngredientToShoppingListItem

@@ -21,9 +21,12 @@ export interface ShoppingListItem {
 }
 
 export type ShoppingListSuggestion = Omit<ShoppingListItem, "id" | "state"> & {
-  id?: string;
-  state?: ShoppingListItemState;
+  id: string;
 };
+
+export type AddShoppingListItem =
+  | (ShoppingListItem & { kind: "item" })
+  | (ShoppingListSuggestion & { kind: "suggestion" });
 
 export enum ShoppingListItemState {
   Todo = "TODO",
@@ -31,7 +34,6 @@ export enum ShoppingListItemState {
   Bought = "BOUGHT",
   NotBuying = "NOT_BUYING",
 }
-
 
 interface DocumentCreated {
   kind: "created";
@@ -60,33 +62,69 @@ export type EventNotification =
   | DocumentUpdated
   | DocumentDeleted;
 
-interface ChangeReplace {
+interface ChangeReplaced {
   kind: "replace";
   data: unknown;
 }
 
-interface ChangeReplaceWithUndefined {
+interface ChangeReplacedWithUndefined {
   kind: "replaceWithUndefined";
 }
 
-interface ChangeMove {
+interface ChangeMoved {
   kind: "move";
   from: number;
   to: number;
 }
 
-interface ChangeRemove {
+interface ChangeRemoved {
   kind: "remove";
   index: number;
 }
 
-interface ChangeInsert {
+interface ChangeInserted {
   kind: "insert";
   position?: number;
   value: unknown;
 }
 
 export type EventNotificationChange =
+  | ChangeReplaced
+  | ChangeReplacedWithUndefined
+  | ChangeMoved
+  | ChangeRemoved
+  | ChangeInserted;
+
+export interface ChangeReplace {
+  kind: "replace";
+  data: unknown;
+}
+
+export interface ChangeReplaceWithUndefined {
+  kind: "replaceWithUndefined";
+}
+
+interface ChangeMove {
+  kind: "move";
+  key: string;
+  before?: string;
+}
+
+export interface ChangeRemove {
+  kind: "remove";
+  key: string;
+}
+
+export interface ChangeInsert {
+  kind: "insert";
+  before?: string;
+  value: unknown;
+  key: string;
+}
+
+export type DocumentChangeEntry = [string, DocumentChange];
+
+export type DocumentChange =
   | ChangeReplace
   | ChangeReplaceWithUndefined
   | ChangeMove

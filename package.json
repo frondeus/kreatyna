@@ -29,6 +29,7 @@
     "react-error-boundary": "^4.1.2",
     "react-i18next": "^15.0.2",
     "react-use-polyfill": "^0.1.0",
+    "uuid": "^11.0.3",
     "zod": "^3.23.8",
     "zustand": "^5.0.1"
   },

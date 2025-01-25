@@ -1,7 +1,8 @@
+import AddItem from "@/components/molecules/shop/AddItem";
 import EditUnitDrawer from "@/components/molecules/shop/EditUnitDrawer";
-import SuggestionItem from "@components/molecules/shop/SuggestionItem";
+import { AddShoppingListItem, ShoppingListItemState } from "@/lib/types";
 import { APIContext } from "@lib/api";
-import { useSuggestions } from "@lib/state";
+import { useItemsOrSuggestions } from "@lib/state";
 import {
   Drawer,
   Loader,
@@ -9,8 +10,11 @@ import {
   TextInput,
   useDrawersStack,
 } from "@mantine/core";
-import { Suspense, useContext, useState } from "react";
+import { Suspense, useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { v4 as uuidv4 } from "uuid";
+
+const DOCUMENT_ID = 1;
 
 export interface AddItemModalProps {
   opened: boolean;
@@ -26,6 +30,7 @@ interface EditedItem {
 export default function AddItemDrawer({ opened, onClose }: AddItemModalProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
+  const trimmedQuery = query.trim();
   const stack = useDrawersStack(["addItem", "editUnit"]);
   const [editedItem, setEditedItem] = useState<EditedItem | undefined>(
     undefined,
@@ -62,7 +67,7 @@ export default function AddItemDrawer({ opened, onClose }: AddItemModalProps) {
             onChange={async (e) => onSearch(e.currentTarget.value)}
           />
           <Suspense fallback={<Loader />}>
-            <SuggestionItemList query={query} editUnit={editUnit} />
+            <SuggestionItemList query={trimmedQuery} editUnit={editUnit} />
           </Suspense>
         </Stack>
       </Drawer>
@@ -88,24 +93,82 @@ interface SuggestionItemListProps {
 
 function SuggestionItemList({ query, editUnit }: SuggestionItemListProps) {
   const api = useContext(APIContext);
-  const { fetchWithArgs } = useSuggestions();
-  const suggestions = fetchWithArgs(api.getItemSuggestions, query);
+  const [entry, setEntry] = useState<AddShoppingListItem | undefined>(
+    undefined,
+  );
+  const { fetchWithArgs } = useItemsOrSuggestions();
+  const items = fetchWithArgs(api.getItemsAndSuggestions, query);
+
+  useEffect(() => {
+    const itemMatchingQuery = items.find((s) => s.name === query);
+    if (query.length > 0 && itemMatchingQuery === undefined) {
+      setEntry({
+        kind: "suggestion",
+        id: uuidv4(),
+        name: query,
+        amount: 0,
+      });
+    } else if (itemMatchingQuery !== undefined) {
+      setEntry(itemMatchingQuery);
+    } else {
+      setEntry(undefined);
+    }
+  }, [query, items]);
+
+  const onIncrease = (item: AddShoppingListItem) => {
+    api.updateDocument(DOCUMENT_ID, [
+      [`items.${item.id}.amount`, { kind: "replace", data: item.amount + 1 }],
+    ]);
+  };
+
+  const onDecrease = (item: AddShoppingListItem) => {
+    api.updateDocument(DOCUMENT_ID, [
+      [`items.${item.id}.amount`, { kind: "replace", data: item.amount - 1 }],
+    ]);
+  };
+
+  const onRemove = (item: AddShoppingListItem) => {
+    api.updateDocument(DOCUMENT_ID, [
+      [`items`, { kind: "remove", key: item.id }],
+    ]);
+  };
+
+  const onAdd = (item: AddShoppingListItem) => {
+    const itemToAdd = {
+      state: ShoppingListItemState.Todo,
+      ...item,
+    };
+    api.updateDocument(DOCUMENT_ID, [
+      [`items`, { kind: "insert", value: itemToAdd, key: itemToAdd.id }],
+    ]);
+  };
 
   return (
     <Stack gap="xs">
-      {suggestions.map((item, index) => (
-        <SuggestionItem
-          key={index}
-          {...item}
-          onDecrease={() => {}}
-          onIncrease={() => {}}
-          onRemove={() => {}}
-          onAdd={() => {}}
-          // Safety: If we are running this function, then it means the item is already in the list
-          // So it must have an id
-          onEditUnit={() => editUnit(item.id!, item.amount, item.unit)}
+      {entry && (
+        <AddItem
+          item={entry}
+          onIncrease={() => onIncrease(entry)}
+          onDecrease={() => onDecrease(entry)}
+          onRemove={() => onRemove(entry)}
+          onAdd={() => onAdd(entry)}
+          onEditUnit={() => editUnit(entry.id, entry.amount, entry.unit)}
         />
-      ))}
+      )}
+
+      {items
+        .filter((item) => item.id !== entry?.id)
+        .map((item, index) => (
+          <AddItem
+            key={index}
+            item={item}
+            onIncrease={() => onIncrease(item)}
+            onDecrease={() => onDecrease(item)}
+            onRemove={() => onRemove(item)}
+            onAdd={() => onAdd(item)}
+            onEditUnit={() => editUnit(item.id, item.amount, item.unit)}
+          />
+        ))}
     </Stack>
   );
 }

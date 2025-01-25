@@ -25,6 +25,7 @@ fn update_document(
     tx: tauri::State<Sender<db::messages::UiToDb>>,
     notify: tauri::State<Sender<ui::models::EventNotification>>,
 ) {
+    println!("update_document: {:?} {:?}", id, changes);
     let doc = tx.get_document(id.into());
     let mut doc: ui::models::Document = FromDb::from_db(doc).unwrap();
     let mut ui_changes = vec![];
@@ -58,10 +59,10 @@ fn get_documents(
 // Specialized commands outside of the event document model
 
 #[tauri::command]
-fn get_item_suggestions(
+fn get_items_and_suggestions(
     query: String,
     tx: tauri::State<Sender<db::messages::UiToDb>>,
-) -> Vec<ui::models::ShoppingListSuggestion> {
+) -> Vec<ui::models::AddShoppingListItem> {
     println!("get_item_suggestions: {}", query);
     let _ = tx;
     vec![]
@@ -86,7 +87,7 @@ pub fn run() {
             create_document,
             get_documents,
             update_document,
-            get_item_suggestions,
+            get_items_and_suggestions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

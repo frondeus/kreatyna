@@ -61,6 +61,7 @@ pub enum DocumentEvent {
 pub type ArrayKey = String;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(tag = "kind", rename_all = "camelCase")]
 pub enum DocumentEventChange {
     // Scalars
     Replace(serde_json::Value),
@@ -70,6 +71,7 @@ pub enum DocumentEventChange {
     Move {
         key: ArrayKey,
         /// If None, moves to the end of the array.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         before: Option<ArrayKey>,
     },
     /// Remove value in array but not using index

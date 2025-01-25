@@ -27,12 +27,12 @@ impl ApplyChange for Document {
         path: &[&str],
         change: &DbDocumentEventChange,
     ) -> Option<UiDocumentEventChange> {
+        let full_path = path;
         let (segment, path) = split_segment(path);
         match segment {
             "id" => self.id.apply_change(path, change),
             "title" => self.title.apply_change(path, change),
-            "data" => self.kind.apply_change(path, change),
-            _ => unreachable!(),
+            _ => self.kind.apply_change(full_path, change),
         }
     }
 }

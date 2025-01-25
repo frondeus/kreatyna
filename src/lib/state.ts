@@ -1,7 +1,7 @@
+import { useEffect } from "react";
 import { use } from "react-use-polyfill";
 import { create } from "zustand";
-import { ShoppingList, ShoppingListSuggestion } from "./types";
-import { useEffect } from "react";
+import { AddShoppingListItem, ShoppingList } from "./types";
 
 export type Route = "shop";
 
@@ -28,8 +28,9 @@ function createUsePromise<T>() {
     fetchWithArgs<A>(call: (args: A) => Promise<T>, args: A) {
       const state = get();
       if (args !== undefined) {
-          useEffect(() => {
-            state.refresh();
+        useEffect(() => {
+          const promise = call(args);
+          set({ promise });
         }, [args]);
       }
       let promise = state.promise;
@@ -46,4 +47,4 @@ function createUsePromise<T>() {
 }
 
 export const useShop = createUsePromise<ShoppingList[]>();
-export const useSuggestions = createUsePromise<ShoppingListSuggestion[]>();
+export const useItemsOrSuggestions = createUsePromise<AddShoppingListItem[]>();

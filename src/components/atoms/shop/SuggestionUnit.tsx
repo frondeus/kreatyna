@@ -4,7 +4,6 @@ import { IconScale } from "@tabler/icons-react";
 export interface SuggestionUnitProps {
   amount: number;
   unit?: string;
-  editable?: boolean;
   onClick?: () => void;
 }
 
@@ -16,10 +15,10 @@ function amountAndUnit(amount: number, unit?: string) {
 export default function SuggestionUnit({
   amount,
   unit,
-  editable = false,
   onClick,
 }: SuggestionUnitProps) {
   const showAmount = amount > 1 || unit !== undefined;
+  const editable = onClick !== undefined;
 
   if (editable) {
     if (showAmount) {

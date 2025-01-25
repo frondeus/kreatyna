@@ -1,15 +1,17 @@
-import { ShoppingListItemState } from "@/lib/types";
+import { AddShoppingListItem, ShoppingListItemState } from "@/lib/types";
 import { APIContext } from "@lib/api";
 import type { Meta, StoryObj } from "@storybook/react";
 import ShopPage from "./Shop";
-const suggestions = [
+const suggestions: AddShoppingListItem[] = [
   {
+    kind: "item",
     id: "1",
     name: "Raisin, seedless",
     amount: 50,
     state: ShoppingListItemState.Bought,
   },
   {
+    kind: "item",
     id: "2",
     name: "Chestnut, raw",
     amount: 50,
@@ -17,6 +19,7 @@ const suggestions = [
     state: ShoppingListItemState.InCart,
   },
   {
+    kind: "item",
     id: "3",
     name: "Czekolada gorzka",
     amount: 100,
@@ -24,12 +27,14 @@ const suggestions = [
     state: ShoppingListItemState.NotBuying,
   },
   {
+    kind: "suggestion",
     id: "4",
     name: "Rye bread, dark, wholemeal, imported",
     amount: 373.2,
     unit: "g",
   },
   {
+    kind: "item",
     id: "5",
     name: "Honey",
     amount: 0,
@@ -63,8 +68,11 @@ export const WithLists: Story = {
               items: [],
             },
           ],
-          getItemSuggestions: async () => suggestions,
+          getItemsAndSuggestions: async () => suggestions,
           subscribeToEvents: () => () => {},
+          updateDocument: async (id, changes) => {
+            console.log("Update document", id, changes);
+          },
         }}
       >
         <Story />

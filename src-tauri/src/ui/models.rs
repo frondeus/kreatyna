@@ -9,7 +9,7 @@ pub struct Document {
     pub kind: DocumentKind,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 #[serde(transparent)]
 pub struct DocumentId(i32);
 impl From<i32> for DocumentId {
@@ -67,7 +67,7 @@ impl std::fmt::Display for JustDocumentKind {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ShoppingListItem {
     pub id: String,
     pub name: String,
@@ -93,17 +93,21 @@ pub enum ShoppingListItemState {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ShoppingListSuggestion {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
+    pub id: String,
     pub name: String,
     pub amount: usize,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unit: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub state: Option<ShoppingListItemState>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum AddShoppingListItem {
+    Item(ShoppingListItem),
+    Suggestion(ShoppingListSuggestion),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct JsonPath(String);
 impl AsRef<str> for JsonPath {

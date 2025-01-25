@@ -1,7 +1,6 @@
 import Item from "@/components/molecules/shop/Item";
 import AddItemDrawer from "@/components/organisms/shop/AddItemDrawer";
 import { APIContext } from "@/lib/api";
-import { useShop } from "@/lib/state";
 import {
   ShoppingList,
   ShoppingListItem,
@@ -14,13 +13,16 @@ import { useContext, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import { updateForm } from "@/lib/utils";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import ListPage from "./ListPage";
 
 export default function ShopPage() {
-  const { fetch } = useShop();
   const [generation, handlers] = useCounter(0);
   const api = useContext(APIContext);
-  const shoppingLists = fetch(api.getShoppingLists);
+  const { data: shoppingLists } = useSuspenseQuery({
+    queryKey: ["shopping-lists"],
+    queryFn: () => api.getShoppingLists(),
+  });
   const lastShoppingList = shoppingLists[shoppingLists.length - 1];
 
   const form = useForm<ShoppingList>({

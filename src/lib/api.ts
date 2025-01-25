@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { createContext } from "react";
 import {
   AddShoppingListItem,
+  Document,
   DocumentChangeEntry,
   DocumentId,
   EventNotification,

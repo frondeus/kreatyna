@@ -1,7 +1,8 @@
 import { APIContext } from "@/lib/api";
-import { useRawIngredients, useRoute } from "@/lib/state";
+import { useRoute } from "@/lib/state";
 import { RawIngredient } from "@/lib/types";
 import { Menu } from "@mantine/core";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import {
   MantineReactTable,
   MRT_ColumnDef,
@@ -14,8 +15,10 @@ import "./RawIngredientList.css";
 export default function RawIngredientList() {
   const goto = useRoute((s) => s.goto);
   const api = useContext(APIContext);
-  const fetch = useRawIngredients((s) => s.fetch);
-  const rawIngredients = fetch(api.getRawIngredients);
+  const { data: rawIngredients } = useSuspenseQuery({
+    queryKey: ["raw-ingredients"],
+    queryFn: () => api.getRawIngredients(),
+  });
   const { t } = useTranslation();
 
   const data = useMemo(() => rawIngredients, [rawIngredients]);

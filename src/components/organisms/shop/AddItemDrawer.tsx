@@ -1,7 +1,6 @@
 import AddItem from "@/components/molecules/shop/AddItem";
 import EditUnitDrawer from "@/components/molecules/shop/EditUnitDrawer";
 import { API, APIContext } from "@/lib/api";
-import { useItemsOrSuggestions } from "@/lib/state";
 import { AddShoppingListItem, ShoppingListItemState } from "@/lib/types";
 import {
   Drawer,
@@ -11,6 +10,7 @@ import {
   TextInput,
   useDrawersStack,
 } from "@mantine/core";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { v4 as uuidv4 } from "uuid";
@@ -90,9 +90,12 @@ export default function AddItemDrawer({ opened, ...props }: AddItemModalProps) {
   const [entry, setEntry] = useState<AddShoppingListItem | undefined>(
     undefined,
   );
-  const { fetchWithArgs, refresh } = useItemsOrSuggestions();
+  const queryClient = useQueryClient();
+
   useEffect(() => {
-    refresh();
+    queryClient.invalidateQueries({
+      queryKey: ["items-or-suggestions", trimmedQuery],
+    });
   }, [props.generation]);
 
   const onSearch = (query: string) => {
@@ -174,7 +177,6 @@ export default function AddItemDrawer({ opened, ...props }: AddItemModalProps) {
               editUnit={editUnit}
               entry={entry}
               setEntry={setEntry}
-              fetchWithArgs={fetchWithArgs}
               onClose={onClose}
             />
           </Suspense>
@@ -200,10 +202,6 @@ interface SuggestionItemListProps {
   editUnit: (id: string, amount: number, unit: string | undefined) => void;
   entry: AddShoppingListItem | undefined;
   setEntry: (entry: AddShoppingListItem | undefined) => void;
-  fetchWithArgs: (
-    call: (args: string) => Promise<AddShoppingListItem[]>,
-    args: string,
-  ) => AddShoppingListItem[];
   onClose: () => void;
 }
 
@@ -212,11 +210,14 @@ function SuggestionItemList({
   editUnit,
   entry,
   setEntry,
-  fetchWithArgs,
   onClose,
 }: SuggestionItemListProps) {
   const api = useContext(APIContext);
-  const items = fetchWithArgs(api.getItemsAndSuggestions, query);
+  const { data: items } = useSuspenseQuery({
+    queryKey: ["items-or-suggestions", query],
+    queryFn: () => api.getItemsAndSuggestions(query),
+  });
+
   const { onAdd, onIncrease, onDecrease, onRemove } = useAPICalls(api, onClose);
 
   useEffect(() => {

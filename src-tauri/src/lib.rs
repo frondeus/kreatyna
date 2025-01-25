@@ -1,3 +1,4 @@
+use anyhow::Context;
 use ordered_float::OrderedFloat;
 use std::sync::mpsc::Sender;
 use strsim::normalized_levenshtein;
@@ -11,13 +12,55 @@ mod db;
 mod net;
 mod ui;
 
+enum Error {
+    Any(anyhow::Error),
+}
+impl From<anyhow::Error> for Error {
+    fn from(e: anyhow::Error) -> Self {
+        Error::Any(e)
+    }
+}
+impl Error {
+    pub fn from_err<T: std::error::Error + Send + Sync + 'static>(e: T) -> Self {
+        Error::Any(anyhow::Error::from(e))
+    }
+
+    pub fn context(self, msg: &'static str) -> Self {
+        match self {
+            Error::Any(e) => Error::Any(e.context(msg)),
+        }
+    }
+}
+trait ResultExt<T> {
+    fn context(self, msg: &'static str) -> Result<T, Error>;
+}
+impl<T> ResultExt<T> for Result<T, Error> {
+    fn context(self, msg: &'static str) -> Result<T, Error> {
+        match self {
+            Ok(v) => Ok(v),
+            Err(e) => Err(e.context(msg)),
+        }
+    }
+}
+impl serde::Serialize for Error {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let s = match self {
+            Error::Any(e) => format!("{}", e),
+        };
+        serializer.serialize_str(&s)
+    }
+}
+
 #[tauri::command]
 fn create_document(
     new_doc: ui::models::NewDocument,
     tx: tauri::State<Sender<db::messages::UiToDb>>,
-) -> ui::models::DocumentId {
-    let id = tx.create_document(new_doc.to_db().unwrap());
-    ui::models::DocumentId::from(id)
+) -> Result<ui::models::DocumentId, Error> {
+    let id = tx.create_document(new_doc.to_db()?)?;
+    Ok(ui::models::DocumentId::from(id))
 }
 
 #[tauri::command]
@@ -26,36 +69,46 @@ fn update_document(
     changes: Vec<(ui::models::JsonPath, net::models::DocumentEventChange)>,
     tx: tauri::State<Sender<db::messages::UiToDb>>,
     notify: tauri::State<Sender<ui::models::EventNotification>>,
-) {
-    println!("update_document: {:?} {:?}", id, changes);
-    let doc = tx.get_document(id.into());
-    let mut doc: ui::models::Document = FromDb::from_db(doc).unwrap();
-    println!("doc: {:?}", doc);
+) -> Result<(), Error> {
+    tracing::info!("update_document: {:?} {:?}", id, changes);
+    let doc = tx
+        .get_document(id.into())
+        .context("Failed to load document")?;
+    let mut doc: ui::models::Document = FromDb::from_db(doc).context("Failed to map document")?;
+    tracing::info!("doc: {:?}", doc);
     let mut ui_changes = vec![];
     for (path, change) in changes {
         if let Some((path, ui)) = doc.apply(path.as_ref(), &change) {
             ui_changes.push((ui::models::JsonPath::from(path), ui));
         }
     }
-    tx.update_document(doc.to_db().unwrap());
+    tx.update_document(doc.to_db()?)?;
     notify
         .send(ui::models::EventNotification::Updated {
-            id: id.into(),
+            id,
             changes: ui_changes,
         })
-        .unwrap();
+        .map_err(Error::from_err)
+        .context("Failed to send notification")?;
+    Ok(())
 }
 
 #[tauri::command]
 fn get_documents(
     kind: ui::models::JustDocumentKind,
     tx: tauri::State<Sender<db::messages::UiToDb>>,
-) -> Vec<ui::models::Document> {
-    println!("get_documents: {:?}", kind);
-    let docs = tx.get_documents(kind.to_string());
+) -> Result<Vec<ui::models::Document>, Error> {
+    tracing::info!("get_documents: {:?}", kind);
+    let docs = tx
+        .get_documents(kind.to_string())
+        .context("Failed to load documents")?;
     docs.into_iter()
-        .map(|d| FromDb::from_db(d).unwrap())
-        .collect()
+        .map(|d| {
+            FromDb::from_db(d)
+                .context("Failed to map document")
+                .map_err(Error::from)
+        })
+        .collect::<Result<Vec<_>, _>>()
 }
 
 // Specialized commands outside of the event document model
@@ -64,15 +117,15 @@ fn get_documents(
 fn get_items_and_suggestions(
     query: String,
     tx: tauri::State<Sender<db::messages::UiToDb>>,
-) -> Vec<ui::models::AddShoppingListItem> {
-    println!("get_item_suggestions: {}", query);
-    let doc = tx.get_document(1);
-    let doc: ui::models::Document = FromDb::from_db(doc).unwrap();
+) -> Result<Vec<ui::models::AddShoppingListItem>, Error> {
+    tracing::info!("get_item_suggestions: {}", query);
+    let doc = tx.get_document(1).context("Failed to load document")?;
+    let doc: ui::models::Document = FromDb::from_db(doc).context("Failed to map document")?;
     let ui::models::DocumentKind::ShoppingList { items } = doc.kind;
 
     let suggestions: Vec<_> = items
         .into_iter()
-        .map(|item| ui::models::AddShoppingListItem::Item(item))
+        .map(ui::models::AddShoppingListItem::Item)
         .collect();
 
     let mut suggestions_with_score: Vec<_> = suggestions
@@ -84,15 +137,32 @@ fn get_items_and_suggestions(
         .collect();
 
     suggestions_with_score.sort_by_key(|s| s.0);
-    suggestions_with_score.into_iter().map(|s| s.1).collect()
+    Ok(suggestions_with_score.into_iter().map(|s| s.1).collect())
+}
+
+#[tauri::command]
+fn log(msg: String, args: Vec<serde_json::Value>) {
+    tracing::info!("{} {:?}", msg, args);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    tracing_subscriber::fmt::init();
+    eprintln!("Running Kreatyna, listen to me!");
+    println!("Running Kreatyna, listen to me!");
+    tracing::warn!("Running Kreatyna, listen to me!");
     let (db_tx, db_rx) = std::sync::mpsc::channel();
     let (ui_tx, ui_rx) = std::sync::mpsc::channel();
 
-    std::thread::spawn(move || db::task(db_rx));
+    let db_conn = match db::establish_connection().context("Failed to establish connection") {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::error!("{:#}", e);
+            std::process::exit(1);
+        }
+    };
+
+    std::thread::spawn(move || db::task(db_rx, db_conn));
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(db_tx)
@@ -107,6 +177,7 @@ pub fn run() {
             get_documents,
             update_document,
             get_items_and_suggestions,
+            log
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,3 +1,4 @@
+import { notifications } from "@mantine/notifications";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { createContext } from "react";
@@ -10,20 +11,54 @@ import {
 } from "./types";
 
 async function getShoppingLists(): Promise<ShoppingList[]> {
-  return await invoke("get_documents", { kind: "shoppingList" });
+  try {
+    return await invoke("get_documents", { kind: "shoppingList" });
+  } catch (e) {
+    console.error("Failed to load shopping lists", e);
+    notifications.show({
+      title: "Failed to load shopping lists",
+      message: e as string,
+      color: "red",
+    });
+    return [];
+  }
 }
 
 async function getItemsAndSuggestions(
   query: string,
 ): Promise<AddShoppingListItem[]> {
-  return await invoke("get_items_and_suggestions", { query });
+  try {
+    return await invoke("get_items_and_suggestions", { query });
+  } catch (e) {
+    console.error("Failed to load items and suggestions", e);
+    notifications.show({
+      title: "Failed to load items and suggestions",
+      message: e as string,
+      color: "red",
+    });
+    return [];
+  }
 }
 
 async function updateDocument(
   id: DocumentId,
   changes: DocumentChangeEntry[],
 ): Promise<void> {
-  return await invoke("update_document", { id, changes });
+  try {
+    return await invoke("update_document", { id, changes });
+  } catch (e) {
+    console.error("Failed to update document", e);
+    notifications.show({
+      title: "Failed to update document",
+      message: e as string,
+      color: "red",
+    });
+  }
+}
+
+/** eslint-disable-next-line @typescript-eslint/no-explicit-any */
+async function log(msg: string, args: any[]) {
+  await invoke("log", { msg, args });
 }
 
 function subscribeToEvents(cbk: (msg: EventNotification) => void): () => void {
@@ -44,6 +79,7 @@ export interface API {
     id: DocumentId,
     changes: DocumentChangeEntry[],
   ) => Promise<void>;
+  log: (msg: string, args: any[]) => Promise<void>;
 }
 
 export const api: API = {
@@ -51,6 +87,7 @@ export const api: API = {
   getItemsAndSuggestions,
   subscribeToEvents,
   updateDocument,
+  log,
 };
 
 export default api;

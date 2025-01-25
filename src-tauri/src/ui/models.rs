@@ -133,6 +133,7 @@ impl From<String> for JsonPath {
 /// Notification about changes in document.
 #[derive(Serialize, Clone)]
 #[serde(tag = "kind", rename_all = "camelCase")]
+#[allow(dead_code)]
 pub enum EventNotification {
     /// Document has been created.
     Created { id: DocumentId },

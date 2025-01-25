@@ -54,7 +54,7 @@ impl<T: WithKey + ApplyChange + serde::de::DeserializeOwned + std::fmt::Debug> A
     ) -> Option<(String, UiDocumentEventChange)> {
         match change {
             DbDocumentEventChange::Replace { .. } | DbDocumentEventChange::ReplaceWithUndefined => {
-                let segment = path.next().unwrap();
+                let segment = path.next()?;
                 let index = self
                     .iter()
                     .position(|t| t.key().to_string().as_str() == segment)?;

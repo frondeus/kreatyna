@@ -44,7 +44,7 @@ impl ApplyChange for Document {
         ui_path: String,
         change: &DbDocumentEventChange,
     ) -> Option<(String, UiDocumentEventChange)> {
-        let segment = path.next().unwrap();
+        let segment = path.next()?;
         match segment {
             "id" => self.id.apply_field("id", path, ui_path, change),
             "title" => self.title.apply_field("title", path, ui_path, change),
@@ -66,7 +66,7 @@ impl ApplyChange for DocumentKind {
         ui_path: String,
         change: &DbDocumentEventChange,
     ) -> Option<(String, UiDocumentEventChange)> {
-        let segment = path.next().unwrap();
+        let segment = path.next()?;
         match self {
             Self::ShoppingList { items } => match segment {
                 "items" => items.apply_field("items", path, ui_path, change),
@@ -83,7 +83,7 @@ impl ApplyChange for ShoppingListItem {
         ui_path: String,
         change: &DbDocumentEventChange,
     ) -> Option<(String, UiDocumentEventChange)> {
-        let segment = path.next().unwrap();
+        let segment = path.next()?;
         match segment {
             "id" => self.id.apply_field("id", path, ui_path, change),
             "name" => self.name.apply_field("name", path, ui_path, change),

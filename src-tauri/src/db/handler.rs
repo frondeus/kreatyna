@@ -1,11 +1,11 @@
 use super::messages::UiToDb;
-use super::models::{Document, NewDocument};
+use super::models::Document;
 use super::schema::documents;
 use anyhow::Result;
 use diesel::prelude::*;
 
 pub fn handle(msg: UiToDb, conn: &mut SqliteConnection) -> Result<()> {
-    println!("Handling message: {:?}", msg);
+    tracing::debug!("Handling message: {:?}", msg);
     match msg {
         UiToDb::CreateDocument { doc, response } => {
             let id = diesel::insert_into(documents::table)

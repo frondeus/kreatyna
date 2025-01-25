@@ -1,6 +1,9 @@
 import ErrorPage from "@/components/_layout/Error";
 import { API, APIContext } from "@/lib/api";
 import { MantineProvider } from "@mantine/core";
+import "@mantine/core/styles.css";
+import { Notifications } from "@mantine/notifications";
+import "@mantine/notifications/styles.css";
 import { ErrorBoundary } from "react-error-boundary";
 
 export interface RootProps {
@@ -12,6 +15,7 @@ export default function Root({ api, children }: RootProps) {
   return (
     <ErrorBoundary FallbackComponent={ErrorPage}>
       <MantineProvider defaultColorScheme="dark">
+        <Notifications />
         {api && (
           <APIContext.Provider value={api}>{children}</APIContext.Provider>
         )}

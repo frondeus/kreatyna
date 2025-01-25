@@ -10,7 +10,7 @@ pub fn task(rx: Receiver<models::EventNotification>, app: AppHandle) -> anyhow::
     loop {
         let msg = rx.recv()?;
         if let Err(e) = handler::handle(msg, &app) {
-            eprintln!("Error handling message: {}", e);
+            tracing::error!("Error handling message: {}", e);
         }
     }
 }

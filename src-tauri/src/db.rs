@@ -13,12 +13,11 @@ pub mod messages;
 pub mod models;
 mod schema;
 
-pub fn task(rx: Receiver<UiToDb>) -> anyhow::Result<()> {
-    let mut conn = establish_connection()?;
+pub fn task(rx: Receiver<UiToDb>, mut conn: SqliteConnection) -> anyhow::Result<()> {
     loop {
         let msg = rx.recv()?;
         if let Err(e) = handler::handle(msg, &mut conn) {
-            eprintln!("Error handling message: {}", e);
+            tracing::error!("Error handling message: {}", e);
         }
     }
 }

@@ -12,6 +12,7 @@ import {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [navOpened, { toggle: toggleNav }] = useDisclosure();
   const { setRoute } = useRoute();
+  console.log("Layout");
   return (
     <AppShell
       padding="md"

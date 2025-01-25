@@ -5,6 +5,7 @@ import { useItemsOrSuggestions } from "@/lib/state";
 import { AddShoppingListItem, ShoppingListItemState } from "@/lib/types";
 import {
   Drawer,
+  FocusTrap,
   Loader,
   Stack,
   TextInput,
@@ -82,6 +83,7 @@ export default function AddItemDrawer({ opened, ...props }: AddItemModalProps) {
   const [query, setQuery] = useState("");
   const trimmedQuery = query.trim();
   const stack = useDrawersStack(["addItem", "editUnit"]);
+
   const [editedItem, setEditedItem] = useState<EditedItem | undefined>(
     undefined,
   );
@@ -144,19 +146,27 @@ export default function AddItemDrawer({ opened, ...props }: AddItemModalProps) {
             marginBottom: 0,
           },
         }}
+        trapFocus={false}
+        autoFocus={false}
+        returnFocus={false}
       >
         <Stack gap="xs" justify="flex-end" align="stretch" h="100%">
-          <TextInput
-            placeholder={t("organisms.shop.add_item")}
-            size="md"
-            value={query}
-            onChange={(e) => onSearch(e.currentTarget.value)}
-            onKeyUp={(e) => {
-              if (e.key === "Enter") {
-                onSubmit();
-              }
-            }}
-          />
+          <FocusTrap active={opened}>
+            <div>
+              <TextInput
+                placeholder={t("organisms.shop.add_item")}
+                size="md"
+                value={query}
+                onChange={(e) => onSearch(e.currentTarget.value)}
+                onKeyUp={(e) => {
+                  if (e.key === "Enter") {
+                    onSubmit();
+                  }
+                }}
+                data-autofocus
+              />
+            </div>
+          </FocusTrap>
           <Suspense fallback={<Loader />}>
             <SuggestionItemList
               query={trimmedQuery}

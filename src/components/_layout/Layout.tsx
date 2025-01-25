@@ -1,5 +1,5 @@
-import Header from "@components/_layout/Header";
-import { useRoute } from "@lib/state";
+import Header from "@/components/_layout/Header";
+import { useRoute } from "@/lib/state";
 import { ActionIcon, AppShell, CloseButton, Group } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {

@@ -1,4 +1,3 @@
-import { ShoppingListItemState } from "@lib/types";
 import type { Meta, StoryObj } from "@storybook/react";
 import SuggestionItem from "./SuggestionItem";
 
@@ -10,15 +9,13 @@ const meta = {
   },
   tags: ["autodocs"],
   args: {
-    name: "Raisin, seedless",
-    amount: 50,
-    unit: "g",
-    state: ShoppingListItemState.Todo,
-    onIncrease: () => {},
-    onRemove: () => {},
+    suggestion: {
+      id: "1",
+      name: "Raisin, seedless",
+      amount: 50,
+      unit: "g",
+    },
     onAdd: () => {},
-    onDecrease: () => {},
-    onEditUnit: () => {},
   },
 } satisfies Meta<typeof SuggestionItem>;
 
@@ -29,21 +26,29 @@ export const Default: Story = {};
 
 export const NoAmount: Story = {
   args: {
-    amount: undefined,
+    suggestion: {
+      ...meta.args.suggestion,
+      amount: 0,
+    },
   },
 };
 
 export const NoAmountAndUnit: Story = {
   args: {
-    ...NoAmount.args,
-    unit: undefined,
+    suggestion: {
+      ...meta.args.suggestion,
+      amount: 0,
+      unit: undefined,
+    },
   },
 };
 
 export const AddedWithoutAmountOrUnit: Story = {
   args: {
-    state: ShoppingListItemState.InCart,
-    amount: 1,
-    unit: undefined,
+    suggestion: {
+      ...meta.args.suggestion,
+      amount: 1,
+      unit: undefined,
+    },
   },
 };

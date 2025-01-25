@@ -64,7 +64,9 @@ pub type ArrayKey = String;
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum DocumentEventChange {
     // Scalars
-    Replace(serde_json::Value),
+    Replace {
+        value: serde_json::Value,
+    },
     ReplaceWithUndefined,
     // Arrays
     /// Moves value with given key before the value with the given key.

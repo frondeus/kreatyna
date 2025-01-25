@@ -1,8 +1,8 @@
 import AddItem from "@/components/molecules/shop/AddItem";
 import EditUnitDrawer from "@/components/molecules/shop/EditUnitDrawer";
+import { API, APIContext } from "@/lib/api";
+import { useItemsOrSuggestions } from "@/lib/state";
 import { AddShoppingListItem, ShoppingListItemState } from "@/lib/types";
-import { APIContext } from "@lib/api";
-import { useItemsOrSuggestions } from "@lib/state";
 import {
   Drawer,
   Loader,
@@ -19,30 +19,116 @@ const DOCUMENT_ID = 1;
 export interface AddItemModalProps {
   opened: boolean;
   onClose: () => void;
+  generation: number;
 }
 
 interface EditedItem {
   id: string;
   amount: number;
-  unit?: string;
+  unit: string | undefined;
 }
 
-export default function AddItemDrawer({ opened, onClose }: AddItemModalProps) {
+function useAPICalls(api: API, onClose: () => void) {
+  const onAdd = async (item: AddShoppingListItem) => {
+    const itemToAdd = {
+      state: ShoppingListItemState.Todo,
+      ...item,
+    };
+    await api.updateDocument(DOCUMENT_ID, [
+      [`items`, { kind: "insert", value: itemToAdd, key: itemToAdd.id }],
+    ]);
+    onClose();
+  };
+
+  const onRemove = async (item: AddShoppingListItem) => {
+    await api.updateDocument(DOCUMENT_ID, [
+      [`items`, { kind: "remove", key: item.id }],
+    ]);
+  };
+
+  const onSetUnit = async (id: string, unit: string | undefined) => {
+    console.log("onSetUnit", id, unit);
+    if (unit) {
+      await api.updateDocument(DOCUMENT_ID, [
+        [`items.${id}.unit`, { kind: "replace", value: unit }],
+      ]);
+    } else {
+      await api.updateDocument(DOCUMENT_ID, [
+        [`items.${id}.unit`, { kind: "replaceWithUndefined" }],
+      ]);
+    }
+  };
+
+  const onSetAmount = async (id: string, amount: number) => {
+    console.log("onSetAmount", id, amount);
+    await api.updateDocument(DOCUMENT_ID, [
+      [`items.${id}.amount`, { kind: "replace", value: amount }],
+    ]);
+  };
+  const onIncrease = async (item: AddShoppingListItem) => {
+    await onSetAmount(item.id, item.amount + 1);
+  };
+
+  const onDecrease = async (item: AddShoppingListItem) => {
+    await onSetAmount(item.id, item.amount - 1);
+  };
+
+  return { onAdd, onIncrease, onDecrease, onRemove, onSetUnit, onSetAmount };
+}
+
+export default function AddItemDrawer({ opened, ...props }: AddItemModalProps) {
   const { t } = useTranslation();
+  const api = useContext(APIContext);
   const [query, setQuery] = useState("");
   const trimmedQuery = query.trim();
   const stack = useDrawersStack(["addItem", "editUnit"]);
   const [editedItem, setEditedItem] = useState<EditedItem | undefined>(
     undefined,
   );
+  const [entry, setEntry] = useState<AddShoppingListItem | undefined>(
+    undefined,
+  );
+  const { fetchWithArgs, refresh } = useItemsOrSuggestions();
+  useEffect(() => {
+    refresh();
+  }, [props.generation]);
 
   const onSearch = (query: string) => {
     setQuery(query);
   };
 
-  const editUnit = (id: string, amount: number, unit?: string) => {
+  const editUnit = (id: string, amount: number, unit: string | undefined) => {
     setEditedItem({ id, amount, unit });
     stack.open("editUnit");
+  };
+
+  const onClose = () => {
+    setQuery("");
+    props.onClose();
+  };
+
+  const apiCalls = useAPICalls(api, onClose);
+
+  const onSubmit = () => {
+    if (entry) {
+      apiCalls.onAdd(entry);
+    }
+  };
+
+  const onSetUnit = async (id: string, unit: string | undefined) => {
+    await apiCalls.onSetUnit(id, unit);
+    if (editedItem) {
+      const newEditedItem = { ...editedItem };
+      newEditedItem.unit = unit;
+      setEditedItem(newEditedItem);
+    }
+  };
+
+  const onSetAmount = async (id: string, amount: number) => {
+    await apiCalls.onSetAmount(id, amount);
+    if (editedItem) {
+      setEditedItem({ ...editedItem, amount });
+    }
   };
 
   return (
@@ -64,10 +150,22 @@ export default function AddItemDrawer({ opened, onClose }: AddItemModalProps) {
             placeholder={t("organisms.shop.add_item")}
             size="md"
             value={query}
-            onChange={async (e) => onSearch(e.currentTarget.value)}
+            onChange={(e) => onSearch(e.currentTarget.value)}
+            onKeyUp={(e) => {
+              if (e.key === "Enter") {
+                onSubmit();
+              }
+            }}
           />
           <Suspense fallback={<Loader />}>
-            <SuggestionItemList query={trimmedQuery} editUnit={editUnit} />
+            <SuggestionItemList
+              query={trimmedQuery}
+              editUnit={editUnit}
+              entry={entry}
+              setEntry={setEntry}
+              fetchWithArgs={fetchWithArgs}
+              onClose={onClose}
+            />
           </Suspense>
         </Stack>
       </Drawer>
@@ -77,8 +175,8 @@ export default function AddItemDrawer({ opened, onClose }: AddItemModalProps) {
             id={editedItem.id}
             amount={editedItem.amount}
             unit={editedItem.unit}
-            setUnit={(_id, _unit) => {}}
-            setAmount={(_id, _amount) => {}}
+            setUnit={onSetUnit}
+            setAmount={onSetAmount}
           />
         )}
       </Drawer>
@@ -88,16 +186,27 @@ export default function AddItemDrawer({ opened, onClose }: AddItemModalProps) {
 
 interface SuggestionItemListProps {
   query: string;
-  editUnit: (id: string, amount: number, unit?: string) => void;
+  editUnit: (id: string, amount: number, unit: string | undefined) => void;
+  entry: AddShoppingListItem | undefined;
+  setEntry: (entry: AddShoppingListItem | undefined) => void;
+  fetchWithArgs: (
+    call: (args: string) => Promise<AddShoppingListItem[]>,
+    args: string,
+  ) => AddShoppingListItem[];
+  onClose: () => void;
 }
 
-function SuggestionItemList({ query, editUnit }: SuggestionItemListProps) {
+function SuggestionItemList({
+  query,
+  editUnit,
+  entry,
+  setEntry,
+  fetchWithArgs,
+  onClose,
+}: SuggestionItemListProps) {
   const api = useContext(APIContext);
-  const [entry, setEntry] = useState<AddShoppingListItem | undefined>(
-    undefined,
-  );
-  const { fetchWithArgs } = useItemsOrSuggestions();
   const items = fetchWithArgs(api.getItemsAndSuggestions, query);
+  const { onAdd, onIncrease, onDecrease, onRemove } = useAPICalls(api, onClose);
 
   useEffect(() => {
     const itemMatchingQuery = items.find((s) => s.name === query);
@@ -106,7 +215,7 @@ function SuggestionItemList({ query, editUnit }: SuggestionItemListProps) {
         kind: "suggestion",
         id: uuidv4(),
         name: query,
-        amount: 0,
+        amount: 1,
       });
     } else if (itemMatchingQuery !== undefined) {
       setEntry(itemMatchingQuery);
@@ -114,34 +223,6 @@ function SuggestionItemList({ query, editUnit }: SuggestionItemListProps) {
       setEntry(undefined);
     }
   }, [query, items]);
-
-  const onIncrease = (item: AddShoppingListItem) => {
-    api.updateDocument(DOCUMENT_ID, [
-      [`items.${item.id}.amount`, { kind: "replace", data: item.amount + 1 }],
-    ]);
-  };
-
-  const onDecrease = (item: AddShoppingListItem) => {
-    api.updateDocument(DOCUMENT_ID, [
-      [`items.${item.id}.amount`, { kind: "replace", data: item.amount - 1 }],
-    ]);
-  };
-
-  const onRemove = (item: AddShoppingListItem) => {
-    api.updateDocument(DOCUMENT_ID, [
-      [`items`, { kind: "remove", key: item.id }],
-    ]);
-  };
-
-  const onAdd = (item: AddShoppingListItem) => {
-    const itemToAdd = {
-      state: ShoppingListItemState.Todo,
-      ...item,
-    };
-    api.updateDocument(DOCUMENT_ID, [
-      [`items`, { kind: "insert", value: itemToAdd, key: itemToAdd.id }],
-    ]);
-  };
 
   return (
     <Stack gap="xs">

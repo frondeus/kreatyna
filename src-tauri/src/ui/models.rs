@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use strum::{EnumDiscriminants, EnumString, IntoStaticStr};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Document {
     pub id: DocumentId,
     pub title: DocumentTitle,
@@ -23,7 +23,7 @@ impl From<DocumentId> for i32 {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(transparent)]
 pub struct DocumentTitle(String);
 impl AsRef<str> for DocumentTitle {
@@ -49,7 +49,7 @@ pub struct NewDocument {
     pub kind: DocumentKind,
 }
 
-#[derive(Serialize, Deserialize, EnumDiscriminants)]
+#[derive(Serialize, Deserialize, EnumDiscriminants, Debug)]
 #[serde(tag = "kind")]
 #[serde(rename_all = "camelCase")]
 #[strum_discriminants(name(JustDocumentKind))]
@@ -107,12 +107,26 @@ pub enum AddShoppingListItem {
     Suggestion(ShoppingListSuggestion),
 }
 
+impl AddShoppingListItem {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Item(item) => &item.name,
+            Self::Suggestion(suggestion) => &suggestion.name,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct JsonPath(String);
 impl AsRef<str> for JsonPath {
     fn as_ref(&self) -> &str {
         &self.0
+    }
+}
+impl From<String> for JsonPath {
+    fn from(s: String) -> Self {
+        Self(s)
     }
 }
 
@@ -134,10 +148,12 @@ pub enum EventNotification {
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
-#[serde(tag = "kind", content = "data", rename_all = "camelCase")]
+#[serde(tag = "kind", rename_all = "camelCase")]
 pub enum DocumentEventChange {
     // Scalars
-    Replace(serde_json::Value),
+    Replace {
+        value: serde_json::Value,
+    },
     ReplaceWithUndefined,
     // Arrays
     /// Moves value with given key before the value with the given key.

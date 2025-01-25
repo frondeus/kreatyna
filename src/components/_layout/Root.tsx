@@ -1,5 +1,5 @@
-import ErrorPage from "@components/_layout/Error";
-import { API, APIContext } from "@lib/api";
+import ErrorPage from "@/components/_layout/Error";
+import { API, APIContext } from "@/lib/api";
 import { MantineProvider } from "@mantine/core";
 import { ErrorBoundary } from "react-error-boundary";
 

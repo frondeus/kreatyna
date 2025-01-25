@@ -1,4 +1,6 @@
+use ordered_float::OrderedFloat;
 use std::sync::mpsc::Sender;
+use strsim::normalized_levenshtein;
 
 use changes::ApplyChange;
 use db::messages::UiToDbExt;
@@ -28,11 +30,11 @@ fn update_document(
     println!("update_document: {:?} {:?}", id, changes);
     let doc = tx.get_document(id.into());
     let mut doc: ui::models::Document = FromDb::from_db(doc).unwrap();
+    println!("doc: {:?}", doc);
     let mut ui_changes = vec![];
-    for (json_path, change) in changes {
-        let path = json_path.as_ref().split('.').collect::<Vec<_>>();
-        if let Some(ui) = doc.apply_change(&path, &change) {
-            ui_changes.push((json_path, ui));
+    for (path, change) in changes {
+        if let Some((path, ui)) = doc.apply(path.as_ref(), &change) {
+            ui_changes.push((ui::models::JsonPath::from(path), ui));
         }
     }
     tx.update_document(doc.to_db().unwrap());
@@ -64,8 +66,25 @@ fn get_items_and_suggestions(
     tx: tauri::State<Sender<db::messages::UiToDb>>,
 ) -> Vec<ui::models::AddShoppingListItem> {
     println!("get_item_suggestions: {}", query);
-    let _ = tx;
-    vec![]
+    let doc = tx.get_document(1);
+    let doc: ui::models::Document = FromDb::from_db(doc).unwrap();
+    let ui::models::DocumentKind::ShoppingList { items } = doc.kind;
+
+    let suggestions: Vec<_> = items
+        .into_iter()
+        .map(|item| ui::models::AddShoppingListItem::Item(item))
+        .collect();
+
+    let mut suggestions_with_score: Vec<_> = suggestions
+        .into_iter()
+        .map(|s| {
+            let score = OrderedFloat(1.0 - normalized_levenshtein(&query, s.name()));
+            (score, s)
+        })
+        .collect();
+
+    suggestions_with_score.sort_by_key(|s| s.0);
+    suggestions_with_score.into_iter().map(|s| s.1).collect()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

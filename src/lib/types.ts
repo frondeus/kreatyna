@@ -48,7 +48,7 @@ interface DocumentReplaced {
 interface DocumentUpdated {
   kind: "updated";
   id: DocumentId;
-  changes: EventNotificationChange[];
+  changes: EventNotificationChangeEntry[];
 }
 
 interface DocumentDeleted {
@@ -64,7 +64,7 @@ export type EventNotification =
 
 interface ChangeReplaced {
   kind: "replace";
-  data: unknown;
+  value: unknown;
 }
 
 interface ChangeReplacedWithUndefined {
@@ -88,6 +88,7 @@ interface ChangeInserted {
   value: unknown;
 }
 
+export type EventNotificationChangeEntry = [string, EventNotificationChange];
 export type EventNotificationChange =
   | ChangeReplaced
   | ChangeReplacedWithUndefined
@@ -97,7 +98,7 @@ export type EventNotificationChange =
 
 export interface ChangeReplace {
   kind: "replace";
-  data: unknown;
+  value: unknown;
 }
 
 export interface ChangeReplaceWithUndefined {

@@ -1,6 +1,6 @@
-import ErrorPage from "@components/_layout/Error";
-import ShopPage from "@components/pages/Shop";
-import { useRoute } from "@lib/state";
+import ErrorPage from "@/components/_layout/Error";
+import ShopPage from "@/components/pages/Shop";
+import { useRoute } from "@/lib/state";
 import { Loader } from "@mantine/core";
 import { Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";

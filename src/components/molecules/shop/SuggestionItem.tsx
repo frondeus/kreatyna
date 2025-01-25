@@ -1,8 +1,8 @@
 import SuggestionItemPlus, {
   State as CheckboxState,
-} from "@components/atoms/shop/SuggestionItemPlus";
-import SuggestionUnit from "@components/atoms/shop/SuggestionUnit";
-import { ShoppingListSuggestion } from "@lib/types";
+} from "@/components/atoms/shop/SuggestionItemPlus";
+import SuggestionUnit from "@/components/atoms/shop/SuggestionUnit";
+import { ShoppingListSuggestion } from "@/lib/types";
 import { Group, Paper, Text } from "@mantine/core";
 
 export interface SuggestionItemProps {

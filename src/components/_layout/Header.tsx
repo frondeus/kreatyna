@@ -1,4 +1,4 @@
-import { useRoute } from "@lib/state";
+import { useRoute } from "@/lib/state";
 import { ActionIcon, Center, Group } from "@mantine/core";
 import {
   IconLayoutSidebarLeftExpand,

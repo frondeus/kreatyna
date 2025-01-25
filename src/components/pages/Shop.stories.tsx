@@ -1,5 +1,5 @@
+import { APIContext } from "@/lib/api";
 import { AddShoppingListItem, ShoppingListItemState } from "@/lib/types";
-import { APIContext } from "@lib/api";
 import type { Meta, StoryObj } from "@storybook/react";
 import ShopPage from "./Shop";
 const suggestions: AddShoppingListItem[] = [

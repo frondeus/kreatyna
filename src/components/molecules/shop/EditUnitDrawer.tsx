@@ -1,11 +1,18 @@
-import { Button, Group, NumberInput, TextInput } from "@mantine/core";
+import {
+  ActionIcon,
+  Button,
+  Group,
+  NumberInput,
+  TextInput,
+} from "@mantine/core";
+import { IconX } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
 export interface EditUnitDrawerProps {
   id: string;
   amount: number;
-  unit?: string;
-  setUnit: (id: string, unit: string) => void;
+  unit: string | undefined;
+  setUnit: (id: string, unit: string | undefined) => void;
   setAmount: (id: string, amount: number) => void;
 }
 export default function EditUnitDrawer({
@@ -29,8 +36,8 @@ export default function EditUnitDrawer({
 }
 
 interface EditUnitFormProps {
-  unit?: string;
-  setUnit: (unit: string) => void;
+  unit: string | undefined;
+  setUnit: (unit: string | undefined) => void;
 }
 function EditUnitForm({ unit, setUnit }: EditUnitFormProps) {
   const { t } = useTranslation();
@@ -47,6 +54,11 @@ function EditUnitForm({ unit, setUnit }: EditUnitFormProps) {
       label={t("molecules.shop.unit")}
       value={unit}
       onChange={(e) => setUnit(e.currentTarget.value)}
+      rightSection={
+        <ActionIcon onClick={() => setUnit(undefined)}>
+          <IconX size="16" />
+        </ActionIcon>
+      }
     />
   );
 }

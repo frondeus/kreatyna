@@ -9,6 +9,7 @@ import {
 } from "@tabler/icons-react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import "./ItemCheckbox.css";
 
 export interface ItemCheckboxProps {
   state: ShoppingListItemState;
@@ -47,22 +48,50 @@ export default function ItemCheckbox({
   const longPressTimer = useRef<number>();
   const isLongPress = useRef(false);
 
-  const handleMouseDown = useCallback(() => {
-    isLongPress.current = false;
-    longPressTimer.current = window.setTimeout(() => {
-      isLongPress.current = true;
-      setMenuOpened(true);
-    }, 1000);
-  }, [onChange]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      console.log("mouse down", e);
+      e.preventDefault();
+      isLongPress.current = false;
+      longPressTimer.current = window.setTimeout(() => {
+        isLongPress.current = true;
+        setMenuOpened(true);
+      }, 1000);
+    },
+    [onChange],
+  );
 
-  const handleMouseUp = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-    }
-    if (!isLongPress.current) {
-      onChange(circleState(state));
-    }
-  }, [state, onChange]);
+  const handleMouseUp = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      console.log("mouse up", e);
+      e.preventDefault();
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+      }
+      if (!isLongPress.current) {
+        onChange(circleState(state));
+      }
+    },
+    [state, onChange],
+  );
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      console.log("touch start", e);
+      document.body.classList.add("prevent-select");
+      handleMouseDown(e);
+    },
+    [handleMouseDown],
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      console.log("touch up", e);
+      document.body.classList.remove("prevent-select");
+      handleMouseUp(e);
+    },
+    [handleMouseUp],
+  );
 
   const menuOptions = Object.entries(STATES).map(
     ([newState, { icon: Icon, color }]) => (
@@ -96,6 +125,8 @@ export default function ItemCheckbox({
           color={color}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
         >
           <Icon />
         </ActionIcon>

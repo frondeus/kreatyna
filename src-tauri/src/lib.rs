@@ -2,6 +2,7 @@ use anyhow::Context;
 use ordered_float::OrderedFloat;
 use std::sync::mpsc::Sender;
 use strsim::normalized_levenshtein;
+use tracing_subscriber::layer::SubscriberExt;
 
 use changes::ApplyChange;
 use db::messages::UiToDbExt;
@@ -48,7 +49,7 @@ impl serde::Serialize for Error {
         S: serde::Serializer,
     {
         let s = match self {
-            Error::Any(e) => format!("{}", e),
+            Error::Any(e) => format!("{:?}", e),
         };
         serializer.serialize_str(&s)
     }
@@ -147,17 +148,19 @@ fn log(msg: String, args: Vec<serde_json::Value>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tracing_subscriber::fmt::init();
-    eprintln!("Running Kreatyna, listen to me!");
-    println!("Running Kreatyna, listen to me!");
-    tracing::warn!("Running Kreatyna, listen to me!");
+    use tracing_oslog::OsLogger;
+
+    let collector =
+        tracing_subscriber::registry().with(OsLogger::new("pl.frondeus.kreatyna.app", "default"));
+    tracing::subscriber::set_global_default(collector).expect("failed to set global subscriber");
+
     let (db_tx, db_rx) = std::sync::mpsc::channel();
     let (ui_tx, ui_rx) = std::sync::mpsc::channel();
 
     let db_conn = match db::establish_connection().context("Failed to establish connection") {
         Ok(c) => c,
         Err(e) => {
-            tracing::error!("{:#}", e);
+            tracing::error!("{:?}", e);
             std::process::exit(1);
         }
     };

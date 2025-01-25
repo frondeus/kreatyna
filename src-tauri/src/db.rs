@@ -1,6 +1,6 @@
 use std::sync::mpsc::Receiver;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use messages::UiToDb;
@@ -25,7 +25,16 @@ pub fn task(rx: Receiver<UiToDb>, mut conn: SqliteConnection) -> anyhow::Result<
 pub fn establish_connection() -> Result<SqliteConnection> {
     let database_url = "./db.sqlite";
 
-    let mut conn = SqliteConnection::establish(database_url)?;
+    if let Ok(dir) = std::env::current_dir() {
+        tracing::info!("Current directory: {:?}", dir);
+    }
+
+    if std::path::Path::new(database_url).exists() {
+        tracing::info!("Database file exists: {:?}", database_url);
+    }
+
+    let mut conn = SqliteConnection::establish(database_url)
+        .context("Failed to establish SQLITE connection")?;
 
     if conn.run_pending_migrations(MIGRATIONS).is_err() {
         anyhow::bail!("Failed to run migrations");

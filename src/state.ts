@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import * as api from "./api";
 import { use } from "react-use-polyfill";
+import { ShoppingList } from "./types";
 
 export type Route = "shop";
 
@@ -17,18 +17,17 @@ export const useRoute = create<RouteState>((set) => ({
 export interface UsePromise<T> {
     promise?: Promise<T>;
     refresh (): void;
-    fetch(): T;
+    fetch(call: () => Promise<T>): T;
 }
 
-function createUsePromise<T>(
-    fetch: () => Promise<T>
-) {
+function createUsePromise<T>( ) {
     return create<UsePromise<T>>((set, get) => ({
         refresh: () => set({ promise: undefined }),
-        fetch: () => {
-            let promise = get().promise;
+        fetch: (call: () => Promise<T>) => {
+            const state = get();
+            let promise = state.promise;
             if (!promise) {
-                promise = fetch();
+                promise = call();
                 set({ promise });
             }
             return use(promise)
@@ -36,4 +35,4 @@ function createUsePromise<T>(
     }));
 }
 
-export const useShop = createUsePromise(api.getShoppingLists);
+export const useShop = createUsePromise<ShoppingList[]>();

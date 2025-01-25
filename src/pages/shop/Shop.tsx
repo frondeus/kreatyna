@@ -1,20 +1,23 @@
-import { ActionIcon, Affix, Button, Center, Drawer, Modal, Paper, Stack, Text, TextInput } from "@mantine/core";
-import { createShoppingList } from "../../api";
+import { ActionIcon, Affix, Button, Center, Modal, Paper, Stack, Text, TextInput } from "@mantine/core";
+import { APIContext } from "../../api";
 import { useTranslation } from "react-i18next";
 import { useShop } from "../../state";
 import { Item } from "./components/Item";
 import { IconPlus } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
+import { useContext } from "react";
+import { AddItemModal } from "./components/AddItemModal";
 
 export function ShopPage() {
-    const { refresh, fetch } = useShop();
+    const { refresh, fetch} = useShop();
     const { t } = useTranslation();
     const [openedAddingModal, { toggle: toggleAddingModal, close: closeAddingModal }] = useDisclosure(false);
-    const shoppingLists = fetch();
+    const api = useContext(APIContext);
+    const shoppingLists = fetch(api.getShoppingLists);
 
     if (shoppingLists.length === 0) {
         const createList = async () => {
-            let id = await createShoppingList({
+            let id = await api.createShoppingList({
                 kind: 'shoppingList',
                 title: 'New shopping list',
                 items: [
@@ -39,7 +42,8 @@ export function ShopPage() {
 
     const lastShoppingList = shoppingLists[shoppingLists.length - 1];
 
-    return <Stack>
+    return (
+    <Stack>
         {lastShoppingList.items.map((item: any) => (
             <Item key={item.id} item={item} />
         ))}
@@ -48,13 +52,7 @@ export function ShopPage() {
                 <IconPlus />
             </ActionIcon>
         </Affix>
-        <Modal 
-            opened={openedAddingModal} 
-            onClose={closeAddingModal}
-            fullScreen>
-            <Stack>
-                <TextInput />
-            </Stack>
-        </Modal>
+        <AddItemModal opened={openedAddingModal} onClose={closeAddingModal} />
     </Stack>
+    );
 }

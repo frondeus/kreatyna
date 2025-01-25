@@ -1,8 +1,8 @@
 import { Paper } from "@mantine/core";
+import { ShoppingListItem } from "../../../types";
 
-export function Item({ item }: { item: any }) {
+export function Item({ item }: { item: ShoppingListItem }) {
     return <Paper>
-        {item.title}
-        {JSON.stringify(item)}
+        {item}
     </Paper>;
 }

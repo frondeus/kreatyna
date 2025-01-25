@@ -1,6 +1,6 @@
 import { use } from "react-use-polyfill";
 import { create } from "zustand";
-import { ShoppingList, ShoppingListItem } from "./types";
+import { ShoppingList, ShoppingListItemProposal } from "./types";
 
 export type Route = "shop";
 
@@ -36,4 +36,4 @@ function createUsePromise<T>() {
 }
 
 export const useShop = createUsePromise<ShoppingList[]>();
-export const useSuggestions = createUsePromise<ShoppingListItem[]>();
+export const useSuggestions = createUsePromise<ShoppingListItemProposal[]>();

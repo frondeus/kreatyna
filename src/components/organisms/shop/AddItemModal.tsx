@@ -1,9 +1,8 @@
 import SuggestionItem from "@components/molecules/shop/SuggestionItem";
 import { APIContext } from "@lib/api";
 import { useSuggestions } from "@lib/state";
-import { ShoppingListItemState } from "@lib/types";
-import { Modal, Stack, TextInput } from "@mantine/core";
-import { useContext, useState } from "react";
+import { Drawer, Loader, Stack, TextInput } from "@mantine/core";
+import { Suspense, useContext, useEffect, useState } from "react";
 
 export interface AddItemModalProps {
   opened: boolean;
@@ -12,51 +11,58 @@ export interface AddItemModalProps {
 
 export default function AddItemModal({ opened, onClose }: AddItemModalProps) {
   const [query, setQuery] = useState("");
-  const api = useContext(APIContext);
-  const { fetch: fetchSuggestions } = useSuggestions();
 
-  const suggestions =
-    query.length > 0
-      ? fetchSuggestions(() => api.getItemSuggestions(query))
-      : [];
+  const onSearch = (query: string) => {
+    setQuery(query);
+  };
 
   return (
-    <Modal
+    <Drawer
+      size="100%"
+      position="bottom"
       opened={opened}
       onClose={onClose}
-      fullScreen
-      title="Add new item"
       styles={{
         header: {
           marginBottom: 0,
         },
       }}
     >
-      <Stack gap="xs">
+      <Stack gap="xs" justify="flex-end" align="stretch" h="100%">
         <TextInput
           placeholder="Add new item"
           size="md"
           value={query}
-          onChange={(e) => setQuery(e.currentTarget.value)}
+          onChange={async (e) => onSearch(e.currentTarget.value)}
         />
-
-        {suggestions.map((item, index) => (
-          <SuggestionItem
-            key={index}
-            name={item.name}
-            amount={item.amount}
-            state={ShoppingListItemState.Todo}
-            onDecrease={() => {}}
-            onIncrease={() => {}}
-            onRemove={() => {}}
-            onEditUnit={() => {}}
-            onAdd={() => {
-              // This would call an API to add item
-              console.log("Add", item);
-            }}
-          />
-        ))}
+        <Suspense fallback={<Loader />}>
+          <SuggestionItemList query={query} />
+        </Suspense>
       </Stack>
-    </Modal>
+    </Drawer>
+  );
+}
+
+function SuggestionItemList({ query }: { query: string }) {
+  const api = useContext(APIContext);
+  const { fetch, refresh } = useSuggestions();
+  useEffect(() => {
+    refresh();
+  }, [query]);
+  const suggestions = fetch(() => api.getItemSuggestions(query));
+  return (
+    <Stack gap="xs">
+      {suggestions.map((item, index) => (
+        <SuggestionItem
+          key={index}
+          {...item}
+          onDecrease={() => {}}
+          onIncrease={() => {}}
+          onRemove={() => {}}
+          onAdd={() => {}}
+          onEditUnit={() => {}}
+        />
+      ))}
+    </Stack>
   );
 }

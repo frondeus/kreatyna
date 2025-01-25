@@ -20,6 +20,10 @@ export interface ShoppingListItem {
   state: ShoppingListItemState;
 }
 
+export type ShoppingListItemProposal = Omit<ShoppingListItem, "id" | "state"> & {
+  state?: ShoppingListItemState;
+};
+
 export enum ShoppingListItemState {
   Todo = "TODO",
   InCart = "IN_CART",

@@ -2,11 +2,11 @@ import SuggestionItemPlus, {
   State as CheckboxState,
 } from "@components/atoms/shop/SuggestionItemPlus";
 import SuggestionUnit from "@components/atoms/shop/SuggestionUnit";
-import { ShoppingListItem, ShoppingListItemState } from "@lib/types";
+import { ShoppingListItemProposal, ShoppingListItemState } from "@lib/types";
 import { ActionIcon, Group, Paper, Text } from "@mantine/core";
 import { IconMinus, IconX } from "@tabler/icons-react";
 
-export interface SuggestionItemProps extends Omit<ShoppingListItem, "id"> {
+export interface SuggestionItemProps extends ShoppingListItemProposal {
   onIncrease: () => void;
   onDecrease: () => void;
   onRemove: () => void;
@@ -26,15 +26,13 @@ export default function SuggestionItem({
   onEditUnit,
 }: SuggestionItemProps) {
   let checkboxState: CheckboxState = CheckboxState.Default;
-  if (amount > 0) {
+  const isAdded = state !== undefined && amount > 0;
+  if (isAdded) {
     checkboxState = CheckboxState.Added;
   }
 
   let reducingControls: React.ReactNode = null;
-  if (
-    state !== ShoppingListItemState.Bought &&
-    state !== ShoppingListItemState.Todo
-  ) {
+  if (isAdded && state !== ShoppingListItemState.Bought) {
     let clickHandler;
     let Icon;
     if (amount > 0) {
@@ -65,7 +63,7 @@ export default function SuggestionItem({
   };
 
   return (
-    <Paper p="xs" withBorder>
+    <Paper mb="xs">
       <Group justify="space-between" wrap="nowrap">
         <SuggestionItemPlus state={checkboxState} onClick={onPlusClick} />
         <Text size="sm" style={{ flex: 1 }}>
@@ -77,7 +75,7 @@ export default function SuggestionItem({
             amount={amount}
             unit={unit}
             onClick={onEditUnit}
-            editable={amount > 0 && state !== ShoppingListItemState.Bought}
+            editable={isAdded}
           />
           {reducingControls}
         </Group>

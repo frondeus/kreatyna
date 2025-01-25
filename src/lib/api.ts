@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { createContext } from "react";
 import { NewDocument } from "./schema";
-import { DocumentId, ShoppingList, ShoppingListItem } from "./types";
+import { DocumentId, ShoppingList, ShoppingListItem, ShoppingListItemProposal } from "./types";
 
 async function getShoppingLists(): Promise<ShoppingList[]> {
   return await invoke("get_documents", { kind: "shoppingList" });
@@ -18,7 +18,7 @@ async function getItemSuggestions(_query: string): Promise<ShoppingListItem[]> {
 export interface API {
   getShoppingLists: () => Promise<ShoppingList[]>;
   createShoppingList: (doc: NewDocument) => Promise<DocumentId>;
-  getItemSuggestions: (query: string) => Promise<ShoppingListItem[]>;
+  getItemSuggestions: (query: string) => Promise<ShoppingListItemProposal[]>;
 }
 
 export const api: API = {

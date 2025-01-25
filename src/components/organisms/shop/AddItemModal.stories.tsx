@@ -9,13 +9,17 @@ const meta = {
   parameters: {
     layout: "fullscreen",
   },
+  args: {
+    onClose: () => {},
+    opened: true,
+  },
   decorators: [
     (Story) => (
       <APIContext.Provider
         value={{
           getShoppingLists: async () => [],
           createShoppingList: async () => 1,
-          getItemSuggestions: async (query) => {
+          getItemSuggestions: async (_query) => {
             // Simulate API delay
             await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -46,20 +50,17 @@ const meta = {
                 name: "Rye bread, dark, wholemeal, imported",
                 amount: 373.2,
                 unit: "g",
-                state: ShoppingListItemState.Todo,
               },
               {
                 id: "5",
                 name: "Honey",
-                amount: 20,
+                amount: 0,
                 unit: "g",
                 state: ShoppingListItemState.Todo,
               },
             ];
 
-            return suggestions.filter((s) =>
-              s.name.toLowerCase().includes(query.toLowerCase()),
-            );
+            return suggestions;
           },
         }}
       >
@@ -72,16 +73,4 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
-  args: {
-    opened: true,
-    onClose: () => {},
-  },
-};
-
-export const Closed: Story = {
-  args: {
-    opened: false,
-    onClose: () => {},
-  },
-};
+export const Default: Story = {};

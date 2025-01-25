@@ -1,5 +1,5 @@
 import { ErrorBoundary } from "react-error-boundary";
-import { ShopPage } from "./pages/Shop";
+import { ShopPage } from "./pages/shop/Shop";
 import { useRoute } from "./state";
 import { Suspense } from "react";
 import { Loader } from "@mantine/core";

@@ -8,16 +8,14 @@ import {
 } from "@/lib/types";
 import { Button, Group } from "@mantine/core";
 import { useForm, UseFormReturnType } from "@mantine/form";
-import { useCounter } from "@mantine/hooks";
-import { useContext, useEffect } from "react";
+import { useContext } from "react";
 import { useTranslation } from "react-i18next";
 
-import { updateForm } from "@/lib/utils";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSubscribeForm } from "@/lib/utils";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import ListPage from "./ListPage";
 
 export default function ShopPage() {
-  const [generation, handlers] = useCounter(0);
   const api = useContext(APIContext);
   const { data: shoppingLists } = useSuspenseQuery({
     queryKey: ["shopping-lists"],
@@ -29,31 +27,21 @@ export default function ShopPage() {
     initialValues: lastShoppingList,
   });
 
+  const queryClient = useQueryClient();
+  useSubscribeForm(lastShoppingList.id, api, form, () => {
+    queryClient.invalidateQueries({
+      queryKey: ["items-or-suggestions"],
+    });
+  });
+
   const handleFinishShopping = async () => {
     await api.finishShopping(lastShoppingList.id);
   };
 
-  useEffect(() => {
-    return api.subscribeToEvents((msg) => {
-      if (msg.id !== lastShoppingList.id) return;
-      console.log("Event", msg);
-      switch (msg.kind) {
-        case "updated": {
-          updateForm(form, msg.changes);
-          break;
-        }
-        default: {
-          break;
-        }
-      }
-      handlers.increment();
-    });
-  }, []);
-
   return (
     <ListPage
       renderModal={(params) => {
-        return <AddItemDrawer generation={generation} {...params} />;
+        return <AddItemDrawer {...params} />;
       }}
     >
       <ShoppingListForm form={form} onFinishShopping={handleFinishShopping} />

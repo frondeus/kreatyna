@@ -10,7 +10,7 @@ import {
   TextInput,
   useDrawersStack,
 } from "@mantine/core";
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { v4 as uuidv4 } from "uuid";
@@ -20,7 +20,6 @@ const DOCUMENT_ID = 1;
 export interface AddItemModalProps {
   opened: boolean;
   onClose: () => void;
-  generation: number;
 }
 
 interface EditedItem {
@@ -90,13 +89,6 @@ export default function AddItemDrawer({ opened, ...props }: AddItemModalProps) {
   const [entry, setEntry] = useState<AddShoppingListItem | undefined>(
     undefined,
   );
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    queryClient.invalidateQueries({
-      queryKey: ["items-or-suggestions", trimmedQuery],
-    });
-  }, [props.generation]);
 
   const onSearch = (query: string) => {
     setQuery(query);

@@ -91,10 +91,24 @@ function subscribeToEvents(cbk: (msg: EventNotification) => void): () => void {
   };
 }
 
+function subscribeToDocumentEvents(
+  id: DocumentId,
+  cbk: (msg: EventNotification) => void,
+): () => void {
+  return subscribeToEvents((msg) => {
+    if (msg.id !== id) return;
+    cbk(msg);
+  });
+}
+
 export interface API {
   getShoppingLists: () => Promise<ShoppingList[]>;
   getItemsAndSuggestions: (query: string) => Promise<AddShoppingListItem[]>;
   subscribeToEvents: (cbk: (msg: EventNotification) => void) => () => void;
+  subscribeToDocumentEvents: (
+    id: DocumentId,
+    cbk: (msg: EventNotification) => void,
+  ) => () => void;
   updateDocument: (
     id: DocumentId,
     changes: DocumentChangeEntry[],
@@ -108,6 +122,7 @@ export const api: API = {
   getShoppingLists,
   getItemsAndSuggestions,
   subscribeToEvents,
+  subscribeToDocumentEvents,
   updateDocument,
   finishShopping,
   getRawIngredients,

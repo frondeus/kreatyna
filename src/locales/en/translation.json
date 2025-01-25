@@ -16,6 +16,15 @@
       "carbs": "Carbs",
       "fat": "Fat",
       "edit": "Edit"
+    },
+    "edit-raw-ingredient": {
+      "legend": "Edit raw ingredient",
+      "name": "Name",
+      "container": "Container",
+      "nutrition": "Nutrition",
+      "proteins": "Proteins",
+      "carbs": "Carbs",
+      "fat": "Fat"
     }
   },
   "molecules": {

@@ -1,21 +1,17 @@
 use std::sync::mpsc::Sender;
 
+use ui::map::ToDb;
+
+mod ui;
 mod db;
 
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[tauri::command]
-fn create_document(tx: tauri::State<Sender<db::messages::UiToDb>>) {
+fn create_document(
+    new_doc: ui::models::Document,
+    tx: tauri::State<Sender<db::messages::UiToDb>>
+) {
     tx.send(db::messages::UiToDb::CreateDocument(
-        db::models::NewDocument {
-            title: "".to_string(),
-            path: "".to_string(),
-            kind: "".to_string(),
-            body: "".to_string(),
-        },
+        new_doc.to_db().unwrap(),
     ))
     .unwrap();
 }
@@ -29,7 +25,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(tx)
-        .invoke_handler(tauri::generate_handler![greet, create_document])
+        .invoke_handler(tauri::generate_handler![create_document])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

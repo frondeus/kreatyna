@@ -1,4 +1,5 @@
 import ErrorPage from "@/components/_layout/Error";
+import RawIngredientList from "@/components/pages/RawIngredientList";
 import ShopPage from "@/components/pages/Shop";
 import { useRoute } from "@/lib/state";
 import { Loader } from "@mantine/core";
@@ -16,6 +17,14 @@ export default function Content() {
 }
 
 function ContentInner() {
-  const { route } = useRoute();
-  return <>{route === "shop" && <ShopPage />}</>;
+  const route = useRoute((st) => st.route);
+  if (route === "shop") {
+    return <ShopPage />;
+  }
+
+  if (route === "raw-ingredient-list") {
+    return <RawIngredientList />;
+  }
+
+  return null;
 }

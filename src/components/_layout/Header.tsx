@@ -1,5 +1,5 @@
 import { useRoute } from "@/lib/state";
-import { ActionIcon, Center, Group } from "@mantine/core";
+import { ActionIcon, Group } from "@mantine/core";
 import {
   IconLayoutSidebarLeftExpand,
   IconLayoutSidebarRightCollapse,
@@ -29,7 +29,7 @@ export default function Header({
           )}
         </ActionIcon>
       </Group>
-      <Center>{routeName}</Center>
+      <Group style={{ whiteSpace: "nowrap" }}>{routeName}</Group>
       <Group visibleFrom="sm">
         {/* <ActionIcon variant="subtle" visibleFrom="sm"> </ActionIcon> */}
       </Group>

@@ -1,18 +1,22 @@
 import { useEffect } from "react";
 import { use } from "react-use-polyfill";
 import { create } from "zustand";
-import { AddShoppingListItem, ShoppingList } from "./types";
+import { AddShoppingListItem, RawIngredient, ShoppingList } from "./types";
 
-export type Route = "shop";
+export type Route = "shop" | "raw-ingredient-list";
 
 export interface RouteState {
   route: Route;
   setRoute: (route: Route) => void;
+  goto(route: Route): () => void;
 }
 
 export const useRoute = create<RouteState>((set) => ({
   route: "shop",
   setRoute: (route: Route) => set({ route }),
+  goto(route: Route) {
+    return () => set({ route });
+  },
 }));
 
 export interface UsePromise<T> {
@@ -48,3 +52,4 @@ function createUsePromise<T>() {
 
 export const useShop = createUsePromise<ShoppingList[]>();
 export const useItemsOrSuggestions = createUsePromise<AddShoppingListItem[]>();
+export const useRawIngredients = createUsePromise<RawIngredient[]>();

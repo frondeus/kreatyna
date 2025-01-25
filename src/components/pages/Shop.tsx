@@ -7,29 +7,17 @@ import {
   ShoppingListItem,
   ShoppingListItemState,
 } from "@/lib/types";
-import {
-  ActionIcon,
-  Affix,
-  Button,
-  Group,
-  ScrollArea,
-  Stack,
-} from "@mantine/core";
+import { Button, Group } from "@mantine/core";
 import { useForm, UseFormReturnType } from "@mantine/form";
-import { useCounter, useDisclosure } from "@mantine/hooks";
-import { IconPlus } from "@tabler/icons-react";
+import { useCounter } from "@mantine/hooks";
 import { useContext, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import { updateForm } from "@/lib/utils";
-import "./Shop.css";
+import ListPage from "./ListPage";
 
 export default function ShopPage() {
   const { fetch } = useShop();
-  const [
-    openedAddingModal,
-    { toggle: toggleAddingModal, close: closeAddingModal },
-  ] = useDisclosure(false);
   const [generation, handlers] = useCounter(0);
   const api = useContext(APIContext);
   const shoppingLists = fetch(api.getShoppingLists);
@@ -61,36 +49,13 @@ export default function ShopPage() {
   }, []);
 
   return (
-    <ScrollArea
-      h="100%"
-      styles={{
-        root: {
-          flex: "1",
-          display: "flex",
-          flexDirection: "column",
-        },
-        viewport: {
-          flex: "1",
-          display: "flex",
-          flexDirection: "column",
-        },
+    <ListPage
+      renderModal={(params) => {
+        return <AddItemDrawer generation={generation} {...params} />;
       }}
-      // style={{ display: "flex", flexDirection: "column", flex: "1" }}
     >
-      <Stack bg="dark.8" h="100%" gap="0" flex="1">
-        <ShoppingListForm form={form} onFinishShopping={handleFinishShopping} />
-        <Affix position={{ bottom: 78, right: 20 }}>
-          <ActionIcon onClick={toggleAddingModal} size="xl" radius="xl">
-            <IconPlus />
-          </ActionIcon>
-        </Affix>
-        <AddItemDrawer
-          opened={openedAddingModal}
-          onClose={closeAddingModal}
-          generation={generation}
-        />
-      </Stack>
-    </ScrollArea>
+      <ShoppingListForm form={form} onFinishShopping={handleFinishShopping} />
+    </ListPage>
   );
 }
 

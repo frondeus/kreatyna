@@ -41,6 +41,7 @@ pub fn scalar_replace<T: serde::de::DeserializeOwned>(
 apply_scalar!(bool);
 apply_scalar!(usize);
 apply_scalar!(u32);
+apply_scalar!(f64);
 apply_scalar!(String);
 
 impl<T: WithKey + ApplyChange + serde::de::DeserializeOwned + std::fmt::Debug> ApplyChange

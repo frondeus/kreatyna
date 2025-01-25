@@ -7,6 +7,7 @@ import {
   DocumentChangeEntry,
   DocumentId,
   EventNotification,
+  RawIngredient,
   ShoppingList,
 } from "./types";
 
@@ -17,6 +18,20 @@ async function getShoppingLists(): Promise<ShoppingList[]> {
     console.error("Failed to load shopping lists", e);
     notifications.show({
       title: "Failed to load shopping lists",
+      message: e as string,
+      color: "red",
+    });
+    return [];
+  }
+}
+
+async function getRawIngredients(): Promise<RawIngredient[]> {
+  try {
+    return await invoke("get_documents", { kind: "rawIngredient" });
+  } catch (e) {
+    console.error("Failed to load raw ingredients", e);
+    notifications.show({
+      title: "Failed to load raw ingredients",
       message: e as string,
       color: "red",
     });
@@ -80,6 +95,7 @@ export interface API {
     changes: DocumentChangeEntry[],
   ) => Promise<void>;
   finishShopping: (id: DocumentId) => Promise<void>;
+  getRawIngredients: () => Promise<RawIngredient[]>;
 }
 
 export const api: API = {
@@ -88,6 +104,7 @@ export const api: API = {
   subscribeToEvents,
   updateDocument,
   finishShopping,
+  getRawIngredients,
 };
 
 export default api;

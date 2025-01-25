@@ -10,7 +10,16 @@ export interface ShoppingList extends DocumentMeta {
   items: ShoppingListItem[];
 }
 
-export type Document = ShoppingList;
+export interface RawIngredient extends DocumentMeta {
+  kind: "rawIngredient";
+  name: string;
+  container: number;
+  proteins: number;
+  carbs: number;
+  fat: number;
+}
+
+export type Document = ShoppingList | RawIngredient;
 
 export interface ShoppingListItem {
   id: string;

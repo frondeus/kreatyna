@@ -8,10 +8,11 @@ import {
   IconLayoutSidebarRightCollapse,
   IconShoppingCart,
 } from "@tabler/icons-react";
+import Navbar from "./Navbar";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [navOpened, { toggle: toggleNav }] = useDisclosure();
-  const { setRoute } = useRoute();
+  const goto = useRoute((s) => s.goto);
   console.log("Layout");
   return (
     <AppShell
@@ -33,7 +34,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             hiddenFrom="sm"
           />
         </Group>
-        Navbar
+        <Navbar onClose={toggleNav} />
       </AppShell.Navbar>
       <AppShell.Header p="md">
         <Header toggleNav={toggleNav} navOpened={navOpened} />
@@ -53,7 +54,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             )}
           </ActionIcon>
 
-          <ActionIcon variant="subtle" onClick={() => setRoute("shop")}>
+          <ActionIcon variant="subtle" onClick={goto("shop")}>
             <IconShoppingCart size={16} />
           </ActionIcon>
 

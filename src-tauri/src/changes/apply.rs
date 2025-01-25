@@ -72,6 +72,20 @@ impl ApplyChange for DocumentKind {
                 "items" => items.apply_field("items", path, ui_path, change),
                 _ => unreachable!(),
             },
+            Self::RawIngredient {
+                name,
+                container,
+                proteins,
+                carbs,
+                fat,
+            } => match segment {
+                "name" => name.apply_field("name", path, ui_path, change),
+                "container" => container.apply_field("container", path, ui_path, change),
+                "proteins" => proteins.apply_field("proteins", path, ui_path, change),
+                "carbs" => carbs.apply_field("carbs", path, ui_path, change),
+                "fat" => fat.apply_field("fat", path, ui_path, change),
+                _ => unreachable!(),
+            },
         }
     }
 }

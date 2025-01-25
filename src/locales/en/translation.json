@@ -1,6 +1,7 @@
 {
   "routes": {
-    "shop": "Shop"
+    "shop": "Shop",
+    "raw-ingredient-list": "Raw ingredients"
   },
   "pages": {
     "shop": {

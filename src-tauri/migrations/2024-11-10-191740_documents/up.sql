@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS documents (
+    id INTEGER PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    path TEXT UNIQUE NOT NULL,
+    kind TEXT NOT NULL,
+    body TEXT NOT NULL
+);

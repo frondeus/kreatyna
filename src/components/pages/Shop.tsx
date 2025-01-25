@@ -5,7 +5,7 @@ import { useShop } from "@lib/state";
 import { ActionIcon, Affix, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus } from "@tabler/icons-react";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 
 export default function ShopPage() {
   const { fetch } = useShop();
@@ -16,6 +16,12 @@ export default function ShopPage() {
   const api = useContext(APIContext);
   const shoppingLists = fetch(api.getShoppingLists);
   const lastShoppingList = shoppingLists[shoppingLists.length - 1];
+
+  useEffect(() => {
+    return api.subscribeToEvents((msg) => {
+      console.log("Event", msg);
+    });
+  }, []);
 
   return (
     <Stack>

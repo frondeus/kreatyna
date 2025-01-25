@@ -26,9 +26,9 @@ pub fn task(rx: Receiver<UiToDb>) -> anyhow::Result<()> {
 pub fn establish_connection() -> Result<SqliteConnection> {
     let database_url = "./db.sqlite";
 
-    let mut conn = SqliteConnection::establish(&database_url)?;
+    let mut conn = SqliteConnection::establish(database_url)?;
 
-    if let Err(_) = conn.run_pending_migrations(MIGRATIONS) {
+    if conn.run_pending_migrations(MIGRATIONS).is_err() {
         anyhow::bail!("Failed to run migrations");
     }
 

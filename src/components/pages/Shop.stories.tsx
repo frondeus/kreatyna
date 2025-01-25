@@ -63,8 +63,8 @@ export const WithLists: Story = {
               items: [],
             },
           ],
-          createShoppingList: async () => 2,
           getItemSuggestions: async () => suggestions,
+          subscribeToEvents: () => () => {},
         }}
       >
         <Story />

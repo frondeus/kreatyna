@@ -2,11 +2,11 @@ import SuggestionItemPlus, {
   State as CheckboxState,
 } from "@components/atoms/shop/SuggestionItemPlus";
 import SuggestionUnit from "@components/atoms/shop/SuggestionUnit";
-import { ShoppingListItemProposal, ShoppingListItemState } from "@lib/types";
+import { ShoppingListItemState, ShoppingListSuggestion } from "@lib/types";
 import { ActionIcon, Group, Paper, Text } from "@mantine/core";
 import { IconMinus, IconX } from "@tabler/icons-react";
 
-export interface SuggestionItemProps extends ShoppingListItemProposal {
+export interface SuggestionItemProps extends ShoppingListSuggestion {
   onIncrease: () => void;
   onDecrease: () => void;
   onRemove: () => void;

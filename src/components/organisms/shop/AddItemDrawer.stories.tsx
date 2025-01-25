@@ -54,7 +54,6 @@ const meta = {
       <APIContext.Provider
         value={{
           getShoppingLists: async () => [],
-          createShoppingList: async () => 1,
           getItemSuggestions: async (_query) => {
             await new Promise((resolve) => setTimeout(resolve, 500));
             return suggestions;

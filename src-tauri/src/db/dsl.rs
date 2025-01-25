@@ -1,4 +1,8 @@
-use diesel::{dsl::{AsSelect, Select}, prelude::*, sqlite::Sqlite};
+use diesel::{
+    dsl::{AsSelect, Select},
+    prelude::*,
+    sqlite::Sqlite,
+};
 
 use super::{models::Document, schema::documents};
 
@@ -13,5 +17,10 @@ impl Document {
     pub fn by_kind(kind: String) -> _ {
         let all: All = Document::all();
         all.filter(documents::kind.eq(kind))
+    }
+
+    #[diesel::dsl::auto_type(no_type_alias)]
+    pub fn by_id(id: i32) -> _ {
+        documents::table.find(id)
     }
 }

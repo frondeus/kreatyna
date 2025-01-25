@@ -1,30 +1,36 @@
 import { invoke } from "@tauri-apps/api/core";
 import { createContext } from "react";
-import { NewDocument } from "./schema";
-import { DocumentId, ShoppingList, ShoppingListItem, ShoppingListItemProposal } from "./types";
+import { EventNotification, ShoppingList, ShoppingListSuggestion } from "./types";
+import { listen } from "@tauri-apps/api/event";
 
 async function getShoppingLists(): Promise<ShoppingList[]> {
   return await invoke("get_documents", { kind: "shoppingList" });
 }
 
-async function createShoppingList(doc: NewDocument): Promise<DocumentId> {
-  return await invoke("create_document", { newDoc: doc });
+async function getItemSuggestions(query: string): Promise<ShoppingListSuggestion[]> {
+  return await invoke("get_item_suggestions", { query });
 }
 
-async function getItemSuggestions(_query: string): Promise<ShoppingListItem[]> {
-  return new Promise(() => {});
+function subscribeToEvents(cbk: (msg: EventNotification) => void): (() => void) {
+  const unsub = listen<EventNotification>("event", (e) => {
+    cbk(e.payload);
+  });
+
+  return () => {
+    unsub.then((u) => u());
+  };
 }
 
 export interface API {
   getShoppingLists: () => Promise<ShoppingList[]>;
-  createShoppingList: (doc: NewDocument) => Promise<DocumentId>;
-  getItemSuggestions: (query: string) => Promise<ShoppingListItemProposal[]>;
+  getItemSuggestions: (query: string) => Promise<ShoppingListSuggestion[]>;
+  subscribeToEvents: (cbk: (msg: EventNotification) => void) => (() => void);
 }
 
 export const api: API = {
   getShoppingLists,
-  createShoppingList,
   getItemSuggestions,
+  subscribeToEvents,
 };
 
 export default api;

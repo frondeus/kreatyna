@@ -1,12 +1,5 @@
 .mrt-table-paper {
-  /* height: calc(100vh - 120px); */
   overflow: auto;
   display: flex;
 }
 
-.mrt-table-container {
-  /* height: calc(100vh - 120px - 165px); */
-  /* height: 522px; */
-  /* flex: 1;
-    overflow: auto; */
-}

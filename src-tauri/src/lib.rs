@@ -213,13 +213,46 @@ fn finish_shopping(
     Ok(())
 }
 
+#[cfg(target_os = "ios")]
+fn subscriber() -> impl tracing::Subscriber {
+    let registry = tracing_subscriber::registry();
+    registry.with(tracing_oslog::OsLogger::new(
+        "pl.frondeus.kreatyna.app",
+        "default",
+    ))
+}
+
+#[cfg(target_os = "android")]
+fn subscriber() -> impl tracing::Subscriber {
+    use tracing_logcat::{LogcatMakeWriter, LogcatTag};
+
+    let registry = tracing_subscriber::registry();
+    let writer = LogcatMakeWriter::new(LogcatTag::Target).expect("Failed to create writer");
+    let collector = tracing_subscriber::fmt::layer().with_writer(writer);
+    registry.with(collector)
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn subscriber() -> impl tracing::Subscriber {
+    let registry = tracing_subscriber::registry();
+    registry.with(tracing_subscriber::fmt::layer())
+}
+
+#[cfg(target_os = "ios")]
+fn base_dir() -> BaseDirectory {
+    BaseDirectory::Home
+}
+
+#[cfg(not(target_os = "ios"))]
+fn base_dir() -> BaseDirectory {
+    BaseDirectory::Document
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    use tracing_oslog::OsLogger;
+    tracing::subscriber::set_global_default(subscriber()).expect("failed to set global subscriber");
 
-    let collector =
-        tracing_subscriber::registry().with(OsLogger::new("pl.frondeus.kreatyna.app", "default"));
-    tracing::subscriber::set_global_default(collector).expect("failed to set global subscriber");
+    tracing::info!("Starting Kreatyna");
 
     let (db_tx, db_rx) = std::sync::mpsc::channel();
     let (ui_tx, ui_rx) = std::sync::mpsc::channel();
@@ -232,7 +265,7 @@ pub fn run() {
         .setup(|app| {
             let path = app
                 .path()
-                .resolve("kreatyna.sqlite", BaseDirectory::Home)
+                .resolve("kreatyna.sqlite", base_dir())
                 .expect("Failed to resolve path");
             tracing::info!("Database path: {:?}", path);
             let scope = app.fs_scope();

@@ -3,9 +3,17 @@
 {
   # https://devenv.sh/basics/
   env.GREET = "devenv";
+  env.ANDROID_HOME="/Users/frondeus/Library/Android/sdk";
+  env.NDK_HOME="/Users/frondeus/Library/Android/sdk/ndk/28.0.12674087";
+
+
+
+  dotenv.enable = true;
 
   # https://devenv.sh/packages/
-  packages = [ pkgs.git ];
+  packages = with pkgs; [
+    libiconv
+    jdk17  ];
 
   # https://devenv.sh/languages/
   # languages.rust.enable = true;
@@ -21,9 +29,8 @@
     echo hello from $GREET
   '';
 
-  enterShell = ''
-    hello
-    git --version
+  enterShell = '' 
+      export PATH="/Users/frondeus/Library/Android/sdk:/Users/frondeus/Library/Android/sdk/tools:/Users/frondeus/Library/Android/sdk/tools/bin:/Users/frondeus/Library/Android/sdk/platform-tools:$PATH"
   '';
 
   # https://devenv.sh/tests/

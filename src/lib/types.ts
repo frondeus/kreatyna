@@ -19,7 +19,14 @@ export interface RawIngredient extends DocumentMeta {
   fat: number;
 }
 
-export type Document = ShoppingList | RawIngredient;
+export interface Recipe extends DocumentMeta {
+  kind: "recipe";
+  name: string;
+  ingredients: RawIngredient[];
+}
+
+export type Document = ShoppingList | RawIngredient | Recipe;
+export type DocumentKind = Document["kind"];
 
 export interface ShoppingListItem {
   id: string;

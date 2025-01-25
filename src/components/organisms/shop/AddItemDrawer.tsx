@@ -1,6 +1,6 @@
 import AddItem from "@/components/molecules/shop/AddItem";
 import EditUnitDrawer from "@/components/molecules/shop/EditUnitDrawer";
-import { API, APIContext } from "@/lib/api";
+import { API, useAPI } from "@/lib/api";
 import { AddShoppingListItem, ShoppingListItemState } from "@/lib/types";
 import {
   Drawer,
@@ -11,7 +11,7 @@ import {
   useDrawersStack,
 } from "@mantine/core";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useContext, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { v4 as uuidv4 } from "uuid";
 
@@ -78,7 +78,7 @@ function useAPICalls(api: API, onClose: () => void) {
 
 export default function AddItemDrawer({ opened, ...props }: AddItemModalProps) {
   const { t } = useTranslation();
-  const api = useContext(APIContext);
+  const api = useAPI();
   const [query, setQuery] = useState("");
   const trimmedQuery = query.trim();
   const stack = useDrawersStack(["addItem", "editUnit"]);
@@ -204,7 +204,7 @@ function SuggestionItemList({
   setEntry,
   onClose,
 }: SuggestionItemListProps) {
-  const api = useContext(APIContext);
+  const api = useAPI();
   const { data: items } = useSuspenseQuery({
     queryKey: ["items-or-suggestions", query],
     queryFn: () => api.getItemsAndSuggestions(query),

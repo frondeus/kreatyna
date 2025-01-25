@@ -1,7 +1,8 @@
 use crate::net::models::DocumentEventChange as DbDocumentEventChange;
 use crate::ui::models::{
     Document, DocumentEventChange as UiDocumentEventChange, DocumentId, DocumentKind,
-    DocumentTitle, ShoppingListItem, ShoppingListItemState,
+    DocumentTitle, RawIngredient, Recipe, RecipeIngredient, ShoppingList, ShoppingListItem,
+    ShoppingListItemState,
 };
 
 mod generic;
@@ -62,30 +63,29 @@ crate::apply_scalar!(DocumentTitle);
 impl ApplyChange for DocumentKind {
     fn apply_change<'a>(
         &mut self,
+        path: impl Iterator<Item = &'a str>,
+        ui_path: String,
+        change: &DbDocumentEventChange,
+    ) -> Option<(String, UiDocumentEventChange)> {
+        match self {
+            Self::ShoppingList(list) => list.apply_change(path, ui_path, change),
+            Self::RawIngredient(ingredient) => ingredient.apply_change(path, ui_path, change),
+            Self::Recipe(recipe) => recipe.apply_change(path, ui_path, change),
+        }
+    }
+}
+
+impl ApplyChange for ShoppingList {
+    fn apply_change<'a>(
+        &mut self,
         mut path: impl Iterator<Item = &'a str>,
         ui_path: String,
         change: &DbDocumentEventChange,
     ) -> Option<(String, UiDocumentEventChange)> {
         let segment = path.next()?;
-        match self {
-            Self::ShoppingList { items } => match segment {
-                "items" => items.apply_field("items", path, ui_path, change),
-                _ => unreachable!(),
-            },
-            Self::RawIngredient {
-                name,
-                container,
-                proteins,
-                carbs,
-                fat,
-            } => match segment {
-                "name" => name.apply_field("name", path, ui_path, change),
-                "container" => container.apply_field("container", path, ui_path, change),
-                "proteins" => proteins.apply_field("proteins", path, ui_path, change),
-                "carbs" => carbs.apply_field("carbs", path, ui_path, change),
-                "fat" => fat.apply_field("fat", path, ui_path, change),
-                _ => unreachable!(),
-            },
+        match segment {
+            "items" => self.items.apply_field("items", path, ui_path, change),
+            _ => unreachable!(),
         }
     }
 }
@@ -110,3 +110,58 @@ impl ApplyChange for ShoppingListItem {
 }
 
 crate::apply_scalar!(ShoppingListItemState);
+
+impl ApplyChange for RawIngredient {
+    fn apply_change<'a>(
+        &mut self,
+        mut path: impl Iterator<Item = &'a str>,
+        ui_path: String,
+        change: &DbDocumentEventChange,
+    ) -> Option<(String, UiDocumentEventChange)> {
+        let segment = path.next()?;
+        match segment {
+            "name" => self.name.apply_field("name", path, ui_path, change),
+            "container" => self
+                .container
+                .apply_field("container", path, ui_path, change),
+            "proteins" => self.proteins.apply_field("proteins", path, ui_path, change),
+            "carbs" => self.carbs.apply_field("carbs", path, ui_path, change),
+            "fat" => self.fat.apply_field("fat", path, ui_path, change),
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl ApplyChange for Recipe {
+    fn apply_change<'a>(
+        &mut self,
+        mut path: impl Iterator<Item = &'a str>,
+        ui_path: String,
+        change: &DbDocumentEventChange,
+    ) -> Option<(String, UiDocumentEventChange)> {
+        let segment = path.next()?;
+        match segment {
+            "name" => self.name.apply_field("name", path, ui_path, change),
+            "ingredients" => self
+                .ingredients
+                .apply_field("ingredients", path, ui_path, change),
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl ApplyChange for RecipeIngredient {
+    fn apply_change<'a>(
+        &mut self,
+        mut path: impl Iterator<Item = &'a str>,
+        ui_path: String,
+        change: &DbDocumentEventChange,
+    ) -> Option<(String, UiDocumentEventChange)> {
+        let segment = path.next()?;
+        match segment {
+            "id" => self.id.apply_field("id", path, ui_path, change),
+            "raw" => self.raw.apply_field("raw", path, ui_path, change),
+            _ => unreachable!(),
+        }
+    }
+}

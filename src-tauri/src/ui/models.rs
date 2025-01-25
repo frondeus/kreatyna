@@ -57,16 +57,38 @@ pub struct NewDocument {
 #[strum_discriminants(serde(rename_all = "camelCase"))]
 #[strum_discriminants(strum(serialize_all = "camelCase"))]
 pub enum DocumentKind {
-    RawIngredient {
-        name: String,
-        container: usize,
-        proteins: f64,
-        carbs: f64,
-        fat: f64,
-    },
-    ShoppingList {
-        items: Vec<ShoppingListItem>,
-    },
+    RawIngredient(RawIngredient),
+    Recipe(Recipe),
+    ShoppingList(ShoppingList),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RawIngredient {
+    pub name: String,
+    pub container: usize,
+    pub proteins: f64,
+    pub carbs: f64,
+    pub fat: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Recipe {
+    pub name: String,
+    pub ingredients: Vec<RecipeIngredient>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct RecipeIngredient {
+    pub id: String,
+    pub raw: RawIngredient,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ShoppingList {
+    pub items: Vec<ShoppingListItem>,
 }
 
 impl std::fmt::Display for JustDocumentKind {

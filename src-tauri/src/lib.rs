@@ -151,13 +151,14 @@ fn get_items_and_suggestions(
     tracing::info!("get_item_suggestions: {}", query);
     let doc = tx.get_document(1).context("Failed to load document")?;
     let doc: ui::models::Document = FromDb::from_db(doc).context("Failed to map document")?;
-    let ui::models::DocumentKind::ShoppingList { items } = doc.kind else {
+    let ui::models::DocumentKind::ShoppingList(list) = doc.kind else {
         return Err(Error::from(anyhow::anyhow!(
             "Document is not a shopping list"
         )));
     };
 
-    let suggestions: Vec<_> = items
+    let suggestions: Vec<_> = list
+        .items
         .into_iter()
         .map(ui::models::AddShoppingListItem::Item)
         .collect();
@@ -184,12 +185,13 @@ fn finish_shopping(
         .get_document(id.into())
         .context("Failed to load document")?;
     let mut doc: ui::models::Document = FromDb::from_db(doc).context("Failed to map document")?;
-    let ui::models::DocumentKind::ShoppingList { items } = &doc.kind else {
+    let ui::models::DocumentKind::ShoppingList(list) = &doc.kind else {
         return Err(Error::from(anyhow::anyhow!(
             "Document is not a shopping list"
         )));
     };
-    let changes = items
+    let changes = list
+        .items
         .iter()
         .filter(|item| item.state == ShoppingListItemState::InCart)
         .map(|i| {

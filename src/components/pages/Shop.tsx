@@ -1,6 +1,6 @@
 import Item from "@/components/molecules/shop/Item";
 import AddItemDrawer from "@/components/organisms/shop/AddItemDrawer";
-import { APIContext } from "@/lib/api";
+import { useAPI } from "@/lib/api";
 import {
   ShoppingList,
   ShoppingListItem,
@@ -8,7 +8,6 @@ import {
 } from "@/lib/types";
 import { Button, Group } from "@mantine/core";
 import { useForm, UseFormReturnType } from "@mantine/form";
-import { useContext } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useSubscribeForm } from "@/lib/utils";
@@ -16,12 +15,15 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import ListPage from "./ListPage";
 
 export default function ShopPage() {
-  const api = useContext(APIContext);
+  const api = useAPI();
   const { data: shoppingLists } = useSuspenseQuery({
     queryKey: ["shopping-lists"],
-    queryFn: () => api.getShoppingLists(),
+    queryFn: () => api.getDocuments("shoppingList"),
   });
   const lastShoppingList = shoppingLists[shoppingLists.length - 1];
+  if (lastShoppingList.kind !== "shoppingList") {
+    throw new Error("Last document is not a shopping list");
+  }
 
   const form = useForm<ShoppingList>({
     initialValues: lastShoppingList,

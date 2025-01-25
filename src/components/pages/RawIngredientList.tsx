@@ -1,4 +1,4 @@
-import { APIContext } from "@/lib/api";
+import { useAPI } from "@/lib/api";
 import { useRoute } from "@/lib/state";
 import { RawIngredient } from "@/lib/types";
 import { Menu } from "@mantine/core";
@@ -8,20 +8,23 @@ import {
   MRT_ColumnDef,
   useMantineReactTable,
 } from "mantine-react-table";
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import "./RawIngredientList.css";
 
 export default function RawIngredientList() {
   const goto = useRoute((s) => s.goto);
-  const api = useContext(APIContext);
+  const api = useAPI();
   const { data: rawIngredients } = useSuspenseQuery({
     queryKey: ["raw-ingredients"],
-    queryFn: () => api.getRawIngredients(),
+    queryFn: () => api.getDocuments("rawIngredient"),
   });
   const { t } = useTranslation();
 
-  const data = useMemo(() => rawIngredients, [rawIngredients]);
+  const data = useMemo(
+    () => rawIngredients.map((i) => i as RawIngredient),
+    [rawIngredients],
+  );
   const columns = useMemo<MRT_ColumnDef<RawIngredient>[]>(
     () => [
       {

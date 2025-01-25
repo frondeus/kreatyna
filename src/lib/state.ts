@@ -3,6 +3,7 @@ import { create } from "zustand";
 export type Route =
   | "shop"
   | "raw-ingredient-list"
+  | "recipe-list"
   | {
       type: "raw-ingredient";
       id: string;

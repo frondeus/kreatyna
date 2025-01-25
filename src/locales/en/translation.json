@@ -2,7 +2,8 @@
   "routes": {
     "shop": "Shop",
     "raw-ingredient-list": "Raw ingredients",
-    "raw-ingredient": "Edit raw ingredient"
+    "raw-ingredient": "Edit raw ingredient",
+    "recipe-list": "Recipes"
   },
   "pages": {
     "shop": {
@@ -25,6 +26,10 @@
       "proteins": "Proteins",
       "carbs": "Carbs",
       "fat": "Fat"
+    },
+    "recipes-list": {
+      "name": "Name",
+      "edit": "Edit"
     }
   },
   "molecules": {

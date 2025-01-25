@@ -1,10 +1,9 @@
-import { APIContext } from "@/lib/api";
+import { useAPI } from "@/lib/api";
 import { RawIngredient } from "@/lib/types";
 import { onScalarChange, useSubscribeForm } from "@/lib/utils";
 import { Fieldset, NumberInput, Paper, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useContext } from "react";
 import { useTranslation } from "react-i18next";
 
 export interface EditRawIngredientProps {
@@ -13,7 +12,7 @@ export interface EditRawIngredientProps {
 
 export default function EditRawIngredient({ id }: EditRawIngredientProps) {
   const { t } = useTranslation();
-  const api = useContext(APIContext);
+  const api = useAPI();
   const { data } = useSuspenseQuery({
     queryKey: ["raw-ingredient", id],
     queryFn: () => api.getDocument(parseInt(id)),

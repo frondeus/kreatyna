@@ -1,6 +1,6 @@
 import { Route, useRoute } from "@/lib/state";
 import { NavLink, Stack } from "@mantine/core";
-import { IconCarrot } from "@tabler/icons-react";
+import { IconBook, IconCarrot } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 
 export interface NavbarProps {
@@ -19,6 +19,11 @@ export default function Navbar({ onClose }: NavbarProps) {
         onClick={goto("raw-ingredient-list")}
         label={t("routes.raw-ingredient-list")}
         leftSection={<IconCarrot size={16} />}
+      />
+      <NavLink
+        onClick={goto("recipe-list")}
+        label={t("routes.recipe-list")}
+        leftSection={<IconBook size={16} />}
       />
     </Stack>
   );

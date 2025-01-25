@@ -6,6 +6,7 @@ import { Loader } from "@mantine/core";
 import { Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import EditRawIngredient from "../pages/EditRawIngredient";
+import RecipesList from "../pages/RecipesList";
 
 export default function Content() {
   return (
@@ -26,6 +27,10 @@ function ContentInner() {
 
   if (route === "raw-ingredient-list") {
     return <RawIngredientList />;
+  }
+
+  if (route === "recipe-list") {
+    return <RecipesList />;
   }
 
   if (route.type === "raw-ingredient") {

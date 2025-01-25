@@ -1,14 +1,13 @@
 import ItemCheckbox from "@/components/atoms/shop/ItemCheckbox";
-import { APIContext } from "@/lib/api";
+import { useAPI } from "@/lib/api";
 import { ShoppingListItem, ShoppingListItemState } from "@/lib/types";
 import { Group, Paper, Text } from "@mantine/core";
-import { useContext } from "react";
 
 const DOCUMENT_ID = 1;
 
 export default function Item({ item }: { item: ShoppingListItem }) {
   const amount = amountAndUnit(item);
-  const api = useContext(APIContext);
+  const api = useAPI();
 
   const handleStateChange = (state: ShoppingListItemState) => {
     api.updateDocument(DOCUMENT_ID, [

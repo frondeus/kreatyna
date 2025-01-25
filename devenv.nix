@@ -13,7 +13,12 @@
   # https://devenv.sh/packages/
   packages = with pkgs; [
     libiconv
-    jdk17  ];
+    jdk17
+  ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (
+    with darwin.apple_sdk.frameworks; [
+      WebKit
+    ]
+  );
 
   # https://devenv.sh/languages/
   # languages.rust.enable = true;

@@ -2,6 +2,8 @@ use anyhow::Context;
 use ordered_float::OrderedFloat;
 use std::sync::mpsc::Sender;
 use strsim::normalized_levenshtein;
+use tauri::{path::BaseDirectory, Manager};
+use tauri_plugin_fs::FsExt;
 use tracing_subscriber::layer::SubscriberExt;
 
 use changes::ApplyChange;
@@ -157,21 +159,31 @@ pub fn run() {
     let (db_tx, db_rx) = std::sync::mpsc::channel();
     let (ui_tx, ui_rx) = std::sync::mpsc::channel();
 
-    let db_conn = match db::establish_connection().context("Failed to establish connection") {
-        Ok(c) => c,
-        Err(e) => {
-            tracing::error!("{:?}", e);
-            std::process::exit(1);
-        }
-    };
-
-    std::thread::spawn(move || db::task(db_rx, db_conn));
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .manage(db_tx)
         .manage(ui_tx)
         .setup(|app| {
+            let path = app
+                .path()
+                .resolve("kreatyna.sqlite", BaseDirectory::Home)
+                .expect("Failed to resolve path");
+            tracing::info!("Database path: {:?}", path);
+            let scope = app.fs_scope();
+            scope.allow_file(&path);
+            let path = path.to_str().expect("Failed to convert path to string");
+            let db_conn =
+                match db::establish_connection(path).context("Failed to establish connection") {
+                    Ok(c) => c,
+                    Err(e) => {
+                        tracing::error!("{:?}", e);
+                        std::process::exit(1);
+                    }
+                };
+
             let handle = app.handle().clone();
+            std::thread::spawn(move || db::task(db_rx, db_conn));
             std::thread::spawn(move || ui::task(ui_rx, handle));
             Ok(())
         })

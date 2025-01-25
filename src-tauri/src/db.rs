@@ -22,13 +22,7 @@ pub fn task(rx: Receiver<UiToDb>, mut conn: SqliteConnection) -> anyhow::Result<
     }
 }
 
-pub fn establish_connection() -> Result<SqliteConnection> {
-    let database_url = "./db.sqlite";
-
-    if let Ok(dir) = std::env::current_dir() {
-        tracing::info!("Current directory: {:?}", dir);
-    }
-
+pub fn establish_connection(database_url: &str) -> Result<SqliteConnection> {
     if std::path::Path::new(database_url).exists() {
         tracing::info!("Database file exists: {:?}", database_url);
     }

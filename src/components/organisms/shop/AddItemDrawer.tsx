@@ -239,6 +239,7 @@ function SuggestionItemList({
     <Stack gap="xs">
       {entry && (
         <AddItem
+          key={entry.id}
           item={entry}
           onIncrease={() => onIncrease(entry)}
           onDecrease={() => onDecrease(entry)}
@@ -250,9 +251,9 @@ function SuggestionItemList({
 
       {items
         .filter((item) => item.id !== entry?.id)
-        .map((item, index) => (
+        .map((item) => (
           <AddItem
-            key={index}
+            key={item.id}
             item={item}
             onIncrease={() => onIncrease(item)}
             onDecrease={() => onDecrease(item)}

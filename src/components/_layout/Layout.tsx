@@ -15,7 +15,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   console.log("Layout");
   return (
     <AppShell
-      padding="md"
       header={{
         height: 60,
         offset: true,

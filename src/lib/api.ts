@@ -57,9 +57,6 @@ async function updateDocument(
 }
 
 /** eslint-disable-next-line @typescript-eslint/no-explicit-any */
-async function log(msg: string, args: any[]) {
-  await invoke("log", { msg, args });
-}
 
 function subscribeToEvents(cbk: (msg: EventNotification) => void): () => void {
   const unsub = listen<EventNotification>("event", (e) => {
@@ -79,7 +76,6 @@ export interface API {
     id: DocumentId,
     changes: DocumentChangeEntry[],
   ) => Promise<void>;
-  log: (msg: string, args: any[]) => Promise<void>;
 }
 
 export const api: API = {
@@ -87,7 +83,6 @@ export const api: API = {
   getItemsAndSuggestions,
   subscribeToEvents,
   updateDocument,
-  log,
 };
 
 export default api;

@@ -80,3 +80,35 @@ export const WithLists: Story = {
     ),
   ],
 };
+
+export const ManyItems: Story = {
+  decorators: [
+    (Story) => (
+      <APIContext.Provider
+        value={{
+          getShoppingLists: async () => [
+            {
+              id: 1,
+              title: "Test List",
+              kind: "shoppingList",
+              items: Array.from({ length: 100 }, (_, i) => ({
+                id: i.toString(),
+                name: `Item ${i}`,
+                amount: 100,
+                unit: "g",
+                state: ShoppingListItemState.Todo,
+              })),
+            },
+          ],
+          getItemsAndSuggestions: async () => suggestions,
+          subscribeToEvents: () => () => {},
+          updateDocument: async (id, changes) => {
+            console.log("Update document", id, changes);
+          },
+        }}
+      >
+        <Story />
+      </APIContext.Provider>
+    ),
+  ],
+};

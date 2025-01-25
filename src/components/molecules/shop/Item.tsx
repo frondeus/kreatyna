@@ -22,8 +22,17 @@ export default function Item({ item }: { item: ShoppingListItem }) {
     ]);
   };
 
+  const shadeByState = {
+    [ShoppingListItemState.Todo]: "dark.6",
+    [ShoppingListItemState.InCart]: "dark.7",
+    [ShoppingListItemState.Bought]: "dark.8",
+    [ShoppingListItemState.NotBuying]: "dark.6",
+  };
+
+  const shade = shadeByState[item.state];
+
   return (
-    <Paper>
+    <Paper p="md" bg={shade} withBorder shadow="xs">
       <Group grow>
         <Group>
           <ItemCheckbox state={item.state} onChange={handleStateChange} />

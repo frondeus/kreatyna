@@ -5,7 +5,8 @@
   "pages": {
     "shop": {
       "no_lists": "No shopping lists found",
-      "create_list": "Create shopping list"
+      "create_list": "Create shopping list",
+      "finish_shopping": "Finish shopping"
     }
   },
   "molecules": {

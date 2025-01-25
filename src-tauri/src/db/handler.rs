@@ -5,7 +5,7 @@ use anyhow::Result;
 use diesel::prelude::*;
 
 pub fn handle(msg: UiToDb, conn: &mut SqliteConnection) -> Result<()> {
-    tracing::debug!("Handling message: {:?}", msg);
+    // tracing::debug!("Handling message: {:?}", msg);
     match msg {
         UiToDb::CreateDocument { doc, response } => {
             let id = diesel::insert_into(documents::table)

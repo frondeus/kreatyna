@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct Document {
     pub id: DocumentId,
     pub title: DocumentTitle,
+    #[serde(flatten)]
     pub kind: DocumentKind,
 }
 
@@ -39,17 +40,27 @@ impl From<&str> for DocumentTitle {
 #[derive(Serialize, Deserialize)]
 pub struct NewDocument {
     pub title: DocumentTitle,
+    #[serde(flatten)]
     pub kind: DocumentKind,
 }
 
 #[derive(Serialize, Deserialize, EnumDiscriminants)]
+#[serde(tag = "kind")]
+#[serde(rename_all = "camelCase")]
 #[strum_discriminants(name(JustDocumentKind))]
 #[strum_discriminants(derive(EnumString, IntoStaticStr, serde::Deserialize, serde::Serialize))]
-#[strum_discriminants(serde(rename_all = "lowercase"))]
-#[strum_discriminants(strum(serialize_all = "lowercase"))]
+#[strum_discriminants(serde(rename_all = "camelCase"))]
+#[strum_discriminants(strum(serialize_all = "camelCase"))]
 pub enum DocumentKind {
     ShoppingList {
         items: Vec<String>
     },
 }
 
+
+impl std::fmt::Display for JustDocumentKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s: &'static str = self.into();
+        write!(f, "{}", s)
+    }
+}

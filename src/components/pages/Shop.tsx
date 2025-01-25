@@ -21,6 +21,7 @@ import { IconPlus } from "@tabler/icons-react";
 import { useContext, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
+import { updateForm } from "@/lib/utils";
 import "./Shop.css";
 
 export default function ShopPage() {
@@ -48,35 +49,7 @@ export default function ShopPage() {
       console.log("Event", msg);
       switch (msg.kind) {
         case "updated": {
-          for (const [path, change] of msg.changes) {
-            switch (change.kind) {
-              case "insert": {
-                form.insertListItem(path, change.value, change.position);
-                break;
-              }
-              case "move": {
-                form.reorderListItem(path, {
-                  from: change.from,
-                  to: change.to,
-                });
-                break;
-              }
-              case "remove": {
-                form.removeListItem(path, change.index);
-                break;
-              }
-              case "replace": {
-                form.setFieldValue(path, change.value);
-                break;
-              }
-              case "replaceWithUndefined": {
-                form.setFieldValue(path, undefined);
-                break;
-              }
-              default:
-                break;
-            }
-          }
+          updateForm(form, msg.changes);
           break;
         }
         default: {

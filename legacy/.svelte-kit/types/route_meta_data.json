@@ -1,112 +1,98 @@
 {
-	"/": [
-		"src/routes/+page.server.ts",
-		"src/routes/+layout.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/account": [
-		"src/routes/account/+page.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/backoffice": [
-		"src/routes/backoffice/+layout.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/backoffice/import-raw": [
-		"src/routes/backoffice/import-raw/+page.server.ts",
-		"src/routes/backoffice/+layout.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/browse": [
-		"src/routes/browse/+page.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/browse/raw": [
-		"src/routes/browse/raw/+page.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/browse/raw/create": [
-		"src/routes/browse/raw/create/+page.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/browse/raw/search": [
-		"src/routes/browse/raw/search/+server.ts"
-	],
-	"/browse/raw/[id]": [
-		"src/routes/browse/raw/[id]/+page.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/browse/recipe": [
-		"src/routes/browse/recipe/+page.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/browse/recipe/create": [
-		"src/routes/browse/recipe/create/+page.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/browse/recipe/[id]": [
-		"src/routes/browse/recipe/[id]/+page.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/browse/tag": [
-		"src/routes/browse/tag/+page.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/browse/tag/create": [
-		"src/routes/browse/tag/create/+page.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/browse/tag/search": [
-		"src/routes/browse/tag/search/+server.ts"
-	],
-	"/login": [
-		"src/routes/login/+page.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/plan": [
-		"src/routes/plan/+page.server.ts",
-		"src/routes/plan/+layout.server.ts",
-		"src/routes/+layout.server.ts",
-		"src/routes/plan/+layout.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/plan/populate": [
-		"src/routes/plan/populate/+server.ts"
-	],
-	"/plan/shop": [
-		"src/routes/plan/shop/+server.ts"
-	],
-	"/plan/today": [
-		"src/routes/plan/today/+page.server.ts",
-		"src/routes/plan/+layout.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/plan/unlink": [
-		"src/routes/plan/unlink/+server.ts"
-	],
-	"/plan/[year]/[week]": [
-		"src/routes/plan/[year]/[week]/+page.server.ts",
-		"src/routes/plan/+layout.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/shop": [
-		"src/routes/shop/+layout.server.ts",
-		"src/routes/+layout.server.ts",
-		"src/routes/shop/+layout.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/shop/add": [
-		"src/routes/shop/+layout.server.ts",
-		"src/routes/+layout.server.ts"
-	],
-	"/shop/update": [
-		"src/routes/shop/update/+server.ts"
-	],
-	"/shop/upsert": [
-		"src/routes/shop/upsert/+server.ts"
-	],
-	"/signup": [
-		"src/routes/signup/+page.server.ts",
-		"src/routes/+layout.server.ts"
-	]
+  "/": [
+    "src/routes/+page.server.ts",
+    "src/routes/+layout.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/account": [
+    "src/routes/account/+page.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/backoffice": [
+    "src/routes/backoffice/+layout.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/backoffice/import-raw": [
+    "src/routes/backoffice/import-raw/+page.server.ts",
+    "src/routes/backoffice/+layout.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/browse": [
+    "src/routes/browse/+page.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/browse/raw": [
+    "src/routes/browse/raw/+page.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/browse/raw/create": [
+    "src/routes/browse/raw/create/+page.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/browse/raw/search": ["src/routes/browse/raw/search/+server.ts"],
+  "/browse/raw/[id]": [
+    "src/routes/browse/raw/[id]/+page.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/browse/recipe": [
+    "src/routes/browse/recipe/+page.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/browse/recipe/create": [
+    "src/routes/browse/recipe/create/+page.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/browse/recipe/[id]": [
+    "src/routes/browse/recipe/[id]/+page.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/browse/tag": [
+    "src/routes/browse/tag/+page.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/browse/tag/create": [
+    "src/routes/browse/tag/create/+page.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/browse/tag/search": ["src/routes/browse/tag/search/+server.ts"],
+  "/login": [
+    "src/routes/login/+page.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/plan": [
+    "src/routes/plan/+page.server.ts",
+    "src/routes/plan/+layout.server.ts",
+    "src/routes/+layout.server.ts",
+    "src/routes/plan/+layout.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/plan/populate": ["src/routes/plan/populate/+server.ts"],
+  "/plan/shop": ["src/routes/plan/shop/+server.ts"],
+  "/plan/today": [
+    "src/routes/plan/today/+page.server.ts",
+    "src/routes/plan/+layout.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/plan/unlink": ["src/routes/plan/unlink/+server.ts"],
+  "/plan/[year]/[week]": [
+    "src/routes/plan/[year]/[week]/+page.server.ts",
+    "src/routes/plan/+layout.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/shop": [
+    "src/routes/shop/+layout.server.ts",
+    "src/routes/+layout.server.ts",
+    "src/routes/shop/+layout.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/shop/add": [
+    "src/routes/shop/+layout.server.ts",
+    "src/routes/+layout.server.ts"
+  ],
+  "/shop/update": ["src/routes/shop/update/+server.ts"],
+  "/shop/upsert": ["src/routes/shop/upsert/+server.ts"],
+  "/signup": [
+    "src/routes/signup/+page.server.ts",
+    "src/routes/+layout.server.ts"
+  ]
 }

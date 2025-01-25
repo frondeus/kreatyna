@@ -1,28 +1,28 @@
-import { addRawSchema } from '$lib/shared/domains/raw/schema';
-import { importRawIngredients } from '$lib/server/import';
-import { fail, type Actions, redirect } from '@sveltejs/kit';
+import { addRawSchema } from "$lib/shared/domains/raw/schema";
+import { importRawIngredients } from "$lib/server/import";
+import { fail, type Actions, redirect } from "@sveltejs/kit";
 
 export const actions: Actions = {
-	default: async ({ request, locals: { session, prisma } }) => {
-		if (!session) {
-			return redirect(303, '/login');
-		}
+  default: async ({ request, locals: { session, prisma } }) => {
+    if (!session) {
+      return redirect(303, "/login");
+    }
 
-		const formData = await request.formData();
-		const file = formData.get('xlsx') as File;
-		const buffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
+    const formData = await request.formData();
+    const file = formData.get("xlsx") as File;
+    const buffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
 
-		const raws = await importRawIngredients(buffer, session.user.userId);
-		const validateResult = await addRawSchema.array().safeParseAsync(raws);
+    const raws = await importRawIngredients(buffer, session.user.userId);
+    const validateResult = await addRawSchema.array().safeParseAsync(raws);
 
-		if (!validateResult.success) {
-			return fail(400, { error: validateResult.error.format() });
-		}
+    if (!validateResult.success) {
+      return fail(400, { error: validateResult.error.format() });
+    }
 
-		await prisma.raw.createMany({
-			data: raws
-		});
+    await prisma.raw.createMany({
+      data: raws,
+    });
 
-		throw redirect(303, '/browse/raw');
-	}
+    throw redirect(303, "/browse/raw");
+  },
 };

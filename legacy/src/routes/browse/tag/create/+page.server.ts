@@ -1,38 +1,38 @@
-import { redirect, type Actions, fail } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
-import { superValidate } from 'sveltekit-superforms/server';
-import { TagCreateOneSchema } from '$shared/domains/tags/schema';
+import { redirect, type Actions, fail } from "@sveltejs/kit";
+import type { PageServerLoad } from "./$types";
+import { superValidate } from "sveltekit-superforms/server";
+import { TagCreateOneSchema } from "$shared/domains/tags/schema";
 
 export const load: PageServerLoad = async ({ locals: { session } }) => {
-	if (!session) {
-		throw redirect(303, '/login');
-	}
+  if (!session) {
+    throw redirect(303, "/login");
+  }
 
-	const form = superValidate(undefined, TagCreateOneSchema);
+  const form = superValidate(undefined, TagCreateOneSchema);
 
-	return { form, session };
+  return { form, session };
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals: { session, container } }) => {
-		if (!session) {
-			throw redirect(303, '/login');
-		}
-		const form = await superValidate(request, TagCreateOneSchema);
+  default: async ({ request, locals: { session, container } }) => {
+    if (!session) {
+      throw redirect(303, "/login");
+    }
+    const form = await superValidate(request, TagCreateOneSchema);
 
-		if (!form.valid) {
-			return fail(400, { form });
-		}
+    if (!form.valid) {
+      return fail(400, { form });
+    }
 
-		const [cat, name] = form.data.name.split(':');
+    const [cat, name] = form.data.name.split(":");
 
-		const tag = container.tagService;
+    const tag = container.tagService;
 
-		await tag.create({
-			name: name,
-			category: cat
-		});
+    await tag.create({
+      name: name,
+      category: cat,
+    });
 
-		throw redirect(303, '/browse/tag');
-	}
+    throw redirect(303, "/browse/tag");
+  },
 };

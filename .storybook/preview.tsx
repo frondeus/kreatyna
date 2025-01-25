@@ -1,17 +1,16 @@
-import React from 'react';
+import "@/App.css";
+import "@/i18next";
+import Layout from "@components/_layout/Layout";
+import Root from "@components/_layout/Root";
+import { API } from "@lib/api";
+import "@mantine/core/styles.css";
 import type { Preview } from "@storybook/react";
-import { Root } from "../src/components/_layout/Root";
-import { Layout } from '../src/components/_layout/Layout';
-import '../src/i18next';
-import '@mantine/core/styles.css';
-import "../src/App.css";
-import { APIContext, API } from '../src/api';
 
 const mockAPI: API = {
   getShoppingLists: async () => [],
   createShoppingList: async () => 1,
-  getItemSuggestions: async () => []
-}
+  getItemSuggestions: async () => [],
+};
 
 const preview: Preview = {
   parameters: {
@@ -26,25 +25,26 @@ const preview: Preview = {
     (Story, { parameters }) => {
       // 👇 Make it configurable by reading from parameters
       console.log(parameters);
-      const { pageLayout , layout } = parameters;
+      const { pageLayout, layout } = parameters;
       switch (pageLayout ?? layout) {
-        case 'fullscreen':
-        case 'page':
+        case "fullscreen":
+        case "page":
           return (
             <Root api={mockAPI}>
-                <Layout>
-                  <Story />
-                </Layout>
+              <Layout>
+                <Story />
+              </Layout>
             </Root>
           );
         default:
           return (
-          <Root api={mockAPI}>
+            <Root api={mockAPI}>
               <Story />
-            </Root>);
+            </Root>
+          );
       }
-    }
-  ]
+    },
+  ],
 };
 
 export default preview;

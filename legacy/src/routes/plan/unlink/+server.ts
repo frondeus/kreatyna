@@ -1,35 +1,35 @@
-import { error, json, redirect } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { z } from 'zod';
-import type { WeekPlanWithId } from '$shared/domains/plan/models';
+import { error, json, redirect } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { z } from "zod";
+import type { WeekPlanWithId } from "$shared/domains/plan/models";
 
 const BodySchema = z.object({
-	week: z.number(),
-	year: z.number(),
-	meals: z.number().array()
+  week: z.number(),
+  year: z.number(),
+  meals: z.number().array(),
 });
 
 export const POST = (async ({ request, locals: { session, container } }) => {
-	if (!session) {
-		throw redirect(303, '/login');
-	}
+  if (!session) {
+    throw redirect(303, "/login");
+  }
 
-	const body = await request.json();
-	const validatedBody = BodySchema.safeParse(body);
-	if (validatedBody.success === false) {
-		throw error(400, validatedBody.error.message);
-	}
+  const body = await request.json();
+  const validatedBody = BodySchema.safeParse(body);
+  if (validatedBody.success === false) {
+    throw error(400, validatedBody.error.message);
+  }
 
-	const { meals, week, year } = validatedBody.data;
-	const service = container.weekPlanService;
+  const { meals, week, year } = validatedBody.data;
+  const service = container.weekPlanService;
 
-	const weekPlan: WeekPlanWithId | null = await service.getWeekPlan(year, week);
+  const weekPlan: WeekPlanWithId | null = await service.getWeekPlan(year, week);
 
-	if (weekPlan === null) {
-		throw error(404, 'Week plan not found');
-	}
+  if (weekPlan === null) {
+    throw error(404, "Week plan not found");
+  }
 
-	await service.unlinkMeals(meals, year, week);
+  await service.unlinkMeals(meals, year, week);
 
-	return json('ok');
+  return json("ok");
 }) satisfies RequestHandler;

@@ -1,5 +1,5 @@
-import { redirect } from '@sveltejs/kit';
+import { redirect } from "@sveltejs/kit";
 
 export const load = async () => {
-	throw redirect(303, '/browse/recipe');
+  throw redirect(303, "/browse/recipe");
 };

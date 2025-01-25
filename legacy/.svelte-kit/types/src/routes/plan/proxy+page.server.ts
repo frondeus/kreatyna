@@ -1,8 +1,8 @@
 // @ts-nocheck
-import type { PageServerLoad } from './$types';
-import { redirect } from '@sveltejs/kit';
+import type { PageServerLoad } from "./$types";
+import { redirect } from "@sveltejs/kit";
 
 export const load = async () => {
-	throw redirect(303, '/plan/today');
+  throw redirect(303, "/plan/today");
 };
-;null as any as PageServerLoad;
+null as any as PageServerLoad;

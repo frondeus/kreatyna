@@ -7,6 +7,13 @@ import { Layout } from '../src/layout/Layout';
 import '../src/i18next';
 import '@mantine/core/styles.css';
 import "../src/App.css";
+import { APIContext, API } from '../src/api';
+
+const mockAPI: API = {
+  getShoppingLists: async () => [],
+  createShoppingList: async () => 1,
+  getItemSuggestions: async () => []
+}
 
 const preview: Preview = {
   parameters: {
@@ -28,9 +35,11 @@ const preview: Preview = {
           return (
             <ErrorBoundary FallbackComponent={ErrorPage}>
               <MantineProvider defaultColorScheme="dark">
+                <APIContext.Provider value={mockAPI}>
                 <Layout>
                   <Story />
                 </Layout>
+                </APIContext.Provider>
               </MantineProvider>
             </ErrorBoundary>
           );
@@ -38,7 +47,9 @@ const preview: Preview = {
           // In the default case, don't apply a layout
           return (<ErrorBoundary FallbackComponent={ErrorPage}>
           <MantineProvider defaultColorScheme="dark">
+            <APIContext.Provider value={mockAPI}>
             <Story />
+            </APIContext.Provider>
           </MantineProvider>
         </ErrorBoundary>);
       }

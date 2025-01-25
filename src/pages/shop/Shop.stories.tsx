@@ -37,7 +37,8 @@ export const WithLists: Story = {
                 kind: 'shoppingList',
                 items: []
             }],
-            createShoppingList: async () => 2
+            createShoppingList: async () => 2,
+            getItemSuggestions: async () => []
         }}>
             <ShopPage />
         </APIContext.Provider>

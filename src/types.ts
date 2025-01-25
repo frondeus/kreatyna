@@ -5,11 +5,15 @@ export interface DocumentMeta {
     title: string;
 }
 
-export type ShoppingListItem = string;
-
 export interface ShoppingList extends DocumentMeta {
     kind: 'shoppingList';
     items: ShoppingListItem[];
 }
 
 export type Document = ShoppingList;
+
+export interface ShoppingListItem {
+    name: string;
+    amount?: string;
+    hasScale?: boolean;
+}

@@ -1,50 +1,54 @@
-
 import type { Meta, StoryObj } from '@storybook/react';
-// import { expect, userEvent, within } from '@storybook/test';
-
-import { APIContext } from '../../../api';
 import { AddItemModal } from './AddItemModal';
+import { APIContext } from '../../../api';
 
 const meta = {
     title: 'Shop/AddItemModal',
     component: AddItemModal,
     parameters: {
-        // More on how to position stories at: https://storybook.js.org/docs/configure/story-layout
         layout: 'fullscreen',
     },
-    args: {
-        opened: true,
-        onClose: () => {}
-    }
+    decorators: [
+        (Story) => (
+            <APIContext.Provider value={{
+                getShoppingLists: async () => [],
+                createShoppingList: async () => 1,
+                getItemSuggestions: async (query) => {
+                    // Simulate API delay
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    const suggestions = [
+                        { name: "Raisin, seedless", amount: "50 g" },
+                        { name: "Chestnut, raw", amount: "50 g" },
+                        { name: "Czekolada gorzka", hasScale: true },
+                        { name: "Rye bread, dark, wholemeal, imported", amount: "373.2 g" },
+                        { name: "Honey", amount: "20 g" },
+                    ];
+                    
+                    return suggestions.filter(s => 
+                        s.name.toLowerCase().includes(query.toLowerCase())
+                    );
+                }
+            }}>
+                <Story />
+            </APIContext.Provider>
+        )
+    ]
 } satisfies Meta<typeof AddItemModal>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Empty: Story = {
-    render: (props) => <APIContext.Provider value={{
-            getShoppingLists: async () => [{
-                id: 1,
-                title: 'Test List',
-                kind: 'shoppingList',
-                items: []
-            }],
-            createShoppingList: async () => 2
-        }}>
-            <AddItemModal {...props} />
-        </APIContext.Provider>
+export const Default: Story = {
+    args: {
+        opened: true,
+        onClose: () => {},
+    }
 };
 
-// More on interaction testing: https://storybook.js.org/docs/writing-tests/interaction-testing
-// export const LoggedIn: Story = {
-//   play: async ({ canvasElement }) => {
-//     const canvas = within(canvasElement);
-//     const loginButton = canvas.getByRole('button', { name: /Log in/i });
-//     await expect(loginButton).toBeInTheDocument();
-//     await userEvent.click(loginButton);
-//     await expect(loginButton).not.toBeInTheDocument();
-
-//     const logoutButton = canvas.getByRole('button', { name: /Log out/i });
-//     await expect(logoutButton).toBeInTheDocument();
-//   },
-// };
+export const Closed: Story = {
+    args: {
+        opened: false,
+        onClose: () => {},
+    }
+};

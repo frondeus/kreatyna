@@ -57,6 +57,10 @@ async function updateDocument(
   }
 }
 
+async function newDocument(kind: DocumentKind): Promise<DocumentId> {
+  return await invoke("new_document", { kind });
+}
+
 async function getDocument(id: DocumentId): Promise<Document> {
   return await invoke("get_document", { id });
 }
@@ -100,6 +104,7 @@ export interface API {
   finishShopping: (id: DocumentId) => Promise<void>;
   getDocuments: (kind: DocumentKind) => Promise<Document[]>;
   getDocument: (id: DocumentId) => Promise<Document>;
+  newDocument: (kind: DocumentKind) => Promise<DocumentId>;
 }
 
 export const api: API = {
@@ -110,6 +115,7 @@ export const api: API = {
   finishShopping,
   getDocuments,
   getDocument,
+  newDocument,
 };
 
 export default api;

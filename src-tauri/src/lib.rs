@@ -70,6 +70,39 @@ fn create_document(
 }
 
 #[tauri::command]
+fn new_document(
+    kind: ui::models::JustDocumentKind,
+    tx: tauri::State<Sender<db::messages::UiToDb>>,
+) -> Result<ui::models::DocumentId, Error> {
+    let kind = match kind {
+        ui::models::JustDocumentKind::Recipe => {
+            ui::models::DocumentKind::Recipe(ui::models::Recipe {
+                name: "".to_owned(),
+                ingredients: vec![],
+            })
+        }
+        ui::models::JustDocumentKind::RawIngredient => {
+            ui::models::DocumentKind::RawIngredient(ui::models::RawIngredient {
+                name: "".to_owned(),
+                container: 100,
+                proteins: 0.0,
+                carbs: 0.0,
+                fat: 0.0,
+            })
+        }
+        ui::models::JustDocumentKind::ShoppingList => {
+            ui::models::DocumentKind::ShoppingList(ui::models::ShoppingList { items: vec![] })
+        }
+    };
+    let doc: ui::models::NewDocument = ui::models::NewDocument {
+        title: ui::models::DocumentTitle::from("".to_owned()),
+        kind,
+    };
+    let id = tx.create_document(ToDb::to_db(&doc)?)?;
+    Ok(ui::models::DocumentId::from(id))
+}
+
+#[tauri::command]
 fn update_document(
     id: ui::models::DocumentId,
     changes: Vec<(ui::models::JsonPath, net::models::DocumentEventChange)>,
@@ -289,6 +322,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             create_document,
+            new_document,
             get_documents,
             get_document,
             update_document,

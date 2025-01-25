@@ -22,8 +22,13 @@ export interface RawIngredient extends DocumentMeta {
 export interface Recipe extends DocumentMeta {
   kind: "recipe";
   name: string;
-  ingredients: RawIngredient[];
+  ingredients: RecipeIngredient[];
 }
+
+export type RecipeIngredient = {
+  id: string;
+  raw: RawIngredient;
+};
 
 export type Document = ShoppingList | RawIngredient | Recipe;
 export type DocumentKind = Document["kind"];

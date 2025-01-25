@@ -7,8 +7,8 @@ devenv_root = "/Users/frondeus/Code/kreatyna";
 devenv_dotfile = ./.devenv;
 devenv_dotfile_string = ".devenv";
 container_name = null;
-devenv_tmpdir = "/var/folders/_7/lk93qwkx721d493rndvl10980000gn/T/";
-devenv_runtime = "/var/folders/_7/lk93qwkx721d493rndvl10980000gn/T/devenv-5aacc9a";
+devenv_tmpdir = "/var/folders/zh/0s2z84tx38x1mb0cg1yx0gch0000gn/T/";
+devenv_runtime = "/var/folders/zh/0s2z84tx38x1mb0cg1yx0gch0000gn/T/devenv-5aacc9a";
 devenv_istesting = false;
 
         in {
@@ -28,8 +28,8 @@ devenv_root = "/Users/frondeus/Code/kreatyna";
 devenv_dotfile = ./.devenv;
 devenv_dotfile_string = ".devenv";
 container_name = null;
-devenv_tmpdir = "/var/folders/_7/lk93qwkx721d493rndvl10980000gn/T/";
-devenv_runtime = "/var/folders/_7/lk93qwkx721d493rndvl10980000gn/T/devenv-5aacc9a";
+devenv_tmpdir = "/var/folders/zh/0s2z84tx38x1mb0cg1yx0gch0000gn/T/";
+devenv_runtime = "/var/folders/zh/0s2z84tx38x1mb0cg1yx0gch0000gn/T/devenv-5aacc9a";
 devenv_istesting = false;
 
             devenv =

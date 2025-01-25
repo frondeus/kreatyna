@@ -1,5 +1,8 @@
 import { useAPI } from "@/lib/api";
+import { useRoute } from "@/lib/state";
 import { Recipe } from "@/lib/types";
+import { ActionIcon, Affix, Menu } from "@mantine/core";
+import { IconPlus } from "@tabler/icons-react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import {
   MantineReactTable,
@@ -10,7 +13,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 export default function RecipesList() {
-  //   const goto = useRoute((s) => s.goto);
+  const goto = useRoute((s) => s.goto);
   const api = useAPI();
   const { data: recipes } = useSuspenseQuery({
     queryKey: ["recipes"],
@@ -45,7 +48,30 @@ export default function RecipesList() {
         pageSize: 25,
       },
     },
+    enableRowActions: true,
+    positionActionsColumn: "last",
+    renderRowActionMenuItems: ({ row }) => (
+      <>
+        <Menu.Item onClick={goto({ type: "recipe", id: row.original.id })}>
+          {t("pages.recipes-list.edit")}
+        </Menu.Item>
+      </>
+    ),
   });
 
-  return <MantineReactTable table={table} />;
+  const newRecipe = async () => {
+    const id = await api.newDocument("recipe");
+    goto({ type: "recipe", id })();
+  };
+
+  return (
+    <>
+      <MantineReactTable table={table} />
+      <Affix position={{ bottom: 78, right: 20 }}>
+        <ActionIcon onClick={newRecipe} size="xl" radius="xl">
+          <IconPlus />
+        </ActionIcon>
+      </Affix>
+    </>
+  );
 }

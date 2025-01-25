@@ -7,6 +7,10 @@ export type Route =
   | {
       type: "raw-ingredient";
       id: string;
+    }
+  | {
+      type: "recipe";
+      id: number;
     };
 
 export interface RouteState {

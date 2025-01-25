@@ -1,12 +1,13 @@
 import ErrorPage from "@/components/_layout/Error";
+import EditRawIngredient from "@/components/pages/EditRawIngredient";
+import EditRecipe from "@/components/pages/EditRecipe";
 import RawIngredientList from "@/components/pages/RawIngredientList";
+import RecipesList from "@/components/pages/RecipesList";
 import ShopPage from "@/components/pages/Shop";
-import { useRoute } from "@/lib/state";
+import { Route, useRoute } from "@/lib/state";
 import { Loader } from "@mantine/core";
 import { Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import EditRawIngredient from "../pages/EditRawIngredient";
-import RecipesList from "../pages/RecipesList";
 
 export default function Content() {
   return (
@@ -19,7 +20,7 @@ export default function Content() {
 }
 
 function ContentInner() {
-  const route = useRoute((st) => st.route);
+  const route: Route = useRoute((st) => st.route);
 
   if (route === "shop") {
     return <ShopPage />;
@@ -31,6 +32,10 @@ function ContentInner() {
 
   if (route === "recipe-list") {
     return <RecipesList />;
+  }
+
+  if (route.type === "recipe") {
+    return <EditRecipe id={route.id} />;
   }
 
   if (route.type === "raw-ingredient") {

@@ -3,7 +3,8 @@
     "shop": "Shop",
     "raw-ingredient-list": "Raw ingredients",
     "raw-ingredient": "Edit raw ingredient",
-    "recipe-list": "Recipes"
+    "recipe-list": "Recipes",
+    "recipe": "Edit recipe"
   },
   "pages": {
     "shop": {
@@ -30,6 +31,19 @@
     "recipes-list": {
       "name": "Name",
       "edit": "Edit"
+    },
+    "edit-recipe": {
+      "legend": "Edit recipe",
+      "name": "Name",
+      "ingredients": "Ingredients",
+      "ingredient": {
+        "new": "New ingredient",
+        "name": "Name",
+        "container": "Container",
+        "proteins": "Proteins",
+        "carbs": "Carbs",
+        "fat": "Fat"
+      }
     }
   },
   "molecules": {
@@ -38,11 +52,20 @@
       "amount": "Amount",
       "unit": "Unit",
       "add_unit": "Add unit"
+    },
+    "search_for": {
+      "rawIngredient": {
+        "label": "Name",
+        "placeholder": "Search for ingredient or type new name"
+      }
     }
   },
   "organisms": {
     "shop": {
       "add_item": "Add item"
+    },
+    "edit-recipe": {
+      "add_ingredient": "Add ingredient"
     }
   },
   "atoms": {

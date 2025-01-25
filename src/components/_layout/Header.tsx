@@ -82,6 +82,12 @@ function breadcrumbs(route: Route): Breadcrumb[] {
     return [{ title: route }];
   }
   switch (route.type) {
+    case "recipe": {
+      return [
+        { title: "recipe-list", href: "recipe-list" },
+        { title: "recipe" },
+      ];
+    }
     case "raw-ingredient": {
       return [
         { title: "raw-ingredient-list", href: "raw-ingredient-list" },
@@ -89,4 +95,5 @@ function breadcrumbs(route: Route): Breadcrumb[] {
       ];
     }
   }
+  return [];
 }

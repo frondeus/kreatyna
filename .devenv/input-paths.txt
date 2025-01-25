@@ -1,0 +1,4 @@
+/Users/frondeus/Code/kreatyna/.env
+/Users/frondeus/Code/kreatyna/devenv.lock
+/Users/frondeus/Code/kreatyna/devenv.nix
+/Users/frondeus/Code/kreatyna/devenv.yaml

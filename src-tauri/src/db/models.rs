@@ -1,6 +1,6 @@
+use crate::db::schema::documents;
 use diesel::prelude::*;
 use diesel::sqlite::Sqlite;
-use crate::db::schema::documents;
 
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = documents)]

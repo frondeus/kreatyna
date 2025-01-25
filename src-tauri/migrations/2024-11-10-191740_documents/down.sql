@@ -1,1 +1,6 @@
-DROP TABLE documents;
+DROP TABLE IF EXISTS order_of_events;
+DROP TABLE IF EXISTS events;
+DROP TABLE IF EXISTS vector_clock;
+DROP TABLE IF EXISTS private_keys;
+DROP TABLE IF EXISTS devices;
+DROP TABLE IF EXISTS documents;

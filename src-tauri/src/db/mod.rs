@@ -2,42 +2,35 @@ use std::sync::mpsc::Receiver;
 
 use anyhow::Result;
 use diesel::prelude::*;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use messages::UiToDb;
-use schema::documents;
 
-mod schema;
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+
+mod dsl;
+mod handler;
+pub mod messages;
 pub mod models;
-mod dsl {
-
-}
-pub mod messages {
-    pub enum UiToDb {
-        CreateDocument(super::models::NewDocument)
-    }
-}
+mod schema;
 
 pub fn task(rx: Receiver<UiToDb>) -> anyhow::Result<()> {
     let mut conn = establish_connection()?;
     loop {
         let msg = rx.recv()?;
-        if let Err(e) = handle(msg, &mut conn) {
+        if let Err(e) = handler::handle(msg, &mut conn) {
             eprintln!("Error handling message: {}", e);
         }
     }
 }
 
-fn handle(msg: UiToDb, conn: &mut SqliteConnection) -> Result<()> {
-    match msg {
-        UiToDb::CreateDocument(doc) => {
-            diesel::insert_into(documents::table).values(&doc).execute(conn)?;
-        }
-    }
-    Ok(())
-}
-
 pub fn establish_connection() -> Result<SqliteConnection> {
     let database_url = "./db.sqlite";
 
-    let conn = SqliteConnection::establish(&database_url)?;
+    let mut conn = SqliteConnection::establish(&database_url)?;
+
+    if let Err(_) = conn.run_pending_migrations(MIGRATIONS) {
+        anyhow::bail!("Failed to run migrations");
+    }
+
     Ok(conn)
 }

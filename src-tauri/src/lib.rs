@@ -15,13 +15,13 @@ fn create_document(tx: tauri::State<Sender<db::messages::UiToDb>>) {
             path: "".to_string(),
             kind: "".to_string(),
             body: "".to_string(),
-        }
-    )).unwrap();
+        },
+    ))
+    .unwrap();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-
     let (tx, rx) = std::sync::mpsc::channel();
 
     std::thread::spawn(move || db::task(rx));
@@ -29,10 +29,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(tx)
-        .invoke_handler(tauri::generate_handler![
-            greet,
-            create_document
-        ])
+        .invoke_handler(tauri::generate_handler![greet, create_document])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

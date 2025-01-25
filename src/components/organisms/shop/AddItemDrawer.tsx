@@ -164,6 +164,7 @@ export default function AddItemDrawer({ opened, ...props }: AddItemModalProps) {
                   }
                 }}
                 data-autofocus
+                enterKeyHint="go"
               />
             </div>
           </FocusTrap>

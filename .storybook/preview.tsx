@@ -1,9 +1,7 @@
 import React from 'react';
 import type { Preview } from "@storybook/react";
-import { MantineProvider } from "@mantine/core";
-import { ErrorBoundary } from 'react-error-boundary';
-import { ErrorPage } from "../src/layout/Error";
-import { Layout } from '../src/layout/Layout';
+import { Root } from "../src/components/_layout/Root";
+import { Layout } from '../src/components/_layout/Layout';
 import '../src/i18next';
 import '@mantine/core/styles.css';
 import "../src/App.css";
@@ -33,25 +31,17 @@ const preview: Preview = {
         case 'fullscreen':
         case 'page':
           return (
-            <ErrorBoundary FallbackComponent={ErrorPage}>
-              <MantineProvider defaultColorScheme="dark">
-                <APIContext.Provider value={mockAPI}>
+            <Root api={mockAPI}>
                 <Layout>
                   <Story />
                 </Layout>
-                </APIContext.Provider>
-              </MantineProvider>
-            </ErrorBoundary>
+            </Root>
           );
         default:
-          // In the default case, don't apply a layout
-          return (<ErrorBoundary FallbackComponent={ErrorPage}>
-          <MantineProvider defaultColorScheme="dark">
-            <APIContext.Provider value={mockAPI}>
-            <Story />
-            </APIContext.Provider>
-          </MantineProvider>
-        </ErrorBoundary>);
+          return (
+          <Root api={mockAPI}>
+              <Story />
+            </Root>);
       }
     }
   ]

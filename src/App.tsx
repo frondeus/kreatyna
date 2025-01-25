@@ -1,21 +1,18 @@
 import '@mantine/core/styles.css';
 
 import "./App.css";
-import { MantineProvider } from "@mantine/core";
-import { Content } from './Content';
-import { Layout } from './layout/Layout';
-import api, { APIContext } from "./api";
+import Content from './components/_layout/Content';
+import Layout from './components/_layout/Layout';
+import api from "@lib/api";
+import Root from './components/_layout/Root';
 
-function App() {
+export default function App() {
   return (
-    <MantineProvider defaultColorScheme="dark">
-      <APIContext.Provider value={api}>
-        <Layout>
-          <Content />
-        </Layout>
-      </APIContext.Provider>
-    </MantineProvider>
+    <Root api={api}>
+      <Layout>
+        <Content />
+      </Layout>
+    </Root>
   )
 }
 
-export default App;

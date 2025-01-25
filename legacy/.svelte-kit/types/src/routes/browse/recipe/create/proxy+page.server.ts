@@ -1,0 +1,62 @@
+// @ts-nocheck
+import { superValidate } from 'sveltekit-superforms/server';
+import type { PageServerLoad } from './$types';
+import { redirect, type Actions, fail, error as returnError } from '@sveltejs/kit';
+
+import { addOrEditRecipeSchema } from '$lib/shared/domains/recipe/schema';
+
+export const load = async ({ locals: { session } }: Parameters<PageServerLoad>[0]) => {
+	if (!session) {
+		throw redirect(303, '/login');
+	}
+
+	const form = await superValidate(undefined, addOrEditRecipeSchema);
+
+	return { form, session };
+};
+
+export const actions = {
+	default: async ({ request, locals: { session, container } }: import('./$types').RequestEvent) => {
+		if (!session) {
+			throw redirect(303, '/login');
+		}
+
+		const form = await superValidate(request, addOrEditRecipeSchema);
+		const ai = container.aiService;
+		const recipe = container.recipeService;
+
+		if (form.data.askGPT) {
+			try {
+				const outcome = await ai.getRecipe(form.data);
+				form.data = {
+					...form.data,
+					...outcome,
+					askGPT: false
+				};
+			} catch (e) {
+				let message = 'Unknown Error';
+				if (e instanceof Error) {
+					message = e.message;
+				}
+				throw returnError(500, message);
+			}
+
+			return { form };
+		}
+
+		if (!form.valid) {
+			return fail(400, { form });
+		}
+
+		const data = {
+			...form.data,
+			// addOrEditRecipeSchema ensures that name must be defined and not empty
+			name: form.data.name as string
+		};
+
+		await recipe.create(data);
+
+		throw redirect(303, '/browse/recipe');
+	}
+};
+;null as any as Actions;

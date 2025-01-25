@@ -5,6 +5,7 @@ import { useRoute } from "@/lib/state";
 import { Loader } from "@mantine/core";
 import { Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
+import EditRawIngredient from "../pages/EditRawIngredient";
 
 export default function Content() {
   return (
@@ -18,12 +19,17 @@ export default function Content() {
 
 function ContentInner() {
   const route = useRoute((st) => st.route);
+
   if (route === "shop") {
     return <ShopPage />;
   }
 
   if (route === "raw-ingredient-list") {
     return <RawIngredientList />;
+  }
+
+  if (route.type === "raw-ingredient") {
+    return <EditRawIngredient id={route.id} />;
   }
 
   return null;

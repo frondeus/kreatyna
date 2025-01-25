@@ -15,7 +15,7 @@ pub fn handle(msg: UiToDb, conn: &mut SqliteConnection) -> Result<()> {
             response.send(id)?;
         }
         UiToDb::GetDocuments { kind, response } => {
-            let docs = Document::by_kind(kind).order(documents::title).load(conn)?;
+            let docs = Document::by_kind(kind).load(conn)?;
             response.send(docs)?;
         }
         UiToDb::GetDocument { id, response } => {

@@ -127,6 +127,20 @@ fn get_documents(
         .collect::<Result<Vec<_>, _>>()
 }
 
+#[tauri::command]
+fn get_document(
+    id: ui::models::DocumentId,
+    tx: tauri::State<Sender<db::messages::UiToDb>>,
+) -> Result<ui::models::Document, Error> {
+    let db_doc = tx
+        .get_document(id.into())
+        .context("Failed to load document")?;
+
+    FromDb::from_db(db_doc)
+        .context("Failed to map document")
+        .map_err(Error::from)
+}
+
 // Specialized commands outside of the event document model
 
 #[tauri::command]
@@ -241,6 +255,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             create_document,
             get_documents,
+            get_document,
             update_document,
             get_items_and_suggestions,
             finish_shopping

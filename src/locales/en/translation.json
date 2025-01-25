@@ -8,6 +8,13 @@
       "no_lists": "No shopping lists found",
       "create_list": "Create shopping list",
       "finish_shopping": "Finish shopping"
+    },
+    "raw-ingredient-list": {
+      "name": "Name",
+      "proteins": "Proteins",
+      "carbs": "Carbs",
+      "fat": "Fat",
+      "edit": "Edit"
     }
   },
   "molecules": {

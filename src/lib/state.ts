@@ -3,7 +3,13 @@ import { use } from "react-use-polyfill";
 import { create } from "zustand";
 import { AddShoppingListItem, RawIngredient, ShoppingList } from "./types";
 
-export type Route = "shop" | "raw-ingredient-list";
+export type Route =
+  | "shop"
+  | "raw-ingredient-list"
+  | {
+      type: "raw-ingredient";
+      id: string;
+    };
 
 export interface RouteState {
   route: Route;

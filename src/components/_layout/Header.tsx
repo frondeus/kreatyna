@@ -1,4 +1,4 @@
-import { useRoute } from "@/lib/state";
+import { Route, useRoute } from "@/lib/state";
 import { ActionIcon, Group } from "@mantine/core";
 import {
   IconLayoutSidebarLeftExpand,
@@ -13,10 +13,10 @@ export default function Header({
   toggleNav: () => void;
   navOpened: boolean;
 }) {
-  const { route } = useRoute();
+  const route = useRoute((s) => s.route);
   const { t } = useTranslation();
 
-  const routeName = t(`routes.${route}`);
+  const header = t(`routes.${routeName(route)}`);
 
   return (
     <Group justify="center" align="center" grow>
@@ -29,10 +29,18 @@ export default function Header({
           )}
         </ActionIcon>
       </Group>
-      <Group style={{ whiteSpace: "nowrap" }}>{routeName}</Group>
+      <Group style={{ whiteSpace: "nowrap" }}>{header}</Group>
       <Group visibleFrom="sm">
         {/* <ActionIcon variant="subtle" visibleFrom="sm"> </ActionIcon> */}
       </Group>
     </Group>
   );
+}
+
+function routeName(route: Route): string {
+  if (typeof route === "string") {
+    return route;
+  }
+
+  return route.type;
 }

@@ -1,0 +1,28 @@
+/* html,
+body {
+  overflow: hidden;
+  height: 100vh;
+}
+
+#root {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.mantine-AppShell-root {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.mantine-AppShell-main {
+  height: 100vh;
+  overflow: hidden;
+}
+
+
+.mantine-AppShell-main > div {
+    height: calc(100vh - 120px);
+    height: 100%;
+    overflow: hidden; 
+}
+    */

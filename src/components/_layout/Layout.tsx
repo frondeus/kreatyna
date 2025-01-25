@@ -20,6 +20,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         height: 60,
         offset: true,
       }}
+      footer={{
+        offset: true,
+        height: 60,
+      }}
       navbar={{
         width: 300,
         breakpoint: "sm",
@@ -39,11 +43,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <AppShell.Header p="md">
         <Header toggleNav={toggleNav} navOpened={navOpened} />
       </AppShell.Header>
-      <AppShell.Main
-        style={{ display: "flex", flexDirection: "column", height: "100%" }}
-      >
-        {children}
-      </AppShell.Main>
+      <AppShell.Main>{children}</AppShell.Main>
       <AppShell.Footer p="md" hiddenFrom="sm">
         <Group justify="space-between" align="center">
           <ActionIcon variant="subtle" onClick={toggleNav}>

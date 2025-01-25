@@ -1,3 +1,8 @@
+use std::sync::mpsc::Sender;
+
 pub enum UiToDb {
-    CreateDocument(super::models::NewDocument),
+    CreateDocument {
+        doc: super::models::NewDocument, 
+        response: Sender<i32>
+    },
 }

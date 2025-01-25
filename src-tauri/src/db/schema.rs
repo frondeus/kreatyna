@@ -14,7 +14,6 @@ diesel::table! {
     documents (id) {
         id -> Integer,
         title -> Text,
-        path -> Text,
         kind -> Text,
         body -> Text,
     }
@@ -26,7 +25,7 @@ diesel::table! {
         creator_id -> Integer,
         creator_counter -> Integer,
         vector_clock -> Text,
-        document_path -> Text,
+        document_id -> Integer,
         kind -> Text,
         timestamp -> Timestamp,
         data -> Text,
@@ -37,7 +36,7 @@ diesel::table! {
     order_of_events (rowid) {
         rowid -> Integer,
         order -> Integer,
-        document_path -> Text,
+        document_id -> Integer,
         event_id -> Integer,
     }
 }
@@ -57,6 +56,8 @@ diesel::table! {
 }
 
 diesel::joinable!(events -> devices (creator_id));
+diesel::joinable!(events -> documents (document_id));
+diesel::joinable!(order_of_events -> documents (document_id));
 diesel::joinable!(order_of_events -> events (event_id));
 diesel::joinable!(vector_clock -> devices (device_id));
 

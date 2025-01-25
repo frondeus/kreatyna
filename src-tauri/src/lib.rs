@@ -7,13 +7,16 @@ mod db;
 
 #[tauri::command]
 fn create_document(
-    new_doc: ui::models::Document,
+    new_doc: ui::models::NewDocument,
     tx: tauri::State<Sender<db::messages::UiToDb>>
-) {
-    tx.send(db::messages::UiToDb::CreateDocument(
-        new_doc.to_db().unwrap(),
-    ))
-    .unwrap();
+) -> ui::models::DocumentId {
+    let (res_tx, res_rx) = std::sync::mpsc::channel();
+    tx.send(db::messages::UiToDb::CreateDocument {
+        doc: new_doc.to_db().unwrap(),
+        response: res_tx.clone(),
+    }).unwrap();
+    let id = res_rx.recv().unwrap();
+    ui::models::DocumentId::from(id)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

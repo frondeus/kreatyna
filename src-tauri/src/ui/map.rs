@@ -15,15 +15,14 @@ mod document {
     use crate::db::models as db_models;
 
 
-    impl ToDb for models::Document {
+    impl ToDb for models::NewDocument {
         type DbType = db_models::NewDocument;
         
         fn to_db(&self) -> Result<Self::DbType> {
             let kind = serde_json::to_string(&self.kind)?;
             let just_kind: &'static str = models::JustDocumentKind::from(&self.kind).into();
             Ok(db_models::NewDocument {
-                title: self.title.clone(),
-                path: self.path.clone(),
+                title: self.title.as_ref().to_string(),
                 kind: just_kind.to_string(),
                 body: kind,
             })
@@ -35,7 +34,7 @@ mod document {
 
         fn from_db(db: Self::DbType) -> Result<Self> {
             let kind: models::DocumentKind = serde_json::from_str(&db.body)?;
-            Ok(Self { title: db.title, path: db.path, kind })
+            Ok(Self { id: db.id.into(), title: db.title.into(), kind })
         }
     }
 }

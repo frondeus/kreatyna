@@ -2,7 +2,6 @@
 CREATE TABLE IF NOT EXISTS documents (
     id INTEGER PRIMARY KEY NOT NULL,
     title TEXT NOT NULL,
-    path TEXT UNIQUE NOT NULL,
     kind TEXT NOT NULL,
     body TEXT NOT NULL
 );
@@ -29,17 +28,19 @@ CREATE TABLE IF NOT EXISTS events (
     creator_id INTEGER NOT NULL,
     creator_counter INTEGER NOT NULL DEFAULT 0,
     vector_clock TEXT NOT NULL,
-    document_path TEXT NOT NULL,
+    document_id INTEGER NOT NULL,
     kind TEXT NOT NULL,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     data TEXT NOT NULL,
-    FOREIGN KEY (creator_id) REFERENCES devices(id)
+    FOREIGN KEY (creator_id) REFERENCES devices(id),
+    FOREIGN KEY (document_id) REFERENCES documents(id)
 );
-CREATE INDEX IF NOT EXISTS idx_events_path_vector ON events (document_path, vector_clock);
+CREATE INDEX IF NOT EXISTS idx_events_path_vector ON events (document_id, vector_clock);
 
 CREATE TABLE IF NOT EXISTS order_of_events (
     "order" INTEGER NOT NULL,
-    document_path TEXT NOT NULL,
+    document_id INTEGER NOT NULL,
     event_id INTEGER NOT NULL,
-    FOREIGN KEY (event_id) REFERENCES events(id)
+    FOREIGN KEY (event_id) REFERENCES events(id),
+    FOREIGN KEY (document_id) REFERENCES documents(id)
 );

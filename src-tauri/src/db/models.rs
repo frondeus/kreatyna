@@ -8,7 +8,6 @@ use diesel::sqlite::Sqlite;
 pub struct Document {
     pub id: i32,
     pub title: String,
-    pub path: String,
     pub kind: String,
     pub body: String,
 }
@@ -17,7 +16,6 @@ pub struct Document {
 #[diesel(table_name = documents)]
 pub struct NewDocument {
     pub title: String,
-    pub path: String,
     pub kind: String,
     pub body: String,
 }

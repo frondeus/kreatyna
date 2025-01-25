@@ -5,10 +5,12 @@ use diesel::prelude::*;
 
 pub fn handle(msg: UiToDb, conn: &mut SqliteConnection) -> Result<()> {
     match msg {
-        UiToDb::CreateDocument(doc) => {
-            diesel::insert_into(documents::table)
+        UiToDb::CreateDocument { doc, response } => {
+            let id = diesel::insert_into(documents::table)
                 .values(&doc)
-                .execute(conn)?;
+                .returning(documents::id)
+                .get_result(conn)?;
+            response.send(id)?;
         }
     }
     Ok(())

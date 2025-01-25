@@ -55,7 +55,11 @@ function EditUnitForm({ unit, setUnit }: EditUnitFormProps) {
       value={unit}
       onChange={(e) => setUnit(e.currentTarget.value)}
       rightSection={
-        <ActionIcon onClick={() => setUnit(undefined)}>
+        <ActionIcon
+          onClick={() => setUnit(undefined)}
+          color="red"
+          variant="subtle"
+        >
           <IconX size="16" />
         </ActionIcon>
       }

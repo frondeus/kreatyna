@@ -20,5 +20,15 @@
     "shop": {
       "add_item": "Add item"
     }
+  },
+  "atoms": {
+    "shop": {
+      "state": {
+        "todo": "Todo",
+        "in_cart": "In cart",
+        "bought": "Bought",
+        "not_buying": "Not buying"
+      }
+    }
   }
 }

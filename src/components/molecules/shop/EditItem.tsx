@@ -36,7 +36,11 @@ export default function EditItem({
   return (
     <Paper>
       <Group justify="space-between" wrap="nowrap">
-        <SuggestionItemPlus state={CheckboxState.Added} onClick={onPlusClick} />
+        <SuggestionItemPlus
+          state={CheckboxState.Added}
+          itemState={item.state}
+          onClick={onPlusClick}
+        />
         <Text size="sm" style={{ flex: 1 }}>
           {item.name}
         </Text>

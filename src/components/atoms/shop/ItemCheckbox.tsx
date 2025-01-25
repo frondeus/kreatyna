@@ -8,6 +8,7 @@ import {
   IconCircleOff,
 } from "@tabler/icons-react";
 import { useCallback, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface ItemCheckboxProps {
   state: ShoppingListItemState;
@@ -37,6 +38,7 @@ export default function ItemCheckbox({
   state,
   onChange = () => {},
 }: ItemCheckboxProps) {
+  const { t } = useTranslation();
   const [menuOpened, setMenuOpened] = useState(false);
   const popoverRef = useClickOutside(() => setMenuOpened(false));
 
@@ -68,7 +70,7 @@ export default function ItemCheckbox({
         key={newState}
         leftSection={<Icon />}
         rightSection={null}
-        label={newState}
+        label={t(`atoms.shop.state.${newState.toLowerCase()}`)}
         onClick={() => {
           onChange(newState as ShoppingListItemState);
           setMenuOpened(false);

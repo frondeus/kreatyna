@@ -23,8 +23,6 @@ const preview: Preview = {
   },
   decorators: [
     (Story, { parameters }) => {
-      // 👇 Make it configurable by reading from parameters
-      console.log(parameters);
       const { pageLayout, layout } = parameters;
       switch (pageLayout ?? layout) {
         case "fullscreen":

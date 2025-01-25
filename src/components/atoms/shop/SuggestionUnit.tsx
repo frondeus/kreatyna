@@ -28,6 +28,7 @@ export default function SuggestionUnit({
           w="5em"
           onClick={onClick}
           value={amountAndUnit(amount, unit)}
+          readOnly
         />
       );
     }

@@ -15,8 +15,8 @@
     "fmt": "prettier --write ."
   },
   "dependencies": {
-    "@mantine/core": "^7.13.5",
-    "@mantine/hooks": "^7.13.5",
+    "@mantine/core": "^7.14",
+    "@mantine/hooks": "^7.14",
     "@tabler/icons": "^3.21.0",
     "@tabler/icons-react": "^3.21.0",
     "@tauri-apps/api": "^2",

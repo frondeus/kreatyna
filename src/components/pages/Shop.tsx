@@ -1,54 +1,20 @@
+import AddItemDrawer from "@/components/organisms/shop/AddItemDrawer";
 import Item from "@components/molecules/shop/Item";
-import AddItemModal from "@components/organisms/shop/AddItemModal";
 import { APIContext } from "@lib/api";
 import { useShop } from "@lib/state";
-import {
-  ActionIcon,
-  Affix,
-  Button,
-  Center,
-  Paper,
-  Stack,
-  Text,
-} from "@mantine/core";
+import { ActionIcon, Affix, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus } from "@tabler/icons-react";
 import { useContext } from "react";
-import { useTranslation } from "react-i18next";
 
 export default function ShopPage() {
-  const { refresh, fetch } = useShop();
-  const { t } = useTranslation();
+  const { fetch } = useShop();
   const [
     openedAddingModal,
     { toggle: toggleAddingModal, close: closeAddingModal },
   ] = useDisclosure(false);
   const api = useContext(APIContext);
   const shoppingLists = fetch(api.getShoppingLists);
-
-  if (shoppingLists.length === 0) {
-    const createList = async () => {
-      const id = await api.createShoppingList({
-        kind: "shoppingList",
-        title: "New shopping list",
-        items: [],
-      });
-      console.log(id);
-      refresh();
-    };
-    return (
-      <Paper>
-        <Center>
-          <Stack>
-            <Text>{t("pages.shop.no_lists")}</Text>
-
-            <Button onClick={createList}>{t("pages.shop.create_list")}</Button>
-          </Stack>
-        </Center>
-      </Paper>
-    );
-  }
-
   const lastShoppingList = shoppingLists[shoppingLists.length - 1];
 
   return (
@@ -61,7 +27,7 @@ export default function ShopPage() {
           <IconPlus />
         </ActionIcon>
       </Affix>
-      <AddItemModal opened={openedAddingModal} onClose={closeAddingModal} />
+      <AddItemDrawer opened={openedAddingModal} onClose={closeAddingModal} />
     </Stack>
   );
 }

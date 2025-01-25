@@ -15,12 +15,13 @@ export type Document = ShoppingList;
 export interface ShoppingListItem {
   id: string;
   name: string;
-  amount?: number;
+  amount: number;
   unit?: string;
   state: ShoppingListItemState;
 }
 
 export type ShoppingListItemProposal = Omit<ShoppingListItem, "id" | "state"> & {
+  id?: string;
   state?: ShoppingListItemState;
 };
 

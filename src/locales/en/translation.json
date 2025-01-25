@@ -7,5 +7,18 @@
       "no_lists": "No shopping lists found",
       "create_list": "Create shopping list"
     }
+  },
+  "molecules": {
+    "shop": {
+      "edit_unit": "Edit unit",
+      "amount": "Amount",
+      "unit": "Unit",
+      "add_unit": "Add unit"
+    }
+  },
+  "organisms": {
+    "shop": {
+      "add_item": "Add item"
+    }
   }
 }

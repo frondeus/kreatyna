@@ -77,7 +77,7 @@ pub struct ShoppingListItem {
     pub state: ShoppingListItemState,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ShoppingListItemState {
     /// Item is in the shopping list

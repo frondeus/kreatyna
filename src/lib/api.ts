@@ -56,8 +56,11 @@ async function updateDocument(
   }
 }
 
-/** eslint-disable-next-line @typescript-eslint/no-explicit-any */
+async function finishShopping(id: DocumentId): Promise<void> {
+  return await invoke("finish_shopping", { id });
+}
 
+/** eslint-disable-next-line @typescript-eslint/no-explicit-any */
 function subscribeToEvents(cbk: (msg: EventNotification) => void): () => void {
   const unsub = listen<EventNotification>("event", (e) => {
     cbk(e.payload);
@@ -76,6 +79,7 @@ export interface API {
     id: DocumentId,
     changes: DocumentChangeEntry[],
   ) => Promise<void>;
+  finishShopping: (id: DocumentId) => Promise<void>;
 }
 
 export const api: API = {
@@ -83,6 +87,7 @@ export const api: API = {
   getItemsAndSuggestions,
   subscribeToEvents,
   updateDocument,
+  finishShopping,
 };
 
 export default api;

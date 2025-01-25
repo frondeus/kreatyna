@@ -1,0 +1,5 @@
+.mantine-ScrollArea-viewport > div {
+  display: flex !important;
+  flex-direction: column;
+  flex: 1;
+}

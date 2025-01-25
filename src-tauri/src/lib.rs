@@ -8,7 +8,10 @@ use tracing_subscriber::layer::SubscriberExt;
 
 use changes::ApplyChange;
 use db::messages::UiToDbExt;
-use ui::map::{FromDb, ToDb};
+use ui::{
+    map::{FromDb, ToDb},
+    models::ShoppingListItemState,
+};
 
 mod changes;
 mod db;
@@ -78,15 +81,7 @@ fn update_document(
         .get_document(id.into())
         .context("Failed to load document")?;
     let mut doc: ui::models::Document = FromDb::from_db(doc).context("Failed to map document")?;
-    tracing::info!("doc: {:?}", doc);
-    let mut ui_changes = vec![];
-    for (path, change) in changes {
-        if let Some((path, ui)) = doc.apply(path.as_ref(), &change) {
-            ui_changes.push((ui::models::JsonPath::from(path), ui));
-        }
-    }
-    tracing::info!("UI changes: {:?}", ui_changes);
-    tracing::info!("After: {:?}", doc);
+    let ui_changes = apply_changes(&mut doc, changes)?;
     tx.update_document(doc.to_db()?)?;
     notify
         .send(ui::models::EventNotification::Updated {
@@ -96,6 +91,22 @@ fn update_document(
         .map_err(Error::from_err)
         .context("Failed to send notification")?;
     Ok(())
+}
+
+fn apply_changes(
+    doc: &mut ui::models::Document,
+    changes: Vec<(ui::models::JsonPath, net::models::DocumentEventChange)>,
+) -> Result<Vec<(ui::models::JsonPath, ui::models::DocumentEventChange)>, Error> {
+    tracing::info!("doc: {:?}", doc);
+    let mut ui_changes = vec![];
+    for (path, change) in changes {
+        if let Some((path, ui)) = doc.apply(path.as_ref(), &change) {
+            ui_changes.push((ui::models::JsonPath::from(path), ui));
+        }
+    }
+    tracing::info!("UI changes: {:?}", ui_changes);
+    tracing::info!("After: {:?}", doc);
+    Ok(ui_changes)
 }
 
 #[tauri::command]
@@ -146,8 +157,40 @@ fn get_items_and_suggestions(
 }
 
 #[tauri::command]
-fn log(msg: String, args: Vec<serde_json::Value>) {
-    tracing::info!("{} {:?}", msg, args);
+fn finish_shopping(
+    id: ui::models::DocumentId,
+    tx: tauri::State<Sender<db::messages::UiToDb>>,
+    notify: tauri::State<Sender<ui::models::EventNotification>>,
+) -> Result<(), Error> {
+    let doc = tx
+        .get_document(id.into())
+        .context("Failed to load document")?;
+    let mut doc: ui::models::Document = FromDb::from_db(doc).context("Failed to map document")?;
+    let ui::models::DocumentKind::ShoppingList { items } = &doc.kind;
+    let changes = items
+        .into_iter()
+        .filter(|item| item.state == ShoppingListItemState::InCart)
+        .map(|i| {
+            (
+                ui::models::JsonPath::from("items".to_owned()),
+                net::models::DocumentEventChange::Remove { key: i.id.clone() },
+            )
+        })
+        .collect();
+
+    drop(items);
+
+    let ui_changes = apply_changes(&mut doc, changes)?;
+    tx.update_document(doc.to_db()?)?;
+    notify
+        .send(ui::models::EventNotification::Updated {
+            id,
+            changes: ui_changes,
+        })
+        .map_err(Error::from_err)
+        .context("Failed to send notification")?;
+
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -194,7 +237,7 @@ pub fn run() {
             get_documents,
             update_document,
             get_items_and_suggestions,
-            log
+            finish_shopping
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

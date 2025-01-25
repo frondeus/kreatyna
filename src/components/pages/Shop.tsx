@@ -21,8 +21,9 @@ import { IconPlus } from "@tabler/icons-react";
 import { useContext, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
+import "./Shop.css";
+
 export default function ShopPage() {
-  const { t } = useTranslation();
   const { fetch } = useShop();
   const [
     openedAddingModal,
@@ -37,10 +38,8 @@ export default function ShopPage() {
     initialValues: lastShoppingList,
   });
 
-  const handleFinishShopping = () => {
-    api.updateDocument(lastShoppingList.id, [
-      ["items", { kind: "replace", value: [] }],
-    ]);
+  const handleFinishShopping = async () => {
+    await api.finishShopping(lastShoppingList.id);
   };
 
   useEffect(() => {
@@ -89,43 +88,68 @@ export default function ShopPage() {
   }, []);
 
   return (
-    <Stack bg="dark.8" h="100%" gap="0">
-      <ScrollArea>
-        <ShoppingListForm form={form} />
-        <Group mt="md" p="md" mb="128px" grow>
-          <Button size="md" color="green" onClick={handleFinishShopping}>
-            {t("pages.shop.finish_shopping")}
-          </Button>
-        </Group>
-      </ScrollArea>
-      <Affix position={{ bottom: 78, right: 20 }}>
-        <ActionIcon onClick={toggleAddingModal} size="xl" radius="xl">
-          <IconPlus />
-        </ActionIcon>
-      </Affix>
-      <AddItemDrawer
-        opened={openedAddingModal}
-        onClose={closeAddingModal}
-        generation={generation}
-      />
-    </Stack>
+    <ScrollArea
+      h="100%"
+      styles={{
+        root: {
+          flex: "1",
+          display: "flex",
+          flexDirection: "column",
+        },
+        viewport: {
+          flex: "1",
+          display: "flex",
+          flexDirection: "column",
+        },
+      }}
+      // style={{ display: "flex", flexDirection: "column", flex: "1" }}
+    >
+      <Stack bg="dark.8" h="100%" gap="0" flex="1">
+        <ShoppingListForm form={form} onFinishShopping={handleFinishShopping} />
+        <Affix position={{ bottom: 78, right: 20 }}>
+          <ActionIcon onClick={toggleAddingModal} size="xl" radius="xl">
+            <IconPlus />
+          </ActionIcon>
+        </Affix>
+        <AddItemDrawer
+          opened={openedAddingModal}
+          onClose={closeAddingModal}
+          generation={generation}
+        />
+      </Stack>
+    </ScrollArea>
   );
 }
 
 interface ShoppingListFormProps {
   form: UseFormReturnType<ShoppingList>;
+  onFinishShopping: () => Promise<void>;
 }
 
-function ShoppingListForm({ form }: ShoppingListFormProps) {
+function ShoppingListForm({ form, onFinishShopping }: ShoppingListFormProps) {
+  const { t } = useTranslation();
   const items = form.getInputProps("items");
   const values: ShoppingListItem[] = items.value ?? items.defaultValue ?? [];
   // Doing shallow copy to avoid mutating original items.value;
   const sortedValues = [...values].sort(compareItems);
+  const hasAtLeastOneItemInCart = sortedValues.some(
+    (item) => item.state === ShoppingListItemState.InCart,
+  );
   return (
     <>
       {sortedValues.map((item) => (
         <Item key={item.id} item={item} />
       ))}
+      <Group mt="md" p="md" mb="128px" grow>
+        <Button
+          size="md"
+          color="green"
+          onClick={onFinishShopping}
+          disabled={!hasAtLeastOneItemInCart}
+        >
+          {t("pages.shop.finish_shopping")}
+        </Button>
+      </Group>
     </>
   );
 }

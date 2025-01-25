@@ -14,7 +14,6 @@ import {
   Group,
   ScrollArea,
   Stack,
-  useMantineTheme,
 } from "@mantine/core";
 import { useForm, UseFormReturnType } from "@mantine/form";
 import { useCounter, useDisclosure } from "@mantine/hooks";
@@ -25,7 +24,6 @@ import { useTranslation } from "react-i18next";
 export default function ShopPage() {
   const { t } = useTranslation();
   const { fetch } = useShop();
-  const theme = useMantineTheme();
   const [
     openedAddingModal,
     { toggle: toggleAddingModal, close: closeAddingModal },
@@ -38,6 +36,12 @@ export default function ShopPage() {
   const form = useForm<ShoppingList>({
     initialValues: lastShoppingList,
   });
+
+  const handleFinishShopping = () => {
+    api.updateDocument(lastShoppingList.id, [
+      ["items", { kind: "replace", value: [] }],
+    ]);
+  };
 
   useEffect(() => {
     return api.subscribeToEvents((msg) => {
@@ -89,7 +93,7 @@ export default function ShopPage() {
       <ScrollArea>
         <ShoppingListForm form={form} />
         <Group mt="md" p="md" mb="128px" grow>
-          <Button size="md" color="green">
+          <Button size="md" color="green" onClick={handleFinishShopping}>
             {t("pages.shop.finish_shopping")}
           </Button>
         </Group>

@@ -85,6 +85,8 @@ fn update_document(
             ui_changes.push((ui::models::JsonPath::from(path), ui));
         }
     }
+    tracing::info!("UI changes: {:?}", ui_changes);
+    tracing::info!("After: {:?}", doc);
     tx.update_document(doc.to_db()?)?;
     notify
         .send(ui::models::EventNotification::Updated {

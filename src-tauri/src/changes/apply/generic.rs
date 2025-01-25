@@ -52,21 +52,34 @@ impl<T: WithKey + ApplyChange + serde::de::DeserializeOwned + std::fmt::Debug> A
         ui_path: String,
         change: &DbDocumentEventChange,
     ) -> Option<(String, UiDocumentEventChange)> {
-        match change {
-            DbDocumentEventChange::Replace { .. } | DbDocumentEventChange::ReplaceWithUndefined => {
-                let segment = path.next()?;
+        let segment = path.next();
+        match (change, segment) {
+            (_, Some(segment)) => {
                 let index = self
                     .iter()
                     .position(|t| t.key().to_string().as_str() == segment)?;
 
                 self[index].apply_field(index, path, ui_path, change)
             }
-            DbDocumentEventChange::Remove { key } => {
+            (DbDocumentEventChange::Replace { value }, None) => {
+                // Replacing full array
+                *self = serde_json::from_value(value.clone()).unwrap();
+                Some((
+                    ui_path,
+                    UiDocumentEventChange::Replace {
+                        value: value.clone(),
+                    },
+                ))
+            }
+            (DbDocumentEventChange::ReplaceWithUndefined, None) => {
+                panic!("Cannot replace whole array with undefined");
+            }
+            (DbDocumentEventChange::Remove { key }, None) => {
                 let index = self.iter().position(|t| &t.key().to_string() == key)?;
                 self.remove(index);
                 Some((ui_path, UiDocumentEventChange::Remove { index }))
             }
-            DbDocumentEventChange::Move { key, before } => {
+            (DbDocumentEventChange::Move { key, before }, None) => {
                 let from = self.iter().position(|t| &t.key().to_string() == key)?;
                 let item = self.remove(from);
                 let to = before
@@ -88,11 +101,14 @@ impl<T: WithKey + ApplyChange + serde::de::DeserializeOwned + std::fmt::Debug> A
                     },
                 ))
             }
-            DbDocumentEventChange::Insert {
-                before,
-                value,
-                key: _,
-            } => {
+            (
+                DbDocumentEventChange::Insert {
+                    before,
+                    value,
+                    key: _,
+                },
+                None,
+            ) => {
                 let t: T = serde_json::from_value(value.clone()).unwrap();
                 let position = match before {
                     None => {

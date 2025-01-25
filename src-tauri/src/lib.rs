@@ -168,7 +168,7 @@ fn finish_shopping(
     let mut doc: ui::models::Document = FromDb::from_db(doc).context("Failed to map document")?;
     let ui::models::DocumentKind::ShoppingList { items } = &doc.kind;
     let changes = items
-        .into_iter()
+        .iter()
         .filter(|item| item.state == ShoppingListItemState::InCart)
         .map(|i| {
             (
@@ -177,8 +177,6 @@ fn finish_shopping(
             )
         })
         .collect();
-
-    drop(items);
 
     let ui_changes = apply_changes(&mut doc, changes)?;
     tx.update_document(doc.to_db()?)?;

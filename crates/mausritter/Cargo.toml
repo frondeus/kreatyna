@@ -17,3 +17,8 @@ required-features = ["bindgen"]
 [dependencies]
 uniffi = "0.32.1"
 mausritter_core = { package = "core", path = "../core" }
+parking_lot = "0.12.5"
+async-trait = "0.1.92"
+futures = "0.3.34"
+thiserror = "2.0.20"
+flume = "0.12.0"

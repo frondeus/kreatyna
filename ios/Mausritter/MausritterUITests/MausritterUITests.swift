@@ -23,12 +23,52 @@ final class MausritterUITests: XCTestCase {
     }
 
     @MainActor
-    func testExample() throws {
+    func testDisplaysInitialRustCounter() throws {
         // UI tests must launch the application that they test.
         let app = XCUIApplication()
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        let value = app.staticTexts["counterValue"]
+        XCTAssertTrue(value.waitForExistence(timeout: 5))
+        XCTAssertEqual(value.label, "Counter: 0")
+    }
+
+    @MainActor
+    func testCounterButtons() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let value = app.staticTexts["counterValue"]
+        XCTAssertTrue(value.waitForExistence(timeout: 5))
+
+        app.buttons["increaseCounter"].tap()
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 1", timeout: 5))
+        app.buttons["decreaseCounter"].tap()
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 0", timeout: 5))
+    }
+
+    @MainActor
+    func testBackgroundCounterCanStopAndRestart() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let value = app.staticTexts["counterValue"]
+        XCTAssertTrue(value.waitForExistence(timeout: 5))
+        app.buttons["startBackground"].tap()
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 1", timeout: 5))
+        app.buttons["stopBackground"].tap()
+        let stoppedValue = value.label
+        let changes = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label != %@", stoppedValue),
+            object: value
+        )
+        changes.isInverted = true
+        wait(for: [changes], timeout: 2)
+        app.buttons["startBackground"].tap()
+        let resumes = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label != %@", stoppedValue),
+            object: value
+        )
+        wait(for: [resumes], timeout: 5)
+        app.buttons["stopBackground"].tap()
     }
 
     @MainActor

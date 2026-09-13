@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		342BE1CC3057077200D3C936 /* mausritter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 342BE1CB3057077200D3C936 /* mausritter.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		342BE1AA3056D4F600D3C936 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,8 @@
 		342BE19C3056D4F500D3C936 /* Mausritter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mausritter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		342BE1A93056D4F600D3C936 /* MausritterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MausritterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		342BE1B33056D4F600D3C936 /* MausritterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MausritterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		342BE1C93057041800D3C936 /* libmausritter.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libmausritter.a; path = "../../target/aarch64-apple-ios-sim/debug/libmausritter.a"; sourceTree = "<group>"; };
+		342BE1CB3057077200D3C936 /* mausritter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = mausritter.swift; path = "/Users/frondeus/Code/mausritter/target/generated/ios/aarch64-apple-ios-sim/debug/mausritter.swift"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,9 +81,11 @@
 		342BE1933056D4F500D3C936 = {
 			isa = PBXGroup;
 			children = (
+				342BE1CB3057077200D3C936 /* mausritter.swift */,
 				342BE19E3056D4F500D3C936 /* Mausritter */,
 				342BE1AC3056D4F600D3C936 /* MausritterTests */,
 				342BE1B63056D4F600D3C936 /* MausritterUITests */,
+				342BE1C83057041800D3C936 /* Frameworks */,
 				342BE19D3056D4F500D3C936 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +98,14 @@
 				342BE1B33056D4F600D3C936 /* MausritterUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		342BE1C83057041800D3C936 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				342BE1C93057041800D3C936 /* libmausritter.a */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -236,6 +252,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				342BE1CC3057077200D3C936 /* mausritter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -407,12 +424,17 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				"OTHER_LDFLAGS[arch=*]" = (
+					"$(inherited)\n",
+					"$(SRCROOT)/../../target/aarch64-apple-ios-sim/debug/libmausritter.a",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = pl.frondeus.Mausritter;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = "$(SRCROOT)/../../target/generated/ios/aarch64-apple-ios-sim/debug/mausritterFFI.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

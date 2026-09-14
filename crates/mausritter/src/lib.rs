@@ -1,12 +1,23 @@
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
-use mausritter_core::runtime::{Runtime, RuntimeError};
+use mausritter_core::{
+    capabilities::{Database, DatabaseError},
+    runtime::{Runtime, RuntimeError},
+};
+use tokio::task::JoinHandle;
 
 uniffi::setup_scaffolding!();
 
+static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
+    tokio::runtime::Builder::new_multi_thread()
+        .build()
+        .expect("Tokio runtime")
+});
+
 #[derive(uniffi::Object)]
 pub struct CounterFfi {
-    runtime: Runtime<mausritter_core::Counter>,
+    runtime: Arc<Runtime<mausritter_core::Counter>>,
+    handle: JoinHandle<()>,
 }
 
 #[derive(uniffi::Enum)]
@@ -58,11 +69,6 @@ impl CounterFfi {
         Ok(())
     }
 
-    pub async fn run(&self) -> Result<(), FfiRuntimeError> {
-        self.runtime.run().await?;
-        Ok(())
-    }
-
     pub fn shutdown(&self) {
         self.runtime.shutdown();
     }
@@ -106,9 +112,37 @@ impl mausritter_core::capabilities::Clock for ClockHandlerShim {
 pub fn counter(render: Arc<dyn RenderHandler>, clock: Arc<dyn ClockHandler>) -> Arc<CounterFfi> {
     let render = Arc::new(RenderHandlerShim { handler: render });
     let clock = Arc::new(ClockHandlerShim { handler: clock });
-    let counter = mausritter_core::Counter::new(render, clock);
+    let db = Arc::new(DatabaseHandler);
+    let caps = mausritter_core::CounterCapabilities { render, clock, db };
+    let counter = mausritter_core::Counter::new(caps);
 
-    let runtime = Runtime::new(counter);
+    let runtime = Arc::new(Runtime::new(counter));
+    let handle = RUNTIME.spawn({
+        let runtime = runtime.clone();
+        async move {
+            runtime.run().await.expect("Runtime to run correctly");
+        }
+    });
 
-    Arc::new(CounterFfi { runtime })
+    Arc::new(CounterFfi { runtime, handle })
+}
+
+impl Drop for CounterFfi {
+    fn drop(&mut self) {
+        self.shutdown();
+        self.handle.abort();
+    }
+}
+
+struct DatabaseHandler;
+
+#[async_trait::async_trait]
+impl Database for DatabaseHandler {
+    async fn count(&self) -> Result<Option<usize>, DatabaseError> {
+        Ok(Some(42))
+    }
+
+    async fn set_count(&self, _count: usize) -> Result<(), DatabaseError> {
+        Ok(())
+    }
 }

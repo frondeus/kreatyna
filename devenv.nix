@@ -20,6 +20,14 @@ let
     # Override per command without changing the system's xcode-select setting.
     export DEVELOPER_DIR="''${IOS_DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
     export CARGO_TARGET_DIR="$PWD/target"
+
+    # Host build scripts, proc macros, and bindgen also need Xcode's linker:
+    # Nix's older linker cannot read the macOS 27 SDK's arm64e.x1 stubs.
+    host_target="$(rustc -vV | sed -n 's/^host: //p')"
+    host_target_env="$(echo "$host_target" | tr '[:lower:]-' '[:upper:]_')"
+    host_clang="$(/usr/bin/xcrun --sdk macosx --find clang)"
+    export "CARGO_TARGET_''${host_target_env}_LINKER=$host_clang"
+
     # Keep the default aligned with the Xcode app's deployment target.
     export IPHONEOS_DEPLOYMENT_TARGET="''${IPHONEOS_DEPLOYMENT_TARGET:-26.2}"
   '';

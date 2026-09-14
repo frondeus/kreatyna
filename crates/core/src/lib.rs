@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    capabilities::{Clock, Render},
+    capabilities::{Clock, Database, Render},
     widget::{Command, CommandExt, CommandId, CommandSlot, Message, Widget},
 };
 
@@ -18,12 +18,25 @@ pub mod capabilities {
     pub trait Clock: Send + Sync {
         async fn sleep_ms(&self, ms: u64);
     }
+
+    #[async_trait::async_trait]
+    pub trait Database: Send + Sync {
+        async fn count(&self) -> Result<Option<usize>, DatabaseError>;
+        async fn set_count(&self, count: usize) -> Result<(), DatabaseError>;
+    }
+
+    pub enum DatabaseError {}
+}
+
+pub struct CounterCapabilities {
+    pub render: Arc<dyn Render>,
+    pub clock: Arc<dyn Clock>,
+    pub db: Arc<dyn Database>,
 }
 
 pub struct Counter {
     counter: usize,
-    render: Arc<dyn Render>,
-    clock: Arc<dyn Clock>,
+    caps: CounterCapabilities,
 
     background: CommandSlot,
 }
@@ -37,13 +50,13 @@ pub enum CounterEvent {
 
 pub enum CounterOutcome {
     Tick { id: CommandId },
+    Loaded { counter: usize },
 }
 
 impl Counter {
-    pub fn new(render: Arc<dyn Render>, clock: Arc<dyn Clock>) -> Self {
+    pub fn new(caps: CounterCapabilities) -> Self {
         Self {
-            render,
-            clock,
+            caps,
             counter: 0,
 
             background: CommandSlot::new(),
@@ -58,23 +71,38 @@ impl Widget for Counter {
 
     type Outcome = CounterOutcome;
 
-    fn update(&mut self, event: Message<Self::Event, Self::Outcome>) -> Command<Self::Outcome> {
-        let render = self.render.clone();
+    fn init(&self) -> Command<Self::Outcome> {
+        let db = self.caps.db.clone();
+        Command::single(async move {
+            let Ok(Some(counter)) = db.count().await else {
+                return CounterOutcome::Loaded { counter: 0 };
+            };
+            CounterOutcome::Loaded { counter }
+        })
+    }
+
+    fn update(&mut self, event: Message<Self>) -> Command<Self::Outcome> {
+        let render = self.caps.render.clone();
+        let db = self.caps.db.clone();
         match event {
             Message::Event(CounterEvent::Increase) => {
                 self.counter = self.counter.saturating_add(1);
+                let counter = self.counter;
                 Command::without_outcome(async move {
                     render.render().await;
+                    db.set_count(counter).await;
                 })
             }
             Message::Event(CounterEvent::Decrease) => {
                 self.counter = self.counter.saturating_sub(1);
+                let counter = self.counter;
                 Command::without_outcome(async move {
                     render.render().await;
+                    db.set_count(counter).await;
                 })
             }
             Message::Event(CounterEvent::StartBackground) => {
-                let clock = self.clock.clone();
+                let clock = self.caps.clock.clone();
                 self.background.start(move |id| {
                     async_stream::stream!({
                         loop {
@@ -88,16 +116,23 @@ impl Widget for Counter {
                 self.background.stop();
                 Command::empty()
             }
+            Message::Outcome(CounterOutcome::Loaded { counter }) => {
+                self.counter = counter;
+                Command::without_outcome(async move {
+                    render.render().await;
+                })
+            }
             Message::Outcome(CounterOutcome::Tick { id }) => {
                 if !self.background.accepts(id) {
                     return Command::empty();
                 }
 
                 self.counter = self.counter.saturating_add(1);
+                let counter = self.counter;
 
-                let render = self.render.clone();
                 Command::without_outcome(async move {
                     render.render().await;
+                    db.set_count(counter).await;
                 })
             }
         }

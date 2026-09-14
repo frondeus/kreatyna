@@ -24,12 +24,12 @@ pub struct Runtime<W: Widget> {
 
 enum State<W: Widget> {
     Created {
-        tx: Sender<Message<W::Event, W::Outcome>>,
-        rx: Receiver<Message<W::Event, W::Outcome>>,
+        tx: Sender<Message<W>>,
+        rx: Receiver<Message<W>>,
     },
     Running {
         token: CancellationToken,
-        tx: Sender<Message<W::Event, W::Outcome>>,
+        tx: Sender<Message<W>>,
     },
     Terminating,
     Terminated,
@@ -44,7 +44,7 @@ impl<W: Widget> Runtime<W> {
         }
     }
 
-    pub fn dispatch(&self, message: Message<W::Event, W::Outcome>) -> Result<(), RuntimeError> {
+    pub fn dispatch(&self, message: Message<W>) -> Result<(), RuntimeError> {
         let tx = {
             let state = self.state.lock();
             match &*state {
@@ -90,6 +90,8 @@ impl<W: Widget> Runtime<W> {
     pub async fn run(&self) -> Result<(), RuntimeError>
     where
         W::Event: Send + 'static,
+        W::Outcome: Send + 'static,
+        W: 'static,
     {
         let (token, rx) = {
             let mut state = self.state.lock();
@@ -115,8 +117,14 @@ impl<W: Widget> Runtime<W> {
             state: &self.state,
         };
         let rx = rx.into_stream();
-        let mut active: SelectAll<BoxStream<'static, Message<W::Event, W::Outcome>>> =
-            SelectAll::new();
+        let mut active: SelectAll<BoxStream<'static, Message<W>>> = SelectAll::new();
+
+        {
+            let initial = self.widget.lock().init();
+            let initial = initial.into_stream().map(Message::<W>::Outcome);
+            active.push(Box::pin(initial));
+        }
+
         active.push(Box::pin(rx));
 
         token
@@ -126,9 +134,7 @@ impl<W: Widget> Runtime<W> {
                         let mut widget = self.widget.lock();
                         widget.update(msg)
                     };
-                    let follow_up = follow_up
-                        .into_stream()
-                        .map(Message::<W::Event, W::Outcome>::Outcome);
+                    let follow_up = follow_up.into_stream().map(Message::<W>::Outcome);
                     active.push(Box::pin(follow_up));
                 }
             })

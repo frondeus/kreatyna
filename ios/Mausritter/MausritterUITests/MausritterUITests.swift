@@ -30,7 +30,7 @@ final class MausritterUITests: XCTestCase {
 
         let value = app.staticTexts["counterValue"]
         XCTAssertTrue(value.waitForExistence(timeout: 5))
-        XCTAssertEqual(value.label, "Counter: 0")
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 42", timeout: 5))
     }
 
     @MainActor
@@ -39,11 +39,12 @@ final class MausritterUITests: XCTestCase {
         app.launch()
         let value = app.staticTexts["counterValue"]
         XCTAssertTrue(value.waitForExistence(timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 42", timeout: 5))
 
         app.buttons["increaseCounter"].tap()
-        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 1", timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 43", timeout: 5))
         app.buttons["decreaseCounter"].tap()
-        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 0", timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 42", timeout: 5))
     }
 
     @MainActor
@@ -52,8 +53,9 @@ final class MausritterUITests: XCTestCase {
         app.launch()
         let value = app.staticTexts["counterValue"]
         XCTAssertTrue(value.waitForExistence(timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 42", timeout: 5))
         app.buttons["startBackground"].tap()
-        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 1", timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 43", timeout: 5))
         app.buttons["stopBackground"].tap()
         let stoppedValue = value.label
         let changes = XCTNSPredicateExpectation(

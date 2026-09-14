@@ -13,31 +13,40 @@ struct MausritterTests {
     @MainActor
     @Test func dispatchRefreshesValueThroughRustCallback() async throws {
         let model = CounterModel()
+        defer { model.shutdown() }
+        try await waitForValue(42, in: model)
         model.dispatch(.increase)
-        try await waitForValue(1, in: model)
+        try await waitForValue(43, in: model)
         model.dispatch(.decrease)
-        try await waitForValue(0, in: model)
-        await model.shutdown()
+        try await waitForValue(42, in: model)
         #expect(model.errorMessage == nil)
     }
 
     @MainActor
     @Test func queuedEventsPreserveOrderAndShutdownRejectsDispatch() async throws {
         let model = CounterModel()
+        defer { model.shutdown() }
+        try await waitForValue(42, in: model)
+        for _ in 0..<42 {
+            model.dispatch(.decrease)
+        }
+        try await waitForValue(0, in: model)
         model.dispatch(.decrease)
         model.dispatch(.increase)
         try await waitForValue(1, in: model)
-        await model.shutdown()
+        model.shutdown()
         model.dispatch(.increase)
         #expect(model.errorMessage != nil)
         #expect(model.value == 1)
     }
 
     @MainActor
-    @Test func shutdownBeforeRunnerStartsCompletes() async {
+    @Test func immediateShutdownRejectsDispatch() {
         let model = CounterModel()
-        await model.shutdown()
+        model.shutdown()
         #expect(model.errorMessage == nil)
+        model.dispatch(.increase)
+        #expect(model.errorMessage != nil)
     }
 
     @MainActor
@@ -47,13 +56,15 @@ struct MausritterTests {
         while model.value != value && clock.now < deadline {
             try await Task.sleep(for: .milliseconds(10))
         }
-        #expect(model.value == value)
+        try #require(model.value == value)
     }
 
     @MainActor
-    @Test func readsInitialValueFromRust() {
+    @Test func loadsInitialValueWithoutSwiftRunner() async throws {
         let model = CounterModel()
-        #expect(model.value == 0)
+        defer { model.shutdown() }
+        try await waitForValue(42, in: model)
+        #expect(model.errorMessage == nil)
     }
 
     @MainActor

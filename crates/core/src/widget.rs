@@ -7,17 +7,21 @@ use futures::{
 
 pub trait Widget: Sized {
     type View;
-    type Event;
+    type Event: Send + 'static;
     type Outcome: Send + 'static;
 
-    fn update(&mut self, message: Message<Self::Event, Self::Outcome>) -> Command<Self::Outcome>;
+    fn init(&self) -> Command<Self::Outcome> {
+        Command::empty()
+    }
+
+    fn update(&mut self, message: Message<Self>) -> Command<Self::Outcome>;
 
     fn view(&self) -> Self::View;
 }
 
-pub enum Message<Event, Outcome> {
-    Event(Event),
-    Outcome(Outcome),
+pub enum Message<W: Widget> {
+    Event(W::Event),
+    Outcome(W::Outcome),
 }
 
 pub struct Command<Outcome> {
@@ -40,6 +44,7 @@ pub trait CommandExt<Outcome>: Sized {
     fn empty() -> Self;
     fn without_outcome(fut: impl Future<Output = ()> + Send + 'static) -> Self;
     fn abortable(stream: impl Stream<Item = Outcome> + Send + 'static) -> (Self, AbortHandle);
+    fn single(fut: impl Future<Output = Outcome> + Send + 'static) -> Self;
 }
 
 impl<Outcome: Send + 'static> CommandExt<Outcome> for Command<Outcome> {
@@ -69,6 +74,10 @@ impl<Outcome: Send + 'static> CommandExt<Outcome> for Command<Outcome> {
             }
         });
         (Self::new(stream), handle)
+    }
+
+    fn single(fut: impl Future<Output = Outcome> + Send + 'static) -> Self {
+        Self::new(futures::stream::once(fut))
     }
 }
 

@@ -22,8 +22,9 @@ final class MausritterUITestsLaunchTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
+        let value = app.staticTexts["counterValue"]
+        XCTAssertTrue(value.waitForExistence(timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 42", timeout: 5))
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Launch Screen"

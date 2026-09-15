@@ -1,4 +1,8 @@
 [workspace]
-members = ["crates/core", "crates/mausritter"]
+members = [
+    "crates/krucyfiks/core",
+    "crates/krucyfiks/runtime",
+    "crates/mausritter",
+    "crates/mausritter-ffi"]
 
 resolver = "3"

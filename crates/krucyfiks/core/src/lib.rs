@@ -63,16 +63,28 @@ impl<Outcome: Send + 'static> CommandExt<Outcome> for Command<Outcome> {
 
     fn abortable(stream: impl Stream<Item = Outcome> + Send + 'static) -> (Self, AbortHandle) {
         let (handle, registration) = AbortHandle::new_pair();
-        let guard = AbortOnDrop(handle.clone());
 
-        let stream = async_stream::stream!({
-            let _guard = guard;
-            let mut stream = Box::pin(Abortable::new(stream, registration));
+        let mut state = Some((
+            Box::pin(Abortable::new(stream, registration)),
+            AbortOnDrop(handle.clone()),
+        ));
 
-            while let Some(outcome) = stream.next().await {
-                yield outcome;
+        let stream = futures::stream::poll_fn(move |cx| {
+            let Some((inner, _guard)) = state.as_mut() else {
+                return std::task::Poll::Ready(None);
+            };
+
+            let result = inner.as_mut().poll_next(cx);
+
+            if matches!(&result, std::task::Poll::Ready(None)) {
+                // Release the inner stream and abort guard immediately
+                // when completion is observed.
+                state = None;
             }
+
+            result
         });
+
         (Self::new(stream), handle)
     }
 

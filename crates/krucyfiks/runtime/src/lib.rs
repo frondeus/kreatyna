@@ -6,7 +6,7 @@ use futures::{
 use parking_lot::Mutex;
 use tokio_util::sync::{CancellationToken, DropGuard};
 
-use crate::widget::{Message, Widget};
+use krucyfiks::{Message, Widget};
 
 #[derive(Debug, thiserror::Error)]
 pub enum RuntimeError {

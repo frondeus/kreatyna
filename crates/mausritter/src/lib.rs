@@ -1,26 +1,41 @@
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
-use mausritter_core::{
-    capabilities::{Database, DatabaseError},
-    runtime::{Runtime, RuntimeError},
-};
-use tokio::task::JoinHandle;
+use crate::capabilities::{Clock, Database, Render};
+use krucyfiks::{Command, CommandExt, CommandId, CommandSlot, Message, Widget};
 
-uniffi::setup_scaffolding!();
+pub mod capabilities {
+    #[async_trait::async_trait]
+    pub trait Render: Send + Sync {
+        async fn render(&self);
+    }
 
-static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
-    tokio::runtime::Builder::new_multi_thread()
-        .build()
-        .expect("Tokio runtime")
-});
+    #[async_trait::async_trait]
+    pub trait Clock: Send + Sync {
+        async fn sleep_ms(&self, ms: u64);
+    }
 
-#[derive(uniffi::Object)]
-pub struct CounterFfi {
-    runtime: Arc<Runtime<mausritter_core::Counter>>,
-    handle: JoinHandle<()>,
+    #[async_trait::async_trait]
+    pub trait Database: Send + Sync {
+        async fn count(&self) -> Result<Option<usize>, DatabaseError>;
+        async fn set_count(&self, count: usize) -> Result<(), DatabaseError>;
+    }
+
+    pub enum DatabaseError {}
 }
 
-#[derive(uniffi::Enum)]
+pub struct CounterCapabilities {
+    pub render: Arc<dyn Render>,
+    pub clock: Arc<dyn Clock>,
+    pub db: Arc<dyn Database>,
+}
+
+pub struct Counter {
+    counter: usize,
+    caps: CounterCapabilities,
+
+    background: CommandSlot,
+}
+
 pub enum CounterEvent {
     Increase,
     Decrease,
@@ -28,121 +43,97 @@ pub enum CounterEvent {
     StopBackground,
 }
 
-impl From<CounterEvent> for mausritter_core::CounterEvent {
-    fn from(value: CounterEvent) -> Self {
-        match value {
-            CounterEvent::Increase => Self::Increase,
-            CounterEvent::Decrease => Self::Decrease,
-            CounterEvent::StartBackground => Self::StartBackground,
-            CounterEvent::StopBackground => Self::StopBackground,
+pub enum CounterOutcome {
+    Tick { id: CommandId },
+    Loaded { counter: usize },
+}
+
+impl Counter {
+    pub fn new(caps: CounterCapabilities) -> Self {
+        Self {
+            caps,
+            counter: 0,
+
+            background: CommandSlot::new(),
         }
     }
 }
 
-#[derive(Debug, thiserror::Error, uniffi::Error)]
-pub enum FfiRuntimeError {
-    #[error("Runtime is terminated")]
-    Terminated,
+impl Widget for Counter {
+    type View = usize;
 
-    #[error("Runtime has already been started")]
-    AlreadyStarted,
-}
-impl From<RuntimeError> for FfiRuntimeError {
-    fn from(value: RuntimeError) -> Self {
-        match value {
-            RuntimeError::Terminated => Self::Terminated,
-            RuntimeError::AlreadyStarted => Self::AlreadyStarted,
+    type Event = CounterEvent;
+
+    type Outcome = CounterOutcome;
+
+    fn init(&self) -> Command<Self::Outcome> {
+        let db = self.caps.db.clone();
+        Command::single(async move {
+            let Ok(Some(counter)) = db.count().await else {
+                return CounterOutcome::Loaded { counter: 0 };
+            };
+            CounterOutcome::Loaded { counter }
+        })
+    }
+
+    fn update(&mut self, event: Message<Self>) -> Command<Self::Outcome> {
+        let render = self.caps.render.clone();
+        let db = self.caps.db.clone();
+        match event {
+            Message::Event(CounterEvent::Increase) => {
+                self.counter = self.counter.saturating_add(1);
+                let counter = self.counter;
+                Command::without_outcome(async move {
+                    render.render().await;
+                    db.set_count(counter).await;
+                })
+            }
+            Message::Event(CounterEvent::Decrease) => {
+                self.counter = self.counter.saturating_sub(1);
+                let counter = self.counter;
+                Command::without_outcome(async move {
+                    render.render().await;
+                    db.set_count(counter).await;
+                })
+            }
+            Message::Event(CounterEvent::StartBackground) => {
+                let clock = self.caps.clock.clone();
+                self.background.start(move |id| {
+                    async_stream::stream!({
+                        loop {
+                            clock.sleep_ms(1_000).await;
+                            yield CounterOutcome::Tick { id };
+                        }
+                    })
+                })
+            }
+            Message::Event(CounterEvent::StopBackground) => {
+                self.background.stop();
+                Command::empty()
+            }
+            Message::Outcome(CounterOutcome::Loaded { counter }) => {
+                self.counter = counter;
+                Command::without_outcome(async move {
+                    render.render().await;
+                })
+            }
+            Message::Outcome(CounterOutcome::Tick { id }) => {
+                if !self.background.accepts(id) {
+                    return Command::empty();
+                }
+
+                self.counter = self.counter.saturating_add(1);
+                let counter = self.counter;
+
+                Command::without_outcome(async move {
+                    render.render().await;
+                    db.set_count(counter).await;
+                })
+            }
         }
     }
-}
 
-#[uniffi::export]
-impl CounterFfi {
-    pub fn view(&self) -> u64 {
-        self.runtime.view() as u64
-    }
-
-    pub fn dispatch(&self, event: CounterEvent) -> Result<(), FfiRuntimeError> {
-        let event: mausritter_core::CounterEvent = event.into();
-        self.runtime
-            .dispatch(mausritter_core::widget::Message::Event(event))?;
-        Ok(())
-    }
-
-    pub fn shutdown(&self) {
-        self.runtime.shutdown();
-    }
-}
-
-#[uniffi::export(foreign)]
-#[async_trait::async_trait]
-pub trait RenderHandler: Send + Sync {
-    async fn render(&self);
-}
-
-struct RenderHandlerShim {
-    handler: Arc<dyn RenderHandler>,
-}
-
-#[async_trait::async_trait]
-impl mausritter_core::capabilities::Render for RenderHandlerShim {
-    async fn render(&self) {
-        self.handler.render().await;
-    }
-}
-
-#[uniffi::export(foreign)]
-#[async_trait::async_trait]
-pub trait ClockHandler: Send + Sync {
-    async fn sleep_ms(&self, ms: u64);
-}
-
-struct ClockHandlerShim {
-    handler: Arc<dyn ClockHandler>,
-}
-
-#[async_trait::async_trait]
-impl mausritter_core::capabilities::Clock for ClockHandlerShim {
-    async fn sleep_ms(&self, ms: u64) {
-        self.handler.sleep_ms(ms).await
-    }
-}
-
-#[uniffi::export]
-pub fn counter(render: Arc<dyn RenderHandler>, clock: Arc<dyn ClockHandler>) -> Arc<CounterFfi> {
-    let render = Arc::new(RenderHandlerShim { handler: render });
-    let clock = Arc::new(ClockHandlerShim { handler: clock });
-    let db = Arc::new(DatabaseHandler);
-    let caps = mausritter_core::CounterCapabilities { render, clock, db };
-    let counter = mausritter_core::Counter::new(caps);
-
-    let runtime = Arc::new(Runtime::new(counter));
-    let handle = RUNTIME.spawn({
-        let runtime = runtime.clone();
-        async move {
-            runtime.run().await.expect("Runtime to run correctly");
-        }
-    });
-
-    Arc::new(CounterFfi { runtime, handle })
-}
-
-impl Drop for CounterFfi {
-    fn drop(&mut self) {
-        self.shutdown();
-        self.handle.abort();
-    }
-}
-
-struct DatabaseHandler;
-
-#[async_trait::async_trait]
-impl Database for DatabaseHandler {
-    async fn count(&self) -> Result<Option<usize>, DatabaseError> {
-        Ok(Some(42))
-    }
-
-    async fn set_count(&self, _count: usize) -> Result<(), DatabaseError> {
-        Ok(())
+    fn view(&self) -> Self::View {
+        self.counter
     }
 }

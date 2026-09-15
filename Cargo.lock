@@ -222,19 +222,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
-name = "core"
-version = "0.1.0"
-dependencies = [
- "async-stream",
- "async-trait",
- "flume",
- "futures",
- "parking_lot",
- "thiserror",
- "tokio-util",
-]
-
-[[package]]
 name = "darling"
 version = "0.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -598,6 +585,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "krucyfiks"
+version = "0.1.0"
+dependencies = [
+ "futures",
+]
+
+[[package]]
+name = "krucyfiks-runtime"
+version = "0.1.0"
+dependencies = [
+ "flume",
+ "futures",
+ "krucyfiks",
+ "parking_lot",
+ "thiserror",
+ "tokio-util",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -638,13 +644,25 @@ checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 name = "mausritter"
 version = "0.1.0"
 dependencies = [
+ "async-stream",
  "async-trait",
- "core",
+ "krucyfiks",
+ "thiserror",
+]
+
+[[package]]
+name = "mausritter-ffi"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
  "diesel",
  "diesel-async",
  "diesel_migrations",
  "flume",
  "futures",
+ "krucyfiks",
+ "krucyfiks-runtime",
+ "mausritter",
  "parking_lot",
  "thiserror",
  "tokio",

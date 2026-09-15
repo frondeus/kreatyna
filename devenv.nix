@@ -42,10 +42,10 @@ let
       CARGO_TARGET_${lib.toUpper (builtins.replaceStrings [ "-" ] [ "_" ] target)}_LINKER="$ios_clang" \
       CC_${builtins.replaceStrings [ "-" ] [ "_" ] target}="$ios_clang" \
       AR_${builtins.replaceStrings [ "-" ] [ "_" ] target}="$ios_ar" \
-      cargo build --locked -p mausritter --lib \
+      cargo build --locked -p mausritter-ffi --lib \
         --target ${target} "''${profile_args[@]}"
 
-    echo "Built $CARGO_TARGET_DIR/${target}/$profile/libmausritter.a"
+    echo "Built $CARGO_TARGET_DIR/${target}/$profile/libmausritter_ffi.a"
   '';
 in
 {
@@ -79,8 +79,8 @@ in
       export SDKROOT="$(/usr/bin/xcrun --sdk macosx --show-sdk-path)"
       for target in aarch64-apple-ios aarch64-apple-ios-sim; do
         output="$CARGO_TARGET_DIR/generated/ios/$target/$profile"
-        cargo run --locked -p mausritter --features bindgen --bin uniffi-bindgen -- \
-          generate "$CARGO_TARGET_DIR/$target/$profile/libmausritter.a" \
+        cargo run --locked -p mausritter-ffi --features bindgen --bin uniffi-bindgen -- \
+          generate "$CARGO_TARGET_DIR/$target/$profile/libmausritter_ffi.a" \
           --language swift --out-dir "$output"
         echo "Generated Swift bindings in $output"
       done

@@ -1,4 +1,4 @@
-{ lib, config, ... }:
+{ lib, config,  pkgs, ... }:
 
 let
   iosSetup = ''
@@ -58,6 +58,14 @@ in
       "aarch64-apple-ios-sim"
     ];
   };
+
+  packages = [
+    pkgs.diesel-cli
+    (lib.getBin pkgs.sqlite)
+  ];
+
+  env.DATABASE_URL =
+    "${config.devenv.root}/crates/mausritter-ffi/counter-dev.sqlite";
 
   scripts.ios-build-device = {
     description = "Build the Rust library for iPhone/iPad: ios-build-device [debug|release]";

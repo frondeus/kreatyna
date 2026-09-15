@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		342BE1CC3057077200D3C936 /* mausritter_ffi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 342BE1CB3057077200D3C936 /* mausritter_ffi.swift */; };
+		34C9C5F03059551D004DA1E0 /* mausritter_ffi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34C9C5EF3059551D004DA1E0 /* mausritter_ffi.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -32,7 +32,7 @@
 		342BE1A93056D4F600D3C936 /* MausritterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MausritterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		342BE1B33056D4F600D3C936 /* MausritterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MausritterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		342BE1C93057041800D3C936 /* libmausritter_ffi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libmausritter_ffi.a; path = "../../target/aarch64-apple-ios-sim/debug/libmausritter_ffi.a"; sourceTree = "<group>"; };
-		342BE1CB3057077200D3C936 /* mausritter_ffi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = mausritter_ffi.swift; path = "/Users/frondeus/Code/mausritter/target/generated/ios/aarch64-apple-ios-sim/debug/mausritter_ffi.swift"; sourceTree = "<absolute>"; };
+		34C9C5EF3059551D004DA1E0 /* mausritter_ffi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = mausritter_ffi.swift; path = "/Users/frondeus/Code/mausritter/target/generated/ios/aarch64-apple-ios-sim/debug/mausritter_ffi.swift"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -81,7 +81,7 @@
 		342BE1933056D4F500D3C936 = {
 			isa = PBXGroup;
 			children = (
-				342BE1CB3057077200D3C936 /* mausritter_ffi.swift */,
+				34C9C5EF3059551D004DA1E0 /* mausritter_ffi.swift */,
 				342BE19E3056D4F500D3C936 /* Mausritter */,
 				342BE1AC3056D4F600D3C936 /* MausritterTests */,
 				342BE1B63056D4F600D3C936 /* MausritterUITests */,
@@ -252,7 +252,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				342BE1CC3057077200D3C936 /* mausritter_ffi.swift in Sources */,
+				34C9C5F03059551D004DA1E0 /* mausritter_ffi.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -427,6 +427,7 @@
 				"OTHER_LDFLAGS[arch=*]" = (
 					"$(inherited)\n",
 					"$(SRCROOT)/../../target/aarch64-apple-ios-sim/debug/libmausritter_ffi.a",
+					"-lsqlite3",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = pl.frondeus.Mausritter;
 				PRODUCT_NAME = "$(TARGET_NAME)";

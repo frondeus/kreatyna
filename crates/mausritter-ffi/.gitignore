@@ -1,1 +1,3 @@
 /target
+/counter-dev.sqlite
+/counter-dev.sqlite-*

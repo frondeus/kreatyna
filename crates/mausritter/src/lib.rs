@@ -3,25 +3,7 @@ use std::sync::Arc;
 use crate::capabilities::{Clock, Database, Render};
 use krucyfiks::{Command, CommandExt, CommandId, CommandSlot, Message, Widget};
 
-pub mod capabilities {
-    #[async_trait::async_trait]
-    pub trait Render: Send + Sync {
-        async fn render(&self);
-    }
-
-    #[async_trait::async_trait]
-    pub trait Clock: Send + Sync {
-        async fn sleep_ms(&self, ms: u64);
-    }
-
-    #[async_trait::async_trait]
-    pub trait Database: Send + Sync {
-        async fn count(&self) -> Result<Option<usize>, DatabaseError>;
-        async fn set_count(&self, count: usize) -> Result<(), DatabaseError>;
-    }
-
-    pub enum DatabaseError {}
-}
+pub mod capabilities;
 
 pub struct CounterCapabilities {
     pub render: Arc<dyn Render>,
@@ -85,7 +67,7 @@ impl Widget for Counter {
                 let counter = self.counter;
                 Command::without_outcome(async move {
                     render.render().await;
-                    db.set_count(counter).await;
+                    _ = db.set_count(counter).await;
                 })
             }
             Message::Event(CounterEvent::Decrease) => {
@@ -93,7 +75,7 @@ impl Widget for Counter {
                 let counter = self.counter;
                 Command::without_outcome(async move {
                     render.render().await;
-                    db.set_count(counter).await;
+                    _ = db.set_count(counter).await;
                 })
             }
             Message::Event(CounterEvent::StartBackground) => {
@@ -127,7 +109,7 @@ impl Widget for Counter {
 
                 Command::without_outcome(async move {
                     render.render().await;
-                    db.set_count(counter).await;
+                    _ = db.set_count(counter).await;
                 })
             }
         }

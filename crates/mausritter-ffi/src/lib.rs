@@ -1,8 +1,12 @@
 use std::sync::{Arc, LazyLock};
 
 use krucyfiks_runtime::{Runtime, RuntimeError};
-use mausritter::capabilities::{Database, DatabaseError};
 use tokio::task::JoinHandle;
+
+use crate::database::channel::DatabaseClient;
+use crate::database::sqlite::SqliteDatabase;
+
+mod database;
 
 uniffi::setup_scaffolding!();
 
@@ -105,14 +109,28 @@ impl mausritter::capabilities::Clock for ClockHandlerShim {
     }
 }
 
+#[derive(uniffi::Record)]
+pub struct CounterCapabilities {
+    render: Arc<dyn RenderHandler>,
+    clock: Arc<dyn ClockHandler>,
+}
+
 #[uniffi::export]
-pub fn counter(render: Arc<dyn RenderHandler>, clock: Arc<dyn ClockHandler>) -> Arc<CounterFfi> {
-    let render = Arc::new(RenderHandlerShim { handler: render });
-    let clock = Arc::new(ClockHandlerShim { handler: clock });
-    let db = Arc::new(DatabaseHandler);
+pub fn counter(caps: CounterCapabilities, database_path: String) -> Arc<CounterFfi> {
+    let render = Arc::new(RenderHandlerShim { handler: caps.render });
+    let clock = Arc::new(ClockHandlerShim { handler: caps.clock });
+
+    let (db, database_rx) = DatabaseClient::new();
+    let db = Arc::new(db);
+    RUNTIME.spawn(async move {
+        let mut database = SqliteDatabase::new(&database_path).await?;
+        database.worker(database_rx).await;
+
+        Ok::<(), anyhow::Error>(())
+    });
+
     let caps = mausritter::CounterCapabilities { render, clock, db };
     let counter = mausritter::Counter::new(caps);
-
     let runtime = Arc::new(Runtime::new(counter));
     let handle = RUNTIME.spawn({
         let runtime = runtime.clone();
@@ -128,18 +146,5 @@ impl Drop for CounterFfi {
     fn drop(&mut self) {
         self.shutdown();
         self.handle.abort();
-    }
-}
-
-struct DatabaseHandler;
-
-#[async_trait::async_trait]
-impl Database for DatabaseHandler {
-    async fn count(&self) -> Result<Option<usize>, DatabaseError> {
-        Ok(Some(42))
-    }
-
-    async fn set_count(&self, _count: usize) -> Result<(), DatabaseError> {
-        Ok(())
     }
 }

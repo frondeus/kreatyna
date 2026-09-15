@@ -26,36 +26,39 @@ final class MausritterUITests: XCTestCase {
     func testDisplaysInitialRustCounter() throws {
         // UI tests must launch the application that they test.
         let app = XCUIApplication()
+        app.launchEnvironment["MAUSRITTER_TEST_DATABASE_ID"] = UUID().uuidString
         app.launch()
 
         let value = app.staticTexts["counterValue"]
         XCTAssertTrue(value.waitForExistence(timeout: 5))
-        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 42", timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 0", timeout: 5))
     }
 
     @MainActor
     func testCounterButtons() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["MAUSRITTER_TEST_DATABASE_ID"] = UUID().uuidString
         app.launch()
         let value = app.staticTexts["counterValue"]
         XCTAssertTrue(value.waitForExistence(timeout: 5))
-        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 42", timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 0", timeout: 5))
 
         app.buttons["increaseCounter"].tap()
-        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 43", timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 1", timeout: 5))
         app.buttons["decreaseCounter"].tap()
-        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 42", timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 0", timeout: 5))
     }
 
     @MainActor
     func testBackgroundCounterCanStopAndRestart() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["MAUSRITTER_TEST_DATABASE_ID"] = UUID().uuidString
         app.launch()
         let value = app.staticTexts["counterValue"]
         XCTAssertTrue(value.waitForExistence(timeout: 5))
-        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 42", timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 0", timeout: 5))
         app.buttons["startBackground"].tap()
-        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 43", timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 1", timeout: 5))
         app.buttons["stopBackground"].tap()
         let stoppedValue = value.label
         let changes = XCTNSPredicateExpectation(

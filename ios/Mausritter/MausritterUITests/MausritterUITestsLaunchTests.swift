@@ -20,11 +20,12 @@ final class MausritterUITestsLaunchTests: XCTestCase {
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["MAUSRITTER_TEST_DATABASE_ID"] = UUID().uuidString
         app.launch()
 
         let value = app.staticTexts["counterValue"]
         XCTAssertTrue(value.waitForExistence(timeout: 5))
-        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 42", timeout: 5))
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 0", timeout: 5))
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Launch Screen"

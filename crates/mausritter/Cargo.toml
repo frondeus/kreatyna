@@ -9,3 +9,4 @@ async-trait = "0.1.92"
 thiserror = "2.0.20"
 
 krucyfiks = {path="../krucyfiks/core"}
+tracing = "0.1.44"

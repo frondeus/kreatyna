@@ -47,6 +47,10 @@ final class MausritterUITests: XCTestCase {
         XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 1", timeout: 5))
         app.buttons["decreaseCounter"].tap()
         XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 0", timeout: 5))
+        app.buttons["increaseCounter"].tap()
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 1", timeout: 5))
+        app.buttons["resetCounter"].tap()
+        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 0", timeout: 5))
     }
 
     @MainActor

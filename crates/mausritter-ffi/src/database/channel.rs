@@ -12,7 +12,8 @@ pub enum EnvelopeError<Envelope> {
 }
 
 impl From<DatabaseEnvelopeError> for DatabaseError {
-    fn from(_value: DatabaseEnvelopeError) -> Self {
+    fn from(error: DatabaseEnvelopeError) -> Self {
+        tracing::error!(?error, "Transport error");
         Self::Transport
     }
 }

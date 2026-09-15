@@ -24,12 +24,32 @@ pub enum Message<W: Widget> {
     Outcome(W::Outcome),
 }
 
+impl<W: Widget> std::fmt::Debug for Message<W>
+where
+    W::Event: std::fmt::Debug,
+    W::Outcome: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Event(arg0) => f.debug_tuple("Event").field(arg0).finish(),
+            Self::Outcome(arg0) => f.debug_tuple("Outcome").field(arg0).finish(),
+        }
+    }
+}
+
 pub struct Command<Outcome> {
     stream: BoxStream<'static, Outcome>,
 }
 
 impl<Outcome> Command<Outcome> {
     pub fn new(stream: impl Stream<Item = Outcome> + Send + 'static) -> Self {
+        // Capture while the widget's init/update span is still current.
+        let span = tracing::Span::current();
+        let mut stream = Box::pin(stream);
+
+        let stream =
+            futures::stream::poll_fn(move |cx| span.in_scope(|| stream.as_mut().poll_next(cx)));
+
         Self {
             stream: Box::pin(stream),
         }
@@ -101,10 +121,16 @@ impl Drop for AbortOnDrop {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct CommandId {
     generation: u64,
     slot_id: usize,
+}
+
+impl std::fmt::Debug for CommandId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CommandId({}v{})", &self.slot_id, &self.generation)
+    }
 }
 
 pub struct CommandSlot {

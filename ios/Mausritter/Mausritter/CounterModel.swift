@@ -23,6 +23,8 @@ final class CounterModel {
     }
 
     init(databasePath: String? = nil, clock: (any ClockHandler)? = nil) {
+        // Previews and tests can create a model without running the App initializer.
+        RustLogging.start()
         let path: String
         do {
             path = try databasePath ?? CounterDatabaseLocation.path()

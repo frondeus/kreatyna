@@ -29,6 +29,11 @@ struct ContentView: View {
                 .accessibilityIdentifier("increaseCounter")
             }
             .buttonStyle(.bordered)
+            Button("Reset", systemImage: "arrow.counterclockwise") {
+                model.dispatch(.reset)
+            }
+            .accessibilityIdentifier("resetCounter")
+            .buttonStyle(.bordered)
             HStack {
                 Button("Start", systemImage: "play.fill") {
                     model.dispatch(.startBackground)

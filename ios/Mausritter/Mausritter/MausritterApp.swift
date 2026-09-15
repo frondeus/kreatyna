@@ -9,6 +9,10 @@ import SwiftUI
 
 @main
 struct MausritterApp: App {
+    init() {
+        RustLogging.start()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

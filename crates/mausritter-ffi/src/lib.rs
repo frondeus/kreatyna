@@ -7,6 +7,7 @@ use crate::database::channel::DatabaseClient;
 use crate::database::sqlite::SqliteDatabase;
 
 mod database;
+mod logging;
 
 uniffi::setup_scaffolding!();
 
@@ -26,6 +27,7 @@ pub struct CounterFfi {
 pub enum CounterEvent {
     Increase,
     Decrease,
+    Reset,
     StartBackground,
     StopBackground,
 }
@@ -35,6 +37,7 @@ impl From<CounterEvent> for mausritter::CounterEvent {
         match value {
             CounterEvent::Increase => Self::Increase,
             CounterEvent::Decrease => Self::Decrease,
+            CounterEvent::Reset => Self::Reset,
             CounterEvent::StartBackground => Self::StartBackground,
             CounterEvent::StopBackground => Self::StopBackground,
         }
@@ -117,8 +120,12 @@ pub struct CounterCapabilities {
 
 #[uniffi::export]
 pub fn counter(caps: CounterCapabilities, database_path: String) -> Arc<CounterFfi> {
-    let render = Arc::new(RenderHandlerShim { handler: caps.render });
-    let clock = Arc::new(ClockHandlerShim { handler: caps.clock });
+    let render = Arc::new(RenderHandlerShim {
+        handler: caps.render,
+    });
+    let clock = Arc::new(ClockHandlerShim {
+        handler: caps.clock,
+    });
 
     let (db, database_rx) = DatabaseClient::new();
     let db = Arc::new(db);

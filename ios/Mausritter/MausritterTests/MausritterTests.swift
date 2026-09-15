@@ -20,6 +20,10 @@ struct MausritterTests {
         try await waitForValue(1, in: model)
         model.dispatch(.decrease)
         try await waitForValue(0, in: model)
+        model.dispatch(.increase)
+        try await waitForValue(1, in: model)
+        model.dispatch(.reset)
+        try await waitForValue(0, in: model)
         #expect(model.errorMessage == nil)
     }
 

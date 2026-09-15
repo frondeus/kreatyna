@@ -16,6 +16,7 @@ pub struct SqliteDatabase {
 }
 
 impl SqliteDatabase {
+    #[tracing::instrument(skip_all)]
     async fn count(&mut self) -> Result<Option<usize>, DatabaseError> {
         let value = counter::table
             .find(1_i32)
@@ -23,15 +24,22 @@ impl SqliteDatabase {
             .first::<i64>(&mut self.connection)
             .await
             .optional()
-            .map_err(|_| DatabaseError::Storage)?;
+            .map_err(|error| {
+                tracing::error!(?error, "Storage error");
+                DatabaseError::Storage
+            })?;
 
         value
             .map(|value| usize::try_from(value).map_err(|_| DatabaseError::OutOfRange))
             .transpose()
     }
 
+    #[tracing::instrument(skip(self))]
     async fn set_count(&mut self, count: usize) -> Result<(), DatabaseError> {
-        let value = i64::try_from(count).map_err(|_| DatabaseError::OutOfRange)?;
+        let value = i64::try_from(count).map_err(|error| {
+            tracing::error!(?error, "Out of range");
+            DatabaseError::OutOfRange
+        })?;
 
         diesel::insert_into(counter::table)
             .values((counter::id.eq(1_i32), counter::value.eq(value)))
@@ -40,7 +48,10 @@ impl SqliteDatabase {
             .set(counter::value.eq(value))
             .execute(&mut self.connection)
             .await
-            .map_err(|_| DatabaseError::Storage)?;
+            .map_err(|error| {
+                tracing::error!(?error, "Storage error");
+                DatabaseError::Storage
+            })?;
         Ok(())
     }
 }
@@ -72,17 +83,23 @@ impl SqliteDatabase {
             match envelope.request {
                 DatabaseRequest::Count => {
                     let res = self.count().await;
-                    _ = envelope
+                    if let Err(error) = envelope
                         .response
                         .send_async(DatabaseResponse::Count(res))
-                        .await;
+                        .await
+                    {
+                        tracing::error!(?error, "Sending response");
+                    }
                 }
                 DatabaseRequest::SetCount { count } => {
                     let res = self.set_count(count).await;
-                    _ = envelope
+                    if let Err(error) = envelope
                         .response
                         .send_async(DatabaseResponse::SetCount(res))
-                        .await;
+                        .await
+                    {
+                        tracing::error!(?error, "Sending response");
+                    }
                 }
             }
         }

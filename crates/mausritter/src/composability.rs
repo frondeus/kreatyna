@@ -2,7 +2,7 @@ use futures::{
     StreamExt,
     stream::{BoxStream, select_all},
 };
-use krucyfiks::{Command, CommandExt, Message, Widget};
+use krucyfiks::{Command, CommandExt, Message, Widget, effects::EffectTree};
 
 use crate::{
     Counter, CounterCapabilities, CounterEvent, CounterOutcome, capabilities::CounterEffect,
@@ -25,10 +25,67 @@ pub enum CounterPairOutcome {
     Right(CounterOutcome),
 }
 
+/// Exact branch navigation does not opt into recursive capability resolution.
+///
+/// ```compile_fail,E0599
+/// use mausritter::{capabilities::ResolveRender, composability::CounterPairEffect};
+/// async fn resolve(effect: CounterPairEffect) {
+///     effect.resolve_render(|| async {}).await.unwrap();
+/// }
+/// ```
+///
+/// ```compile_fail,E0599
+/// use mausritter::{capabilities::ResolveRender, composability::CounterPairEffect};
+/// async fn resolve(effect: CounterPairEffect) {
+///     effect.expect_left().resolve_render(|| async {}).await.unwrap();
+/// }
+/// ```
 #[derive(Debug)]
 pub enum CounterPairEffect {
     Left(CounterEffect),
     Right(CounterEffect),
+}
+
+impl EffectTree for CounterPairEffect {
+    fn extract<T: 'static>(self) -> Result<T, Self> {
+        match self {
+            CounterPairEffect::Left(eff) => eff.extract::<T>().map_err(Self::Left),
+            CounterPairEffect::Right(eff) => eff.extract::<T>().map_err(Self::Right),
+        }
+    }
+}
+impl CounterPairEffect {
+    pub fn try_into_left(self) -> Result<CounterEffect, Self> {
+        match self {
+            CounterPairEffect::Left(eff) => Ok(eff),
+            _ => Err(self),
+        }
+    }
+    #[track_caller]
+    pub fn expect_left(self) -> CounterEffect {
+        match self {
+            Self::Left(effect) => effect,
+            Self::Right(_) => {
+                panic!("expected CounterPairEffect::Left, got CounterPairEffect::Right")
+            }
+        }
+    }
+
+    pub fn try_into_right(self) -> Result<CounterEffect, Self> {
+        match self {
+            CounterPairEffect::Right(eff) => Ok(eff),
+            _ => Err(self),
+        }
+    }
+    #[track_caller]
+    pub fn expect_right(self) -> CounterEffect {
+        match self {
+            Self::Right(effect) => effect,
+            Self::Left(_) => {
+                panic!("expected CounterPairEffect::Right, got CounterPairEffect::Left")
+            }
+        }
+    }
 }
 
 impl CounterPair {
@@ -101,17 +158,15 @@ impl CounterPair {
 
 #[cfg(test)]
 mod tests {
-    use std::assert_matches;
-
     use futures::executor::block_on;
-    use krucyfiks::effects::{CommandEffect, CommandTestExt};
+    use krucyfiks::effects::CommandTestExt;
 
     use crate::capabilities::{ResolveDatabase, ResolveRender};
 
     use super::*;
 
     #[test]
-    fn test_composed_widgets() {
+    fn test_composed_widgets() -> anyhow::Result<()> {
         block_on(async {
             let (mut counter, mut effects) = CounterPair::test_fixture();
             assert_eq!(counter.view(), (0, 0));
@@ -124,32 +179,29 @@ mod tests {
 
             assert_eq!(counter.view(), (1, 0));
 
-            let effect = command.process_effect().await.unwrap();
-            let envelope = match effect {
-                CommandEffect::Effect(CounterPairEffect::Left(CounterEffect::Render(envelope))) => {
-                    envelope
-                }
-                _ => panic!("Expected render effect"),
-            };
-            envelope.resolve_render(|| async {}).await.unwrap();
+            command
+                .drive()
+                .await?
+                .expect_effect()
+                .expect_left()
+                .expect_render()
+                .resolve_render(|| async {})
+                .await?;
 
-            let effect = command.process_effect().await.unwrap();
-            let envelope = match effect {
-                CommandEffect::Effect(CounterPairEffect::Left(CounterEffect::Database(
-                    envelope,
-                ))) => envelope,
-                _ => panic!("Expected database effect"),
-            };
-            envelope
+            command
+                .drive()
+                .await?
+                .expect_effect()
+                .any_route()
                 .resolve_set_count(|count| async move {
                     assert_eq!(count, 1);
                     Ok(())
                 })
-                .await
-                .unwrap();
+                .await?;
 
-            let effect = command.process_effect().await.unwrap();
-            assert_matches!(effect, CommandEffect::Done);
+            command.drive().await?.expect_done();
+
+            Ok(())
         })
     }
 }

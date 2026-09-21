@@ -160,16 +160,15 @@ impl Counter {
 
 #[cfg(test)]
 mod tests {
-    use std::assert_matches;
 
-    use crate::capabilities::{CounterEffect, ResolveDatabase, ResolveRender};
+    use crate::capabilities::{ResolveDatabase, ResolveRender};
 
     use super::*;
     use futures::executor::block_on;
-    use krucyfiks::effects::{CommandEffect, CommandTestExt};
+    use krucyfiks::effects::CommandTestExt;
 
     #[test]
-    fn increase_renders_then_persists_the_new_count() {
+    fn increase_renders_then_persists_the_new_count() -> anyhow::Result<()> {
         block_on(async {
             let (mut counter, mut effects) = Counter::test_fixture();
 
@@ -181,33 +180,28 @@ mod tests {
 
             assert_eq!(counter.view(), 1);
 
-            let effect = command.process_effect().await.unwrap();
-            let envelope = match effect {
-                CommandEffect::Effect(CounterEffect::Render(envelope)) => envelope,
-                CommandEffect::Effect(_) => panic!("Unexpected effect"),
-                CommandEffect::Done => panic!("Unexpected done"),
-                CommandEffect::Outcome(_outcome) => panic!("Unexpected outcome"),
-            };
-            // If you are not sure what effects are waiting for you can always get that info like this
-            assert_matches!(envelope.request, capabilities::RenderRequest::Render);
-            // but that assertion is done automatically in `envelope.resolve_` .
-            envelope.resolve_render(|| async {}).await.unwrap();
+            command
+                .drive()
+                .await?
+                .expect_effect()
+                .expect_render()
+                .resolve_render(|| async {})
+                .await?;
 
-            let effect = command.process_effect().await.unwrap();
-            let envelope = match effect {
-                CommandEffect::Effect(CounterEffect::Database(envelope)) => envelope,
-                _ => panic!("Expected database effect"),
-            };
-            envelope
+            command
+                .drive()
+                .await?
+                .expect_effect()
+                .expect_database()
                 .resolve_set_count(|count: usize| async move {
                     assert_eq!(count, 1);
                     Ok(())
                 })
-                .await
-                .unwrap();
+                .await?;
 
-            let effect = command.process_effect().await.unwrap();
-            assert_matches!(effect, CommandEffect::Done);
+            command.drive().await?.expect_done();
+
+            Ok(())
         })
     }
 }

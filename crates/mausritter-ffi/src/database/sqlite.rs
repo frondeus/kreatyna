@@ -4,7 +4,9 @@ use diesel_async::{RunQueryDsl, SimpleAsyncConnection};
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use futures::StreamExt;
 use krucyfiks::effects::RequestInbox;
-use mausritter::capabilities::{DatabaseError, DatabaseRequest, DatabaseResponse};
+use mausritter::capabilities::{
+    DatabaseError, DatabaseMut, DatabaseRequest, DatabaseResponse, ResolveDatabase,
+};
 
 use super::schema::counter;
 
@@ -14,7 +16,8 @@ pub struct SqliteDatabase {
     connection: SyncConnectionWrapper<SqliteConnection>,
 }
 
-impl SqliteDatabase {
+#[async_trait::async_trait]
+impl DatabaseMut for SqliteDatabase {
     #[tracing::instrument(skip_all)]
     async fn count(&mut self) -> Result<Option<usize>, DatabaseError> {
         let value = counter::table
@@ -77,22 +80,11 @@ impl SqliteDatabase {
     }
 
     pub async fn worker(&mut self, rx: RequestInbox<DatabaseRequest, DatabaseResponse>) {
-        let mut rx = rx.into_stream();
-        while let Some(envelope) = rx.next().await {
-            match envelope.request {
-                DatabaseRequest::Count => {
-                    let res = self.count().await;
-                    if let Err(error) = envelope.answer_async(DatabaseResponse::Count(res)).await {
-                        tracing::error!(?error, "Sending response");
-                    }
-                }
-                DatabaseRequest::SetCount { count } => {
-                    let res = self.set_count(count).await;
-                    if let Err(error) = envelope.answer_async(DatabaseResponse::SetCount(res)).await
-                    {
-                        tracing::error!(?error, "Sending response");
-                    }
-                }
+        let mut requests = rx.into_stream();
+
+        while let Some(envelope) = requests.next().await {
+            if let Err(error) = envelope.resolve_mut(self).await {
+                tracing::error!(?error, "Sending database response");
             }
         }
     }

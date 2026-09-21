@@ -12,30 +12,51 @@ pub trait Render: Send + Sync {
 }
 
 //--- in future derived
+#[async_trait::async_trait]
+pub trait RenderMut: Send + Sync {
+    async fn render(&mut self);
+}
 
 #[async_trait::async_trait]
-pub trait HandleRender: Send + Sync {
-    type HandleError;
-    async fn handle_render<F, Fut>(self, handle: F) -> Result<(), Self::HandleError>
+pub trait ResolveRender: Send + Sync {
+    type ResolveError;
+
+    async fn resolve_mut<I>(self, i: &mut I) -> Result<(), Self::ResolveError>
+    where
+        I: RenderMut + ?Sized;
+
+    async fn resolve_render<F, Fut>(self, handle: F) -> Result<(), Self::ResolveError>
     where
         F: FnOnce() -> Fut + Send,
         Fut: Send + Future<Output = ()>;
 }
 #[async_trait::async_trait]
-impl HandleRender for Envelope<RenderRequest, RenderResponse> {
-    type HandleError = EnvelopeError<RenderResponse>;
-    async fn handle_render<F, Fut>(mut self, handle: F) -> Result<(), Self::HandleError>
+impl ResolveRender for Envelope<RenderRequest, RenderResponse> {
+    type ResolveError = EnvelopeError<RenderResponse>;
+
+    async fn resolve_mut<I>(self, i: &mut I) -> Result<(), Self::ResolveError>
+    where
+        I: RenderMut + ?Sized,
+    {
+        let (request, responder) = self.into_parts();
+        let response = request.dispatch_mut(i).await;
+
+        responder.answer_async(response).await
+    }
+
+    async fn resolve_render<F, Fut>(mut self, handle: F) -> Result<(), Self::ResolveError>
     where
         F: FnOnce() -> Fut + Send,
         Fut: Send + Future<Output = ()>,
     {
-        match self.request {
+        let (request, response) = self.into_parts();
+        match request {
             RenderRequest::Render => {}
             #[allow(unreachable_patterns)]
             _request => return Err(EnvelopeError::Mismatch),
         }
         let _response = handle().await;
-        self.answer_async(RenderResponse::Render).await?;
+        response.answer_async(RenderResponse::Render).await?;
         Ok(())
     }
 }
@@ -43,6 +64,20 @@ impl HandleRender for Envelope<RenderRequest, RenderResponse> {
 #[derive(Debug)]
 pub enum RenderRequest {
     Render,
+}
+
+impl RenderRequest {
+    pub async fn dispatch_mut<R>(self, render: &mut R) -> RenderResponse
+    where
+        R: RenderMut + ?Sized,
+    {
+        match self {
+            Self::Render => {
+                RenderMut::render(render).await;
+                RenderResponse::Render
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -140,46 +175,74 @@ pub enum DatabaseError {
 }
 
 #[async_trait::async_trait]
-pub trait HandleDatabase: Send + Sync {
-    type HandleError;
-    async fn handle_count<F, Fut>(self, handle: F) -> Result<(), Self::HandleError>
+pub trait DatabaseMut: Send {
+    async fn count(&mut self) -> Result<Option<usize>, DatabaseError>;
+
+    async fn set_count(&mut self, count: usize) -> Result<(), DatabaseError>;
+}
+
+#[async_trait::async_trait]
+pub trait ResolveDatabase: Send + Sync {
+    type ResolveError;
+
+    async fn resolve_mut<D>(self, database: &mut D) -> Result<(), Self::ResolveError>
+    where
+        D: DatabaseMut + ?Sized;
+
+    async fn resolve_count<F, Fut>(self, handle: F) -> Result<(), Self::ResolveError>
     where
         F: FnOnce() -> Fut + Send,
         Fut: Send + Future<Output = Result<Option<usize>, DatabaseError>>;
 
-    async fn handle_set_count<F, Fut>(self, handle: F) -> Result<(), Self::HandleError>
+    async fn resolve_set_count<F, Fut>(self, handle: F) -> Result<(), Self::ResolveError>
     where
         F: FnOnce(usize) -> Fut + Send,
         Fut: Send + Future<Output = Result<(), DatabaseError>>;
 }
 #[async_trait::async_trait]
-impl HandleDatabase for Envelope<DatabaseRequest, DatabaseResponse> {
-    type HandleError = EnvelopeError<DatabaseResponse>;
-    async fn handle_count<F, Fut>(self, handle: F) -> Result<(), Self::HandleError>
+impl ResolveDatabase for Envelope<DatabaseRequest, DatabaseResponse> {
+    type ResolveError = EnvelopeError<DatabaseResponse>;
+
+    async fn resolve_mut<D>(self, database: &mut D) -> Result<(), Self::ResolveError>
+    where
+        D: DatabaseMut + ?Sized,
+    {
+        let (request, responder) = self.into_parts();
+        let response = request.dispatch_mut(database).await;
+
+        responder.answer_async(response).await
+    }
+
+    async fn resolve_count<F, Fut>(self, handle: F) -> Result<(), Self::ResolveError>
     where
         F: FnOnce() -> Fut + Send,
         Fut: Send + Future<Output = Result<Option<usize>, DatabaseError>>,
     {
-        match self.request {
+        let (request, responser) = self.into_parts();
+        match request {
             DatabaseRequest::Count => {}
             _ => return Err(EnvelopeError::Mismatch),
         }
         let response = handle().await;
-        self.answer_async(DatabaseResponse::Count(response)).await?;
+        responser
+            .answer_async(DatabaseResponse::Count(response))
+            .await?;
         Ok(())
     }
 
-    async fn handle_set_count<F, Fut>(self, handle: F) -> Result<(), Self::HandleError>
+    async fn resolve_set_count<F, Fut>(self, handle: F) -> Result<(), Self::ResolveError>
     where
         F: FnOnce(usize) -> Fut + Send,
         Fut: Send + Future<Output = Result<(), DatabaseError>>,
     {
-        let count = match self.request {
+        let (request, responser) = self.into_parts();
+        let count = match request {
             DatabaseRequest::SetCount { count } => count,
             _ => return Err(EnvelopeError::Mismatch),
         };
         let response = handle(count).await;
-        self.answer_async(DatabaseResponse::SetCount(response))
+        responser
+            .answer_async(DatabaseResponse::SetCount(response))
             .await?;
         Ok(())
     }
@@ -189,6 +252,20 @@ impl HandleDatabase for Envelope<DatabaseRequest, DatabaseResponse> {
 pub enum DatabaseRequest {
     Count,
     SetCount { count: usize },
+}
+
+impl DatabaseRequest {
+    pub async fn dispatch_mut<D>(self, database: &mut D) -> DatabaseResponse
+    where
+        D: DatabaseMut + ?Sized,
+    {
+        match self {
+            Self::Count => DatabaseResponse::Count(DatabaseMut::count(database).await),
+            Self::SetCount { count } => {
+                DatabaseResponse::SetCount(DatabaseMut::set_count(database, count).await)
+            }
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -162,7 +162,7 @@ impl Counter {
 mod tests {
     use std::assert_matches;
 
-    use crate::capabilities::{CounterEffect, HandleDatabase, HandleRender};
+    use crate::capabilities::{CounterEffect, ResolveDatabase, ResolveRender};
 
     use super::*;
     use futures::executor::block_on;
@@ -184,9 +184,14 @@ mod tests {
             let effect = command.process_effect().await.unwrap();
             let envelope = match effect {
                 CommandEffect::Effect(CounterEffect::Render(envelope)) => envelope,
-                _ => panic!("Expected render effect"),
+                CommandEffect::Effect(_) => panic!("Unexpected effect"),
+                CommandEffect::Done => panic!("Unexpected done"),
+                CommandEffect::Outcome(_outcome) => panic!("Unexpected outcome"),
             };
-            envelope.handle_render(|| async {}).await.unwrap();
+            // If you are not sure what effects are waiting for you can always get that info like this
+            assert_matches!(envelope.request, capabilities::RenderRequest::Render);
+            // but that assertion is done automatically in `envelope.resolve_` .
+            envelope.resolve_render(|| async {}).await.unwrap();
 
             let effect = command.process_effect().await.unwrap();
             let envelope = match effect {
@@ -194,7 +199,7 @@ mod tests {
                 _ => panic!("Expected database effect"),
             };
             envelope
-                .handle_set_count(|count: usize| async move {
+                .resolve_set_count(|count: usize| async move {
                     assert_eq!(count, 1);
                     Ok(())
                 })

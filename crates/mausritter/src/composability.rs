@@ -106,7 +106,7 @@ mod tests {
     use futures::executor::block_on;
     use krucyfiks::effects::{CommandEffect, CommandTestExt};
 
-    use crate::capabilities::{HandleDatabase, HandleRender};
+    use crate::capabilities::{ResolveDatabase, ResolveRender};
 
     use super::*;
 
@@ -131,7 +131,7 @@ mod tests {
                 }
                 _ => panic!("Expected render effect"),
             };
-            envelope.handle_render(|| async {}).await.unwrap();
+            envelope.resolve_render(|| async {}).await.unwrap();
 
             let effect = command.process_effect().await.unwrap();
             let envelope = match effect {
@@ -141,7 +141,7 @@ mod tests {
                 _ => panic!("Expected database effect"),
             };
             envelope
-                .handle_set_count(|count| async move {
+                .resolve_set_count(|count| async move {
                     assert_eq!(count, 1);
                     Ok(())
                 })

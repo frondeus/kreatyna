@@ -102,33 +102,52 @@ pub enum CommandEffect<Effect, Outcome> {
 #[derive(Debug)]
 pub struct Envelope<Request, Response> {
     pub request: Request,
-    response: Sender<Response>,
+    response: Responder<Response>,
+}
+
+#[derive(Debug)]
+pub struct Responder<Response> {
+    tx: Sender<Response>,
 }
 
 impl<Request, Response> Envelope<Request, Response> {
-    pub fn new(request: Request, capacity: usize) -> (Self, flume::Receiver<Response>) {
-        let (response, receiver) = flume::bounded(capacity);
-        (Self { request, response }, receiver)
+    pub fn new(request: Request, capacity: usize) -> (Self, Receiver<Response>) {
+        let (tx, rx) = flume::bounded(capacity);
+        let response = Responder { tx };
+        (Self { request, response }, rx)
+    }
+
+    pub fn into_parts(self) -> (Request, Responder<Response>) {
+        (self.request, self.response)
     }
 
     pub async fn answer_async(self, response: Response) -> Result<(), EnvelopeError<Response>> {
-        self.response
-            .send_async(response)
-            .await
-            .map_err(EnvelopeError::Request)
+        self.response.answer_async(response).await
     }
 
     pub fn answer(self, response: Response) -> Result<(), EnvelopeError<Response>> {
-        self.response.send(response).map_err(EnvelopeError::Request)
+        self.response.answer(response)
+    }
+}
+impl<Response> Responder<Response> {
+    pub async fn answer_async(self, response: Response) -> Result<(), EnvelopeError<Response>> {
+        self.tx
+            .send_async(response)
+            .await
+            .map_err(EnvelopeError::Send)
+    }
+
+    pub fn answer(self, response: Response) -> Result<(), EnvelopeError<Response>> {
+        self.tx.send(response).map_err(EnvelopeError::Send)
     }
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum EnvelopeError<Envelope> {
+pub enum EnvelopeError<Payload> {
     #[error(transparent)]
-    Request(#[from] SendError<Envelope>),
+    Send(#[from] SendError<Payload>),
     #[error(transparent)]
-    Response(#[from] RecvError),
+    Receive(#[from] RecvError),
     #[error("There is a mismatch between request and response types")]
     Mismatch,
 }

@@ -61,7 +61,8 @@ in
 
   packages = [
     pkgs.diesel-cli
-    (lib.getBin pkgs.sqlite)
+    pkgs.sqlite
+    pkgs.pkg-config
   ];
 
   env.DATABASE_URL =

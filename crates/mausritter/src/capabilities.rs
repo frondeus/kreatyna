@@ -1,13 +1,99 @@
+use std::sync::Arc;
+
+use futures::{
+    StreamExt,
+    stream::{BoxStream, select_all},
+};
+use krucyfiks::effects::{Envelope, EnvelopeError, RequestInbox, RequestOutbox, request_channel};
+
 #[async_trait::async_trait]
 pub trait Render: Send + Sync {
     async fn render(&self);
 }
+
+#[derive(Debug)]
+pub enum RenderRequest {
+    Render,
+}
+
+#[derive(Debug)]
+pub enum RenderResponse {
+    Render,
+}
+
+pub struct RenderClient {
+    tx: RequestOutbox<RenderRequest, RenderResponse>,
+    envelope_size: usize,
+}
+
+impl RenderClient {
+    pub fn new(envelope_size: usize) -> (Self, RequestInbox<RenderRequest, RenderResponse>) {
+        let (tx, rx) = request_channel(32);
+
+        (Self { tx, envelope_size }, rx)
+    }
+}
+#[async_trait::async_trait]
+impl Render for RenderClient {
+    async fn render(&self) {
+        let (envelope, res) = Envelope::new(RenderRequest::Render, self.envelope_size);
+
+        self.tx.send_async(envelope).await.unwrap();
+
+        match res.recv_async().await.unwrap() {
+            RenderResponse::Render => (),
+            #[allow(unreachable_patterns)]
+            _ => panic!("Expected render capability"),
+        }
+    }
+}
+
+// ------- Clock ----------
 
 #[async_trait::async_trait]
 pub trait Clock: Send + Sync {
     async fn sleep_ms(&self, ms: u64);
 }
 
+#[derive(Debug)]
+pub enum ClockRequest {
+    SleepMs { ms: u64 },
+}
+
+#[derive(Debug)]
+pub enum ClockResponse {
+    SleepMs,
+}
+
+pub struct ClockClient {
+    tx: RequestOutbox<ClockRequest, ClockResponse>,
+    envelope_size: usize,
+}
+
+impl ClockClient {
+    pub fn new(envelope_size: usize) -> (Self, RequestInbox<ClockRequest, ClockResponse>) {
+        let (tx, rx) = request_channel(32);
+
+        (Self { tx, envelope_size }, rx)
+    }
+}
+
+#[async_trait::async_trait]
+impl Clock for ClockClient {
+    async fn sleep_ms(&self, ms: u64) {
+        let (envelope, res) = Envelope::new(ClockRequest::SleepMs { ms }, self.envelope_size);
+
+        self.tx.send_async(envelope).await.unwrap();
+
+        match res.recv_async().await.unwrap() {
+            ClockResponse::SleepMs => (),
+            #[allow(unreachable_patterns)]
+            _ => panic!("Expected clock capability"),
+        }
+    }
+}
+
+// --------- Database --------
 #[async_trait::async_trait]
 pub trait Database: Send + Sync {
     async fn count(&self) -> Result<Option<usize>, DatabaseError>;
@@ -22,4 +108,127 @@ pub enum DatabaseError {
     Storage,
     #[error("Transport")]
     Transport,
+}
+
+#[derive(Debug)]
+pub enum DatabaseRequest {
+    Count,
+    SetCount { count: usize },
+}
+
+#[derive(Debug)]
+pub enum DatabaseResponse {
+    Count(Result<Option<usize>, DatabaseError>),
+    SetCount(Result<(), DatabaseError>),
+}
+
+type DatabaseEnvelope = Envelope<DatabaseRequest, DatabaseResponse>;
+type DatabaseEnvelopeError = EnvelopeError<DatabaseEnvelope>;
+impl<Req, Res> From<EnvelopeError<Envelope<Req, Res>>> for DatabaseError
+where
+    EnvelopeError<Envelope<Req, Res>>: std::fmt::Debug,
+{
+    fn from(error: EnvelopeError<Envelope<Req, Res>>) -> Self {
+        tracing::error!(?error, "Transport error");
+        Self::Transport
+    }
+}
+
+pub struct DatabaseClient {
+    tx: RequestOutbox<DatabaseRequest, DatabaseResponse>,
+    envelope_size: usize,
+}
+
+impl DatabaseClient {
+    pub fn new(envelope_size: usize) -> (Self, RequestInbox<DatabaseRequest, DatabaseResponse>) {
+        let (tx, rx) = request_channel(32);
+
+        (Self { tx, envelope_size }, rx)
+    }
+}
+
+#[async_trait::async_trait]
+impl Database for DatabaseClient {
+    async fn count(&self) -> Result<Option<usize>, DatabaseError> {
+        let (envelope, response) =
+            DatabaseEnvelope::new(DatabaseRequest::Count, self.envelope_size);
+        self.tx
+            .send_async(envelope)
+            .await
+            .map_err(DatabaseEnvelopeError::from)?;
+
+        match response
+            .recv_async()
+            .await
+            .map_err(DatabaseEnvelopeError::from)?
+        {
+            DatabaseResponse::Count(c) => c,
+            _ => Err(DatabaseEnvelopeError::Mismatch)?,
+        }
+    }
+
+    async fn set_count(&self, count: usize) -> Result<(), DatabaseError> {
+        let (envelope, response) =
+            DatabaseEnvelope::new(DatabaseRequest::SetCount { count }, self.envelope_size);
+        self.tx
+            .send_async(envelope)
+            .await
+            .map_err(DatabaseEnvelopeError::from)?;
+
+        match response
+            .recv_async()
+            .await
+            .map_err(DatabaseEnvelopeError::from)?
+        {
+            DatabaseResponse::SetCount(c) => c,
+            _ => Err(DatabaseEnvelopeError::Mismatch)?,
+        }
+    }
+}
+
+// ---- App
+
+#[derive(Debug)]
+pub enum CounterEffect {
+    Render(Envelope<RenderRequest, RenderResponse>),
+    Clock(Envelope<ClockRequest, ClockResponse>),
+    Database(Envelope<DatabaseRequest, DatabaseResponse>),
+}
+
+pub struct CounterCapabilities {
+    pub render: Arc<dyn Render>,
+    pub clock: Arc<dyn Clock>,
+    pub db: Arc<dyn Database>,
+}
+
+type CounterEffectStream = BoxStream<'static, CounterEffect>;
+
+impl CounterCapabilities {
+    pub fn testing() -> (Self, CounterEffectStream) {
+        let (render, render_inbox) = RenderClient::new(1);
+        let (clock, clock_inbox) = ClockClient::new(1);
+        let (db, database_inbox) = DatabaseClient::new(1);
+
+        let streams = vec![
+            render_inbox
+                .into_stream()
+                .map(CounterEffect::Render)
+                .boxed(),
+            clock_inbox.into_stream().map(CounterEffect::Clock).boxed(),
+            database_inbox
+                .into_stream()
+                .map(CounterEffect::Database)
+                .boxed(),
+        ];
+        let inbox = select_all(streams).boxed();
+
+        (
+            Self {
+                render: Arc::new(render),
+                clock: Arc::new(clock),
+                db: Arc::new(db),
+            },
+            inbox,
+        )
+    }
 }

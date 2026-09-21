@@ -1,15 +1,7 @@
-use std::sync::Arc;
-
-use crate::capabilities::{Clock, Database, Render};
+pub use crate::capabilities::CounterCapabilities;
 use krucyfiks::{Command, CommandExt, CommandId, CommandSlot, Message, Widget};
 
 pub mod capabilities;
-
-pub struct CounterCapabilities {
-    pub render: Arc<dyn Render>,
-    pub clock: Arc<dyn Clock>,
-    pub db: Arc<dyn Database>,
-}
 
 pub struct Counter {
     counter: usize,
@@ -88,7 +80,7 @@ impl Widget for Counter {
                         tracing::error!(?error, "Could not set the counter in DB");
                     }
                 })
-            },
+            }
             Message::Event(CounterEvent::Increase) => {
                 self.counter = self.counter.saturating_add(1);
                 let counter = self.counter;
@@ -152,5 +144,53 @@ impl Widget for Counter {
 
     fn view(&self) -> Self::View {
         self.counter
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::assert_matches;
+
+    use crate::capabilities::{CounterEffect, DatabaseRequest, RenderRequest, RenderResponse};
+
+    use super::*;
+    use futures::executor::block_on;
+    use krucyfiks::effects::{CommandEffect, CommandTestExt};
+
+    #[test]
+    fn increase_renders_then_persists_the_new_count() {
+        block_on(async {
+            let (caps, effects) = CounterCapabilities::testing();
+            let mut counter = Counter::new(caps);
+
+            assert_eq!(counter.view(), 0);
+
+            let command = counter.update(Message::Event(CounterEvent::Increase));
+            let mut driver = command.driver(effects);
+
+            assert_eq!(counter.view(), 1);
+
+            let effect = driver.process_effect().await.unwrap();
+            let envelope = match effect {
+                CommandEffect::Effect(CounterEffect::Render(envelope)) => envelope,
+                _ => panic!("Expected render effect"),
+            };
+            assert_matches!(envelope.request, RenderRequest::Render);
+            envelope.answer_async(RenderResponse::Render).await.unwrap();
+
+            let effect = driver.process_effect().await.unwrap();
+            let envelope = match effect {
+                CommandEffect::Effect(CounterEffect::Database(envelope)) => envelope,
+                _ => panic!("Expected database effect"),
+            };
+            assert_matches!(envelope.request, DatabaseRequest::SetCount { count: 1 });
+            envelope
+                .answer_async(capabilities::DatabaseResponse::SetCount(Ok(())))
+                .await
+                .unwrap();
+
+            let effect = driver.process_effect().await.unwrap();
+            assert_matches!(effect, CommandEffect::Done);
+        })
     }
 }

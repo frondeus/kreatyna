@@ -2,11 +2,10 @@ use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SqliteConnection};
 use diesel_async::{AsyncConnection, sync_connection_wrapper::SyncConnectionWrapper};
 use diesel_async::{RunQueryDsl, SimpleAsyncConnection};
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
-use flume::Receiver;
 use futures::StreamExt;
-use mausritter::capabilities::DatabaseError;
+use krucyfiks::effects::RequestInbox;
+use mausritter::capabilities::{DatabaseError, DatabaseRequest, DatabaseResponse};
 
-use super::channel::{DatabaseEnvelope, DatabaseRequest, DatabaseResponse};
 use super::schema::counter;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
@@ -77,26 +76,19 @@ impl SqliteDatabase {
         Ok(Self { connection })
     }
 
-    pub async fn worker(&mut self, rx: Receiver<DatabaseEnvelope>) {
+    pub async fn worker(&mut self, rx: RequestInbox<DatabaseRequest, DatabaseResponse>) {
         let mut rx = rx.into_stream();
         while let Some(envelope) = rx.next().await {
             match envelope.request {
                 DatabaseRequest::Count => {
                     let res = self.count().await;
-                    if let Err(error) = envelope
-                        .response
-                        .send_async(DatabaseResponse::Count(res))
-                        .await
-                    {
+                    if let Err(error) = envelope.answer_async(DatabaseResponse::Count(res)).await {
                         tracing::error!(?error, "Sending response");
                     }
                 }
                 DatabaseRequest::SetCount { count } => {
                     let res = self.set_count(count).await;
-                    if let Err(error) = envelope
-                        .response
-                        .send_async(DatabaseResponse::SetCount(res))
-                        .await
+                    if let Err(error) = envelope.answer_async(DatabaseResponse::SetCount(res)).await
                     {
                         tracing::error!(?error, "Sending response");
                     }

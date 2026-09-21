@@ -1,9 +1,9 @@
 use std::sync::{Arc, LazyLock};
 
 use krucyfiks_runtime::{Runtime, RuntimeError};
+use mausritter::capabilities::DatabaseClient;
 use tokio::task::JoinHandle;
 
-use crate::database::channel::DatabaseClient;
 use crate::database::sqlite::SqliteDatabase;
 
 mod database;
@@ -127,7 +127,7 @@ pub fn counter(caps: CounterCapabilities, database_path: String) -> Arc<CounterF
         handler: caps.clock,
     });
 
-    let (db, database_rx) = DatabaseClient::new();
+    let (db, database_rx) = DatabaseClient::new(0);
     let db = Arc::new(db);
     RUNTIME.spawn(async move {
         let mut database = SqliteDatabase::new(&database_path).await?;

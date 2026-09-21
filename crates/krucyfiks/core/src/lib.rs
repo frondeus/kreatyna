@@ -5,6 +5,8 @@ use futures::{
     stream::{AbortHandle, Abortable, BoxStream},
 };
 
+pub mod effects;
+
 pub trait Widget: Sized {
     type View;
     type Event: Send + 'static;

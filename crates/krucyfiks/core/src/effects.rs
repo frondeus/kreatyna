@@ -23,15 +23,15 @@ pub enum DriverError {
     InboxClosed,
 }
 
-pub struct CommandDriver<Effect, Outcome> {
+pub struct CommandDriver<'a, Effect, Outcome> {
     stream: BoxStream<'static, Outcome>,
-    inbox: BoxStream<'static, Effect>,
+    inbox: &'a mut BoxStream<'static, Effect>,
     pending: Option<PendingCommand<Outcome>>,
     done: bool,
 }
 
-impl<Effect, Outcome> CommandDriver<Effect, Outcome> {
-    pub fn new(command: Command<Outcome>, inbox: BoxStream<'static, Effect>) -> Self {
+impl<'a, Effect, Outcome> CommandDriver<'a, Effect, Outcome> {
+    pub fn new(command: Command<Outcome>, inbox: &'a mut BoxStream<'static, Effect>) -> Self {
         Self {
             stream: command.into_stream(),
             inbox,
@@ -111,12 +111,15 @@ impl<Request, Response> Envelope<Request, Response> {
         (Self { request, response }, receiver)
     }
 
-    pub async fn answer_async(self, response: Response) -> Result<(), SendError<Response>> {
-        self.response.send_async(response).await
+    pub async fn answer_async(self, response: Response) -> Result<(), EnvelopeError<Response>> {
+        self.response
+            .send_async(response)
+            .await
+            .map_err(EnvelopeError::Request)
     }
 
-    pub fn answer(self, response: Response) -> Result<(), SendError<Response>> {
-        self.response.send(response)
+    pub fn answer(self, response: Response) -> Result<(), EnvelopeError<Response>> {
+        self.response.send(response).map_err(EnvelopeError::Request)
     }
 }
 
@@ -131,11 +134,17 @@ pub enum EnvelopeError<Envelope> {
 }
 
 pub trait CommandTestExt<Outcome> {
-    fn driver<Effect>(self, effects: BoxStream<'static, Effect>) -> CommandDriver<Effect, Outcome>;
+    fn driver<'a, Effect>(
+        self,
+        effects: &'a mut BoxStream<'static, Effect>,
+    ) -> CommandDriver<'a, Effect, Outcome>;
 }
 
 impl<Outcome> CommandTestExt<Outcome> for Command<Outcome> {
-    fn driver<Effect>(self, effects: BoxStream<'static, Effect>) -> CommandDriver<Effect, Outcome> {
+    fn driver<'a, Effect>(
+        self,
+        effects: &'a mut BoxStream<'static, Effect>,
+    ) -> CommandDriver<'a, Effect, Outcome> {
         CommandDriver::new(self, effects)
     }
 }

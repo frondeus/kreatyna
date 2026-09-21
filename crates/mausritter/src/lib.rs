@@ -1,7 +1,10 @@
 pub use crate::capabilities::CounterCapabilities;
+use crate::capabilities::CounterEffectStream;
 use krucyfiks::{Command, CommandExt, CommandId, CommandSlot, Message, Widget};
 
 pub mod capabilities;
+
+pub mod composability;
 
 pub struct Counter {
     counter: usize,
@@ -147,11 +150,19 @@ impl Widget for Counter {
     }
 }
 
+impl Counter {
+    pub fn test_fixture() -> (Self, CounterEffectStream) {
+        let (caps, effects) = CounterCapabilities::testing();
+        let this = Counter::new(caps);
+        (this, effects)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::assert_matches;
 
-    use crate::capabilities::{CounterEffect, DatabaseRequest, RenderRequest, RenderResponse};
+    use crate::capabilities::{CounterEffect, HandleDatabase, HandleRender};
 
     use super::*;
     use futures::executor::block_on;
@@ -160,36 +171,37 @@ mod tests {
     #[test]
     fn increase_renders_then_persists_the_new_count() {
         block_on(async {
-            let (caps, effects) = CounterCapabilities::testing();
-            let mut counter = Counter::new(caps);
+            let (mut counter, mut effects) = Counter::test_fixture();
 
             assert_eq!(counter.view(), 0);
 
-            let command = counter.update(Message::Event(CounterEvent::Increase));
-            let mut driver = command.driver(effects);
+            let mut command = counter
+                .update(Message::Event(CounterEvent::Increase))
+                .driver(&mut effects);
 
             assert_eq!(counter.view(), 1);
 
-            let effect = driver.process_effect().await.unwrap();
+            let effect = command.process_effect().await.unwrap();
             let envelope = match effect {
                 CommandEffect::Effect(CounterEffect::Render(envelope)) => envelope,
                 _ => panic!("Expected render effect"),
             };
-            assert_matches!(envelope.request, RenderRequest::Render);
-            envelope.answer_async(RenderResponse::Render).await.unwrap();
+            envelope.handle_render(|| async {}).await.unwrap();
 
-            let effect = driver.process_effect().await.unwrap();
+            let effect = command.process_effect().await.unwrap();
             let envelope = match effect {
                 CommandEffect::Effect(CounterEffect::Database(envelope)) => envelope,
                 _ => panic!("Expected database effect"),
             };
-            assert_matches!(envelope.request, DatabaseRequest::SetCount { count: 1 });
             envelope
-                .answer_async(capabilities::DatabaseResponse::SetCount(Ok(())))
+                .handle_set_count(|count: usize| async move {
+                    assert_eq!(count, 1);
+                    Ok(())
+                })
                 .await
                 .unwrap();
 
-            let effect = driver.process_effect().await.unwrap();
+            let effect = command.process_effect().await.unwrap();
             assert_matches!(effect, CommandEffect::Done);
         })
     }

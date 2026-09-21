@@ -57,6 +57,15 @@ impl<Outcome> Command<Outcome> {
         }
     }
 
+    pub fn map<Outcome2, F>(self, map: F) -> Command<Outcome2>
+    where
+        F: FnMut(Outcome) -> Outcome2 + Send + 'static,
+        Outcome: 'static,
+    {
+        let stream = self.stream.map(map);
+        Command::new(stream)
+    }
+
     pub fn into_stream(self) -> BoxStream<'static, Outcome> {
         self.stream
     }
@@ -67,6 +76,7 @@ pub trait CommandExt<Outcome>: Sized {
     fn without_outcome(fut: impl Future<Output = ()> + Send + 'static) -> Self;
     fn abortable(stream: impl Stream<Item = Outcome> + Send + 'static) -> (Self, AbortHandle);
     fn single(fut: impl Future<Output = Outcome> + Send + 'static) -> Self;
+    fn select_all(commands: Vec<Self>) -> Self;
 }
 
 impl<Outcome: Send + 'static> CommandExt<Outcome> for Command<Outcome> {
@@ -113,6 +123,12 @@ impl<Outcome: Send + 'static> CommandExt<Outcome> for Command<Outcome> {
     fn single(fut: impl Future<Output = Outcome> + Send + 'static) -> Self {
         Self::new(futures::stream::once(fut))
     }
+
+    fn select_all(commands: Vec<Self>) -> Self {
+        let streams: Vec<_> = commands.into_iter().map(Command::into_stream).collect();
+        let stream = futures::stream::select_all(streams);
+        Self::new(stream)
+    }
 }
 
 pub struct AbortOnDrop(AbortHandle);
@@ -131,7 +147,7 @@ pub struct CommandId {
 
 impl std::fmt::Debug for CommandId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "CommandId({}v{})", &self.slot_id, &self.generation)
+        write!(f, "CommandId({}v{})", self.slot_id, self.generation)
     }
 }
 

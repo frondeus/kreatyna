@@ -11,6 +11,35 @@ pub trait Render: Send + Sync {
     async fn render(&self);
 }
 
+//--- in future derived
+
+#[async_trait::async_trait]
+pub trait HandleRender: Send + Sync {
+    type HandleError;
+    async fn handle_render<F, Fut>(self, handle: F) -> Result<(), Self::HandleError>
+    where
+        F: FnOnce() -> Fut + Send,
+        Fut: Send + Future<Output = ()>;
+}
+#[async_trait::async_trait]
+impl HandleRender for Envelope<RenderRequest, RenderResponse> {
+    type HandleError = EnvelopeError<RenderResponse>;
+    async fn handle_render<F, Fut>(mut self, handle: F) -> Result<(), Self::HandleError>
+    where
+        F: FnOnce() -> Fut + Send,
+        Fut: Send + Future<Output = ()>,
+    {
+        match self.request {
+            RenderRequest::Render => {}
+            #[allow(unreachable_patterns)]
+            _request => return Err(EnvelopeError::Mismatch),
+        }
+        let _response = handle().await;
+        self.answer_async(RenderResponse::Render).await?;
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub enum RenderRequest {
     Render,
@@ -110,6 +139,52 @@ pub enum DatabaseError {
     Transport,
 }
 
+#[async_trait::async_trait]
+pub trait HandleDatabase: Send + Sync {
+    type HandleError;
+    async fn handle_count<F, Fut>(self, handle: F) -> Result<(), Self::HandleError>
+    where
+        F: FnOnce() -> Fut + Send,
+        Fut: Send + Future<Output = Result<Option<usize>, DatabaseError>>;
+
+    async fn handle_set_count<F, Fut>(self, handle: F) -> Result<(), Self::HandleError>
+    where
+        F: FnOnce(usize) -> Fut + Send,
+        Fut: Send + Future<Output = Result<(), DatabaseError>>;
+}
+#[async_trait::async_trait]
+impl HandleDatabase for Envelope<DatabaseRequest, DatabaseResponse> {
+    type HandleError = EnvelopeError<DatabaseResponse>;
+    async fn handle_count<F, Fut>(self, handle: F) -> Result<(), Self::HandleError>
+    where
+        F: FnOnce() -> Fut + Send,
+        Fut: Send + Future<Output = Result<Option<usize>, DatabaseError>>,
+    {
+        match self.request {
+            DatabaseRequest::Count => {}
+            _ => return Err(EnvelopeError::Mismatch),
+        }
+        let response = handle().await;
+        self.answer_async(DatabaseResponse::Count(response)).await?;
+        Ok(())
+    }
+
+    async fn handle_set_count<F, Fut>(self, handle: F) -> Result<(), Self::HandleError>
+    where
+        F: FnOnce(usize) -> Fut + Send,
+        Fut: Send + Future<Output = Result<(), DatabaseError>>,
+    {
+        let count = match self.request {
+            DatabaseRequest::SetCount { count } => count,
+            _ => return Err(EnvelopeError::Mismatch),
+        };
+        let response = handle(count).await;
+        self.answer_async(DatabaseResponse::SetCount(response))
+            .await?;
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub enum DatabaseRequest {
     Count,
@@ -195,13 +270,14 @@ pub enum CounterEffect {
     Database(Envelope<DatabaseRequest, DatabaseResponse>),
 }
 
+#[derive(Clone)]
 pub struct CounterCapabilities {
     pub render: Arc<dyn Render>,
     pub clock: Arc<dyn Clock>,
     pub db: Arc<dyn Database>,
 }
 
-type CounterEffectStream = BoxStream<'static, CounterEffect>;
+pub type CounterEffectStream = BoxStream<'static, CounterEffect>;
 
 impl CounterCapabilities {
     pub fn testing() -> (Self, CounterEffectStream) {

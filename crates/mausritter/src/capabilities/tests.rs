@@ -2,6 +2,8 @@ use std::cell::Cell;
 
 use futures::{FutureExt, executor::block_on, future::join};
 
+use krucyfiks::effects::{Effect, EnvelopeError};
+
 use super::*;
 use crate::composability::CounterPairEffect;
 
@@ -162,7 +164,7 @@ struct LocalTree<E> {
     marker: Cell<()>,
 }
 
-impl<E: EffectTree> EffectTree for LocalTree<E> {
+impl<E: Effect> Effect for LocalTree<E> {
     fn extract<T: 'static>(self) -> Result<T, Self> {
         self.effect.extract().map_err(|effect| Self {
             effect,
@@ -290,7 +292,7 @@ fn mismatched_mutable_resolvers_do_not_run_backends() {
 fn clock_client_round_trips_arguments_through_exact_and_recursive_resolvers() {
     block_on(async {
         for recursive in [false, true] {
-            let (client, inbox) = ClockClient::new(1);
+            let (client, inbox) = ClockClient::new(32, 1);
             let (_, ()) = join(client.sleep_ms(456), async {
                 let envelope = inbox.recv_async().await.unwrap();
                 let handle = |ms| async move { assert_eq!(ms, 456) };
@@ -312,7 +314,7 @@ fn clock_client_round_trips_arguments_through_exact_and_recursive_resolvers() {
 #[test]
 fn database_clients_propagate_transport_failures() {
     block_on(async {
-        let (client, inbox) = DatabaseClient::new(1);
+        let (client, inbox) = DatabaseClient::new(32, 1);
         drop(inbox);
         assert!(matches!(
             client.count().await,
@@ -323,7 +325,7 @@ fn database_clients_propagate_transport_failures() {
             Err(DatabaseError::Transport)
         ));
 
-        let (client, inbox) = DatabaseClient::new(1);
+        let (client, inbox) = DatabaseClient::new(32, 1);
         let (result, ()) = join(client.count(), async {
             drop(inbox.recv_async().await.unwrap());
         })
@@ -340,7 +342,7 @@ fn database_clients_propagate_transport_failures() {
 #[test]
 fn database_clients_reject_wrong_response_variants() {
     block_on(async {
-        let (client, inbox) = DatabaseClient::new(1);
+        let (client, inbox) = DatabaseClient::new(32, 1);
         let (result, ()) = join(client.count(), async {
             inbox
                 .recv_async()
@@ -367,7 +369,7 @@ fn database_clients_reject_wrong_response_variants() {
 #[test]
 fn database_clients_preserve_successes_and_application_errors() {
     block_on(async {
-        let (client, inbox) = DatabaseClient::new(1);
+        let (client, inbox) = DatabaseClient::new(32, 1);
         let (result, ()) = join(client.count(), async {
             inbox
                 .recv_async()
@@ -410,7 +412,7 @@ fn database_clients_preserve_successes_and_application_errors() {
 #[test]
 #[should_panic(expected = "Render::render transport failed: request channel closed")]
 fn render_explicitly_panics_on_request_transport_failure() {
-    let (client, inbox) = RenderClient::new(1);
+    let (client, inbox) = RenderClient::new(32, 1);
     drop(inbox);
     block_on(client.render());
 }
@@ -418,7 +420,7 @@ fn render_explicitly_panics_on_request_transport_failure() {
 #[test]
 #[should_panic(expected = "Render::render transport failed: response channel closed")]
 fn render_explicitly_panics_when_its_responder_is_dropped() {
-    let (client, inbox) = RenderClient::new(1);
+    let (client, inbox) = RenderClient::new(32, 1);
     block_on(join(client.render(), async {
         drop(inbox.recv_async().await.unwrap());
     }));
@@ -427,7 +429,7 @@ fn render_explicitly_panics_when_its_responder_is_dropped() {
 #[test]
 #[should_panic(expected = "Clock::sleep_ms transport failed: request channel closed")]
 fn clock_explicitly_panics_on_request_transport_failure() {
-    let (client, inbox) = ClockClient::new(1);
+    let (client, inbox) = ClockClient::new(32, 1);
     drop(inbox);
     block_on(client.sleep_ms(7));
 }
@@ -435,7 +437,7 @@ fn clock_explicitly_panics_on_request_transport_failure() {
 #[test]
 #[should_panic(expected = "Clock::sleep_ms transport failed: response channel closed")]
 fn clock_explicitly_panics_when_its_responder_is_dropped() {
-    let (client, inbox) = ClockClient::new(1);
+    let (client, inbox) = ClockClient::new(32, 1);
     block_on(join(client.sleep_ms(7), async {
         drop(inbox.recv_async().await.unwrap());
     }));
@@ -444,7 +446,7 @@ fn clock_explicitly_panics_when_its_responder_is_dropped() {
 #[test]
 fn cancelled_request_returns_the_unsent_response_to_the_resolver() {
     block_on(async {
-        let (client, inbox) = ClockClient::new(1);
+        let (client, inbox) = ClockClient::new(32, 1);
         let mut request = Box::pin(client.sleep_ms(8));
         assert!(request.as_mut().now_or_never().is_none());
         let envelope = inbox.try_recv().unwrap();

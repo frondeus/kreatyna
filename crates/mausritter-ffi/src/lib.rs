@@ -127,7 +127,7 @@ pub fn counter(caps: CounterCapabilities, database_path: String) -> Arc<CounterF
         handler: caps.clock,
     });
 
-    let (db, database_rx) = DatabaseClient::new(0);
+    let (db, database_rx) = DatabaseClient::new(32, 0);
     let db = Arc::new(db);
     RUNTIME.spawn(async move {
         let mut database = SqliteDatabase::new(&database_path).await?;

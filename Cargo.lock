@@ -588,10 +588,30 @@ dependencies = [
 name = "krucyfiks"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "flume",
  "futures",
+ "krucyfiks-macros",
  "thiserror",
  "tracing",
+]
+
+[[package]]
+name = "krucyfiks-macro-tests"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "krucyfiks",
+]
+
+[[package]]
+name = "krucyfiks-macros"
+version = "0.1.0"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]

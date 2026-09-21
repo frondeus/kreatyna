@@ -2,7 +2,7 @@ use futures::{
     StreamExt,
     stream::{BoxStream, select_all},
 };
-use krucyfiks::{Command, CommandExt, Message, Widget, effects::EffectTree};
+use krucyfiks::{Command, CommandExt, Message, Widget};
 
 use crate::{
     Counter, CounterCapabilities, CounterEvent, CounterOutcome, capabilities::CounterEffect,
@@ -40,52 +40,10 @@ pub enum CounterPairOutcome {
 ///     effect.expect_left().resolve_render(|| async {}).await.unwrap();
 /// }
 /// ```
-#[derive(Debug)]
+#[derive(Debug, krucyfiks::Effect)]
 pub enum CounterPairEffect {
     Left(CounterEffect),
     Right(CounterEffect),
-}
-
-impl EffectTree for CounterPairEffect {
-    fn extract<T: 'static>(self) -> Result<T, Self> {
-        match self {
-            CounterPairEffect::Left(eff) => eff.extract::<T>().map_err(Self::Left),
-            CounterPairEffect::Right(eff) => eff.extract::<T>().map_err(Self::Right),
-        }
-    }
-}
-impl CounterPairEffect {
-    pub fn try_into_left(self) -> Result<CounterEffect, Self> {
-        match self {
-            CounterPairEffect::Left(eff) => Ok(eff),
-            _ => Err(self),
-        }
-    }
-    #[track_caller]
-    pub fn expect_left(self) -> CounterEffect {
-        match self {
-            Self::Left(effect) => effect,
-            Self::Right(_) => {
-                panic!("expected CounterPairEffect::Left, got CounterPairEffect::Right")
-            }
-        }
-    }
-
-    pub fn try_into_right(self) -> Result<CounterEffect, Self> {
-        match self {
-            CounterPairEffect::Right(eff) => Ok(eff),
-            _ => Err(self),
-        }
-    }
-    #[track_caller]
-    pub fn expect_right(self) -> CounterEffect {
-        match self {
-            Self::Right(effect) => effect,
-            Self::Left(_) => {
-                panic!("expected CounterPairEffect::Right, got CounterPairEffect::Left")
-            }
-        }
-    }
 }
 
 impl CounterPair {
@@ -159,7 +117,7 @@ impl CounterPair {
 #[cfg(test)]
 mod tests {
     use futures::executor::block_on;
-    use krucyfiks::effects::CommandTestExt;
+    use krucyfiks::effects::{CommandTestExt, Effect};
 
     use crate::capabilities::{ResolveDatabase, ResolveRender};
 

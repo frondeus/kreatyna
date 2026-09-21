@@ -228,7 +228,7 @@ pub enum EnvelopeError<Payload> {
 /// ```
 ///
 /// A return type that cannot propagate transport errors needs an explicit
-/// panic policy in the client (the future `#[krucyfiks(panic_on_transport)]`).
+/// panic policy on the capability method: `#[krucyfiks(panic_on_transport)]`.
 ///
 /// ```compile_fail,E0277
 /// use krucyfiks::effects::TransportError;
@@ -276,7 +276,7 @@ impl<Outcome> CommandTestExt<Outcome> for Command<Outcome> {
 /// Consuming extraction of an exact envelope leaf from the active branch.
 /// A mismatch returns the original tree with its responder intact. Intermediate
 /// tree nodes are selected with branch helpers, not extracted as leaves.
-pub trait EffectTree: Sized {
+pub trait Effect: Sized {
     fn extract<T: 'static>(self) -> Result<T, Self>;
 
     fn any_route(self) -> AnyRoute<Self> {
@@ -284,7 +284,7 @@ pub trait EffectTree: Sized {
     }
 }
 
-impl<Request, Response> EffectTree for Envelope<Request, Response>
+impl<Request, Response> Effect for Envelope<Request, Response>
 where
     Request: 'static,
     Response: 'static,

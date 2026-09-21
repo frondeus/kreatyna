@@ -7,6 +7,15 @@ use futures::{
 
 pub mod effects;
 
+pub use effects::Effect;
+pub use krucyfiks_macros::{Effect, capability};
+
+// Generated code uses this re-export so consumers need no direct async-trait dependency.
+#[doc(hidden)]
+pub mod __private {
+    pub use async_trait::async_trait;
+}
+
 pub trait Widget: Sized {
     type View;
     type Event: Send + 'static;

@@ -16,10 +16,8 @@ through the core's event/effect interface. Business decisions stay in Rust.
 
 ## Ownership and collaboration
 
-- The user exclusively maintains Rust implementation, Rust tests, Cargo
-  configuration, and Rust-side binding definitions. Agents may inspect these and
-  provide read-only guidance, but must not modify them. Describe required Rust
-  changes for the user to implement.
+- Agents may maintain Rust implementation, Rust tests, Cargo configuration, and
+  Rust-side binding definitions as part of requested work.
 - After explicit handover of the Swift side, agents maintain SwiftUI views, Swift
   integration code, Apple platform adapters, Xcode configuration, and Swift-side
   tests. Do not assume that handover has happened.
@@ -37,7 +35,7 @@ through the core's event/effect interface. Business decisions stay in Rust.
 ## Persistence
 
 Rust owns SQLite access through Diesel, including schema, migrations, queries,
-transactions, and persistence policy. All of this remains user-maintained.
+transactions, and persistence policy.
 
 Do not introduce SwiftData, Core Data, or direct database access from Swift.
 Swift may supply platform-specific filesystem paths when needed.
@@ -45,8 +43,7 @@ Swift may supply platform-specific filesystem paths when needed.
 ## Bindings
 
 Use UniFFI for the Rust-to-Swift interface. Never hand-edit generated bindings.
-When the interface needs Rust changes, describe the required contract and let
-the user implement those changes.
+Agents may update Rust-side binding definitions when the interface changes.
 
 ## Swift-side testing
 
@@ -67,12 +64,12 @@ report any checks that could not run.
 
 Plan a development-only RPC interface and CLI/library for inspecting Rust state
 in the live application and exercising the same event path used by the UI.
-Rust implementation remains user-owned. The protocol and transport are future
-design work; do not treat them as already specified or implemented.
+The protocol and transport are future design work; do not treat them as already
+specified or implemented.
 
 ## Current scope
 
 This agreement documents the intended architecture and responsibilities. App
 scaffolding, persistence implementation, bindings, test infrastructure, and the
 debugging interface are later tasks. Creating this document does not authorize
-automating the user's initial Xcode setup or taking over Rust development.
+automating the user's initial Xcode setup.

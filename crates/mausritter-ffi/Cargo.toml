@@ -16,8 +16,8 @@ required-features = ["bindgen"]
 
 [dependencies]
 mausritter = { path = "../mausritter" }
-krucyfiks = { path = "../krucyfiks/core" }
-krucyfiks-runtime = { path = "../krucyfiks/runtime" }
+krucyfiks = { path = "../../../krucyfix/core" }
+krucyfiks-runtime = { path = "../../../krucyfix/runtime" }
 
 uniffi = "0.32.1"
 parking_lot = "0.12.5"

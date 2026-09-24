@@ -1,9 +1,5 @@
 [workspace]
 members = [
-    "crates/krucyfiks/core",
-    "crates/krucyfiks/macros",
-    "crates/krucyfiks/macro-tests",
-    "crates/krucyfiks/runtime",
     "crates/mausritter",
     "crates/mausritter-ffi"]
 

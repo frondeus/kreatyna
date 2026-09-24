@@ -597,14 +597,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "krucyfiks-macro-tests"
-version = "0.1.0"
-dependencies = [
- "futures",
- "krucyfiks",
-]
-
-[[package]]
 name = "krucyfiks-macros"
 version = "0.1.0"
 dependencies = [

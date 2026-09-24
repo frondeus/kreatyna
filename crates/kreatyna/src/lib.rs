@@ -5,6 +5,7 @@ use krucyfiks::{Command, CommandExt, CommandId, CommandSlot, Message, Widget};
 pub mod capabilities;
 
 pub mod composability;
+pub mod ingredients;
 
 pub struct Counter {
     counter: usize,

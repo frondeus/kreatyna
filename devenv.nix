@@ -37,15 +37,17 @@ let
     ios_clang="$(/usr/bin/xcrun --sdk ${sdk} --find clang)"
     ios_ar="$(/usr/bin/xcrun --sdk ${sdk} --find ar)"
 
+    # Use the selected iOS SDK's SQLite instead of Nix's macOS SQLite.
     # Target-specific tools leave host build scripts and proc macros on macOS.
     env \
       CARGO_TARGET_${lib.toUpper (builtins.replaceStrings [ "-" ] [ "_" ] target)}_LINKER="$ios_clang" \
       CC_${builtins.replaceStrings [ "-" ] [ "_" ] target}="$ios_clang" \
       AR_${builtins.replaceStrings [ "-" ] [ "_" ] target}="$ios_ar" \
-      cargo build --locked -p mausritter-ffi --lib \
+      SQLITE3_LIB_DIR="$SDKROOT/usr/lib" \
+      cargo build --locked -p kreatyna-ffi --lib \
         --target ${target} "''${profile_args[@]}"
 
-    echo "Built $CARGO_TARGET_DIR/${target}/$profile/libmausritter_ffi.a"
+    echo "Built $CARGO_TARGET_DIR/${target}/$profile/libkreatyna_ffi.a"
   '';
 in
 {
@@ -66,7 +68,7 @@ in
   ];
 
   env.DATABASE_URL =
-    "${config.devenv.root}/crates/mausritter-ffi/counter-dev.sqlite";
+    "${config.devenv.root}/crates/kreatyna-ffi/counter-dev.sqlite";
 
   scripts.ios-build-device = {
     description = "Build the Rust library for iPhone/iPad: ios-build-device [debug|release]";
@@ -88,8 +90,8 @@ in
       export SDKROOT="$(/usr/bin/xcrun --sdk macosx --show-sdk-path)"
       for target in aarch64-apple-ios aarch64-apple-ios-sim; do
         output="$CARGO_TARGET_DIR/generated/ios/$target/$profile"
-        cargo run --locked -p mausritter-ffi --features bindgen --bin uniffi-bindgen -- \
-          generate "$CARGO_TARGET_DIR/$target/$profile/libmausritter_ffi.a" \
+        cargo run --locked -p kreatyna-ffi --features bindgen --bin uniffi-bindgen -- \
+          generate "$CARGO_TARGET_DIR/$target/$profile/libkreatyna_ffi.a" \
           --language swift --out-dir "$output"
         echo "Generated Swift bindings in $output"
       done

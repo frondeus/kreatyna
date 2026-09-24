@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "crates/mausritter",
-    "crates/mausritter-ffi"]
+    "crates/kreatyna",
+    "crates/kreatyna-ffi"]
 
 resolver = "3"

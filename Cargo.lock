@@ -585,6 +585,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "kreatyna"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "async-trait",
+ "futures",
+ "krucyfiks",
+ "test-case",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "kreatyna-ffi"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "diesel",
+ "diesel-async",
+ "diesel_migrations",
+ "flume",
+ "futures",
+ "kreatyna",
+ "krucyfiks",
+ "krucyfiks-runtime",
+ "parking_lot",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uniffi",
+]
+
+[[package]]
 name = "krucyfiks"
 version = "0.1.0"
 dependencies = [
@@ -661,43 +698,6 @@ name = "log"
 version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
-
-[[package]]
-name = "mausritter"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-stream",
- "async-trait",
- "futures",
- "krucyfiks",
- "test-case",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "mausritter-ffi"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "diesel",
- "diesel-async",
- "diesel_migrations",
- "flume",
- "futures",
- "krucyfiks",
- "krucyfiks-runtime",
- "mausritter",
- "parking_lot",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uniffi",
-]
 
 [[package]]
 name = "memchr"

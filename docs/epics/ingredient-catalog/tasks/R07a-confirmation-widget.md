@@ -1,6 +1,6 @@
 # R07a — Reusable confirmation widget
 
-Status: awaiting review. Change: `pyzppluw`. R06 is approved.
+Status: approved. Change: `pyzppluw`. R06 is approved.
 
 ## Contract
 

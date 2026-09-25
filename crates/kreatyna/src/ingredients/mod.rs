@@ -1,6 +1,7 @@
 //! Ingredient catalog domain types shared by future widgets and persistence.
 
 pub mod capabilities;
+mod detail;
 mod draft;
 mod list;
 mod model;
@@ -18,4 +19,9 @@ pub use list::{
 pub use model::{
     Grams, Ingredient, IngredientId, Kilocalories, Millilitres, Nutrition, NutritionBasis,
     ReferenceUnit, name_key,
+};
+
+pub use detail::{
+    IngredientDetail, IngredientDetailDeletion, IngredientDetailEvent, IngredientDetailOutcome,
+    IngredientDetailView,
 };

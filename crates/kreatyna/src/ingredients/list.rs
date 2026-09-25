@@ -1,4 +1,3 @@
-use futures::stream;
 use krucyfiks::{Command, CommandExt, CommandId, LatestCommandSlot, Message, Widget};
 
 use super::{
@@ -119,15 +118,12 @@ impl IngredientList {
     fn start_load(&mut self) -> Command<IngredientListOutcome> {
         let render = self.caps.render.clone();
         let store = self.caps.store.clone();
-        Command::latest(&mut self.load, |id| {
-            stream::once(async move {
-                render.render().await;
-                IngredientListOutcome::LoadFinished {
-                    id,
-                    result: store.list().await,
-                }
-            })
+        Command::single(async move {
+            render.render().await;
+            store.list().await
         })
+        .latest(&mut self.load)
+        .map(|(id, result)| IngredientListOutcome::LoadFinished { id, result })
     }
 
     fn begin_load(&mut self) -> Command<IngredientListOutcome> {

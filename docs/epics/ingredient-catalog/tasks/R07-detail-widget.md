@@ -1,6 +1,6 @@
 # R07 — Ingredient detail widget
 
-Status: planned. Dependencies: R03 and R07a. Implementation follows R07a approval.
+Status: awaiting review. Change: `vmstsssk`. R07a is approved. Dependencies: R03 and R07a.
 
 ## Contract
 
@@ -19,11 +19,12 @@ ingredient ID. Parent-facing outcomes returned to the widget do nothing.
 
 The detail owns a Confirmation child only while asking for a decision. Opening
 it renders; cancelling removes it, clears the error, and renders idle state.
-Tag each child instance and its mapped outcomes with a monotonically increasing,
-checked generation. Accept a decision only for the active instance. Consuming a
-decision removes that instance before any asynchronous work; ignore obsolete or
-duplicate decisions. This prevents a queued decision from a previous prompt
-affecting a reopened prompt.
+Track each child decision command with its own `LatestCommandSlot`. Fluent
+`CommandExt::latest` tags its outcome with `CommandId`; map that pair into the
+detail outcome. Stop the slot when a prompt closes or is replaced.
+Accept a decision only if the slot accepts its ID and the active child view records
+that decision. Consuming a decision removes that instance before asynchronous
+work; ignore obsolete or duplicate decisions.
 
 Confirming sets deleting state synchronously, renders, then calls store.delete
 with the displayed ingredient ID. Use LatestCommandSlot and CommandExt::latest
@@ -51,3 +52,24 @@ Run core tests, Clippy with warnings denied, FFI compilation, and formatting
 checks; report unrelated formatting failures separately. Mark awaiting review
 only after validation. No database, framework, navigation, coordinator, runtime,
 bindings, or Swift changes.
+
+## Public API
+
+IngredientDetail::new(caps, ingredient) retains the record privately.
+IngredientDetailEvent exposes Edit, RequestDelete, and
+Confirmation(ConfirmationEvent). IngredientDetailOutcome exposes OpenEdit with
+the complete record, ConfirmationDecided with CommandId and decision,
+DeleteFinished with CommandId and typed result, and Deleted with IngredientId.
+
+IngredientDetailView contains the complete ingredient and an
+IngredientDetailDeletion enum: Idle, Confirming with ConfirmationView and optional
+IngredientDeleteError, Deleting, or Deleted. Parent-facing outcomes are ignored
+when passed back. A test_fixture constructor reuses IngredientCapabilities::testing().
+
+## Validation results
+
+All core tests pass, including seven detail-widget scenarios. Core and FFI
+Clippy with warnings denied, FFI compilation, and changed-file formatting pass.
+Workspace formatting still reports existing import-order differences in
+kreatyna/tests/background.rs, kreatyna/tests/composition.rs, and
+kreatyna-ffi/src/lib.rs. Those files are unchanged.

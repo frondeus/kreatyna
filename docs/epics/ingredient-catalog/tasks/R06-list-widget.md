@@ -16,7 +16,7 @@ is dropped. Create, detail, and edit intents are outcomes for a later parent to
 handle. Selection uses only currently visible records and carries complete data.
 
 `Widget::init` now takes `&mut self` in the shared krucyfix change `nuzpozyw`,
-so the widget starts its tracked load directly. `Command::latest` and
+so the widget starts its tracked load directly. Fluent `CommandExt::latest` and
 `LatestCommandSlot` in that shared change replace older loads and own both
 cancellation and generation checking. Completed results remain valid until
 replacement or explicit stop. New refreshes cancel earlier refreshes; queued

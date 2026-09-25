@@ -1,5 +1,6 @@
 //! Ingredient catalog domain types shared by future widgets and persistence.
 
+pub mod capabilities;
 mod draft;
 mod model;
 

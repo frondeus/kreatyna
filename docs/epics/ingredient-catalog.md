@@ -1,9 +1,9 @@
 # Ingredient catalog epic
 
 Status: architecture and task graph approved. R01 (`tskssmvt`) is approved.
-R02 (`pwkoosll`) is awaiting review; its
-[implementation plan](ingredient-catalog/tasks/R02-drafts.md) is part of that
-change. Later tasks remain planned.
+R02 (`pwkoosll`) is approved. R03 (`yttqpszu`) is awaiting review; its
+[implementation plan](ingredient-catalog/tasks/R03-store-capability.md) is part
+of that change. Later tasks remain planned.
 
 ## Goal and scope
 
@@ -62,7 +62,7 @@ plans will settle constructors and parsing details, including decimal range and
 precision rejection rather than silent loss.
 
 An ingredient capability in `ingredients/capabilities.rs` exposes persistence to
-widgets. Its request/response envelopes and test driver follow the existing
+widgets. Its request/response envelopes and test fixture follow the existing
 krucyfiks pattern. Widgets depend on that contract, not on Diesel or a live DB.
 
 `crates/kreatyna-ffi/src/database` implements the capability. SQLite retains a
@@ -151,7 +151,7 @@ handover.
 Every row below is a separate implementation task and `jj` change, including its
 relevant tests. Dependencies mean the preceding contracts must be approved. They
 do not mean all nodes on one layer will be implemented before pausing for review.
-R01 is **approved**; R02 is **awaiting review**. Later tasks are **planned**; their
+R01 and R02 are **approved**; R03 is **awaiting review**. Later tasks are **planned**; their
 detailed plans are deferred until their dependencies are approved.
 
 ### Rust tasks
@@ -160,7 +160,7 @@ detailed plans are deferred until their dependencies are approved.
 | --- | --- | --- | --- |
 | R01 | Ingredient domain: identity, measurements, nutrition basis, reference units, name normalization. Core types and Cargo dependencies only. | — | UUID v4 identity; exact decimal round trips; shared name-key semantics. No drafts, SQL, widgets, or bridge. |
 | R02 | Draft parsing and typed validation: editable text becomes valid ingredient write data. | R01 | Unknown versus zero, decimal limits, positive unit measurements, named fields/issues, create/edit identity semantics. No effects or screens. |
-| R03 | Ingredient store capability: typed operations, errors, effect envelopes, and test fixture in a separate module. | R02 | Requests/responses and transport errors round-trip through the capability driver. No database implementation. |
+| R03 | Ingredient store capability: typed operations, errors, effect envelopes, and test fixture in a separate module. | R02 | Core and FFI compile against the contract; existing krucyfiks tests cover transport plumbing. Store behavior is tested in R05 and widget effects in R06–R08. No database implementation. |
 | R04 | Ingredient migration and Diesel models: local/remote IDs, exact decimal mapping, units, and constraints. | R01 | Empty and existing counter DB migration; typed SQL value round trips; foreign keys and uniqueness. No widget behavior or CRUD service. |
 | R05 | SQLite ingredient store implementation and transactions. | R03, R04 | CRUD, UUID stability, duplicate-name error, missing update, rollback, cascade, and reopen persistence. Counter data survives. No app runtime changes. |
 | R06 | Ingredient list widget, with its own event/outcome/view types. | R03 | Load failure/retry, search/sort, empty state, selection intents, and render-before-retry ordering using the effect driver. No navigation implementation. |

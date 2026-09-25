@@ -677,6 +677,8 @@ dependencies = [
  "krucyfiks",
  "krucyfiks-runtime",
  "parking_lot",
+ "rust_decimal",
+ "test-case",
  "thiserror",
  "tokio",
  "tracing",

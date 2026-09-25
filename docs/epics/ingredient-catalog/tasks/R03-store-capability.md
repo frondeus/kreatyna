@@ -1,6 +1,6 @@
 # R03 — Ingredient store capability
 
-Status: awaiting review. Change: `yttqpszu`. Dependency R02 is approved.
+Status: approved. Change: `yttqpszu`. Dependency R02 is approved.
 
 Add a separate `ingredients/capabilities.rs` module using the existing
 `krucyfiks::capability` pattern. `IngredientStore` lists complete records,

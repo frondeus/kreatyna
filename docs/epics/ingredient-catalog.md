@@ -1,9 +1,9 @@
 # Ingredient catalog epic
 
 Status: architecture and task graph approved. R01 (`tskssmvt`) is approved.
-R02 (`pwkoosll`) is approved. R03 (`yttqpszu`) is awaiting review; its
-[implementation plan](ingredient-catalog/tasks/R03-store-capability.md) is part
-of that change. Later tasks remain planned.
+R02 (`pwkoosll`) and R03 (`yttqpszu`) are approved. R04 (`zltwqxro`) is awaiting
+review; its [implementation plan](ingredient-catalog/tasks/R04-database-models.md)
+is part of that change. Later tasks remain planned.
 
 ## Goal and scope
 
@@ -73,7 +73,7 @@ round-trip exactly; SQLite text storage is the proposed representation.
 
 Parent and reference-unit writes are transactional. Missing updates must not
 silently create rows. Deletion cascades to units. Introduce one ingredient
-migration on top of the current counter schema; this pre-alpha epic does not need
+  forward-only migration on top of the current counter schema; this pre-alpha epic does not need
 an upgrade migration from the discarded ingredient prototype. Preserve the
 existing counter database and its data.
 
@@ -151,7 +151,7 @@ handover.
 Every row below is a separate implementation task and `jj` change, including its
 relevant tests. Dependencies mean the preceding contracts must be approved. They
 do not mean all nodes on one layer will be implemented before pausing for review.
-R01 and R02 are **approved**; R03 is **awaiting review**. Later tasks are **planned**; their
+R01–R03 are **approved**; R04 is **awaiting review**. Later tasks are **planned**; their
 detailed plans are deferred until their dependencies are approved.
 
 ### Rust tasks

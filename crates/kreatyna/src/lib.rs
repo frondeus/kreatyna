@@ -48,7 +48,7 @@ impl Widget for Counter {
     type Outcome = CounterOutcome;
 
     #[tracing::instrument(skip_all, fields(before = self.counter))]
-    fn init(&self) -> Command<Self::Outcome> {
+    fn init(&mut self) -> Command<Self::Outcome> {
         let db = self.caps.db.clone();
         tracing::info!("Init");
         Command::single(async move {

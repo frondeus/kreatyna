@@ -1,6 +1,6 @@
 # R05 — SQLite ingredient store
 
-Status: awaiting review. Change: `uzrmtwut`. R04 is approved.
+Status: approved. Change: `uzrmtwut`. R04 is approved.
 
 Implement `IngredientStoreMut` on the existing SQLite database using the R03
 contract and R04 typed rows. List complete records in one read transaction,

@@ -1,6 +1,6 @@
-use krucyfiks::{Message, Widget, effects::CommandTestExt};
 use kreatyna::capabilities::{DatabaseError, ResolveDatabase, ResolveRender};
 use kreatyna::{Counter, CounterEvent, CounterOutcome};
+use krucyfiks::{Message, Widget, effects::CommandTestExt};
 use test_case::{test_case, test_matrix};
 
 #[test_case(Ok(None), 0; "missing row")]
@@ -15,7 +15,7 @@ async fn init_loads_without_changing_state_or_writing_to_database(
     reply: Result<Option<usize>, DatabaseError>,
     expected: usize,
 ) -> anyhow::Result<()> {
-    let (counter, mut effects) = Counter::test_fixture();
+    let (mut counter, mut effects) = Counter::test_fixture();
     assert_eq!(counter.view(), 0);
     let mut command = counter.init().driver(&mut effects);
 
@@ -234,7 +234,7 @@ async fn delayed_commands_persist_each_events_captured_value() -> anyhow::Result
 
 #[tokio::test]
 async fn dropped_database_read_returns_loaded_zero() -> anyhow::Result<()> {
-    let (counter, mut effects) = Counter::test_fixture();
+    let (mut counter, mut effects) = Counter::test_fixture();
     let mut command = counter.init().driver(&mut effects);
     drop(command.drive().await?.expect_effect().expect_database());
     assert!(matches!(

@@ -87,7 +87,7 @@ impl Widget for CounterPair {
         (self.left.view(), self.right.view())
     }
 
-    fn init(&self) -> Command<Self::Outcome> {
+    fn init(&mut self) -> Command<Self::Outcome> {
         let left_cmd = self.left.init();
         let right_cmd = self.right.init();
 

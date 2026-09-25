@@ -2,11 +2,17 @@
 
 pub mod capabilities;
 mod draft;
+mod list;
 mod model;
 
 pub use draft::{
     DraftMode, IngredientDraft, IngredientWrite, IngredientWriteData, ReferenceUnitDraft,
     ValidationField, ValidationIssue, ValidationReason,
+};
+
+pub use list::{
+    IngredientList, IngredientListEvent, IngredientListOutcome, IngredientListRefresh,
+    IngredientListRow, IngredientListStatus, IngredientListView,
 };
 
 pub use model::{

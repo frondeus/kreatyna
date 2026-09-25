@@ -3,17 +3,17 @@ use diesel_async::{AsyncConnection, sync_connection_wrapper::SyncConnectionWrapp
 use diesel_async::{RunQueryDsl, SimpleAsyncConnection};
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use futures::StreamExt;
-use krucyfiks::effects::RequestInbox;
 use kreatyna::capabilities::{
     DatabaseError, DatabaseMut, DatabaseRequest, DatabaseResponse, ResolveDatabase,
 };
+use krucyfiks::effects::RequestInbox;
 
 use super::schema::counter;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 pub struct SqliteDatabase {
-    connection: SyncConnectionWrapper<SqliteConnection>,
+    pub(super) connection: SyncConnectionWrapper<SqliteConnection>,
 }
 
 #[async_trait::async_trait]

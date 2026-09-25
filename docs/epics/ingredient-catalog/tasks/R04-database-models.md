@@ -1,6 +1,6 @@
 # R04 — Ingredient migration and typed Diesel models
 
-Status: awaiting review. Change: `zltwqxro`. R03 is approved.
+Status: approved. Change: `zltwqxro`. R03 is approved.
 
 Add a forward-only ingredient migration after the counter migration. Leave its
 `down.sql` empty, following the existing counter migration. Parent rows

@@ -6,6 +6,7 @@ mod draft;
 mod form;
 mod list;
 mod model;
+mod navigation;
 
 pub use draft::{
     DraftMode, IngredientDraft, IngredientDraftField, IngredientWrite, IngredientWriteData,
@@ -30,4 +31,9 @@ pub use detail::{
 pub use form::{
     IngredientForm, IngredientFormEvent, IngredientFormOutcome, IngredientFormStatus,
     IngredientFormView,
+};
+
+pub use navigation::{
+    IngredientEditOrigin, IngredientNavigation, IngredientNavigationAction,
+    IngredientNavigationError,
 };

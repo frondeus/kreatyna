@@ -1,6 +1,6 @@
 # R08 — Ingredient create/edit form widget
 
-Status: awaiting review. Change: `uwkxwylq`. R07 is approved.
+Status: approved. Change: `uwkxwylq`. R07 is approved.
 
 ## Contract
 

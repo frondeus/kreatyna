@@ -695,6 +695,7 @@ dependencies = [
  "futures",
  "krucyfiks-macros",
  "thiserror",
+ "tokio-util",
  "tracing",
 ]
 

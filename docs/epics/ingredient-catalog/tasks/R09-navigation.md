@@ -1,6 +1,6 @@
 # R09 — Typed ingredient navigation
 
-Status: awaiting review. Change: `skqrovro`. R08 is approved.
+Status: approved. Change: `skqrovro`. R08 is approved.
 
 ## Model
 

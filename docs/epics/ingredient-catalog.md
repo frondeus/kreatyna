@@ -1,7 +1,7 @@
 # Ingredient catalog epic
 
-Status: architecture and task graph approved. R01–R08, including R07a, are approved. R09 is awaiting review; its
-[implementation plan](ingredient-catalog/tasks/R09-navigation.md) is part of
+Status: architecture and task graph approved. R01–R09, including R07a, are approved. R09a is awaiting review; its
+[implementation plan](ingredient-catalog/tasks/R09a-command-scopes.md) is part of
 that change. Later tasks remain planned.
 
 ## Goal and scope
@@ -150,7 +150,7 @@ handover.
 Every row below is a separate implementation task and `jj` change, including its
 relevant tests. Dependencies mean the preceding contracts must be approved. They
 do not mean all nodes on one layer will be implemented before pausing for review.
-R01–R08, including R07a, are **approved**; R09 is **awaiting review**. Later tasks are **planned**; their
+R01–R09, including R07a, are **approved**; R09a is **awaiting review**. Later tasks are **planned**; their
 detailed plans are deferred until their dependencies are approved.
 
 ### Rust tasks
@@ -167,7 +167,8 @@ detailed plans are deferred until their dependencies are approved.
 | R07 | Ingredient detail widget, with edit intent and deletion. | R03, R07a | Edit intent, delete confirmation/cancel, pending state, failure/retry, and successful result; effect-driver tests. No parent routing. |
 | R08 | Ingredient form widget for create and edit. | R02, R03, R07a | Field/unit edits, typed issues, dirty state, save ordering, duplicate-name response, draft retention, and discard intent. No SQL or parent routing. |
 | R09 | Typed ingredient navigation rules as an independently testable model. | R01 | Only allowed histories; edit origin, detail replacement, and meaningful back destinations. No widget or Swift implementation. |
-| R10 | Ingredient catalog coordinator and composed view/event/outcome structure. | R06, R07, R08, R09 | Child routing, save/delete propagation, origin-aware return, discard coordination, and rejection of stale/inactive child actions. No tabs or FFI. |
+| R09a | Framework command scopes for child lifetimes. | — | Concurrent command cancellation, typed scope identity, cleanup, and stale-outcome rejection. |
+| R10 | Ingredient catalog coordinator and composed view/event/outcome structure. | R06, R07, R08, R09, R09a | Child routing, save/delete propagation, origin-aware return, discard coordination, and rejection of stale/inactive child actions. No tabs or FFI. |
 | R11 | AppWidget: Ingredients and the existing Counter composed under Rust-owned tabs. | R10 | Initialization in either completion order, preserved child state, branch isolation, counter lifecycle on tab changes. No Swift or database wiring. |
 | R12 | Rust-side UniFFI event/view definitions and checked conversions. | R11 | Composed types remain expressible; exact decimals, UUIDs, indices, validation, and routes survive conversion. Binding generation checked; no handwritten generated edits. |
 | R13 | App runtime and store-worker wiring exposed through UniFFI. | R05, R12 | Real DB startup, visible startup failure/retry, render callbacks, dispatch ordering, shutdown, and persistent CRUD through the app boundary. No Swift screens. |
@@ -211,6 +212,7 @@ flowchart TD
     R06 --> R10["R10 Catalog composition"]
     R07 --> R10
     R08 --> R10
+    R09a["R09a Command scopes"] --> R10
     R09 --> R10
     R10 --> R11["R11 AppWidget"]
     R11 --> R12["R12 UniFFI types"]
@@ -221,7 +223,7 @@ flowchart TD
 ```
 
 One valid review order is R01 → R02 → R03 → R04 → R05 → R06 → R07a → R07 → R08 →
-R09 → R10 → R11 → R12 → R13 → H → S01.
+R09 → R09a → R10 → R11 → R12 → R13 → H → S01.
 This is a scheduling choice, not additional dependency edges. For example, R09
 can be reviewed immediately after R01, and widget work need not wait for R05.
 

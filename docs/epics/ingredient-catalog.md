@@ -1,7 +1,7 @@
 # Ingredient catalog epic
 
-Status: architecture and task graph approved. R01–R05 are approved. R06 is
-awaiting review; its [implementation plan](ingredient-catalog/tasks/R06-list-widget.md)
+Status: architecture and task graph approved. R01–R06 are approved. R07a is
+awaiting review; its [implementation plan](ingredient-catalog/tasks/R07a-confirmation-widget.md)
 is part of that change. Later tasks remain planned.
 
 ## Goal and scope
@@ -150,7 +150,7 @@ handover.
 Every row below is a separate implementation task and `jj` change, including its
 relevant tests. Dependencies mean the preceding contracts must be approved. They
 do not mean all nodes on one layer will be implemented before pausing for review.
-R01–R05 are **approved**; R06 is **awaiting review**. Later tasks are **planned**; their
+R01–R06 are **approved**; R07a is **awaiting review**. Later tasks are **planned**; their
 detailed plans are deferred until their dependencies are approved.
 
 ### Rust tasks
@@ -163,8 +163,9 @@ detailed plans are deferred until their dependencies are approved.
 | R04 | Ingredient migration and Diesel models: local/remote IDs, exact decimal mapping, units, and constraints. | R01 | Empty and existing counter DB migration; typed SQL value round trips; foreign keys and uniqueness. No widget behavior or CRUD service. |
 | R05 | SQLite ingredient store implementation and transactions. | R03, R04 | CRUD, UUID stability, duplicate-name error, missing update, rollback, cascade, and reopen persistence. Counter data survives. No app runtime changes. |
 | R06 | Ingredient list widget, with its own event/outcome/view types. | R03 | Load failure/retry, search/sort, empty state, selection intents, and render-before-retry ordering using the effect driver. No navigation implementation. |
-| R07 | Ingredient detail widget, with edit intent and deletion. | R03 | Edit intent, delete confirmation/cancel, pending state, failure/retry, and successful result; effect-driver tests. No parent routing. |
-| R08 | Ingredient form widget for create and edit. | R02, R03 | Field/unit edits, typed issues, dirty state, save ordering, duplicate-name response, draft retention, and discard intent. No SQL or parent routing. |
+| R07a | Reusable single-decision confirmation widget. | — | Confirm/cancel emit once; repeated events and returned outcomes do nothing. No capabilities or action execution. |
+| R07 | Ingredient detail widget, with edit intent and deletion. | R03, R07a | Edit intent, delete confirmation/cancel, pending state, failure/retry, and successful result; effect-driver tests. No parent routing. |
+| R08 | Ingredient form widget for create and edit. | R02, R03, R07a | Field/unit edits, typed issues, dirty state, save ordering, duplicate-name response, draft retention, and discard intent. No SQL or parent routing. |
 | R09 | Typed ingredient navigation rules as an independently testable model. | R01 | Only allowed histories; edit origin, detail replacement, and meaningful back destinations. No widget or Swift implementation. |
 | R10 | Ingredient catalog coordinator and composed view/event/outcome structure. | R06, R07, R08, R09 | Child routing, save/delete propagation, origin-aware return, discard coordination, and rejection of stale/inactive child actions. No tabs or FFI. |
 | R11 | AppWidget: Ingredients and the existing Counter composed under Rust-owned tabs. | R10 | Initialization in either completion order, preserved child state, branch isolation, counter lifecycle on tab changes. No Swift or database wiring. |
@@ -202,6 +203,8 @@ flowchart TD
     R04 --> R05
     R03 --> R06["R06 List widget"]
     R03 --> R07["R07 Detail widget"]
+    R07a["R07a Confirmation widget"] --> R07
+    R07a --> R08
     R02 --> R08["R08 Form widget"]
     R03 --> R08
     R01 --> R09["R09 Navigation model"]
@@ -217,7 +220,7 @@ flowchart TD
     H --> S01["S01 Complete Swift integration"]
 ```
 
-One valid review order is R01 → R02 → R03 → R04 → R05 → R06 → R07 → R08 →
+One valid review order is R01 → R02 → R03 → R04 → R05 → R06 → R07a → R07 → R08 →
 R09 → R10 → R11 → R12 → R13 → H → S01.
 This is a scheduling choice, not additional dependency edges. For example, R09
 can be reviewed immediately after R01, and widget work need not wait for R05.

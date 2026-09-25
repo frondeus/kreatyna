@@ -1,6 +1,6 @@
 # R06 — Ingredient list widget
 
-Status: awaiting review. Change: `llyullvx`. R05 is approved.
+Status: approved. Change: `llyullvx`. R05 is approved.
 
 Add a Rust `IngredientList` with its own event, outcome, and view types. It loads
 complete records through the ingredient store capability, keeps them private,

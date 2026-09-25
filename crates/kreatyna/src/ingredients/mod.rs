@@ -3,12 +3,13 @@
 pub mod capabilities;
 mod detail;
 mod draft;
+mod form;
 mod list;
 mod model;
 
 pub use draft::{
-    DraftMode, IngredientDraft, IngredientWrite, IngredientWriteData, ReferenceUnitDraft,
-    ValidationField, ValidationIssue, ValidationReason,
+    DraftMode, IngredientDraft, IngredientDraftField, IngredientWrite, IngredientWriteData,
+    ReferenceUnitDraft, ValidationField, ValidationIssue, ValidationReason,
 };
 
 pub use list::{
@@ -24,4 +25,9 @@ pub use model::{
 pub use detail::{
     IngredientDetail, IngredientDetailDeletion, IngredientDetailEvent, IngredientDetailOutcome,
     IngredientDetailView,
+};
+
+pub use form::{
+    IngredientForm, IngredientFormEvent, IngredientFormOutcome, IngredientFormStatus,
+    IngredientFormView,
 };

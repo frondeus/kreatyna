@@ -17,6 +17,20 @@ pub struct ReferenceUnitDraft {
     pub millilitres: String,
 }
 
+/// Editable text field in an ingredient draft. Unit indices use the current unit order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IngredientDraftField {
+    Name,
+    Notes,
+    Calories,
+    Protein,
+    Carbohydrates,
+    Fat,
+    UnitName { index: usize },
+    UnitGrams { index: usize },
+    UnitMillilitres { index: usize },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IngredientDraft {
     pub mode: DraftMode,
@@ -43,6 +57,64 @@ impl IngredientDraft {
             fat: String::new(),
             units: Vec::new(),
         }
+    }
+
+    /// Change one raw field without normalizing its text. Returns false for an
+    /// unchanged value or an out-of-range unit index.
+    pub fn set_field(&mut self, field: IngredientDraftField, value: String) -> bool {
+        let text = match field {
+            IngredientDraftField::Name => Some(&mut self.name),
+            IngredientDraftField::Notes => Some(&mut self.notes),
+            IngredientDraftField::Calories => Some(&mut self.calories),
+            IngredientDraftField::Protein => Some(&mut self.protein),
+            IngredientDraftField::Carbohydrates => Some(&mut self.carbohydrates),
+            IngredientDraftField::Fat => Some(&mut self.fat),
+            IngredientDraftField::UnitName { index } => {
+                self.units.get_mut(index).map(|unit| &mut unit.name)
+            }
+            IngredientDraftField::UnitGrams { index } => {
+                self.units.get_mut(index).map(|unit| &mut unit.grams)
+            }
+            IngredientDraftField::UnitMillilitres { index } => {
+                self.units.get_mut(index).map(|unit| &mut unit.millilitres)
+            }
+        };
+        let Some(text) = text else { return false };
+        if *text == value {
+            return false;
+        }
+        *text = value;
+        true
+    }
+
+    pub fn set_basis(&mut self, basis: NutritionBasis) -> bool {
+        if self.basis == basis {
+            return false;
+        }
+        self.basis = basis;
+        true
+    }
+
+    pub fn add_unit(&mut self) {
+        self.units.push(ReferenceUnitDraft::default());
+    }
+
+    pub fn remove_unit(&mut self, index: usize) -> bool {
+        if index >= self.units.len() {
+            return false;
+        }
+        self.units.remove(index);
+        true
+    }
+
+    /// Move a unit to its final index. Invalid or unchanged moves do nothing.
+    pub fn move_unit(&mut self, from: usize, to: usize) -> bool {
+        if from >= self.units.len() || to >= self.units.len() || from == to {
+            return false;
+        }
+        let unit = self.units.remove(from);
+        self.units.insert(to, unit);
+        true
     }
 }
 

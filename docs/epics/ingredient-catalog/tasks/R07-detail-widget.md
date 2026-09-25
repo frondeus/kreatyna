@@ -1,6 +1,6 @@
 # R07 — Ingredient detail widget
 
-Status: awaiting review. Change: `vmstsssk`. R07a is approved. Dependencies: R03 and R07a.
+Status: approved. Change: `vmstsssk`. R07a is approved. Dependencies: R03 and R07a.
 
 ## Contract
 

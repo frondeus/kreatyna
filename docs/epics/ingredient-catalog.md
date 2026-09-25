@@ -1,8 +1,8 @@
 # Ingredient catalog epic
 
-Status: architecture and task graph approved. R01–R06 and R07a are approved. R07 is
-awaiting review; its [implementation plan](ingredient-catalog/tasks/R07-detail-widget.md)
-is part of that change. Later tasks remain planned.
+Status: architecture and task graph approved. R01–R07, including R07a, are approved. R08 is awaiting review; its
+[implementation plan](ingredient-catalog/tasks/R08-form-widget.md) is part of
+that change. Later tasks remain planned.
 
 ## Goal and scope
 
@@ -150,7 +150,7 @@ handover.
 Every row below is a separate implementation task and `jj` change, including its
 relevant tests. Dependencies mean the preceding contracts must be approved. They
 do not mean all nodes on one layer will be implemented before pausing for review.
-R01–R06 and R07a are **approved**; R07 is **awaiting review**. Later tasks are **planned**; their
+R01–R07, including R07a, are **approved**; R08 is **awaiting review**. Later tasks are **planned**; their
 detailed plans are deferred until their dependencies are approved.
 
 ### Rust tasks

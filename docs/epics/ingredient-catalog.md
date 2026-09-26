@@ -1,7 +1,7 @@
 # Ingredient catalog epic
 
-Status: architecture and task graph approved. R01–R09, including R07a, are approved. R09a is awaiting review; its
-[implementation plan](ingredient-catalog/tasks/R09a-command-scopes.md) is part of
+Status: architecture and task graph approved. R01–R09, including R07a, are approved. R09a's `Scoped<T>` API refinement and R10 are awaiting review; R10's
+[implementation plan](ingredient-catalog/tasks/R10-catalog-coordinator.md) is part of
 that change. Later tasks remain planned.
 
 ## Goal and scope
@@ -150,7 +150,7 @@ handover.
 Every row below is a separate implementation task and `jj` change, including its
 relevant tests. Dependencies mean the preceding contracts must be approved. They
 do not mean all nodes on one layer will be implemented before pausing for review.
-R01–R09, including R07a, are **approved**; R09a is **awaiting review**. Later tasks are **planned**; their
+R01–R09, including R07a, are **approved**; R09a's `Scoped<T>` API refinement and R10 are **awaiting review**. Later tasks are **planned**; their
 detailed plans are deferred until their dependencies are approved.
 
 ### Rust tasks

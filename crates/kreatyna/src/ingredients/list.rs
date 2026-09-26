@@ -74,6 +74,7 @@ pub struct IngredientList {
     search: String,
     state: ListState,
     load: LatestCommandSlot,
+    interrupted_load: bool,
 }
 
 impl IngredientList {
@@ -83,6 +84,7 @@ impl IngredientList {
             search: String::new(),
             state: ListState::InitialLoading,
             load: LatestCommandSlot::new(),
+            interrupted_load: false,
         }
     }
 
@@ -115,7 +117,12 @@ impl IngredientList {
             .cloned()
     }
 
+    pub(crate) fn contains_visible(&self, ingredient: &Ingredient) -> bool {
+        self.selected(ingredient.id).as_ref() == Some(ingredient)
+    }
+
     fn start_load(&mut self) -> Command<IngredientListOutcome> {
+        self.interrupted_load = false;
         let render = self.caps.render.clone();
         let store = self.caps.store.clone();
         Command::single(async move {
@@ -133,6 +140,68 @@ impl IngredientList {
             ListState::InitialLoading => {}
         }
         self.start_load()
+    }
+
+    pub(crate) fn suspend(&mut self) {
+        let loading = matches!(
+            self.state,
+            ListState::InitialLoading
+                | ListState::Ready {
+                    refresh: IngredientListRefresh::Loading,
+                    ..
+                }
+        );
+        if loading {
+            self.interrupted_load = true;
+        }
+        self.load.stop();
+    }
+
+    pub(crate) fn resume(&mut self) -> Option<Command<IngredientListOutcome>> {
+        self.interrupted_load.then(|| self.begin_load())
+    }
+
+    pub(crate) fn reload(&mut self) -> Command<IngredientListOutcome> {
+        self.begin_load()
+    }
+
+    /// Update a complete cached catalog. Returns false while the initial catalog
+    /// is unavailable, so the coordinator can reload instead of showing a partial list.
+    pub(crate) fn apply_saved(&mut self, ingredient: Ingredient) -> bool {
+        let ListState::Ready {
+            ingredients,
+            refresh,
+        } = &mut self.state
+        else {
+            return false;
+        };
+        self.load.stop();
+        self.interrupted_load = false;
+        if let Some(existing) = ingredients
+            .iter_mut()
+            .find(|existing| existing.id == ingredient.id)
+        {
+            *existing = ingredient;
+        } else {
+            ingredients.push(ingredient);
+        }
+        *refresh = IngredientListRefresh::Idle;
+        true
+    }
+
+    pub(crate) fn apply_deleted(&mut self, id: IngredientId) -> bool {
+        let ListState::Ready {
+            ingredients,
+            refresh,
+        } = &mut self.state
+        else {
+            return false;
+        };
+        self.load.stop();
+        self.interrupted_load = false;
+        ingredients.retain(|ingredient| ingredient.id != id);
+        *refresh = IngredientListRefresh::Idle;
+        true
     }
 }
 

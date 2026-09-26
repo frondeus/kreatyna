@@ -1,6 +1,7 @@
 //! Ingredient catalog domain types shared by future widgets and persistence.
 
 pub mod capabilities;
+mod catalog;
 mod detail;
 mod draft;
 mod form;
@@ -11,6 +12,11 @@ mod navigation;
 pub use draft::{
     DraftMode, IngredientDraft, IngredientDraftField, IngredientWrite, IngredientWriteData,
     ReferenceUnitDraft, ValidationField, ValidationIssue, ValidationReason,
+};
+
+pub use catalog::{
+    IngredientCatalog, IngredientCatalogEvent, IngredientCatalogOutcome,
+    IngredientCatalogScreenView, IngredientCatalogView,
 };
 
 pub use list::{

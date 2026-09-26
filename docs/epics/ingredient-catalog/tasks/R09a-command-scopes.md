@@ -1,7 +1,7 @@
 # R09a — Command scopes for child lifetimes
 
-Status: awaiting review. Framework change: `oxtsnomz`; documentation change: `txlxmntq`.
-R09 is approved. R10 depends on R09a.
+Status: awaiting review after the `Scoped<T>` API refinement. Framework change:
+`oxtsnomz`; documentation change: `txlxmntq`. R09 is approved. R10 depends on R09a.
 
 ## Contract and implementation
 
@@ -9,8 +9,9 @@ Add framework `CommandScope` with new, Default, id, and accepts. The scope is no
 Clone or Copy. Opaque `CommandScopeId` derives Debug, Clone, Copy, PartialEq, Eq
 and uses checked process-local identity allocation.
 
-`CommandExt::scoped(self, &mut scope)` tags outcomes with the scope ID and allows
-multiple independent commands within the same lifetime. The scope owns a
+`CommandExt::scoped(self, &mut scope)` wraps outcomes in `Scoped<T>`, pairing the
+value with its scope ID. The same public wrapper is used when routing scoped
+events. Multiple independent commands can share one lifetime. The scope owns a
 `CancellationToken` with a drop guard. Each scoped stream watches a clone of that
 token and releases its wrapped stream when cancelled or completed. Scope drop
 wakes pending commands and cancels unpolled commands before they run. Completing

@@ -451,7 +451,7 @@ struct CatalogFixture {
 
 impl CatalogFixture {
     fn new() -> Self {
-        let (catalog, effects) = IngredientCatalog::test_fixture(NutritionBasis::Per100Grams);
+        let (catalog, effects) = IngredientCatalog::test_fixture();
         Self { catalog, effects }
     }
 

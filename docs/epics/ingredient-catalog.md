@@ -151,9 +151,9 @@ handover.
 Every row below is a separate implementation task and `jj` change, including its
 relevant tests. Dependencies mean the preceding contracts must be approved. They
 do not mean all nodes on one layer will be implemented before pausing for review.
-R01–R11, including R07a and R09a, are **approved**; R12 is **awaiting review**. Later
-tasks are **planned**; their detailed plans are deferred until their dependencies
-are approved.
+R01–R12, including R07a and R09a, are **approved**; the initial R13 runtime
+baseline is **awaiting review**. Later work is **planned**; its detailed design is
+deferred until the runtime problems are identified and discussed individually.
 
 ### Rust tasks
 

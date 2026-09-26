@@ -124,6 +124,10 @@ async fn navigation_draft_and_confirmation_survive_tab_switches() -> anyhow::Res
     let command = f.list(IngredientListEvent::Search("gar".into()));
     f.render(command).await?;
     f.create().await?;
+    let IngredientCatalogScreenView::Create(form) = f.app.view().ingredients.screen else {
+        panic!("expected create form")
+    };
+    assert_eq!(form.draft.basis, NutritionBasis::Per100Grams);
     let command = f.form(IngredientFormEvent::SetField {
         field: IngredientDraftField::Name,
         value: "Garlic".into(),
@@ -386,7 +390,7 @@ struct Fixture {
 }
 impl Fixture {
     fn new() -> Self {
-        let (app, effects) = AppWidget::test_fixture(NutritionBasis::Per100Grams);
+        let (app, effects) = AppWidget::test_fixture();
         Self { app, effects }
     }
     fn counter(&mut self, event: CounterEvent) -> Command<AppOutcome> {

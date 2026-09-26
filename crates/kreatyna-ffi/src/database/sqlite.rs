@@ -6,6 +6,9 @@ use futures::StreamExt;
 use kreatyna::capabilities::{
     DatabaseError, DatabaseMut, DatabaseRequest, DatabaseResponse, ResolveDatabase,
 };
+use kreatyna::ingredients::capabilities::{
+    IngredientStoreRequest, IngredientStoreResponse, ResolveIngredientStore,
+};
 use krucyfiks::effects::RequestInbox;
 
 use super::schema::counter;
@@ -85,6 +88,38 @@ impl SqliteDatabase {
         while let Some(envelope) = requests.next().await {
             if let Err(error) = envelope.resolve_mut(self).await {
                 tracing::error!(?error, "Sending database response");
+            }
+        }
+    }
+
+    pub async fn app_worker(
+        &mut self,
+        counter: RequestInbox<DatabaseRequest, DatabaseResponse>,
+        ingredients: RequestInbox<IngredientStoreRequest, IngredientStoreResponse>,
+    ) {
+        enum Request {
+            Counter(krucyfiks::effects::Envelope<DatabaseRequest, DatabaseResponse>),
+            Ingredient(
+                krucyfiks::effects::Envelope<IngredientStoreRequest, IngredientStoreResponse>,
+            ),
+        }
+
+        let counter = counter.into_stream().map(Request::Counter);
+        let ingredients = ingredients.into_stream().map(Request::Ingredient);
+        let mut requests = futures::stream::select(counter, ingredients);
+
+        while let Some(request) = requests.next().await {
+            match request {
+                Request::Counter(envelope) => {
+                    if let Err(error) = envelope.resolve_mut(self).await {
+                        tracing::error!(?error, "Sending counter database response");
+                    }
+                }
+                Request::Ingredient(envelope) => {
+                    if let Err(error) = envelope.resolve_mut(self).await {
+                        tracing::error!(?error, "Sending ingredient database response");
+                    }
+                }
             }
         }
     }

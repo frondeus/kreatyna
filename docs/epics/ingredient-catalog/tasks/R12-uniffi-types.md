@@ -1,6 +1,6 @@
 # R12 — UniFFI app events and views
 
-Status: awaiting review. Change: `mtrtrxrk`. Companion krucyfiks change:
+Status: approved. Change: `mtrtrxrk`. Companion krucyfiks change:
 `qpmqyrzn`. R11 is approved.
 
 ## Contract

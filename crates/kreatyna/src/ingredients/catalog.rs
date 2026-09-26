@@ -66,19 +66,19 @@ pub struct IngredientCatalog {
 }
 
 impl IngredientCatalog {
-    pub fn new(caps: IngredientCapabilities, creation_basis: NutritionBasis) -> Self {
+    pub fn new(caps: IngredientCapabilities) -> Self {
         Self {
             list: IngredientList::new(caps.clone()),
             caps,
-            creation_basis,
+            creation_basis: NutritionBasis::Per100Grams,
             active: ActiveScreen::List,
             scope: CommandScope::new(),
         }
     }
 
-    pub fn test_fixture(creation_basis: NutritionBasis) -> (Self, IngredientEffectStream) {
+    pub fn test_fixture() -> (Self, IngredientEffectStream) {
         let (caps, effects) = IngredientCapabilities::testing();
-        (Self::new(caps, creation_basis), effects)
+        (Self::new(caps), effects)
     }
 
     fn navigation(&self) -> IngredientNavigation {

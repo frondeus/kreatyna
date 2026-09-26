@@ -15,7 +15,6 @@ use crate::{
     },
     ingredients::{
         IngredientCatalog, IngredientCatalogEvent, IngredientCatalogOutcome, IngredientCatalogView,
-        NutritionBasis,
         capabilities::{IngredientCapabilities, IngredientEffect},
     },
 };
@@ -99,9 +98,9 @@ pub struct AppWidget {
 }
 
 impl AppWidget {
-    pub fn new(caps: AppCapabilities, basis: NutritionBasis) -> Self {
+    pub fn new(caps: AppCapabilities) -> Self {
         Self {
-            ingredients: IngredientCatalog::new(caps.ingredients, basis),
+            ingredients: IngredientCatalog::new(caps.ingredients),
             counter: Counter::new(caps.counter),
             render: caps.render,
             tab: AppTab::Ingredients,
@@ -113,9 +112,9 @@ impl AppWidget {
         }
     }
 
-    pub fn test_fixture(basis: NutritionBasis) -> (Self, AppEffectStream) {
+    pub fn test_fixture() -> (Self, AppEffectStream) {
         let (caps, effects) = AppCapabilities::testing();
-        (Self::new(caps, basis), effects)
+        (Self::new(caps), effects)
     }
 
     fn ingredients_command(

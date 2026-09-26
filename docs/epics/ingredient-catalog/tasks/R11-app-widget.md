@@ -1,6 +1,6 @@
 # R11 — App widget and Rust-owned tabs
 
-Status: awaiting review. Change: `yrxqlxol`. R10 and R09a are approved.
+Status: approved. Change: `yrxqlxol`. R10 and R09a are approved.
 
 ## Composition contract
 

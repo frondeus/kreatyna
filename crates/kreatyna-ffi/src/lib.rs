@@ -1,13 +1,16 @@
 use std::sync::{Arc, LazyLock};
 
-use krucyfiks_runtime::{Runtime, RuntimeError};
 use kreatyna::capabilities::DatabaseClient;
+use krucyfiks_runtime::{Runtime, RuntimeError};
 use tokio::task::JoinHandle;
 
 use crate::database::sqlite::SqliteDatabase;
 
+mod app_types;
 mod database;
 mod logging;
+
+pub use app_types::*;
 
 uniffi::setup_scaffolding!();
 
@@ -21,27 +24,6 @@ static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
 pub struct CounterFfi {
     runtime: Arc<Runtime<kreatyna::Counter>>,
     handle: JoinHandle<()>,
-}
-
-#[derive(uniffi::Enum)]
-pub enum CounterEvent {
-    Increase,
-    Decrease,
-    Reset,
-    StartBackground,
-    StopBackground,
-}
-
-impl From<CounterEvent> for kreatyna::CounterEvent {
-    fn from(value: CounterEvent) -> Self {
-        match value {
-            CounterEvent::Increase => Self::Increase,
-            CounterEvent::Decrease => Self::Decrease,
-            CounterEvent::Reset => Self::Reset,
-            CounterEvent::StartBackground => Self::StartBackground,
-            CounterEvent::StopBackground => Self::StopBackground,
-        }
-    }
 }
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]

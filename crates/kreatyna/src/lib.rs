@@ -1,5 +1,9 @@
+pub mod app;
 pub use crate::capabilities::CounterCapabilities;
 use crate::capabilities::CounterEffectStream;
+pub use app::{
+    AppCapabilities, AppEffect, AppEffectStream, AppEvent, AppOutcome, AppTab, AppView, AppWidget,
+};
 use krucyfiks::{Command, CommandExt, CommandId, CommandSlot, Message, Widget};
 
 pub mod capabilities;
@@ -10,9 +14,28 @@ pub mod ingredients;
 
 pub struct Counter {
     counter: usize,
+    status: CounterStatus,
     caps: CounterCapabilities,
 
     background: CommandSlot,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CounterStatus {
+    Loading,
+    Ready,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CounterView {
+    pub count: usize,
+    pub status: CounterStatus,
+}
+
+impl PartialEq<usize> for CounterView {
+    fn eq(&self, other: &usize) -> bool {
+        self.count == *other
+    }
 }
 
 #[derive(Debug)]
@@ -35,14 +58,19 @@ impl Counter {
         Self {
             caps,
             counter: 0,
+            status: CounterStatus::Loading,
 
             background: CommandSlot::new(),
         }
     }
+
+    pub fn status(&self) -> CounterStatus {
+        self.status
+    }
 }
 
 impl Widget for Counter {
-    type View = usize;
+    type View = CounterView;
 
     type Event = CounterEvent;
 
@@ -125,6 +153,7 @@ impl Widget for Counter {
             }
             Message::Outcome(CounterOutcome::Loaded { counter }) => {
                 self.counter = counter;
+                self.status = CounterStatus::Ready;
                 Command::without_outcome(async move {
                     render.render().await;
                 })
@@ -148,7 +177,10 @@ impl Widget for Counter {
     }
 
     fn view(&self) -> Self::View {
-        self.counter
+        CounterView {
+            count: self.counter,
+            status: self.status,
+        }
     }
 }
 

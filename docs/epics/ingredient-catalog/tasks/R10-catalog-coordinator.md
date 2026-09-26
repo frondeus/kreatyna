@@ -1,7 +1,6 @@
 # R10 — Ingredient catalog coordinator
 
-Status: awaiting review. Change: `rllwnqlk`. R09a's cancellation behavior is
-approved; its `Scoped<T>` API refinement is awaiting review with this change.
+Status: approved. Change: `rllwnqlk`. R09a is approved.
 
 ## Composition contract
 

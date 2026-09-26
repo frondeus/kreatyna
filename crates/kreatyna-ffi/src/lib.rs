@@ -64,7 +64,7 @@ impl From<RuntimeError> for FfiRuntimeError {
 #[uniffi::export]
 impl CounterFfi {
     pub fn view(&self) -> u64 {
-        self.runtime.view() as u64
+        self.runtime.view().count as u64
     }
 
     pub fn dispatch(&self, event: CounterEvent) -> Result<(), FfiRuntimeError> {

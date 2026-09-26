@@ -1,7 +1,7 @@
 # R09a — Command scopes for child lifetimes
 
-Status: awaiting review after the `Scoped<T>` API refinement. Framework change:
-`oxtsnomz`; documentation change: `txlxmntq`. R09 is approved. R10 depends on R09a.
+Status: approved. Framework change: `oxtsnomz`; documentation change: `txlxmntq`.
+R09 is approved. R10 depends on R09a.
 
 ## Contract and implementation
 

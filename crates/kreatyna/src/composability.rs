@@ -84,7 +84,7 @@ impl Widget for CounterPair {
     }
 
     fn view(&self) -> Self::View {
-        (self.left.view(), self.right.view())
+        (self.left.view().count, self.right.view().count)
     }
 
     fn init(&mut self) -> Command<Self::Outcome> {

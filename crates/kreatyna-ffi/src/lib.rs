@@ -58,6 +58,19 @@ impl AppFfi {
         self.runtime.view()
     }
 
+    /// Starts runtime execution and asynchronous application initialization.
+    ///
+    /// Prepare all dependencies used by the render and clock handlers before
+    /// calling this method: callbacks may begin before it returns. A handler
+    /// that reads `view()` must already have access to this facade; a handler
+    /// that only records a dirty flag need not hold a facade reference.
+    /// Construction alone does not invoke these handlers.
+    ///
+    /// Read `view()` before starting to display the initial `Initializing` state.
+    /// Success means execution has started, not that initialization has finished;
+    /// observe initialization success or failure through `view()` and render
+    /// notifications. Repeated starts return `AlreadyStarted`, and starting after
+    /// shutdown returns `Terminated`.
     pub fn start(&self) -> Result<(), AppFfiError> {
         let runner = self.runtime.start()?;
         *self.handle.lock() = Some(RUNTIME.spawn(runner));

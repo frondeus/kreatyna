@@ -1,10 +1,11 @@
 # App FFI: problem inventory
 
-Status: for discussion. Analysis change: `rrvynuoq`.
+Status: active inventory. Analysis change: `rrvynuoq`. P01 was solved in
+changes `ytturtsz` and `pmuzortp`.
 
 This document examines the Counter-like R13 baseline in change `uqmquulk`.
-It describes problems and their causes. It does not select solutions or authorize
-implementation. Discuss each item separately before changing code.
+It describes problems and their causes. Solved items record their implemented
+resolution; discuss each open item separately before changing code.
 
 The findings come from source inspection. The examples show possible execution
 orders; they are not results from new concurrency tests. Conditional findings
@@ -35,8 +36,8 @@ and actual workload are known.
 
 | Problem | Severity | Main effect |
 | --- | --- | --- |
-| P01 — Database startup | P2 | Expected setup failures leave an app with no usable store and no startup error result. |
-| P07 — Counter write order | P2 | A later database write can restore an older value without reporting an error. |
+| P01 — Database startup (solved) | P2 | Expected setup failures leave an app with no usable store and no startup error result. |
+| P07 — Counter write order (deferred) | P2 | A later database write can restore an older value without reporting an error. |
 | P02 — Early callbacks | P3 | A callback can run before its owner has the app reference. |
 | P03 — Shutdown completion | P3 | Callers cannot establish when app work and callbacks have stopped. |
 | P08 — Callback reference cycle | P3 | A strong reference cycle prevents destruction and retains app resources. |
@@ -46,6 +47,40 @@ and actual workload are known.
 | P06 — Task failure status | P3 | A failed worker can leave a partially working app with no coherent failure signal. |
 | P10 — Pending-work limits | P4 | Sustained excess input can increase memory use without a fixed bound. |
 | P09 — Callback progress | P5 | Awaited callbacks require a clear rule about what they may wait for. |
+
+## Product scope and disposition
+
+Counter is a temporary example for navigation between child widgets. It will be
+removed when the recipe catalog provides the second production screen. Severity
+describes a finding's consequence within its affected scope; it does not by itself
+make a disposable example a production blocker.
+
+| Problem | Affected scope | Disposition |
+| --- | --- | --- |
+| P01 | Shared app initialization, including ingredients | Solved. |
+| P07 | Counter's overlapping snapshot writes | Deferred until Counter removal; not a current ingredient-catalog blocker. |
+| P02 | Shared facade/callback publication | Reassess against explicit `AppFfi::start()`; not Counter-only. |
+| P03 | Shared runtime and callbacks | Keep open. |
+| P08 | Shared callback ownership, conditional on a strong back-reference | Keep open. |
+| P11 | Shared runtime tracing; ingredient payloads specifically | Keep open. |
+| P04 | Shared app database lifetime | Keep open; recheck worker ownership after P01. |
+| P05 | Shared shutdown contract, including ingredient saves | Keep open. |
+| P06 | Shared runtime/database worker supervision | Keep open; recheck startup-race details after P01. |
+| P10 | Shared event and command backlog | Keep open as a load-dependent concern. |
+| P09 | Shared render callback progress, including ingredient commands | Retain as a callback-contract discussion. |
+
+Only P07 is established as Counter-only. Removing Counter does not remove the
+other concerns. The sections below preserve the original baseline analysis except
+where a resolution or deferral is explicitly recorded. The new pure factory and
+explicit start boundary may already address P02's original trigger; verify that
+contract separately rather than treating it as a Counter-only deferral.
+
+Future local-network synchronization is expected to return an `Outcome` to Rust,
+with `update()` deciding what to persist. This preserves Rust's ownership of state
+and conflict decisions. Sequential updates still produce concurrent commands:
+before introducing overlapping local and remote writes to the same record, define
+their ordering and conflict policy. This is a future design requirement, not an
+established defect in the current ingredient flow.
 
 ## Scope and source files
 
@@ -60,6 +95,15 @@ Most lifecycle problems also apply to `CounterFfi`. The app makes their effect
 more visible because it owns more commands and more persistent data.
 
 ## P01 — Database setup failure has no startup result
+
+**Status: solved.** `AppShell` now begins in an explicit `Initializing` state.
+Its initialization command opens and configures SQLite, runs migrations, starts
+the database worker, and constructs the application widget. The resulting view
+transitions to `Running` or a typed `InitializationFailed` state. Retrying a
+failed initialization performs the complete setup again with fresh clients and
+a fresh worker. `app()` remains a pure factory, while `AppFfi::start()` starts
+the executor-independent runner returned by `Runtime::start()`.
+The original baseline finding is preserved below for context.
 
 **Severity: P2.** Database setup can fail in ordinary operation. The factory
 still returns an app whose persistence cannot work. This blocks reliable use
@@ -93,6 +137,17 @@ caller cannot distinguish a usable app from this failed startup through the
 factory result.
 
 ## P07 — Counter write order can differ from event order
+
+**Status: deferred, Counter-only.** Counter is scheduled for removal when the
+recipe catalog supplies the second production screen. Do not add a save queue or
+revision scheme solely for this example. Retain the finding until Counter is
+removed, and revisit the policy if a production widget introduces overlapping
+writes to the same record.
+
+The current ingredient form enters `Saving` synchronously in `update()`, accepts
+Save only while `Editing`, and ignores editing and close requests during the save.
+Its active-screen and scope guards prevent this Counter sequence in the ordinary
+catalog flow. Render timing is not the ingredient form's write-order protection.
 
 **Severity: P2.** Ordinary counter events can persist the wrong final value
 under the stated callback order. The failure is silent. Its demonstrated scope
@@ -396,7 +451,9 @@ explain the trigger for P07, but either problem can be examined on its own.
 P08 can prevent cleanup from starting; P04 can prevent database cleanup even
 when explicit shutdown has occurred.
 
-Start discussion with P01. No solution is selected here.
+P01 is complete and P07 is deferred. Continue with P02, first checking whether
+the explicit start boundary introduced for P01 resolves its original finding.
+No solution has been selected for the remaining open problems.
 
 ## Boundaries that are already sound
 

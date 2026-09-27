@@ -12,6 +12,12 @@ pub mod composability;
 pub mod confirmation;
 pub mod ingredients;
 
+/// Temporary example widget used to exercise navigation between child widgets.
+/// Remove it when the recipe catalog provides the second production screen.
+/// Its persistence is illustrative: concurrent commands can submit captured
+/// counts out of event order (P07 in docs/epics/ingredient-catalog/R13-ffi-problems.md).
+/// That Counter-only fix is deferred; do not copy this save pattern into production
+/// widgets without an explicit policy for overlapping writes.
 pub struct Counter {
     counter: usize,
     status: CounterStatus,

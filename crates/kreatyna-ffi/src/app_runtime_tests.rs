@@ -83,6 +83,37 @@ fn failed_initialization_can_retry_with_fresh_database_setup() {
     wait_until_ready(&app, &rendered);
 }
 
+#[test]
+fn graceful_shutdown_before_initialization_is_polled_drains_prepared_children() {
+    let database = TemporaryDatabase::new();
+    let (render, _rendered) = TestRender::new();
+    let setup = crate::app_shell::AppSetup {
+        database_path: database.path().into(),
+        render: Arc::new(RenderHandlerShim {
+            handler: Arc::new(render),
+        }),
+        clock: Arc::new(ClockHandlerShim {
+            handler: Arc::new(TestClock),
+        }),
+    };
+    let runtime = Arc::new(krucyfiks_runtime::Runtime::new(
+        crate::app_shell::AppShell::new(setup),
+    ));
+    let runner = runtime.start().expect("start should succeed");
+
+    runtime.request_shutdown(krucyfiks_runtime::ShutdownMode::Graceful);
+    RUNTIME.block_on(runner);
+
+    let AppView::Running { app } = runtime.view().unwrap() else {
+        panic!("preparation should finish while the runtime drains")
+    };
+    assert_eq!(app.counter.status, CounterStatus::Ready);
+    assert!(matches!(
+        app.ingredients.list.status,
+        IngredientListStatus::Ready { .. }
+    ));
+}
+
 struct TestRender {
     rendered: flume::Sender<()>,
 }

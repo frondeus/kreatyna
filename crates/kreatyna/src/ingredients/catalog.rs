@@ -430,6 +430,43 @@ impl Widget for IngredientCatalog {
         self.list_command(command)
     }
 
+    fn can_begin_shutdown(&self) -> bool {
+        self.list.can_begin_shutdown()
+            && match &self.active {
+                ActiveScreen::List => true,
+                ActiveScreen::Detail(detail) => detail.can_begin_shutdown(),
+                ActiveScreen::Create(form) | ActiveScreen::EditFromList(form) => {
+                    form.can_begin_shutdown()
+                }
+                ActiveScreen::EditFromDetail { detail, form } => {
+                    detail.can_begin_shutdown() && form.can_begin_shutdown()
+                }
+            }
+    }
+
+    fn begin_shutdown(&mut self) -> Command<Self::Outcome> {
+        let list = self.list.begin_shutdown();
+        let (detail, form) = match &mut self.active {
+            ActiveScreen::List => (None, None),
+            ActiveScreen::Detail(detail) => (Some(detail.begin_shutdown()), None),
+            ActiveScreen::Create(form) | ActiveScreen::EditFromList(form) => {
+                (None, Some(form.begin_shutdown()))
+            }
+            ActiveScreen::EditFromDetail { detail, form } => {
+                (Some(detail.begin_shutdown()), Some(form.begin_shutdown()))
+            }
+        };
+
+        let mut commands = vec![self.list_command(list)];
+        if let Some(detail) = detail {
+            commands.push(self.detail_command(detail));
+        }
+        if let Some(form) = form {
+            commands.push(self.form_command(form));
+        }
+        Command::select_all(commands)
+    }
+
     fn update(&mut self, message: Message<Self>) -> Command<Self::Outcome> {
         match message {
             Message::Event(IngredientCatalogEvent::Back { scope }) => {

@@ -104,6 +104,11 @@ impl Widget for Counter {
         })
     }
 
+    fn begin_shutdown(&mut self) -> Command<Self::Outcome> {
+        self.background.stop();
+        Command::empty()
+    }
+
     #[tracing::instrument(skip_all, fields(before = self.counter))]
     fn update(&mut self, event: Message<Self>) -> Command<Self::Outcome> {
         let render = self.caps.render.clone();

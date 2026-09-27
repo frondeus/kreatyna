@@ -359,6 +359,113 @@ async fn counter_departure_cancels_ticks_but_preserves_accepted_writes() -> anyh
 }
 
 #[tokio::test]
+async fn shutdown_hook_stops_counter_background_but_preserves_an_accepted_write()
+-> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    f.initialize().await?;
+    f.switch(AppTab::Counter).await?;
+    let background = f.counter(CounterEvent::StartBackground);
+    let write = f.counter(CounterEvent::Increase);
+    let mut background = background.driver(&mut f.effects);
+    let pending_clock = background
+        .drive()
+        .await?
+        .expect_effect()
+        .expect_counter()
+        .expect_clock();
+
+    empty(f.app.begin_shutdown()).await;
+    background.drive().await?.expect_done();
+    drop(pending_clock);
+    drop(background);
+
+    let mut write = write.driver(&mut f.effects);
+    write
+        .drive()
+        .await?
+        .expect_effect()
+        .expect_counter()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    write
+        .drive()
+        .await?
+        .expect_effect()
+        .expect_counter()
+        .expect_database()
+        .resolve_set_count(|count| async move {
+            assert_eq!(count, 8);
+            Ok(())
+        })
+        .await?;
+    write.drive().await?.expect_done();
+
+    assert_eq!(f.app.view().counter.count, 8);
+    Ok(())
+}
+
+#[tokio::test]
+async fn shutdown_hook_preserves_an_accepted_ingredient_save_and_follow_up() -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    f.initialize().await?;
+    f.create().await?;
+    let command = f.form(IngredientFormEvent::SetField {
+        field: IngredientDraftField::Name,
+        value: "Garlic".into(),
+    });
+    f.render(command).await?;
+    let save = f.form(IngredientFormEvent::Save);
+
+    empty(f.app.begin_shutdown()).await;
+
+    let mut save = save.driver(&mut f.effects);
+    save.drive()
+        .await?
+        .expect_effect()
+        .expect_ingredients()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    save.drive()
+        .await?
+        .expect_effect()
+        .expect_ingredients()
+        .expect_store()
+        .resolve_save(|_| async { Ok(record()) })
+        .await?;
+    let saved = save.drive().await?.expect_outcome();
+    save.drive().await?.expect_done();
+    drop(save);
+
+    let command = f.app.update(Message::Outcome(saved));
+    let mut command = command.driver(&mut f.effects);
+    command
+        .drive()
+        .await?
+        .expect_effect()
+        .expect_ingredients()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    let terminal = command.drive().await?.expect_outcome();
+    command.drive().await?.expect_done();
+    drop(command);
+    f.apply_render(terminal).await?;
+
+    assert_eq!(
+        f.app.view().ingredients.navigation,
+        IngredientNavigation::List
+    );
+    assert!(matches!(
+        f.app.view().ingredients.list.status,
+        IngredientListStatus::Ready { ref rows, .. }
+            if rows.iter().any(|row| row.name == "Garlic")
+    ));
+    Ok(())
+}
+
+#[tokio::test]
 async fn app_drop_cancels_unpolled_initialization() {
     let mut f = Fixture::new();
     let command = f.app.init();

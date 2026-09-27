@@ -158,6 +158,19 @@ impl Widget for AppWidget {
         ])
     }
 
+    fn can_begin_shutdown(&self) -> bool {
+        self.ingredients.can_begin_shutdown() && self.counter.can_begin_shutdown()
+    }
+
+    fn begin_shutdown(&mut self) -> Command<Self::Outcome> {
+        let ingredients = self.ingredients.begin_shutdown();
+        let counter = self.counter.begin_shutdown();
+        Command::select_all(vec![
+            self.ingredients_command(ingredients),
+            self.counter_command(counter),
+        ])
+    }
+
     fn update(&mut self, message: Message<Self>) -> Command<AppOutcome> {
         match message {
             Message::Event(AppEvent::SelectTab(tab)) => {

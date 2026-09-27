@@ -91,6 +91,21 @@ impl Widget for AppShell {
         )
     }
 
+    fn can_begin_shutdown(&self) -> bool {
+        match &self.state {
+            AppShellState::Initializing => false,
+            AppShellState::InitializationFailed(_) => true,
+            AppShellState::Running(prepared) => prepared.app.can_begin_shutdown(),
+        }
+    }
+
+    fn begin_shutdown(&mut self) -> Command<Self::Outcome> {
+        let AppShellState::Running(prepared) = &mut self.state else {
+            return Command::empty();
+        };
+        prepared.app.begin_shutdown().map(AppShellOutcome::App)
+    }
+
     fn update(&mut self, message: Message<Self>) -> Command<Self::Outcome> {
         match message {
             Message::Event(AppShellEvent::RetryInitialization)

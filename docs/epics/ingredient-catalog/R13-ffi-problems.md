@@ -1,7 +1,8 @@
 # App FFI: problem inventory
 
 Status: active inventory. Analysis change: `rrvynuoq`. P01 was solved in
-changes `ytturtsz` and `pmuzortp`.
+changes `ytturtsz` and `pmuzortp`. P02 was solved by the explicit start boundary
+in `pmuzortp` and its documented caller contract in `xkkqlrky`.
 
 This document examines the Counter-like R13 baseline in change `uqmquulk`.
 It describes problems and their causes. Solved items record their implemented
@@ -38,7 +39,7 @@ and actual workload are known.
 | --- | --- | --- |
 | P01 — Database startup (solved) | P2 | Expected setup failures leave an app with no usable store and no startup error result. |
 | P07 — Counter write order (deferred) | P2 | A later database write can restore an older value without reporting an error. |
-| P02 — Early callbacks | P3 | A callback can run before its owner has the app reference. |
+| P02 — Early callbacks (solved) | P3 | A callback can run before its owner has the app reference. |
 | P03 — Shutdown completion | P3 | Callers cannot establish when app work and callbacks have stopped. |
 | P08 — Callback reference cycle | P3 | A strong reference cycle prevents destruction and retains app resources. |
 | P11 — Payload logging | P3 | Enabled tracing can disclose user-entered content to the configured logger. |
@@ -59,7 +60,7 @@ make a disposable example a production blocker.
 | --- | --- | --- |
 | P01 | Shared app initialization, including ingredients | Solved. |
 | P07 | Counter's overlapping snapshot writes | Deferred until Counter removal; not a current ingredient-catalog blocker. |
-| P02 | Shared facade/callback publication | Reassess against explicit `AppFfi::start()`; not Counter-only. |
+| P02 | Shared facade/callback publication | Solved by explicit start and its documented caller contract. |
 | P03 | Shared runtime and callbacks | Keep open. |
 | P08 | Shared callback ownership, conditional on a strong back-reference | Keep open. |
 | P11 | Shared runtime tracing; ingredient payloads specifically | Keep open. |
@@ -71,9 +72,9 @@ make a disposable example a production blocker.
 
 Only P07 is established as Counter-only. Removing Counter does not remove the
 other concerns. The sections below preserve the original baseline analysis except
-where a resolution or deferral is explicitly recorded. The new pure factory and
-explicit start boundary may already address P02's original trigger; verify that
-contract separately rather than treating it as a Counter-only deferral.
+where a resolution or deferral is explicitly recorded. The pure factory and
+explicit start boundary resolve P02's original trigger; this is a shared app
+resolution, not a Counter-only deferral.
 
 Future local-network synchronization is expected to return an `Outcome` to Rust,
 with `update()` deciding what to persist. This preserves Rust's ownership of state
@@ -179,6 +180,18 @@ or database failure. Ingredient form guards prevent this particular sequence
 of overlapping saves in one form; it is not a claim that all app writes reorder.
 
 ## P02 — Callbacks can start before the caller receives the facade
+
+**Status: solved.** `app()` constructs the facade without starting runtime work
+or invoking its render and clock handlers. The host prepares the dependencies
+used by those handlers before calling `AppFfi::start()`. Its documented contract
+explicitly permits callbacks before `start()` returns: a handler reading `view()`
+must already have access to the facade, while a handler that only records a dirty
+flag needs no facade reference. The host can read the initial `Initializing` view
+before starting; successful start does not mean initialization has finished.
+
+This resolution combines the explicit activation boundary from `pmuzortp` with
+the caller documentation in `xkkqlrky`. No dedicated callback-attachment test was
+added for this resolution. The original baseline finding is preserved below.
 
 **Severity: P3.** This can affect the first displayed state or callback access
 to the app. Its effect depends on how the Swift callback handles early calls;
@@ -451,8 +464,7 @@ explain the trigger for P07, but either problem can be examined on its own.
 P08 can prevent cleanup from starting; P04 can prevent database cleanup even
 when explicit shutdown has occurred.
 
-P01 is complete and P07 is deferred. Continue with P02, first checking whether
-the explicit start boundary introduced for P01 resolves its original finding.
+P01 and P02 are complete and P07 is deferred. Continue discussion with P03.
 No solution has been selected for the remaining open problems.
 
 ## Boundaries that are already sound

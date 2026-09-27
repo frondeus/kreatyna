@@ -19,6 +19,16 @@ pub struct SqliteDatabase {
     pub(super) connection: SyncConnectionWrapper<SqliteConnection>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum SqliteStartupError {
+    #[error("could not open the database")]
+    Open,
+    #[error("could not configure the database")]
+    Configure,
+    #[error("could not migrate the database")]
+    Migrate,
+}
+
 #[async_trait::async_trait]
 impl DatabaseMut for SqliteDatabase {
     #[tracing::instrument(skip_all)]
@@ -62,37 +72,43 @@ impl DatabaseMut for SqliteDatabase {
 }
 
 impl SqliteDatabase {
-    pub async fn new(path: &str) -> anyhow::Result<Self> {
-        let mut connection = SyncConnectionWrapper::<SqliteConnection>::establish(path).await?;
+    pub async fn new(path: &str) -> Result<Self, SqliteStartupError> {
+        let mut connection = SyncConnectionWrapper::<SqliteConnection>::establish(path)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "Could not open database");
+                SqliteStartupError::Open
+            })?;
 
         connection
             .batch_execute(
                 "PRAGMA busy_timeout = 5000;
                 PRAGMA foreign_keys = ON;",
             )
-            .await?;
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "Could not configure database");
+                SqliteStartupError::Configure
+            })?;
 
         let migration_result = connection
             .spawn_blocking(|connection| {
                 Ok(connection.run_pending_migrations(MIGRATIONS).map(|_| ()))
             })
-            .await?;
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "Could not run database migration task");
+                SqliteStartupError::Migrate
+            })?;
 
-        migration_result.map_err(|e| anyhow::anyhow!("MigrationError: {e:?}"))?;
+        migration_result.map_err(|error| {
+            tracing::error!(?error, "Could not migrate database");
+            SqliteStartupError::Migrate
+        })?;
         Ok(Self { connection })
     }
 
-    pub async fn worker(&mut self, rx: RequestInbox<DatabaseRequest, DatabaseResponse>) {
-        let mut requests = rx.into_stream();
-
-        while let Some(envelope) = requests.next().await {
-            if let Err(error) = envelope.resolve_mut(self).await {
-                tracing::error!(?error, "Sending database response");
-            }
-        }
-    }
-
-    pub async fn app_worker(
+    pub async fn worker(
         &mut self,
         counter: RequestInbox<DatabaseRequest, DatabaseResponse>,
         ingredients: RequestInbox<IngredientStoreRequest, IngredientStoreResponse>,

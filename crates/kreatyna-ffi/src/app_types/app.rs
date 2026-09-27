@@ -61,15 +61,40 @@ impl TryFrom<AppEvent> for core::AppEvent {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum AppInitializationError {
+    DatabaseOpen,
+    DatabaseConfiguration,
+    DatabaseMigration,
+}
+
+impl From<crate::database::sqlite::SqliteStartupError> for AppInitializationError {
+    fn from(value: crate::database::sqlite::SqliteStartupError) -> Self {
+        match value {
+            crate::database::sqlite::SqliteStartupError::Open => Self::DatabaseOpen,
+            crate::database::sqlite::SqliteStartupError::Configure => Self::DatabaseConfiguration,
+            crate::database::sqlite::SqliteStartupError::Migrate => Self::DatabaseMigration,
+        }
+    }
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum AppView {
+    Initializing,
+    InitializationFailed { error: AppInitializationError },
+    Running { app: RunningAppView },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct AppView {
+pub struct RunningAppView {
     pub tab: AppTab,
     pub scope: ScopeId,
     pub ingredients: IngredientCatalogView,
     pub counter: CounterView,
 }
 
-impl TryFrom<core::AppView> for AppView {
+impl TryFrom<core::AppView> for RunningAppView {
     type Error = AppTypeConversionError;
 
     fn try_from(value: core::AppView) -> Result<Self, Self::Error> {

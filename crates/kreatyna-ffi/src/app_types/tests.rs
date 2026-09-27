@@ -31,7 +31,7 @@ fn nested_event_conversion_preserves_both_scope_ids() {
 fn converted_stale_event_is_rejected_by_existing_app_routing() {
     block_on(async {
         let (mut app, _effects) = core::AppWidget::test_fixture();
-        let old = AppView::try_from(app.view()).unwrap();
+        let old = RunningAppView::try_from(app.view()).unwrap();
 
         drop(app.update(Message::Event(core::AppEvent::SelectTab(
             core::AppTab::Counter,

@@ -1,4 +1,4 @@
-use kreatyna::capabilities::{DatabaseError, ResolveDatabase, ResolveRender};
+use kreatyna::capabilities::{DatabaseError, ResolveCounterDatabase, ResolveRender};
 use kreatyna::{Counter, CounterEvent, CounterOutcome};
 use krucyfiks::{Message, Widget, effects::CommandTestExt};
 use test_case::{test_case, test_matrix};

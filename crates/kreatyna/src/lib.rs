@@ -12,6 +12,8 @@ pub mod composability;
 pub mod confirmation;
 pub mod ingredients;
 
+pub const CLIENT_CAPABILITY: usize = 32;
+
 /// Temporary example widget used to exercise navigation between child widgets.
 /// Remove it when the recipe catalog provides the second production screen.
 /// Its persistence is illustrative: concurrent commands can submit captured
@@ -206,7 +208,7 @@ impl Counter {
 #[cfg(test)]
 mod tests {
 
-    use crate::capabilities::{ResolveDatabase, ResolveRender};
+    use crate::capabilities::{ResolveCounterDatabase, ResolveRender};
 
     use super::*;
     use futures::executor::block_on;

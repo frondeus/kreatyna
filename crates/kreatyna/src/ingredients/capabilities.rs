@@ -7,7 +7,10 @@ use futures::{
 use krucyfiks::effects::{Envelope, TransportError};
 
 use super::{Ingredient, IngredientId, IngredientWrite};
-use crate::capabilities::{Render, RenderClient, RenderRequest, RenderResponse};
+use crate::{
+    CLIENT_CAPABILITY,
+    capabilities::{Render, RenderClient, RenderRequest, RenderResponse},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum IngredientLoadError {
@@ -80,8 +83,8 @@ pub type IngredientEffectStream = BoxStream<'static, IngredientEffect>;
 
 impl IngredientCapabilities {
     pub fn testing() -> (Self, IngredientEffectStream) {
-        let (render, render_inbox) = RenderClient::new(32, 1);
-        let (store, store_inbox) = IngredientStoreClient::new(32, 1);
+        let (render, render_inbox) = RenderClient::new(CLIENT_CAPABILITY);
+        let (store, store_inbox) = IngredientStoreClient::new(CLIENT_CAPABILITY);
         let streams = vec![
             render_inbox
                 .into_stream()

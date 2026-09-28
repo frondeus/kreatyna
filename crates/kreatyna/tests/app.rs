@@ -1,6 +1,6 @@
 use futures::StreamExt;
 use kreatyna::{
-    capabilities::{ResolveClock, ResolveDatabase, ResolveRender},
+    capabilities::{ResolveClock, ResolveCounterDatabase, ResolveRender},
     confirmation::ConfirmationEvent,
     ingredients::{capabilities::ResolveIngredientStore, *},
     *,

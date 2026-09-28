@@ -1,8 +1,9 @@
 use std::{fmt, sync::Arc};
 
+use futures::StreamExt;
 use kreatyna::{
-    AppWidget,
-    capabilities::{Clock, DatabaseClient, Render},
+    AppWidget, CLIENT_CAPABILITY,
+    capabilities::{Clock, CounterDatabaseClient, Render},
     ingredients::capabilities::IngredientStoreClient,
 };
 use krucyfiks::{Command, CommandExt, Message, Widget};
@@ -10,7 +11,7 @@ use tokio::task::JoinHandle;
 
 use crate::{
     AppInitializationError, AppTypeConversionError, AppView, RUNTIME, RunningAppView,
-    database::sqlite::SqliteDatabase,
+    database::sqlite::{DatabaseEffect, SqliteDatabase},
 };
 
 #[derive(Clone)]
@@ -181,10 +182,14 @@ impl Drop for DatabaseWorker {
 
 async fn prepare_app(setup: AppSetup) -> Result<Box<PreparedApp>, AppInitializationError> {
     let mut database = SqliteDatabase::new(&setup.database_path).await?;
-    let (database_client, database_rx) = DatabaseClient::new(32, 0);
-    let (ingredient_store, ingredient_rx) = IngredientStoreClient::new(32, 0);
+    let (database_client, database_rx) = CounterDatabaseClient::new(CLIENT_CAPABILITY);
+    let (ingredient_store, ingredient_rx) = IngredientStoreClient::new(CLIENT_CAPABILITY);
     let worker = DatabaseWorker(RUNTIME.spawn(async move {
-        database.worker(database_rx, ingredient_rx).await;
+        let inbox = futures::stream::select(
+            database_rx.into_stream().map(DatabaseEffect::Counter),
+            ingredient_rx.into_stream().map(DatabaseEffect::Ingredient),
+        );
+        database.worker(inbox).await;
     }));
 
     let app = AppWidget::new(kreatyna::AppCapabilities {

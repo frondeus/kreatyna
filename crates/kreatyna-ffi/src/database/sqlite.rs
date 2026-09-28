@@ -2,14 +2,15 @@ use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SqliteConnection};
 use diesel_async::{AsyncConnection, sync_connection_wrapper::SyncConnectionWrapper};
 use diesel_async::{RunQueryDsl, SimpleAsyncConnection};
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
-use futures::StreamExt;
+use futures::{Stream, StreamExt, pin_mut};
 use kreatyna::capabilities::{
-    DatabaseError, DatabaseMut, DatabaseRequest, DatabaseResponse, ResolveDatabase,
+    CounterDatabaseMut, CounterDatabaseRequest, CounterDatabaseResponse, DatabaseError,
+    ResolveCounterDatabase,
 };
 use kreatyna::ingredients::capabilities::{
     IngredientStoreRequest, IngredientStoreResponse, ResolveIngredientStore,
 };
-use krucyfiks::effects::RequestInbox;
+use krucyfiks::effects::Envelope;
 
 use super::schema::counter;
 
@@ -29,8 +30,13 @@ pub enum SqliteStartupError {
     Migrate,
 }
 
+pub enum DatabaseEffect {
+    Counter(Envelope<CounterDatabaseRequest, CounterDatabaseResponse>),
+    Ingredient(Envelope<IngredientStoreRequest, IngredientStoreResponse>),
+}
+
 #[async_trait::async_trait]
-impl DatabaseMut for SqliteDatabase {
+impl CounterDatabaseMut for SqliteDatabase {
     #[tracing::instrument(skip_all)]
     async fn count(&mut self) -> Result<Option<usize>, DatabaseError> {
         let value = counter::table
@@ -108,30 +114,17 @@ impl SqliteDatabase {
         Ok(Self { connection })
     }
 
-    pub async fn worker(
-        &mut self,
-        counter: RequestInbox<DatabaseRequest, DatabaseResponse>,
-        ingredients: RequestInbox<IngredientStoreRequest, IngredientStoreResponse>,
-    ) {
-        enum Request {
-            Counter(krucyfiks::effects::Envelope<DatabaseRequest, DatabaseResponse>),
-            Ingredient(
-                krucyfiks::effects::Envelope<IngredientStoreRequest, IngredientStoreResponse>,
-            ),
-        }
-
-        let counter = counter.into_stream().map(Request::Counter);
-        let ingredients = ingredients.into_stream().map(Request::Ingredient);
-        let mut requests = futures::stream::select(counter, ingredients);
+    pub async fn worker(&mut self, requests: impl Stream<Item = DatabaseEffect>) {
+        pin_mut!(requests);
 
         while let Some(request) = requests.next().await {
             match request {
-                Request::Counter(envelope) => {
+                DatabaseEffect::Counter(envelope) => {
                     if let Err(error) = envelope.resolve_mut(self).await {
                         tracing::error!(?error, "Sending counter database response");
                     }
                 }
-                Request::Ingredient(envelope) => {
+                DatabaseEffect::Ingredient(envelope) => {
                     if let Err(error) = envelope.resolve_mut(self).await {
                         tracing::error!(?error, "Sending ingredient database response");
                     }

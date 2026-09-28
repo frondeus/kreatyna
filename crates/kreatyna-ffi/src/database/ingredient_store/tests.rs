@@ -1,7 +1,7 @@
 use std::{future::Future, path::PathBuf};
 
 use diesel::RunQueryDsl;
-use kreatyna::capabilities::DatabaseMut;
+use kreatyna::capabilities::CounterDatabaseMut;
 use kreatyna::ingredients::{
     DraftMode, IngredientDraft, IngredientId, IngredientWrite, NutritionBasis, ReferenceUnitDraft,
     capabilities::{IngredientLoadError, IngredientSaveError, IngredientStoreMut},

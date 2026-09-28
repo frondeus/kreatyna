@@ -5,12 +5,12 @@ use futures::{FutureExt, executor::block_on, future::join};
 use krucyfiks::effects::{Effect, EnvelopeError};
 
 use super::*;
-use crate::composability::CounterPairEffect;
+use crate::{CLIENT_CAPABILITY, composability::CounterPairEffect};
 
 #[test]
 fn wrong_exact_branch_preserves_the_effect_and_responder() {
     block_on(async {
-        let (envelope, response) = Envelope::new(RenderRequest::Render, 1);
+        let (envelope, response) = Envelope::new(RenderRequest::Render);
         let effect = CounterPairEffect::Right(CounterEffect::Render(envelope));
         let effect = effect.try_into_left().unwrap_err();
         let effect = effect.expect_right().try_into_database().unwrap_err();
@@ -26,13 +26,13 @@ fn wrong_exact_branch_preserves_the_effect_and_responder() {
 #[test]
 #[should_panic(expected = "expected CounterPairEffect::Left, got CounterPairEffect::Right")]
 fn exact_branch_assertion_does_not_search_for_a_matching_capability() {
-    let (envelope, _response) = Envelope::new(RenderRequest::Render, 1);
+    let (envelope, _response) = Envelope::new(RenderRequest::Render);
     CounterPairEffect::Right(CounterEffect::Render(envelope)).expect_left();
 }
 
 #[test]
 fn recursive_extraction_preserves_the_route_on_mismatch_and_only_returns_leaves() {
-    let (envelope, response) = Envelope::new(DatabaseRequest::SetCount { count: 19 }, 1);
+    let (envelope, response) = Envelope::new(CounterDatabaseRequest::SetCount { count: 19 });
     let effect = CounterPairEffect::Left(CounterEffect::Database(envelope));
     let effect = effect.extract::<CounterEffect>().unwrap_err();
     let effect = effect
@@ -41,12 +41,14 @@ fn recursive_extraction_preserves_the_route_on_mismatch_and_only_returns_leaves(
     let envelope = effect.expect_left().expect_database();
     assert!(matches!(
         envelope.request,
-        DatabaseRequest::SetCount { count: 19 }
+        CounterDatabaseRequest::SetCount { count: 19 }
     ));
-    envelope.answer(DatabaseResponse::SetCount(Ok(()))).unwrap();
+    envelope
+        .answer(CounterDatabaseResponse::SetCount(Ok(())))
+        .unwrap();
     assert!(matches!(
         response.try_recv(),
-        Ok(DatabaseResponse::SetCount(Ok(())))
+        Ok(CounterDatabaseResponse::SetCount(Ok(())))
     ));
 }
 
@@ -54,7 +56,7 @@ fn recursive_extraction_preserves_the_route_on_mismatch_and_only_returns_leaves(
 fn recursive_resolution_accepts_both_origins_and_an_explicit_subtree() {
     block_on(async {
         for left in [true, false] {
-            let (envelope, response) = Envelope::new(RenderRequest::Render, 1);
+            let (envelope, response) = Envelope::new(RenderRequest::Render);
             let effect = if left {
                 CounterPairEffect::Left(CounterEffect::Render(envelope))
             } else {
@@ -68,7 +70,7 @@ fn recursive_resolution_accepts_both_origins_and_an_explicit_subtree() {
             assert!(matches!(response.try_recv(), Ok(RenderResponse::Render)));
         }
 
-        let (envelope, response) = Envelope::new(DatabaseRequest::Count, 1);
+        let (envelope, response) = Envelope::new(CounterDatabaseRequest::Count);
         CounterPairEffect::Left(CounterEffect::Database(envelope))
             .expect_left()
             .any_route()
@@ -77,7 +79,7 @@ fn recursive_resolution_accepts_both_origins_and_an_explicit_subtree() {
             .unwrap();
         assert!(matches!(
             response.try_recv(),
-            Ok(DatabaseResponse::Count(Ok(Some(23))))
+            Ok(CounterDatabaseResponse::Count(Ok(Some(23))))
         ));
     });
 }
@@ -85,7 +87,7 @@ fn recursive_resolution_accepts_both_origins_and_an_explicit_subtree() {
 #[test]
 fn capability_mismatches_skip_callbacks_and_close_the_original_response_channel() {
     block_on(async {
-        let (envelope, response) = Envelope::new(DatabaseRequest::Count, 1);
+        let (envelope, response) = Envelope::new(CounterDatabaseRequest::Count);
         let result = CounterEffect::Database(envelope)
             .any_route()
             .resolve_render(|| {
@@ -95,9 +97,9 @@ fn capability_mismatches_skip_callbacks_and_close_the_original_response_channel(
             })
             .await;
         assert!(matches!(result, Err(EnvelopeError::Mismatch)));
-        assert!(response.is_disconnected());
+        assert!(response.is_closed());
 
-        let (envelope, response) = Envelope::new(RenderRequest::Render, 1);
+        let (envelope, response) = Envelope::new(RenderRequest::Render);
         let result = CounterEffect::Render(envelope)
             .any_route()
             .resolve_count(|| {
@@ -109,9 +111,9 @@ fn capability_mismatches_skip_callbacks_and_close_the_original_response_channel(
             })
             .await;
         assert!(matches!(result, Err(EnvelopeError::Mismatch)));
-        assert!(response.is_disconnected());
+        assert!(response.is_closed());
 
-        let (envelope, response) = Envelope::new(RenderRequest::Render, 1);
+        let (envelope, response) = Envelope::new(RenderRequest::Render);
         let result = CounterEffect::Render(envelope)
             .any_route()
             .resolve_sleep_ms(|_| {
@@ -121,14 +123,14 @@ fn capability_mismatches_skip_callbacks_and_close_the_original_response_channel(
             })
             .await;
         assert!(matches!(result, Err(EnvelopeError::Mismatch)));
-        assert!(response.is_disconnected());
+        assert!(response.is_closed());
     });
 }
 
 #[test]
 fn method_mismatches_skip_callbacks_for_exact_and_recursive_resolvers() {
     block_on(async {
-        let (envelope, response) = Envelope::new(DatabaseRequest::SetCount { count: 7 }, 1);
+        let (envelope, response) = Envelope::new(CounterDatabaseRequest::SetCount { count: 7 });
         let result = envelope
             .resolve_count(|| {
                 panic!("count callback must not run for set_count");
@@ -139,9 +141,9 @@ fn method_mismatches_skip_callbacks_for_exact_and_recursive_resolvers() {
             })
             .await;
         assert!(matches!(result, Err(EnvelopeError::Mismatch)));
-        assert!(response.is_disconnected());
+        assert!(response.is_closed());
 
-        let (envelope, response) = Envelope::new(DatabaseRequest::Count, 1);
+        let (envelope, response) = Envelope::new(CounterDatabaseRequest::Count);
         let result = CounterPairEffect::Right(CounterEffect::Database(envelope))
             .any_route()
             .resolve_set_count(|_| {
@@ -153,7 +155,7 @@ fn method_mismatches_skip_callbacks_for_exact_and_recursive_resolvers() {
             })
             .await;
         assert!(matches!(result, Err(EnvelopeError::Mismatch)));
-        assert!(response.is_disconnected());
+        assert!(response.is_closed());
     });
 }
 
@@ -202,7 +204,7 @@ impl ClockMut for Backend {
 }
 
 #[async_trait::async_trait]
-impl DatabaseMut for Backend {
+impl CounterDatabaseMut for Backend {
     async fn count(&mut self) -> Result<Option<usize>, DatabaseError> {
         Ok(self.count.get())
     }
@@ -217,7 +219,7 @@ impl DatabaseMut for Backend {
 fn mutable_dispatch_accepts_non_sync_trees_and_trait_object_backends() {
     block_on(async {
         let mut backend = Backend::default();
-        let (envelope, response) = Envelope::new(RenderRequest::Render, 1);
+        let (envelope, response) = Envelope::new(RenderRequest::Render);
         ResolveRender::resolve_mut(
             local(envelope).any_route(),
             &mut backend as &mut dyn RenderMut,
@@ -227,7 +229,7 @@ fn mutable_dispatch_accepts_non_sync_trees_and_trait_object_backends() {
         assert_eq!(backend.renders.get(), 1);
         assert!(matches!(response.try_recv(), Ok(RenderResponse::Render)));
 
-        let (envelope, response) = Envelope::new(ClockRequest::SleepMs { ms: 123 }, 1);
+        let (envelope, response) = Envelope::new(ClockRequest::SleepMs { ms: 123 });
         ResolveClock::resolve_mut(
             local(envelope).any_route(),
             &mut backend as &mut dyn ClockMut,
@@ -237,29 +239,29 @@ fn mutable_dispatch_accepts_non_sync_trees_and_trait_object_backends() {
         assert_eq!(backend.slept_ms.get(), 123);
         assert!(matches!(response.try_recv(), Ok(ClockResponse::SleepMs)));
 
-        let (envelope, response) = Envelope::new(DatabaseRequest::SetCount { count: 37 }, 1);
-        ResolveDatabase::resolve_mut(
+        let (envelope, response) = Envelope::new(CounterDatabaseRequest::SetCount { count: 37 });
+        ResolveCounterDatabase::resolve_mut(
             local(envelope).any_route(),
-            &mut backend as &mut dyn DatabaseMut,
+            &mut backend as &mut dyn CounterDatabaseMut,
         )
         .await
         .unwrap();
         assert_eq!(backend.count.get(), Some(37));
         assert!(matches!(
             response.try_recv(),
-            Ok(DatabaseResponse::SetCount(Ok(())))
+            Ok(CounterDatabaseResponse::SetCount(Ok(())))
         ));
 
-        let (envelope, response) = Envelope::new(DatabaseRequest::Count, 1);
-        ResolveDatabase::resolve_mut(
+        let (envelope, response) = Envelope::new(CounterDatabaseRequest::Count);
+        ResolveCounterDatabase::resolve_mut(
             local(envelope).any_route(),
-            &mut backend as &mut dyn DatabaseMut,
+            &mut backend as &mut dyn CounterDatabaseMut,
         )
         .await
         .unwrap();
         assert!(matches!(
             response.try_recv(),
-            Ok(DatabaseResponse::Count(Ok(Some(37))))
+            Ok(CounterDatabaseResponse::Count(Ok(Some(37))))
         ));
     });
 }
@@ -268,23 +270,23 @@ fn mutable_dispatch_accepts_non_sync_trees_and_trait_object_backends() {
 fn mismatched_mutable_resolvers_do_not_run_backends() {
     block_on(async {
         let mut backend = Backend::default();
-        let (envelope, response) = Envelope::new(DatabaseRequest::Count, 1);
+        let (envelope, response) = Envelope::new(CounterDatabaseRequest::Count);
         assert!(matches!(
             ResolveRender::resolve_mut(CounterEffect::Database(envelope).any_route(), &mut backend)
                 .await,
             Err(EnvelopeError::Mismatch)
         ));
         assert_eq!(backend.renders.get(), 0);
-        assert!(response.is_disconnected());
+        assert!(response.is_closed());
 
-        let (envelope, response) = Envelope::new(RenderRequest::Render, 1);
+        let (envelope, response) = Envelope::new(RenderRequest::Render);
         assert!(matches!(
             ResolveClock::resolve_mut(CounterEffect::Render(envelope).any_route(), &mut backend)
                 .await,
             Err(EnvelopeError::Mismatch)
         ));
         assert_eq!(backend.slept_ms.get(), 0);
-        assert!(response.is_disconnected());
+        assert!(response.is_closed());
     });
 }
 
@@ -292,9 +294,9 @@ fn mismatched_mutable_resolvers_do_not_run_backends() {
 fn clock_client_round_trips_arguments_through_exact_and_recursive_resolvers() {
     block_on(async {
         for recursive in [false, true] {
-            let (client, inbox) = ClockClient::new(32, 1);
+            let (client, inbox) = ClockClient::new(CLIENT_CAPABILITY);
             let (_, ()) = join(client.sleep_ms(456), async {
-                let envelope = inbox.recv_async().await.unwrap();
+                let envelope = inbox.recv().await.unwrap();
                 let handle = |ms| async move { assert_eq!(ms, 456) };
                 if recursive {
                     CounterPairEffect::Right(CounterEffect::Clock(envelope))
@@ -314,7 +316,7 @@ fn clock_client_round_trips_arguments_through_exact_and_recursive_resolvers() {
 #[test]
 fn database_clients_propagate_transport_failures() {
     block_on(async {
-        let (client, inbox) = DatabaseClient::new(32, 1);
+        let (client, inbox) = CounterDatabaseClient::new(CLIENT_CAPABILITY);
         drop(inbox);
         assert!(matches!(
             client.count().await,
@@ -325,14 +327,14 @@ fn database_clients_propagate_transport_failures() {
             Err(DatabaseError::Transport)
         ));
 
-        let (client, inbox) = DatabaseClient::new(32, 1);
+        let (client, inbox) = CounterDatabaseClient::new(CLIENT_CAPABILITY);
         let (result, ()) = join(client.count(), async {
-            drop(inbox.recv_async().await.unwrap());
+            drop(inbox.recv().await.unwrap());
         })
         .await;
         assert!(matches!(result, Err(DatabaseError::Transport)));
         let (result, ()) = join(client.set_count(7), async {
-            drop(inbox.recv_async().await.unwrap());
+            drop(inbox.recv().await.unwrap());
         })
         .await;
         assert!(matches!(result, Err(DatabaseError::Transport)));
@@ -342,23 +344,23 @@ fn database_clients_propagate_transport_failures() {
 #[test]
 fn database_clients_reject_wrong_response_variants() {
     block_on(async {
-        let (client, inbox) = DatabaseClient::new(32, 1);
+        let (client, inbox) = CounterDatabaseClient::new(CLIENT_CAPABILITY);
         let (result, ()) = join(client.count(), async {
             inbox
-                .recv_async()
+                .recv()
                 .await
                 .unwrap()
-                .answer(DatabaseResponse::SetCount(Ok(())))
+                .answer(CounterDatabaseResponse::SetCount(Ok(())))
                 .unwrap();
         })
         .await;
         assert!(matches!(result, Err(DatabaseError::Transport)));
         let (result, ()) = join(client.set_count(7), async {
             inbox
-                .recv_async()
+                .recv()
                 .await
                 .unwrap()
-                .answer(DatabaseResponse::Count(Ok(Some(7))))
+                .answer(CounterDatabaseResponse::Count(Ok(Some(7))))
                 .unwrap();
         })
         .await;
@@ -369,10 +371,10 @@ fn database_clients_reject_wrong_response_variants() {
 #[test]
 fn database_clients_preserve_successes_and_application_errors() {
     block_on(async {
-        let (client, inbox) = DatabaseClient::new(32, 1);
+        let (client, inbox) = CounterDatabaseClient::new(CLIENT_CAPABILITY);
         let (result, ()) = join(client.count(), async {
             inbox
-                .recv_async()
+                .recv()
                 .await
                 .unwrap()
                 .resolve_count(|| async { Ok(Some(11)) })
@@ -383,7 +385,7 @@ fn database_clients_preserve_successes_and_application_errors() {
         assert!(matches!(result, Ok(Some(11))));
         let (result, ()) = join(client.count(), async {
             inbox
-                .recv_async()
+                .recv()
                 .await
                 .unwrap()
                 .resolve_count(|| async { Err(DatabaseError::Storage) })
@@ -394,7 +396,7 @@ fn database_clients_preserve_successes_and_application_errors() {
         assert!(matches!(result, Err(DatabaseError::Storage)));
         let (result, ()) = join(client.set_count(usize::MAX), async {
             inbox
-                .recv_async()
+                .recv()
                 .await
                 .unwrap()
                 .resolve_set_count(|count| async move {
@@ -412,7 +414,7 @@ fn database_clients_preserve_successes_and_application_errors() {
 #[test]
 #[should_panic(expected = "Render::render transport failed: request channel closed")]
 fn render_explicitly_panics_on_request_transport_failure() {
-    let (client, inbox) = RenderClient::new(32, 1);
+    let (client, inbox) = RenderClient::new(CLIENT_CAPABILITY);
     drop(inbox);
     block_on(client.render());
 }
@@ -420,16 +422,16 @@ fn render_explicitly_panics_on_request_transport_failure() {
 #[test]
 #[should_panic(expected = "Render::render transport failed: response channel closed")]
 fn render_explicitly_panics_when_its_responder_is_dropped() {
-    let (client, inbox) = RenderClient::new(32, 1);
+    let (client, inbox) = RenderClient::new(CLIENT_CAPABILITY);
     block_on(join(client.render(), async {
-        drop(inbox.recv_async().await.unwrap());
+        drop(inbox.recv().await.unwrap());
     }));
 }
 
 #[test]
 #[should_panic(expected = "Clock::sleep_ms transport failed: request channel closed")]
 fn clock_explicitly_panics_on_request_transport_failure() {
-    let (client, inbox) = ClockClient::new(32, 1);
+    let (client, inbox) = ClockClient::new(CLIENT_CAPABILITY);
     drop(inbox);
     block_on(client.sleep_ms(7));
 }
@@ -437,16 +439,16 @@ fn clock_explicitly_panics_on_request_transport_failure() {
 #[test]
 #[should_panic(expected = "Clock::sleep_ms transport failed: response channel closed")]
 fn clock_explicitly_panics_when_its_responder_is_dropped() {
-    let (client, inbox) = ClockClient::new(32, 1);
+    let (client, inbox) = ClockClient::new(CLIENT_CAPABILITY);
     block_on(join(client.sleep_ms(7), async {
-        drop(inbox.recv_async().await.unwrap());
+        drop(inbox.recv().await.unwrap());
     }));
 }
 
 #[test]
 fn cancelled_request_returns_the_unsent_response_to_the_resolver() {
     block_on(async {
-        let (client, inbox) = ClockClient::new(32, 1);
+        let (client, inbox) = ClockClient::new(CLIENT_CAPABILITY);
         let mut request = Box::pin(client.sleep_ms(8));
         assert!(request.as_mut().now_or_never().is_none());
         let envelope = inbox.try_recv().unwrap();

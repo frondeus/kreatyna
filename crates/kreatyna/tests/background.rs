@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use futures::StreamExt;
-use krucyfiks::{Message, Widget, effects::CommandTestExt};
 use kreatyna::capabilities::{
-    ClockClient, DatabaseError, ResolveClock, ResolveDatabase, ResolveRender,
+    ClockClient, DatabaseError, ResolveClock, ResolveCounterDatabase, ResolveRender,
 };
-use kreatyna::{Counter, CounterCapabilities, CounterEvent, CounterOutcome};
+use kreatyna::{CLIENT_CAPABILITY, Counter, CounterCapabilities, CounterEvent, CounterOutcome};
+use krucyfiks::{Message, Widget, effects::CommandTestExt};
 use test_case::{test_case, test_matrix};
 
 #[test_case(0, 1; "first tick")]
@@ -19,7 +19,7 @@ async fn accepted_tick_renders_then_persists(
 ) -> anyhow::Result<()> {
     // A separate clock inbox lets us retain the background driver while driving updates.
     let (mut caps, mut effects) = CounterCapabilities::testing();
-    let (clock, clock_inbox) = ClockClient::new(32, 1);
+    let (clock, clock_inbox) = ClockClient::new(CLIENT_CAPABILITY);
     caps.clock = Arc::new(clock);
     let mut clock_effects = clock_inbox.into_stream().boxed();
     let mut counter = Counter::new(caps);
@@ -92,7 +92,7 @@ async fn failed_tick_write_keeps_state_and_background_continues(
 ) -> anyhow::Result<()> {
     // A separate clock inbox lets us retain the background driver while driving updates.
     let (mut caps, mut effects) = CounterCapabilities::testing();
-    let (clock, clock_inbox) = ClockClient::new(32, 1);
+    let (clock, clock_inbox) = ClockClient::new(CLIENT_CAPABILITY);
     caps.clock = Arc::new(clock);
     let mut clock_effects = clock_inbox.into_stream().boxed();
     let mut counter = Counter::new(caps);
@@ -175,7 +175,7 @@ async fn failed_tick_write_keeps_state_and_background_continues(
 async fn duplicate_start_keeps_the_original_background_command() -> anyhow::Result<()> {
     // A separate clock inbox lets us retain the background driver while driving updates.
     let (mut caps, mut effects) = CounterCapabilities::testing();
-    let (clock, clock_inbox) = ClockClient::new(32, 1);
+    let (clock, clock_inbox) = ClockClient::new(CLIENT_CAPABILITY);
     caps.clock = Arc::new(clock);
     let mut clock_effects = clock_inbox.into_stream().boxed();
     let mut counter = Counter::new(caps);
@@ -247,7 +247,7 @@ async fn stop_without_start_is_repeatable() -> anyhow::Result<()> {
 async fn stop_before_first_poll_prevents_clock_request() -> anyhow::Result<()> {
     // A separate clock inbox lets us retain the background driver while driving updates.
     let (mut caps, mut effects) = CounterCapabilities::testing();
-    let (clock, clock_inbox) = ClockClient::new(32, 1);
+    let (clock, clock_inbox) = ClockClient::new(CLIENT_CAPABILITY);
     caps.clock = Arc::new(clock);
     let mut clock_effects = clock_inbox.into_stream().boxed();
     let mut counter = Counter::new(caps);
@@ -271,7 +271,7 @@ async fn stop_before_first_poll_prevents_clock_request() -> anyhow::Result<()> {
 async fn stop_cancels_pending_sleep_and_rejects_queued_tick() -> anyhow::Result<()> {
     // A separate clock inbox lets us retain the background driver while driving updates.
     let (mut caps, mut effects) = CounterCapabilities::testing();
-    let (clock, clock_inbox) = ClockClient::new(32, 1);
+    let (clock, clock_inbox) = ClockClient::new(CLIENT_CAPABILITY);
     caps.clock = Arc::new(clock);
     let mut clock_effects = clock_inbox.into_stream().boxed();
     let mut counter = Counter::new(caps);
@@ -320,7 +320,7 @@ async fn stop_cancels_pending_sleep_and_rejects_queued_tick() -> anyhow::Result<
 async fn restart_rejects_old_generation_and_accepts_new_ticks(stop: bool) -> anyhow::Result<()> {
     // A separate clock inbox lets us retain the background driver while driving updates.
     let (mut caps, mut effects) = CounterCapabilities::testing();
-    let (clock, clock_inbox) = ClockClient::new(32, 1);
+    let (clock, clock_inbox) = ClockClient::new(CLIENT_CAPABILITY);
     caps.clock = Arc::new(clock);
     let mut clock_effects = clock_inbox.into_stream().boxed();
     let mut counter = Counter::new(caps);
@@ -410,7 +410,7 @@ async fn restart_rejects_old_generation_and_accepts_new_ticks(stop: bool) -> any
 async fn dropping_unpolled_background_allows_restart() -> anyhow::Result<()> {
     // A separate clock inbox lets us retain the background driver while driving updates.
     let (mut caps, mut effects) = CounterCapabilities::testing();
-    let (clock, clock_inbox) = ClockClient::new(32, 1);
+    let (clock, clock_inbox) = ClockClient::new(CLIENT_CAPABILITY);
     caps.clock = Arc::new(clock);
     let mut clock_effects = clock_inbox.into_stream().boxed();
     let mut counter = Counter::new(caps);
@@ -465,7 +465,7 @@ async fn dropping_unpolled_background_allows_restart() -> anyhow::Result<()> {
 async fn dropping_counter_cancels_background(sleeping: bool) -> anyhow::Result<()> {
     // A separate clock inbox lets us retain the background driver while driving updates.
     let (mut caps, _effects) = CounterCapabilities::testing();
-    let (clock, clock_inbox) = ClockClient::new(32, 1);
+    let (clock, clock_inbox) = ClockClient::new(CLIENT_CAPABILITY);
     caps.clock = Arc::new(clock);
     let mut clock_effects = clock_inbox.into_stream().boxed();
     let mut counter = Counter::new(caps);
@@ -497,7 +497,7 @@ async fn foreground_event_keeps_background_running(
 ) -> anyhow::Result<()> {
     // A separate clock inbox lets us retain the background driver while driving updates.
     let (mut caps, mut effects) = CounterCapabilities::testing();
-    let (clock, clock_inbox) = ClockClient::new(32, 1);
+    let (clock, clock_inbox) = ClockClient::new(CLIENT_CAPABILITY);
     caps.clock = Arc::new(clock);
     let mut clock_effects = clock_inbox.into_stream().boxed();
     let mut counter = Counter::new(caps);
@@ -581,7 +581,7 @@ async fn foreground_event_keeps_background_running(
 async fn loaded_keeps_background_running_and_tick_uses_loaded_value() -> anyhow::Result<()> {
     // A separate clock inbox lets us retain the background driver while driving updates.
     let (mut caps, mut effects) = CounterCapabilities::testing();
-    let (clock, clock_inbox) = ClockClient::new(32, 1);
+    let (clock, clock_inbox) = ClockClient::new(CLIENT_CAPABILITY);
     caps.clock = Arc::new(clock);
     let mut clock_effects = clock_inbox.into_stream().boxed();
     let mut counter = Counter::new(caps);
@@ -656,7 +656,7 @@ async fn loaded_keeps_background_running_and_tick_uses_loaded_value() -> anyhow:
 async fn dropped_clock_response_panics() {
     // A separate clock inbox lets us retain the background driver while driving updates.
     let (mut caps, _effects) = CounterCapabilities::testing();
-    let (clock, clock_inbox) = ClockClient::new(32, 1);
+    let (clock, clock_inbox) = ClockClient::new(CLIENT_CAPABILITY);
     caps.clock = Arc::new(clock);
     let mut clock_effects = clock_inbox.into_stream().boxed();
     let mut counter = Counter::new(caps);

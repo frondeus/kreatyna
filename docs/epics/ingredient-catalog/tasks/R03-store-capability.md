@@ -15,7 +15,7 @@ update. Transport errors do not trigger automatic write retries.
 
 Expose generated request/response and resolver types, an effect enum combining
 render and store envelopes, and a testing fixture with render and store inboxes.
-Reuse the existing render capability and the established `(32, 1)` capacities.
+Reuse the existing render capability and the established `(CLIENT_CAPABILITY)` capacities.
 
 Check the contract by compiling the core and FFI crates, running core tests,
 Clippy with denied warnings, and formatting checks. The generated client and

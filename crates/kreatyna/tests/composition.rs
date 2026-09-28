@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
 use futures::{StreamExt, stream::select_all};
-use krucyfiks::{Message, Widget, effects::CommandTestExt};
 use kreatyna::capabilities::{
-    ClockClient, DatabaseError, ResolveClock, ResolveDatabase, ResolveRender,
+    ClockClient, DatabaseError, ResolveClock, ResolveCounterDatabase, ResolveRender,
 };
 use kreatyna::composability::{
     CounterPair, CounterPairEffect, CounterPairEvent, CounterPairOutcome,
 };
-use kreatyna::{CounterCapabilities, CounterEvent, CounterOutcome};
+use kreatyna::{CLIENT_CAPABILITY, CounterCapabilities, CounterEvent, CounterOutcome};
+use krucyfiks::{Message, Widget, effects::CommandTestExt};
 use test_case::{test_case, test_matrix};
 
 #[test_case(CounterPairEvent::Left(CounterEvent::Increase), true, 11, (11, 20); "left increase")]
@@ -178,8 +178,8 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
 ) -> anyhow::Result<()> {
     let (mut left_caps, left_effects) = CounterCapabilities::testing();
     let (mut right_caps, right_effects) = CounterCapabilities::testing();
-    let (left_clock, left_inbox) = ClockClient::new(32, 1);
-    let (right_clock, right_inbox) = ClockClient::new(32, 1);
+    let (left_clock, left_inbox) = ClockClient::new(CLIENT_CAPABILITY);
+    let (right_clock, right_inbox) = ClockClient::new(CLIENT_CAPABILITY);
     left_caps.clock = Arc::new(left_clock);
     right_caps.clock = Arc::new(right_clock);
     let mut left_clock_effects = left_inbox.into_stream().boxed();

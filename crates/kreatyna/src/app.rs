@@ -9,7 +9,7 @@ use krucyfiks::{
 };
 
 use crate::{
-    Counter, CounterEvent, CounterOutcome, CounterStatus, CounterView,
+    CLIENT_CAPABILITY, Counter, CounterEvent, CounterOutcome, CounterStatus, CounterView,
     capabilities::{
         CounterCapabilities, CounterEffect, Render, RenderClient, RenderRequest, RenderResponse,
     },
@@ -67,7 +67,7 @@ impl AppCapabilities {
     pub fn testing() -> (Self, AppEffectStream) {
         let (ingredients, ingredient_effects) = IngredientCapabilities::testing();
         let (counter, counter_effects) = CounterCapabilities::testing();
-        let (render, inbox) = RenderClient::new(32, 1);
+        let (render, inbox) = RenderClient::new(CLIENT_CAPABILITY);
         let effects = select_all(vec![
             ingredient_effects.map(AppEffect::Ingredients).boxed(),
             counter_effects.map(AppEffect::Counter).boxed(),

@@ -19,7 +19,7 @@ pub trait Clock: Send + Sync {
 }
 
 #[krucyfiks::capability]
-pub trait Database: Send + Sync {
+pub trait CounterDatabase: Send + Sync {
     async fn count(&self) -> Result<Option<usize>, DatabaseError>;
     async fn set_count(&self, count: usize) -> Result<(), DatabaseError>;
 }
@@ -56,23 +56,23 @@ impl From<TransportError> for DatabaseError {
 pub enum CounterEffect {
     Render(Envelope<RenderRequest, RenderResponse>),
     Clock(Envelope<ClockRequest, ClockResponse>),
-    Database(Envelope<DatabaseRequest, DatabaseResponse>),
+    Database(Envelope<CounterDatabaseRequest, CounterDatabaseResponse>),
 }
 
 #[derive(Clone)]
 pub struct CounterCapabilities {
     pub render: Arc<dyn Render>,
     pub clock: Arc<dyn Clock>,
-    pub db: Arc<dyn Database>,
+    pub db: Arc<dyn CounterDatabase>,
 }
 
 pub type CounterEffectStream = BoxStream<'static, CounterEffect>;
 
 impl CounterCapabilities {
     pub fn testing() -> (Self, CounterEffectStream) {
-        let (render, render_inbox) = RenderClient::new(32, 1);
-        let (clock, clock_inbox) = ClockClient::new(32, 1);
-        let (db, database_inbox) = DatabaseClient::new(32, 1);
+        let (render, render_inbox) = RenderClient::new(32);
+        let (clock, clock_inbox) = ClockClient::new(32);
+        let (db, database_inbox) = CounterDatabaseClient::new(32);
 
         let streams = vec![
             render_inbox

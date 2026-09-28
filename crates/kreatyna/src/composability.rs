@@ -119,7 +119,7 @@ mod tests {
     use futures::executor::block_on;
     use krucyfiks::effects::{CommandTestExt, Effect};
 
-    use crate::capabilities::{ResolveDatabase, ResolveRender};
+    use crate::capabilities::{ResolveCounterDatabase, ResolveRender};
 
     use super::*;
 

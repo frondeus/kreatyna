@@ -35,9 +35,7 @@ fn recursive_extraction_preserves_the_route_on_mismatch_and_only_returns_leaves(
     let (envelope, response) = Envelope::new(CounterDatabaseRequest::SetCount { count: 19 });
     let effect = CounterPairEffect::Left(CounterEffect::Database(envelope));
     let effect = effect.extract::<CounterEffect>().unwrap_err();
-    let effect = effect
-        .extract::<Envelope<RenderRequest, RenderResponse>>()
-        .unwrap_err();
+    let effect = effect.extract::<Envelope<RenderRequest>>().unwrap_err();
     let envelope = effect.expect_left().expect_database();
     assert!(matches!(
         envelope.request,

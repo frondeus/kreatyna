@@ -4,12 +4,9 @@ use diesel_async::{RunQueryDsl, SimpleAsyncConnection};
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use futures::{Stream, StreamExt, pin_mut};
 use kreatyna::capabilities::{
-    CounterDatabaseMut, CounterDatabaseRequest, CounterDatabaseResponse, DatabaseError,
-    ResolveCounterDatabase,
+    CounterDatabaseMut, CounterDatabaseRequest, DatabaseError, ResolveCounterDatabase,
 };
-use kreatyna::ingredients::capabilities::{
-    IngredientStoreRequest, IngredientStoreResponse, ResolveIngredientStore,
-};
+use kreatyna::ingredients::capabilities::{IngredientStoreRequest, ResolveIngredientStore};
 use krucyfiks::effects::Envelope;
 
 use super::schema::counter;
@@ -31,8 +28,8 @@ pub enum SqliteStartupError {
 }
 
 pub enum DatabaseEffect {
-    Counter(Envelope<CounterDatabaseRequest, CounterDatabaseResponse>),
-    Ingredient(Envelope<IngredientStoreRequest, IngredientStoreResponse>),
+    Counter(Envelope<CounterDatabaseRequest>),
+    Ingredient(Envelope<IngredientStoreRequest>),
 }
 
 #[async_trait::async_trait]

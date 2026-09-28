@@ -9,7 +9,7 @@ use krucyfiks::effects::{Envelope, TransportError};
 use super::{Ingredient, IngredientId, IngredientWrite};
 use crate::{
     CLIENT_CAPABILITY,
-    capabilities::{Render, RenderClient, RenderRequest, RenderResponse},
+    capabilities::{Render, RenderClient, RenderRequest},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -75,8 +75,8 @@ pub struct IngredientCapabilities {
 
 #[derive(Debug, krucyfiks::Effect)]
 pub enum IngredientEffect {
-    Render(Envelope<RenderRequest, RenderResponse>),
-    Store(Envelope<IngredientStoreRequest, IngredientStoreResponse>),
+    Render(Envelope<RenderRequest>),
+    Store(Envelope<IngredientStoreRequest>),
 }
 
 pub type IngredientEffectStream = BoxStream<'static, IngredientEffect>;

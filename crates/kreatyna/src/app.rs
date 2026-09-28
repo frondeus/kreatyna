@@ -10,9 +10,7 @@ use krucyfiks::{
 
 use crate::{
     CLIENT_CAPABILITY, Counter, CounterEvent, CounterOutcome, CounterStatus, CounterView,
-    capabilities::{
-        CounterCapabilities, CounterEffect, Render, RenderClient, RenderRequest, RenderResponse,
-    },
+    capabilities::{CounterCapabilities, CounterEffect, Render, RenderClient, RenderRequest},
     ingredients::{
         IngredientCatalog, IngredientCatalogEvent, IngredientCatalogOutcome, IngredientCatalogView,
         capabilities::{IngredientCapabilities, IngredientEffect},
@@ -58,7 +56,7 @@ pub struct AppCapabilities {
 pub enum AppEffect {
     Ingredients(IngredientEffect),
     Counter(CounterEffect),
-    Render(Envelope<RenderRequest, RenderResponse>),
+    Render(Envelope<RenderRequest>),
 }
 
 pub type AppEffectStream = BoxStream<'static, AppEffect>;

@@ -54,9 +54,9 @@ impl From<TransportError> for DatabaseError {
 /// ```
 #[derive(Debug, krucyfiks::Effect)]
 pub enum CounterEffect {
-    Render(Envelope<RenderRequest, RenderResponse>),
-    Clock(Envelope<ClockRequest, ClockResponse>),
-    Database(Envelope<CounterDatabaseRequest, CounterDatabaseResponse>),
+    Render(Envelope<RenderRequest>),
+    Clock(Envelope<ClockRequest>),
+    Database(Envelope<CounterDatabaseRequest>),
 }
 
 #[derive(Clone)]

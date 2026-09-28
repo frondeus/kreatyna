@@ -6,7 +6,7 @@ use kreatyna::{
     capabilities::{Clock, CounterDatabaseClient, Render},
     ingredients::capabilities::IngredientStoreClient,
 };
-use krucyfiks::{Command, CommandExt, Message, Widget};
+use krucyfiks::{Command, CommandExt, Message, Widget, effects::RequestCloseHandle};
 use tokio::task::JoinHandle;
 
 use crate::{AppInitializationError, AppTypeConversionError, AppView, RUNTIME, RunningAppView};
@@ -170,25 +170,53 @@ pub(crate) struct PreparedApp {
     _database_worker: DatabaseWorker,
 }
 
-struct DatabaseWorker(JoinHandle<()>);
+#[allow(dead_code)]
+struct DatabaseWorker {
+    task: JoinHandle<()>,
+
+    close_handles: Vec<RequestCloseHandle>,
+}
+
+#[allow(dead_code)]
+impl DatabaseWorker {
+    /// Closes request admission for every capability served by this worker.
+    /// Already admitted requests remain available for the worker to drain.
+    pub fn request_close(&self) {
+        self.close_handles
+            .iter()
+            .for_each(RequestCloseHandle::close);
+    }
+
+    /// Waits for the worker to terminate; does not request closure.
+    ///
+    /// Dropping an unfinished wait leaves the task owned here, so it can be
+    /// awaited again. After this method returns, it must not be called again.
+    pub async fn wait(&mut self) -> Result<(), tokio::task::JoinError> {
+        (&mut self.task).await
+    }
+}
 
 impl Drop for DatabaseWorker {
     fn drop(&mut self) {
-        self.0.abort();
+        // Best effort only: dropping cannot wait for draining or task completion.
+        self.request_close();
     }
 }
 
 async fn prepare_app(setup: AppSetup) -> Result<Box<PreparedApp>, AppInitializationError> {
     let mut database = SqliteDatabase::new(&setup.database_path).await?;
-    let (database_client, database_rx) = CounterDatabaseClient::new(CLIENT_CAPABILITY);
+    let (database_client, counter_rx) = CounterDatabaseClient::new(CLIENT_CAPABILITY);
     let (ingredient_store, ingredient_rx) = IngredientStoreClient::new(CLIENT_CAPABILITY);
-    let worker = DatabaseWorker(RUNTIME.spawn(async move {
-        let inbox = futures::stream::select(
-            database_rx.into_stream().map(DatabaseEffect::Counter),
-            ingredient_rx.into_stream().map(DatabaseEffect::Ingredient),
-        );
-        database.worker(inbox).await;
-    }));
+    let worker = DatabaseWorker {
+        close_handles: vec![ingredient_rx.close_handle(), counter_rx.close_handle()],
+        task: RUNTIME.spawn(async move {
+            let inbox = futures::stream::select(
+                counter_rx.into_stream().map(DatabaseEffect::Counter),
+                ingredient_rx.into_stream().map(DatabaseEffect::Ingredient),
+            );
+            database.worker(inbox).await;
+        }),
+    };
 
     let app = AppWidget::new(kreatyna::AppCapabilities {
         ingredients: kreatyna::ingredients::capabilities::IngredientCapabilities {
@@ -208,3 +236,6 @@ async fn prepare_app(setup: AppSetup) -> Result<Box<PreparedApp>, AppInitializat
         _database_worker: worker,
     }))
 }
+
+#[cfg(test)]
+mod tests;

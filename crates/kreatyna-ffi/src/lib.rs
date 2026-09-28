@@ -8,7 +8,6 @@ use crate::app_shell::{AppSetup, AppShell, AppShellEvent};
 
 mod app_shell;
 mod app_types;
-mod database;
 mod logging;
 
 pub use app_types::*;

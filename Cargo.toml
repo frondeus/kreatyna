@@ -1,6 +1,8 @@
 [workspace]
 members = [
     "crates/kreatyna",
-    "crates/kreatyna-ffi"]
+    "crates/kreatyna-db",
+    "crates/kreatyna-ffi"
+]
 
 resolver = "3"

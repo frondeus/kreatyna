@@ -1,4 +1,5 @@
 use kreatyna as core;
+use kreatyna_db::sqlite::SqliteStartupError;
 use krucyfiks::Scoped;
 
 use super::{
@@ -68,12 +69,12 @@ pub enum AppInitializationError {
     DatabaseMigration,
 }
 
-impl From<crate::database::sqlite::SqliteStartupError> for AppInitializationError {
-    fn from(value: crate::database::sqlite::SqliteStartupError) -> Self {
+impl From<SqliteStartupError> for AppInitializationError {
+    fn from(value: SqliteStartupError) -> Self {
         match value {
-            crate::database::sqlite::SqliteStartupError::Open => Self::DatabaseOpen,
-            crate::database::sqlite::SqliteStartupError::Configure => Self::DatabaseConfiguration,
-            crate::database::sqlite::SqliteStartupError::Migrate => Self::DatabaseMigration,
+            SqliteStartupError::Open => Self::DatabaseOpen,
+            SqliteStartupError::Configure => Self::DatabaseConfiguration,
+            SqliteStartupError::Migrate => Self::DatabaseMigration,
         }
     }
 }

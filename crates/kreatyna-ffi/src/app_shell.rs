@@ -9,10 +9,8 @@ use kreatyna::{
 use krucyfiks::{Command, CommandExt, Message, Widget};
 use tokio::task::JoinHandle;
 
-use crate::{
-    AppInitializationError, AppTypeConversionError, AppView, RUNTIME, RunningAppView,
-    database::sqlite::{DatabaseEffect, SqliteDatabase},
-};
+use crate::{AppInitializationError, AppTypeConversionError, AppView, RUNTIME, RunningAppView};
+use kreatyna_db::sqlite::{DatabaseEffect, SqliteDatabase};
 
 #[derive(Clone)]
 pub(crate) struct AppSetup {

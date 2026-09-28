@@ -9,7 +9,7 @@ use kreatyna::ingredients::{
 use test_case::test_case;
 
 use super::*;
-use crate::database::schema::ingredient_units;
+use crate::schema::ingredient_units;
 
 fn run<F: Future>(future: F) -> F::Output {
     tokio::runtime::Builder::new_multi_thread()

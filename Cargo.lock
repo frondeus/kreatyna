@@ -710,6 +710,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "kreatyna-db"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "diesel",
+ "diesel-async",
+ "diesel_migrations",
+ "futures",
+ "kreatyna",
+ "krucyfiks",
+ "rust_decimal",
+ "test-case",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "kreatyna-ffi"
 version = "0.1.0"
 dependencies = [
@@ -720,6 +738,7 @@ dependencies = [
  "flume",
  "futures",
  "kreatyna",
+ "kreatyna-db",
  "krucyfiks",
  "krucyfiks-runtime",
  "parking_lot",

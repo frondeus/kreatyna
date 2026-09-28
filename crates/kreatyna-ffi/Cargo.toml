@@ -16,6 +16,7 @@ required-features = ["bindgen"]
 
 [dependencies]
 kreatyna = { path = "../kreatyna" }
+kreatyna-db = { path = "../kreatyna-db" }
 krucyfiks = { path = "../../../krucyfix/core" }
 krucyfiks-runtime = { path = "../../../krucyfix/runtime" }
 

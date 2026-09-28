@@ -1,0 +1,21 @@
+[package]
+name = "kreatyna-db"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+diesel = { version = "~2.3.9", features = ["sqlite"] }
+diesel-async = { version = "0.9.2", features = ["sqlite"] }
+diesel_migrations = "~2.3.0"
+futures = "0.3.34"
+thiserror = "2.0.20"
+async-trait = "0.1.92"
+tracing = "0.1.44"
+rust_decimal = { version = "1.43.0", default-features = false, features = ["std"] }
+
+kreatyna = { path = "../kreatyna" }
+krucyfiks = { path = "../../../krucyfix/core" }
+
+[dev-dependencies]
+test-case = "3"
+tokio = { version = "1", features = ["rt-multi-thread", "sync"] }

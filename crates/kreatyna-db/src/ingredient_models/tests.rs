@@ -10,7 +10,7 @@ use rust_decimal::Decimal;
 use test_case::test_case;
 
 use super::*;
-use crate::database::schema::{counter, ingredient_units as u, ingredients as i};
+use crate::schema::{counter, ingredient_units as u, ingredients as i};
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 

@@ -393,7 +393,7 @@ async fn pending_save_blocks_back_and_catalog_drop_cancels_the_command() -> anyh
             IngredientFormEvent::Save,
         ))))
         .driver(&mut fixture.effects);
-    save.drive()
+    save.step()
         .await?
         .expect_effect()
         .expect_render()
@@ -406,7 +406,7 @@ async fn pending_save_blocks_back_and_catalog_drop_cancels_the_command() -> anyh
     )
     .await;
     drop(fixture.catalog);
-    save.drive().await?.expect_done();
+    save.step().await?.expect_done();
     Ok(())
 }
 
@@ -488,21 +488,21 @@ impl CatalogFixture {
     ) -> anyhow::Result<IngredientCatalogOutcome> {
         let mut command = command.driver(&mut self.effects);
         command
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
         command
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_store()
             .resolve_list(|| async move { Ok(records) })
             .await?;
-        let outcome = command.drive().await?.expect_outcome();
-        command.drive().await?.expect_done();
+        let outcome = command.step().await?.expect_outcome();
+        command.step().await?.expect_done();
         drop(command);
         self.apply_and_render(outcome.clone()).await?;
         Ok(outcome)
@@ -533,13 +533,13 @@ impl CatalogFixture {
     async fn render(&mut self, command: Command<IngredientCatalogOutcome>) -> anyhow::Result<()> {
         let mut command = command.driver(&mut self.effects);
         command
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
-        command.drive().await?.expect_done();
+        command.step().await?.expect_done();
         Ok(())
     }
 
@@ -582,14 +582,14 @@ impl CatalogFixture {
             .update(Message::Outcome(outcome))
             .driver(&mut self.effects);
         command
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
-        let outcome = command.drive().await?.expect_outcome();
-        command.drive().await?.expect_done();
+        let outcome = command.step().await?.expect_outcome();
+        command.step().await?.expect_done();
         Ok(outcome)
     }
 
@@ -670,21 +670,21 @@ impl CatalogFixture {
             ))));
         let mut command = command.driver(&mut self.effects);
         command
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
         command
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_store()
             .resolve_save(|_| async move { result })
             .await?;
-        let finished = command.drive().await?.expect_outcome();
-        command.drive().await?.expect_done();
+        let finished = command.step().await?.expect_outcome();
+        command.step().await?.expect_done();
         Ok(finished)
     }
 
@@ -704,14 +704,14 @@ impl CatalogFixture {
     ) -> anyhow::Result<IngredientCatalogOutcome> {
         let mut command = command.driver(&mut self.effects);
         command
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
         command
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_store()
@@ -720,8 +720,8 @@ impl CatalogFixture {
                 result
             })
             .await?;
-        let outcome = command.drive().await?.expect_outcome();
-        command.drive().await?.expect_done();
+        let outcome = command.step().await?.expect_outcome();
+        command.step().await?.expect_done();
         Ok(outcome)
     }
 }

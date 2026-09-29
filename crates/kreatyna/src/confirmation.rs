@@ -43,10 +43,6 @@ impl Widget for Confirmation {
     type Event = ConfirmationEvent;
     type Outcome = ConfirmationOutcome;
 
-    fn init(&mut self) -> Command<Self::Outcome> {
-        Command::empty()
-    }
-
     fn update(&mut self, message: Message<Self>) -> Command<Self::Outcome> {
         let Message::Event(event) = message else {
             return Command::empty();

@@ -32,14 +32,14 @@ async fn event_changes_only_its_branch_and_routes_effects(
         )))
         .driver(&mut effects);
     setup
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_left()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    setup.drive().await?.expect_done();
+    setup.step().await?.expect_done();
     drop(setup);
     let mut setup = pair
         .update(Message::Outcome(CounterPairOutcome::Right(
@@ -47,26 +47,26 @@ async fn event_changes_only_its_branch_and_routes_effects(
         )))
         .driver(&mut effects);
     setup
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_right()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    setup.drive().await?.expect_done();
+    setup.step().await?.expect_done();
     drop(setup);
 
     let mut command = pair.update(Message::Event(event)).driver(&mut effects);
     assert_eq!(pair.view(), expected_view);
-    let render = command.drive().await?.expect_effect();
+    let render = command.step().await?.expect_effect();
     let render = if left {
         render.expect_left()
     } else {
         render.expect_right()
     };
     render.expect_render().resolve_render(|| async {}).await?;
-    let write = command.drive().await?.expect_effect();
+    let write = command.step().await?.expect_effect();
     let write = if left {
         write.expect_left()
     } else {
@@ -79,7 +79,7 @@ async fn event_changes_only_its_branch_and_routes_effects(
             Ok(())
         })
         .await?;
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
     Ok(())
 }
 
@@ -95,8 +95,8 @@ async fn init_routes_both_outcomes_in_either_response_order(
         _ => 0,
     };
     let mut init = pair.init().driver(&mut effects);
-    let first = init.drive().await?.expect_effect();
-    let second = init.drive().await?.expect_effect();
+    let first = init.step().await?.expect_effect();
+    let second = init.step().await?.expect_effect();
     let (left, right) = match (first, second) {
         (CounterPairEffect::Left(left), CounterPairEffect::Right(right))
         | (CounterPairEffect::Right(right), CounterPairEffect::Left(left)) => {
@@ -109,7 +109,7 @@ async fn init_routes_both_outcomes_in_either_response_order(
         right
             .resolve_count(|| async { Ok(Some(usize::MAX)) })
             .await?;
-        first_outcome = init.drive().await?.expect_outcome();
+        first_outcome = init.step().await?.expect_outcome();
         assert!(matches!(
             first_outcome,
             CounterPairOutcome::Right(CounterOutcome::Loaded {
@@ -119,7 +119,7 @@ async fn init_routes_both_outcomes_in_either_response_order(
         left.resolve_count(|| async move { left_reply }).await?;
     } else {
         left.resolve_count(|| async move { left_reply }).await?;
-        first_outcome = init.drive().await?.expect_outcome();
+        first_outcome = init.step().await?.expect_outcome();
         assert!(
             matches!(first_outcome, CounterPairOutcome::Left(CounterOutcome::Loaded { counter }) if counter == expected_left)
         );
@@ -127,7 +127,7 @@ async fn init_routes_both_outcomes_in_either_response_order(
             .resolve_count(|| async { Ok(Some(usize::MAX)) })
             .await?;
     }
-    let second_outcome = init.drive().await?.expect_outcome();
+    let second_outcome = init.step().await?.expect_outcome();
     if right_first {
         assert!(
             matches!(second_outcome, CounterPairOutcome::Left(CounterOutcome::Loaded { counter }) if counter == expected_left)
@@ -140,7 +140,7 @@ async fn init_routes_both_outcomes_in_either_response_order(
             })
         ));
     }
-    init.drive().await?.expect_done();
+    init.step().await?.expect_done();
     drop(init);
     assert_eq!(pair.view(), (0, 0));
 
@@ -157,14 +157,14 @@ async fn init_routes_both_outcomes_in_either_response_order(
                 (before.0, usize::MAX)
             }
         );
-        let render = command.drive().await?.expect_effect();
+        let render = command.step().await?.expect_effect();
         let render = if left {
             render.expect_left()
         } else {
             render.expect_right()
         };
         render.expect_render().resolve_render(|| async {}).await?;
-        command.drive().await?.expect_done();
+        command.step().await?.expect_done();
     }
     assert_eq!(pair.view(), (expected_left, usize::MAX));
     Ok(())
@@ -201,7 +201,7 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
         )))
         .driver(&mut right_clock_effects);
 
-    left.drive()
+    left.step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
@@ -209,12 +209,12 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
         })
         .await?;
     let CounterPairOutcome::Left(CounterOutcome::Tick { id: left_id }) =
-        left.drive().await?.expect_outcome()
+        left.step().await?.expect_outcome()
     else {
         panic!("expected left tick");
     };
     right
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
@@ -222,7 +222,7 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
         })
         .await?;
     let CounterPairOutcome::Right(CounterOutcome::Tick { id: right_id }) =
-        right.drive().await?.expect_outcome()
+        right.step().await?.expect_outcome()
     else {
         panic!("expected right tick");
     };
@@ -232,14 +232,14 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
         CounterOutcome::Tick { id: right_id },
     )))
     .driver(&mut effects)
-    .drive()
+    .step()
     .await?
     .expect_done();
     pair.update(Message::Outcome(CounterPairOutcome::Right(
         CounterOutcome::Tick { id: left_id },
     )))
     .driver(&mut effects)
-    .drive()
+    .step()
     .await?
     .expect_done();
     assert_eq!(pair.view(), (0, 0));
@@ -249,7 +249,7 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
         )))
         .driver(&mut effects);
     applied
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_left()
@@ -257,7 +257,7 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
         .resolve_render(|| async {})
         .await?;
     applied
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_left()
@@ -267,7 +267,7 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
             Ok(())
         })
         .await?;
-    applied.drive().await?.expect_done();
+    applied.step().await?.expect_done();
     drop(applied);
     let mut applied = pair
         .update(Message::Outcome(CounterPairOutcome::Right(
@@ -275,7 +275,7 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
         )))
         .driver(&mut effects);
     applied
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_right()
@@ -283,7 +283,7 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
         .resolve_render(|| async {})
         .await?;
     applied
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_right()
@@ -293,7 +293,7 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
             Ok(())
         })
         .await?;
-    applied.drive().await?.expect_done();
+    applied.step().await?.expect_done();
     drop(applied);
     assert_eq!(pair.view(), (1, 1));
 
@@ -304,7 +304,7 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
     };
     pair.update(Message::Event(stop))
         .driver(&mut effects)
-        .drive()
+        .step()
         .await?
         .expect_done();
     let stale = if stop_left {
@@ -314,48 +314,48 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
     };
     pair.update(Message::Outcome(stale))
         .driver(&mut effects)
-        .drive()
+        .step()
         .await?
         .expect_done();
     let outcome = if stop_left {
-        left.drive().await?.expect_done();
+        left.step().await?.expect_done();
         right
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .resolve_sleep_ms(|ms| async move {
                 assert_eq!(ms, 1_000);
             })
             .await?;
-        let outcome = right.drive().await?.expect_outcome();
+        let outcome = right.step().await?.expect_outcome();
         assert!(
             matches!(outcome, CounterPairOutcome::Right(CounterOutcome::Tick { id }) if id == right_id)
         );
         outcome
     } else {
-        right.drive().await?.expect_done();
-        left.drive()
+        right.step().await?.expect_done();
+        left.step()
             .await?
             .expect_effect()
             .resolve_sleep_ms(|ms| async move {
                 assert_eq!(ms, 1_000);
             })
             .await?;
-        let outcome = left.drive().await?.expect_outcome();
+        let outcome = left.step().await?.expect_outcome();
         assert!(
             matches!(outcome, CounterPairOutcome::Left(CounterOutcome::Tick { id }) if id == left_id)
         );
         outcome
     };
     let mut applied = pair.update(Message::Outcome(outcome)).driver(&mut effects);
-    let render = applied.drive().await?.expect_effect();
+    let render = applied.step().await?.expect_effect();
     let render = if stop_left {
         render.expect_right()
     } else {
         render.expect_left()
     };
     render.expect_render().resolve_render(|| async {}).await?;
-    let write = applied.drive().await?.expect_effect();
+    let write = applied.step().await?.expect_effect();
     let write = if stop_left {
         write.expect_right()
     } else {
@@ -368,7 +368,7 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
             Ok(())
         })
         .await?;
-    applied.drive().await?.expect_done();
+    applied.step().await?.expect_done();
     assert_eq!(pair.view(), if stop_left { (1, 2) } else { (2, 1) });
     Ok(())
 }

@@ -445,14 +445,14 @@ async fn dropping_form_cancels_pending_save_before_store_request() -> anyhow::Re
         .update(Message::Event(IngredientFormEvent::Save))
         .driver(&mut fixture.effects);
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     drop(fixture.form);
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
     Ok(())
 }
 
@@ -478,13 +478,13 @@ impl FormFixture {
     ) -> anyhow::Result<()> {
         let mut driver = command.driver(&mut self.effects);
         driver
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
-        driver.drive().await?.expect_done();
+        driver.step().await?.expect_done();
         Ok(())
     }
 
@@ -494,14 +494,14 @@ impl FormFixture {
     ) -> anyhow::Result<IngredientFormOutcome> {
         let mut driver = command.driver(&mut self.effects);
         driver
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
-        let outcome = driver.drive().await?.expect_outcome();
-        driver.drive().await?.expect_done();
+        let outcome = driver.step().await?.expect_outcome();
+        driver.step().await?.expect_done();
         Ok(outcome)
     }
 
@@ -520,14 +520,14 @@ impl FormFixture {
         }
         let mut driver = command.driver(&mut self.effects);
         driver
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
         driver
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_store()
@@ -536,8 +536,8 @@ impl FormFixture {
                 result
             })
             .await?;
-        let outcome = driver.drive().await?.expect_outcome();
-        driver.drive().await?.expect_done();
+        let outcome = driver.step().await?.expect_outcome();
+        driver.step().await?.expect_done();
         Ok(outcome)
     }
 

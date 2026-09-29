@@ -52,34 +52,34 @@ async fn initial_error_is_typed_and_retry_recovers(
         IngredientListStatus::Loading
     ));
     retry
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     retry
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_store()
         .resolve_list(|| async { Ok(vec![ingredient("Basil")]) })
         .await?;
-    let completed = retry.drive().await?.expect_outcome();
-    retry.drive().await?.expect_done();
+    let completed = retry.step().await?.expect_outcome();
+    retry.step().await?.expect_done();
     drop(retry);
     let mut render = fixture
         .list
         .update(Message::Outcome(completed))
         .driver(&mut fixture.effects);
     render
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    render.drive().await?.expect_done();
+    render.step().await?.expect_done();
     assert_eq!(rows(&fixture.list), ["Basil"]);
     Ok(())
 }
@@ -105,13 +105,13 @@ async fn search_is_local_and_sorted(query: &str, expected: Vec<&str>) -> anyhow:
     assert_eq!(fixture.list.view().search, query);
     assert_eq!(rows(&fixture.list), expected);
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
     assert!(matches!(
         fixture.list.view().status,
         IngredientListStatus::Ready { total_count: 3, .. }
@@ -156,13 +156,13 @@ async fn refresh_failure_keeps_cached_rows_and_retry_replaces_them(
         .update(Message::Event(IngredientListEvent::Search("gar".into())))
         .driver(&mut fixture.effects);
     search
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    search.drive().await?.expect_done();
+    search.step().await?.expect_done();
     drop(search);
 
     let mut refresh = fixture
@@ -200,34 +200,34 @@ async fn refresh_failure_keeps_cached_rows_and_retry_replaces_them(
             .is_none()
     );
     refresh
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     refresh
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_store()
         .resolve_list(|| async { Err(error.clone()) })
         .await?;
-    let failure = refresh.drive().await?.expect_outcome();
-    refresh.drive().await?.expect_done();
+    let failure = refresh.step().await?.expect_outcome();
+    refresh.step().await?.expect_done();
     drop(refresh);
     let mut render = fixture
         .list
         .update(Message::Outcome(failure))
         .driver(&mut fixture.effects);
     render
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    render.drive().await?.expect_done();
+    render.step().await?.expect_done();
     drop(render);
     assert_eq!(rows(&fixture.list), ["Garlic"]);
     assert!(matches!(
@@ -256,34 +256,34 @@ async fn refresh_failure_keeps_cached_rows_and_retry_replaces_them(
         .update(Message::Event(IngredientListEvent::Refresh))
         .driver(&mut fixture.effects);
     retry
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     retry
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_store()
         .resolve_list(|| async { Ok(vec![ingredient("Garden pea")]) })
         .await?;
-    let success = retry.drive().await?.expect_outcome();
-    retry.drive().await?.expect_done();
+    let success = retry.step().await?.expect_outcome();
+    retry.step().await?.expect_done();
     drop(retry);
     let mut render = fixture
         .list
         .update(Message::Outcome(success))
         .driver(&mut fixture.effects);
     render
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    render.drive().await?.expect_done();
+    render.step().await?.expect_done();
     assert_eq!(fixture.list.view().search, "gar");
     assert_eq!(rows(&fixture.list), ["Garden pea"]);
     Ok(())
@@ -294,40 +294,40 @@ async fn stale_results_are_ignored() -> anyhow::Result<()> {
     let mut fixture = ListFixture::new();
     let mut first = fixture.list.init().driver(&mut fixture.effects);
     first
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     first
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_store()
         .resolve_list(|| async { Ok(vec![ingredient("Basil")]) })
         .await?;
-    let completed = first.drive().await?.expect_outcome();
-    first.drive().await?.expect_done();
+    let completed = first.step().await?.expect_outcome();
+    first.step().await?.expect_done();
     drop(first);
     let mut render = fixture
         .list
         .update(Message::Outcome(completed.clone()))
         .driver(&mut fixture.effects);
     render
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    render.drive().await?.expect_done();
+    render.step().await?.expect_done();
     drop(render);
     let mut stale = fixture
         .list
         .update(Message::Outcome(completed))
         .driver(&mut fixture.effects);
-    stale.drive().await?.expect_done();
+    stale.step().await?.expect_done();
     assert_eq!(rows(&fixture.list), ["Basil"]);
     Ok(())
 }
@@ -345,13 +345,13 @@ async fn selection_uses_visible_complete_records_and_create_always_works() -> an
         .update(Message::Event(IngredientListEvent::Search("gar".into())))
         .driver(&mut fixture.effects);
     search
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    search.drive().await?.expect_done();
+    search.step().await?.expect_done();
     drop(search);
     for event in [
         IngredientListEvent::Select(basil.id),
@@ -361,46 +361,46 @@ async fn selection_uses_visible_complete_records_and_create_always_works() -> an
             .list
             .update(Message::Event(event))
             .driver(&mut fixture.effects);
-        command.drive().await?.expect_done();
+        command.step().await?.expect_done();
     }
     let mut detail = fixture
         .list
         .update(Message::Event(IngredientListEvent::Select(garlic.id)))
         .driver(&mut fixture.effects);
-    let outcome = detail.drive().await?.expect_outcome();
+    let outcome = detail.step().await?.expect_outcome();
     assert_eq!(
         outcome,
         IngredientListOutcome::OpenDetail {
             ingredient: garlic.clone()
         }
     );
-    detail.drive().await?.expect_done();
+    detail.step().await?.expect_done();
     drop(detail);
     let mut ignored = fixture
         .list
         .update(Message::Outcome(outcome))
         .driver(&mut fixture.effects);
-    ignored.drive().await?.expect_done();
+    ignored.step().await?.expect_done();
     drop(ignored);
     let mut edit = fixture
         .list
         .update(Message::Event(IngredientListEvent::Edit(garlic.id)))
         .driver(&mut fixture.effects);
     assert_eq!(
-        edit.drive().await?.expect_outcome(),
+        edit.step().await?.expect_outcome(),
         IngredientListOutcome::OpenEdit { ingredient: garlic }
     );
-    edit.drive().await?.expect_done();
+    edit.step().await?.expect_done();
     drop(edit);
     let mut create = fixture
         .list
         .update(Message::Event(IngredientListEvent::CreateRequested))
         .driver(&mut fixture.effects);
     assert_eq!(
-        create.drive().await?.expect_outcome(),
+        create.step().await?.expect_outcome(),
         IngredientListOutcome::CreateRequested
     );
-    create.drive().await?.expect_done();
+    create.step().await?.expect_done();
     Ok(())
 }
 
@@ -412,10 +412,10 @@ async fn create_is_available_during_loading_and_errors() -> anyhow::Result<()> {
         .update(Message::Event(IngredientListEvent::CreateRequested))
         .driver(&mut fixture.effects);
     assert_eq!(
-        create.drive().await?.expect_outcome(),
+        create.step().await?.expect_outcome(),
         IngredientListOutcome::CreateRequested
     );
-    create.drive().await?.expect_done();
+    create.step().await?.expect_done();
     drop(create);
     fixture
         .assert_initial_load(Err(IngredientLoadError::Storage))
@@ -425,10 +425,10 @@ async fn create_is_available_during_loading_and_errors() -> anyhow::Result<()> {
         .update(Message::Event(IngredientListEvent::CreateRequested))
         .driver(&mut fixture.effects);
     assert_eq!(
-        create.drive().await?.expect_outcome(),
+        create.step().await?.expect_outcome(),
         IngredientListOutcome::CreateRequested
     );
-    create.drive().await?.expect_done();
+    create.step().await?.expect_done();
     Ok(())
 }
 
@@ -442,34 +442,34 @@ async fn refresh_replaces_initial_load() -> anyhow::Result<()> {
         .driver(&mut fixture.effects);
     assert!(initial.into_stream().next().await.is_none());
     refresh
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     refresh
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_store()
         .resolve_list(|| async { Ok(vec![ingredient("Basil")]) })
         .await?;
-    let outcome = refresh.drive().await?.expect_outcome();
-    refresh.drive().await?.expect_done();
+    let outcome = refresh.step().await?.expect_outcome();
+    refresh.step().await?.expect_done();
     drop(refresh);
     let mut render = fixture
         .list
         .update(Message::Outcome(outcome))
         .driver(&mut fixture.effects);
     render
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    render.drive().await?.expect_done();
+    render.step().await?.expect_done();
     assert_eq!(rows(&fixture.list), ["Basil"]);
     Ok(())
 }
@@ -498,21 +498,21 @@ async fn latest_refresh_cancels_previous_and_rejects_queued_result() -> anyhow::
     );
     let mut command = replacement.driver(&mut fixture.effects);
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_store()
         .resolve_list(|| async { Ok(vec![ingredient("Garlic")]) })
         .await?;
-    let queued = command.drive().await?.expect_outcome();
-    command.drive().await?.expect_done();
+    let queued = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
     drop(command);
     let newest = fixture
         .list
@@ -529,34 +529,34 @@ async fn latest_refresh_cancels_previous_and_rejects_queued_result() -> anyhow::
     assert_eq!(rows(&fixture.list), ["Basil"]);
     let mut command = newest.driver(&mut fixture.effects);
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_store()
         .resolve_list(|| async { Ok(vec![ingredient("Peas")]) })
         .await?;
-    let outcome = command.drive().await?.expect_outcome();
-    command.drive().await?.expect_done();
+    let outcome = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
     drop(command);
     let mut render = fixture
         .list
         .update(Message::Outcome(outcome))
         .driver(&mut fixture.effects);
     render
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    render.drive().await?.expect_done();
+    render.step().await?.expect_done();
     assert_eq!(rows(&fixture.list), ["Peas"]);
     Ok(())
 }
@@ -566,14 +566,14 @@ async fn dropping_widget_cancels_pending_load() -> anyhow::Result<()> {
     let mut fixture = ListFixture::new();
     let mut command = fixture.list.init().driver(&mut fixture.effects);
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     drop(fixture.list);
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
     Ok(())
 }
 
@@ -615,34 +615,34 @@ impl ListFixture {
             IngredientListStatus::Loading
         ));
         command
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
         command
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_store()
             .resolve_list(|| async move { result })
             .await?;
-        let outcome = command.drive().await?.expect_outcome();
-        command.drive().await?.expect_done();
+        let outcome = command.step().await?.expect_outcome();
+        command.step().await?.expect_done();
         drop(command);
         let mut render = self
             .list
             .update(Message::Outcome(outcome.clone()))
             .driver(&mut self.effects);
         render
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
-        render.drive().await?.expect_done();
+        render.step().await?.expect_done();
         Ok(outcome)
     }
 }

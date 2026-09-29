@@ -196,14 +196,14 @@ async fn dropping_detail_cancels_before_store_request() -> anyhow::Result<()> {
         .update(Message::Outcome(decision))
         .driver(&mut fixture.effects);
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     drop(fixture.detail);
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
     Ok(())
 }
 
@@ -224,7 +224,7 @@ impl DetailFixture {
     ) -> anyhow::Result<Vec<IngredientDetailOutcome>> {
         let mut driver = command.driver(&mut self.effects);
         driver
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
@@ -237,9 +237,9 @@ impl DetailFixture {
             self.detail.view().deletion,
             IngredientDetailDeletion::Deleted
         ) {
-            outcomes.push(driver.drive().await?.expect_outcome());
+            outcomes.push(driver.step().await?.expect_outcome());
         }
-        driver.drive().await?.expect_done();
+        driver.step().await?.expect_done();
         Ok(outcomes)
     }
 
@@ -290,14 +290,14 @@ impl DetailFixture {
         let expected_id = self.detail.view().ingredient.id;
         let mut driver = command.driver(&mut self.effects);
         driver
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
         driver
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_store()
@@ -306,8 +306,8 @@ impl DetailFixture {
                 result
             })
             .await?;
-        let outcome = driver.drive().await?.expect_outcome();
-        driver.drive().await?.expect_done();
+        let outcome = driver.step().await?.expect_outcome();
+        driver.step().await?.expect_done();
         Ok(outcome)
     }
 }

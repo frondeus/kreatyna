@@ -20,16 +20,16 @@ async fn init_loads_without_changing_state_or_writing_to_database(
     let mut command = counter.init().driver(&mut effects);
 
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_database()
         .resolve_count(|| async move { reply })
         .await?;
-    let outcome = command.drive().await?.expect_outcome();
+    let outcome = command.step().await?.expect_outcome();
     assert!(matches!(outcome, CounterOutcome::Loaded { counter } if counter == expected));
     assert_eq!(counter.view(), 0);
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
     Ok(())
 }
 
@@ -49,13 +49,13 @@ async fn loaded_replaces_state_and_only_renders(
         }))
         .driver(&mut effects);
     setup
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    setup.drive().await?.expect_done();
+    setup.step().await?.expect_done();
     drop(setup);
 
     let mut command = counter
@@ -63,13 +63,13 @@ async fn loaded_replaces_state_and_only_renders(
         .driver(&mut effects);
     assert_eq!(counter.view(), value);
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
     Ok(())
 }
 
@@ -97,26 +97,26 @@ async fn mutation_changes_state_then_renders_then_persists(
         }))
         .driver(&mut effects);
     setup
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    setup.drive().await?.expect_done();
+    setup.step().await?.expect_done();
     drop(setup);
 
     let mut command = counter.update(Message::Event(event)).driver(&mut effects);
     assert_eq!(counter.view(), expected);
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_database()
@@ -125,7 +125,7 @@ async fn mutation_changes_state_then_renders_then_persists(
             Ok(())
         })
         .await?;
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
     assert_eq!(counter.view(), expected);
     Ok(())
 }
@@ -144,25 +144,25 @@ async fn failed_write_preserves_state_and_allows_next_event(
         .update(Message::Outcome(CounterOutcome::Loaded { counter: 10 }))
         .driver(&mut effects);
     setup
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    setup.drive().await?.expect_done();
+    setup.step().await?.expect_done();
     drop(setup);
 
     let mut command = counter.update(Message::Event(event)).driver(&mut effects);
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_database()
@@ -171,20 +171,20 @@ async fn failed_write_preserves_state_and_allows_next_event(
             Err(error)
         })
         .await?;
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
     assert_eq!(counter.view(), expected);
     drop(command);
 
     let mut next = counter
         .update(Message::Event(CounterEvent::Increase))
         .driver(&mut effects);
-    next.drive()
+    next.step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    next.drive()
+    next.step()
         .await?
         .expect_effect()
         .expect_database()
@@ -193,7 +193,7 @@ async fn failed_write_preserves_state_and_allows_next_event(
             Ok(())
         })
         .await?;
-    next.drive().await?.expect_done();
+    next.step().await?.expect_done();
     assert_eq!(counter.view(), expected + 1);
     Ok(())
 }
@@ -210,14 +210,14 @@ async fn delayed_commands_persist_each_events_captured_value() -> anyhow::Result
     for (command, expected) in [(increase, 1), (second_increase, 2), (reset, 0)] {
         let mut command = command.driver(&mut effects);
         command
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
         command
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .expect_database()
@@ -226,7 +226,7 @@ async fn delayed_commands_persist_each_events_captured_value() -> anyhow::Result
                 Ok(())
             })
             .await?;
-        command.drive().await?.expect_done();
+        command.step().await?.expect_done();
         assert_eq!(counter.view(), 0);
     }
     Ok(())
@@ -236,12 +236,12 @@ async fn delayed_commands_persist_each_events_captured_value() -> anyhow::Result
 async fn dropped_database_read_returns_loaded_zero() -> anyhow::Result<()> {
     let (mut counter, mut effects) = Counter::test_fixture();
     let mut command = counter.init().driver(&mut effects);
-    drop(command.drive().await?.expect_effect().expect_database());
+    drop(command.step().await?.expect_effect().expect_database());
     assert!(matches!(
-        command.drive().await?.expect_outcome(),
+        command.step().await?.expect_outcome(),
         CounterOutcome::Loaded { counter: 0 }
     ));
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
     Ok(())
 }
 
@@ -252,14 +252,14 @@ async fn dropped_database_write_preserves_state() -> anyhow::Result<()> {
         .update(Message::Event(CounterEvent::Increase))
         .driver(&mut effects);
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    drop(command.drive().await?.expect_effect().expect_database());
-    command.drive().await?.expect_done();
+    drop(command.step().await?.expect_effect().expect_database());
+    command.step().await?.expect_done();
     assert_eq!(counter.view(), 1);
     Ok(())
 }
@@ -271,7 +271,7 @@ async fn dropping_mutation_while_rendering_cancels_persistence_but_keeps_state()
     let mut command = counter
         .update(Message::Event(CounterEvent::Increase))
         .driver(&mut effects);
-    let render = command.drive().await?.expect_effect().expect_render();
+    let render = command.step().await?.expect_effect().expect_render();
     drop(command);
     assert!(matches!(
         render.resolve_render(|| async {}).await,
@@ -282,13 +282,13 @@ async fn dropping_mutation_while_rendering_cancels_persistence_but_keeps_state()
     let mut next = counter
         .update(Message::Event(CounterEvent::Increase))
         .driver(&mut effects);
-    next.drive()
+    next.step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    next.drive()
+    next.step()
         .await?
         .expect_effect()
         .expect_database()
@@ -297,7 +297,7 @@ async fn dropping_mutation_while_rendering_cancels_persistence_but_keeps_state()
             Ok(())
         })
         .await?;
-    next.drive().await?.expect_done();
+    next.step().await?.expect_done();
     Ok(())
 }
 
@@ -310,11 +310,11 @@ async fn dropped_render_response_panics() {
         .driver(&mut effects);
     drop(
         command
-            .drive()
+            .step()
             .await
             .unwrap()
             .expect_effect()
             .expect_render(),
     );
-    command.drive().await.unwrap().expect_done();
+    command.step().await.unwrap().expect_done();
 }

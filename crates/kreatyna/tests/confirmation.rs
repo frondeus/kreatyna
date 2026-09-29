@@ -1,76 +1,156 @@
-use futures::StreamExt;
 use kreatyna::confirmation::{
     Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView,
 };
-use krucyfiks::{Message, Widget};
-use test_case::test_case;
+use krucyfiks::{Message, Widget, effects::CommandTestExt, test_utils::EmptyInitTest};
+use test_case::{test_case, test_matrix};
 
 #[tokio::test]
-async fn initialization_keeps_confirmation_awaiting_a_decision() {
+async fn confirmation_widget_has_awaiting_decision_initial_state() -> anyhow::Result<()> {
     let mut confirmation = Confirmation::new();
+
     assert_eq!(confirmation.view(), ConfirmationView::AwaitingDecision);
-    assert!(confirmation.init().into_stream().next().await.is_none());
+
+    confirmation.expect_noop_init().await;
+
     assert_eq!(confirmation.view(), ConfirmationView::AwaitingDecision);
+
+    Ok(())
 }
 
 #[test_case(ConfirmationEvent::Confirm, ConfirmationOutcome::Confirmed; "confirm")]
 #[test_case(ConfirmationEvent::Cancel, ConfirmationOutcome::Cancelled; "cancel")]
 #[tokio::test]
-async fn first_decision_is_recorded_synchronously_and_emitted_once(
+async fn decision_changes_state_and_creates_an_outcome(
     event: ConfirmationEvent,
-    decision: ConfirmationOutcome,
-) {
+    expected_outcome: ConfirmationOutcome,
+) -> anyhow::Result<()> {
     let mut confirmation = Confirmation::new();
-    let command = confirmation.update(Message::Event(event));
-    let expected = ConfirmationView::Resolved { decision };
+    let mut driver = confirmation.update(Message::Event(event)).pure_driver();
+
+    assert_eq!(
+        confirmation.view(),
+        ConfirmationView::Resolved {
+            decision: expected_outcome
+        }
+    );
+
+    let outcome = driver.step().await?.expect_outcome();
+    assert_eq!(expected_outcome, outcome);
+    driver.step().await?.expect_done();
+    Ok(())
+}
+
+#[test_matrix(
+    [ConfirmationEvent::Confirm, ConfirmationEvent::Cancel],
+    [ConfirmationEvent::Confirm, ConfirmationEvent::Cancel]
+)]
+#[tokio::test]
+async fn repeated_choices_are_ignored_before_the_command_completes(
+    first: ConfirmationEvent,
+    second: ConfirmationEvent,
+) -> anyhow::Result<()> {
+    let mut confirmation = Confirmation::new();
+    let mut command = confirmation.update(Message::Event(first)).pure_driver();
+    let expected = ConfirmationView::Resolved {
+        decision: expected_outcome(first),
+    };
     assert_eq!(confirmation.view(), expected);
 
-    // Neither choice can replace the decision before its command is polled.
-    for next in [ConfirmationEvent::Confirm, ConfirmationEvent::Cancel] {
-        assert!(
-            confirmation
-                .update(Message::Event(next))
-                .into_stream()
-                .next()
-                .await
-                .is_none()
-        );
-        assert_eq!(confirmation.view(), expected);
-    }
+    confirmation
+        .update(Message::Event(second))
+        .pure_driver()
+        .step()
+        .await?
+        .expect_done(); // Second event produces no outcome.
 
-    assert_eq!(command.into_stream().collect::<Vec<_>>().await, [decision]);
-    for next in [ConfirmationEvent::Confirm, ConfirmationEvent::Cancel] {
-        assert!(
-            confirmation
-                .update(Message::Event(next))
-                .into_stream()
-                .next()
-                .await
-                .is_none()
-        );
-    }
-    assert!(confirmation.init().into_stream().next().await.is_none());
     assert_eq!(confirmation.view(), expected);
+
+    command.until_done_ignoring_outcomes().await?;
+
+    Ok(())
+}
+
+#[test_matrix(
+    [ConfirmationEvent::Confirm, ConfirmationEvent::Cancel],
+    [ConfirmationEvent::Confirm, ConfirmationEvent::Cancel]
+)]
+#[tokio::test]
+async fn repeated_choices_are_ignored_after_the_command_completes(
+    first: ConfirmationEvent,
+    second: ConfirmationEvent,
+) -> anyhow::Result<()> {
+    let mut confirmation = Confirmation::new();
+    confirmation
+        .update(Message::Event(first))
+        .pure_driver()
+        .until_done_ignoring_outcomes()
+        .await?;
+
+    let expected = ConfirmationView::Resolved {
+        decision: expected_outcome(first),
+    };
+    assert_eq!(confirmation.view(), expected);
+
+    confirmation
+        .update(Message::Event(second))
+        .pure_driver()
+        .step()
+        .await?
+        .expect_done(); // Second event produces no outcome.
+
+    assert_eq!(confirmation.view(), expected);
+
+    Ok(())
 }
 
 #[test_case(ConfirmationOutcome::Confirmed; "confirmed")]
 #[test_case(ConfirmationOutcome::Cancelled; "cancelled")]
 #[tokio::test]
-async fn outcomes_do_not_change_awaiting_or_resolved_state(outcome: ConfirmationOutcome) {
+async fn outcomes_do_not_change_awaiting_state(outcome: ConfirmationOutcome) -> anyhow::Result<()> {
     let mut confirmation = Confirmation::new();
-    for resolve in [false, true] {
-        if resolve {
-            let _command = confirmation.update(Message::Event(ConfirmationEvent::Confirm));
+    confirmation
+        .update(Message::Outcome(outcome))
+        .pure_driver()
+        .step()
+        .await?
+        .expect_done();
+    assert_eq!(confirmation.view(), ConfirmationView::AwaitingDecision);
+    Ok(())
+}
+
+#[test_matrix(
+    [ConfirmationEvent::Confirm, ConfirmationEvent::Cancel],
+    [ConfirmationOutcome::Confirmed, ConfirmationOutcome::Cancelled]
+)]
+#[tokio::test]
+async fn outcomes_do_not_change_resolved_state(
+    initial: ConfirmationEvent,
+    outcome: ConfirmationOutcome,
+) -> anyhow::Result<()> {
+    let mut confirmation = Confirmation::new();
+    confirmation
+        .update(Message::Event(initial))
+        .pure_driver()
+        .until_done_ignoring_outcomes()
+        .await?;
+    confirmation
+        .update(Message::Outcome(outcome))
+        .pure_driver()
+        .step()
+        .await?
+        .expect_done();
+    assert_eq!(
+        confirmation.view(),
+        ConfirmationView::Resolved {
+            decision: expected_outcome(initial)
         }
-        let before = confirmation.view();
-        assert!(
-            confirmation
-                .update(Message::Outcome(outcome))
-                .into_stream()
-                .next()
-                .await
-                .is_none()
-        );
-        assert_eq!(confirmation.view(), before);
+    );
+    Ok(())
+}
+
+fn expected_outcome(event: ConfirmationEvent) -> ConfirmationOutcome {
+    match event {
+        ConfirmationEvent::Confirm => ConfirmationOutcome::Confirmed,
+        ConfirmationEvent::Cancel => ConfirmationOutcome::Cancelled,
     }
 }

@@ -138,7 +138,7 @@ mod tests {
             assert_eq!(counter.view(), (1, 0));
 
             command
-                .drive()
+                .step()
                 .await?
                 .expect_effect()
                 .expect_left()
@@ -147,7 +147,7 @@ mod tests {
                 .await?;
 
             command
-                .drive()
+                .step()
                 .await?
                 .expect_effect()
                 .any_route()
@@ -157,7 +157,7 @@ mod tests {
                 })
                 .await?;
 
-            command.drive().await?.expect_done();
+            command.step().await?.expect_done();
 
             Ok(())
         })

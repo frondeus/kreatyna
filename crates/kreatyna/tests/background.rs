@@ -30,13 +30,13 @@ async fn accepted_tick_renders_then_persists(
         }))
         .driver(&mut effects);
     setup
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    setup.drive().await?.expect_done();
+    setup.step().await?.expect_done();
     drop(setup);
 
     let mut background = counter
@@ -44,14 +44,14 @@ async fn accepted_tick_renders_then_persists(
         .driver(&mut clock_effects);
 
     background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
         .await?;
-    let CounterOutcome::Tick { id } = background.drive().await?.expect_outcome() else {
+    let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
         panic!("expected tick");
     };
 
@@ -62,14 +62,14 @@ async fn accepted_tick_renders_then_persists(
     assert_eq!(counter.view(), expected);
 
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_database()
@@ -78,7 +78,7 @@ async fn accepted_tick_renders_then_persists(
             Ok(())
         })
         .await?;
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
 
     Ok(())
 }
@@ -102,14 +102,14 @@ async fn failed_tick_write_keeps_state_and_background_continues(
         .driver(&mut clock_effects);
 
     background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
         .await?;
-    let CounterOutcome::Tick { id } = background.drive().await?.expect_outcome() else {
+    let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
         panic!("expected tick");
     };
 
@@ -118,14 +118,14 @@ async fn failed_tick_write_keeps_state_and_background_continues(
         .driver(&mut effects);
 
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_database()
@@ -134,29 +134,29 @@ async fn failed_tick_write_keeps_state_and_background_continues(
             Err(error)
         })
         .await?;
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
 
     assert_eq!(counter.view(), 1);
     drop(command);
     background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
         .await?;
-    let next = background.drive().await?.expect_outcome();
+    let next = background.step().await?.expect_outcome();
     assert!(matches!(next, CounterOutcome::Tick { id: next_id } if next_id == id));
     let mut next = counter.update(Message::Outcome(next)).driver(&mut effects);
 
-    next.drive()
+    next.step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    next.drive()
+    next.step()
         .await?
         .expect_effect()
         .expect_database()
@@ -165,7 +165,7 @@ async fn failed_tick_write_keeps_state_and_background_continues(
             Ok(())
         })
         .await?;
-    next.drive().await?.expect_done();
+    next.step().await?.expect_done();
 
     assert_eq!(counter.view(), 2);
     Ok(())
@@ -187,30 +187,30 @@ async fn duplicate_start_keeps_the_original_background_command() -> anyhow::Resu
     counter
         .update(Message::Event(CounterEvent::StartBackground))
         .driver(&mut effects)
-        .drive()
+        .step()
         .await?
         .expect_done();
 
     background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
         .await?;
-    let CounterOutcome::Tick { id } = background.drive().await?.expect_outcome() else {
+    let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
         panic!("expected tick");
     };
 
     counter
         .update(Message::Event(CounterEvent::StartBackground))
         .driver(&mut effects)
-        .drive()
+        .step()
         .await?
         .expect_done();
     background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
@@ -218,7 +218,7 @@ async fn duplicate_start_keeps_the_original_background_command() -> anyhow::Resu
         })
         .await?;
     assert!(
-        matches!(background.drive().await?.expect_outcome(), CounterOutcome::Tick { id: next } if next == id)
+        matches!(background.step().await?.expect_outcome(), CounterOutcome::Tick { id: next } if next == id)
     );
     assert_eq!(counter.view(), 0);
     Ok(())
@@ -230,13 +230,13 @@ async fn stop_without_start_is_repeatable() -> anyhow::Result<()> {
     counter
         .update(Message::Event(CounterEvent::StopBackground))
         .driver(&mut effects)
-        .drive()
+        .step()
         .await?
         .expect_done();
     counter
         .update(Message::Event(CounterEvent::StopBackground))
         .driver(&mut effects)
-        .drive()
+        .step()
         .await?
         .expect_done();
     assert_eq!(counter.view(), 0);
@@ -259,10 +259,10 @@ async fn stop_before_first_poll_prevents_clock_request() -> anyhow::Result<()> {
     counter
         .update(Message::Event(CounterEvent::StopBackground))
         .driver(&mut effects)
-        .drive()
+        .step()
         .await?
         .expect_done();
-    background.drive().await?.expect_done();
+    background.step().await?.expect_done();
     assert_eq!(counter.view(), 0);
     Ok(())
 }
@@ -281,25 +281,25 @@ async fn stop_cancels_pending_sleep_and_rejects_queued_tick() -> anyhow::Result<
         .driver(&mut clock_effects);
 
     background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
         .await?;
-    let CounterOutcome::Tick { id } = background.drive().await?.expect_outcome() else {
+    let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
         panic!("expected tick");
     };
 
-    let sleep = background.drive().await?.expect_effect();
+    let sleep = background.step().await?.expect_effect();
     counter
         .update(Message::Event(CounterEvent::StopBackground))
         .driver(&mut effects)
-        .drive()
+        .step()
         .await?
         .expect_done();
-    background.drive().await?.expect_done();
+    background.step().await?.expect_done();
     assert!(matches!(
         sleep.resolve_sleep_ms(|_| async {}).await,
         Err(krucyfiks::effects::EnvelopeError::Send(_))
@@ -307,7 +307,7 @@ async fn stop_cancels_pending_sleep_and_rejects_queued_tick() -> anyhow::Result<
     counter
         .update(Message::Outcome(CounterOutcome::Tick { id }))
         .driver(&mut effects)
-        .drive()
+        .step()
         .await?
         .expect_done();
     assert_eq!(counter.view(), 0);
@@ -330,14 +330,14 @@ async fn restart_rejects_old_generation_and_accepts_new_ticks(stop: bool) -> any
         .driver(&mut clock_effects);
 
     background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
         .await?;
-    let CounterOutcome::Tick { id } = background.drive().await?.expect_outcome() else {
+    let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
         panic!("expected tick");
     };
 
@@ -345,37 +345,37 @@ async fn restart_rejects_old_generation_and_accepts_new_ticks(stop: bool) -> any
         counter
             .update(Message::Event(CounterEvent::StopBackground))
             .driver(&mut effects)
-            .drive()
+            .step()
             .await?
             .expect_done();
-        background.drive().await?.expect_done();
+        background.step().await?.expect_done();
     }
     drop(background);
     counter
         .update(Message::Outcome(CounterOutcome::Tick { id }))
         .driver(&mut effects)
-        .drive()
+        .step()
         .await?
         .expect_done();
     let mut restarted = counter
         .update(Message::Event(CounterEvent::StartBackground))
         .driver(&mut clock_effects);
     restarted
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
         .await?;
-    let CounterOutcome::Tick { id: new_id } = restarted.drive().await?.expect_outcome() else {
+    let CounterOutcome::Tick { id: new_id } = restarted.step().await?.expect_outcome() else {
         panic!("expected tick");
     };
     assert_ne!(id, new_id);
     counter
         .update(Message::Outcome(CounterOutcome::Tick { id }))
         .driver(&mut effects)
-        .drive()
+        .step()
         .await?
         .expect_done();
     assert_eq!(counter.view(), 0);
@@ -384,14 +384,14 @@ async fn restart_rejects_old_generation_and_accepts_new_ticks(stop: bool) -> any
         .driver(&mut effects);
 
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_database()
@@ -400,7 +400,7 @@ async fn restart_rejects_old_generation_and_accepts_new_ticks(stop: bool) -> any
             Ok(())
         })
         .await?;
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
 
     assert_eq!(counter.view(), 1);
     Ok(())
@@ -422,14 +422,14 @@ async fn dropping_unpolled_background_allows_restart() -> anyhow::Result<()> {
         .driver(&mut clock_effects);
 
     background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
         .await?;
-    let CounterOutcome::Tick { id } = background.drive().await?.expect_outcome() else {
+    let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
         panic!("expected tick");
     };
 
@@ -438,14 +438,14 @@ async fn dropping_unpolled_background_allows_restart() -> anyhow::Result<()> {
         .driver(&mut effects);
 
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_database()
@@ -454,7 +454,7 @@ async fn dropping_unpolled_background_allows_restart() -> anyhow::Result<()> {
             Ok(())
         })
         .await?;
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
 
     Ok(())
 }
@@ -475,12 +475,12 @@ async fn dropping_counter_cancels_background(sleeping: bool) -> anyhow::Result<(
         .driver(&mut clock_effects);
 
     let sleep = if sleeping {
-        Some(background.drive().await?.expect_effect())
+        Some(background.step().await?.expect_effect())
     } else {
         None
     };
     drop(counter);
-    background.drive().await?.expect_done();
+    background.step().await?.expect_done();
     if let Some(sleep) = sleep {
         assert!(matches!(
             sleep.resolve_sleep_ms(|_| async {}).await,
@@ -507,28 +507,28 @@ async fn foreground_event_keeps_background_running(
         .driver(&mut clock_effects);
 
     background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
         .await?;
-    let CounterOutcome::Tick { id } = background.drive().await?.expect_outcome() else {
+    let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
         panic!("expected tick");
     };
 
     let mut command = counter.update(Message::Event(event)).driver(&mut effects);
 
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_database()
@@ -537,32 +537,32 @@ async fn foreground_event_keeps_background_running(
             Ok(())
         })
         .await?;
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
 
     drop(command);
     background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
         .await?;
-    let outcome = background.drive().await?.expect_outcome();
+    let outcome = background.step().await?.expect_outcome();
     assert!(matches!(outcome, CounterOutcome::Tick { id: next } if next == id));
     let mut command = counter
         .update(Message::Outcome(outcome))
         .driver(&mut effects);
 
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_database()
@@ -571,7 +571,7 @@ async fn foreground_event_keeps_background_running(
             Ok(())
         })
         .await?;
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
 
     assert_eq!(counter.view(), expected + 1);
     Ok(())
@@ -591,14 +591,14 @@ async fn loaded_keeps_background_running_and_tick_uses_loaded_value() -> anyhow:
         .driver(&mut clock_effects);
 
     background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
         .await?;
-    let CounterOutcome::Tick { id } = background.drive().await?.expect_outcome() else {
+    let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
         panic!("expected tick");
     };
 
@@ -606,37 +606,37 @@ async fn loaded_keeps_background_running_and_tick_uses_loaded_value() -> anyhow:
         .update(Message::Outcome(CounterOutcome::Loaded { counter: 88 }))
         .driver(&mut effects);
     loaded
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    loaded.drive().await?.expect_done();
+    loaded.step().await?.expect_done();
     drop(loaded);
     background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
         .await?;
-    let outcome = background.drive().await?.expect_outcome();
+    let outcome = background.step().await?.expect_outcome();
     assert!(matches!(outcome, CounterOutcome::Tick { id: next } if next == id));
     let mut command = counter
         .update(Message::Outcome(outcome))
         .driver(&mut effects);
 
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_database()
@@ -645,7 +645,7 @@ async fn loaded_keeps_background_running_and_tick_uses_loaded_value() -> anyhow:
             Ok(())
         })
         .await?;
-    command.drive().await?.expect_done();
+    command.step().await?.expect_done();
 
     assert_eq!(counter.view(), 89);
     Ok(())
@@ -665,6 +665,6 @@ async fn dropped_clock_response_panics() {
         .update(Message::Event(CounterEvent::StartBackground))
         .driver(&mut clock_effects);
 
-    drop(background.drive().await.unwrap().expect_effect());
-    background.drive().await.unwrap().expect_outcome();
+    drop(background.step().await.unwrap().expect_effect());
+    background.step().await.unwrap().expect_outcome();
 }

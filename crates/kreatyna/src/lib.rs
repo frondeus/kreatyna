@@ -228,7 +228,7 @@ mod tests {
             assert_eq!(counter.view(), 1);
 
             command
-                .drive()
+                .step()
                 .await?
                 .expect_effect()
                 .expect_render()
@@ -236,7 +236,7 @@ mod tests {
                 .await?;
 
             command
-                .drive()
+                .step()
                 .await?
                 .expect_effect()
                 .expect_database()
@@ -246,7 +246,7 @@ mod tests {
                 })
                 .await?;
 
-            command.drive().await?.expect_done();
+            command.step().await?.expect_done();
 
             Ok(())
         })

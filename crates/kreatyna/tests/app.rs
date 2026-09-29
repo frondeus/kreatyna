@@ -23,7 +23,7 @@ async fn initialization_is_concurrent_and_runs_once(counter_first: bool) -> anyh
     let mut counter_request = None;
     let mut ingredient_request = None;
     for _ in 0..3 {
-        match driver.drive().await?.expect_effect() {
+        match driver.step().await?.expect_effect() {
             AppEffect::Counter(effect) => counter_request = Some(effect),
             AppEffect::Ingredients(effect) => match effect {
                 ingredients::capabilities::IngredientEffect::Render(envelope) => {
@@ -49,7 +49,7 @@ async fn initialization_is_concurrent_and_runs_once(counter_first: bool) -> anyh
             .resolve_list(|| async { Ok(vec![]) })
             .await?;
     }
-    let first = driver.drive().await?.expect_outcome();
+    let first = driver.step().await?.expect_outcome();
     assert_eq!(matches!(first, AppOutcome::Counter(_)), counter_first);
     if counter_first {
         ingredient_request
@@ -64,8 +64,8 @@ async fn initialization_is_concurrent_and_runs_once(counter_first: bool) -> anyh
             .resolve_count(|| async { Ok(Some(7)) })
             .await?;
     }
-    let second = driver.drive().await?.expect_outcome();
-    driver.drive().await?.expect_done();
+    let second = driver.step().await?.expect_outcome();
+    driver.step().await?.expect_done();
     drop(driver);
     for outcome in [first, second] {
         f.apply_render(outcome).await?;
@@ -162,7 +162,7 @@ async fn pending_save_finishes_while_hidden(success: bool) -> anyhow::Result<()>
     f.switch(AppTab::Counter).await?;
     let mut driver = save.driver(&mut f.effects);
     driver
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_ingredients()
@@ -170,7 +170,7 @@ async fn pending_save_finishes_while_hidden(success: bool) -> anyhow::Result<()>
         .resolve_render(|| async {})
         .await?;
     driver
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_ingredients()
@@ -183,13 +183,13 @@ async fn pending_save_finishes_while_hidden(success: bool) -> anyhow::Result<()>
             }
         })
         .await?;
-    let outcome = driver.drive().await?.expect_outcome();
-    driver.drive().await?.expect_done();
+    let outcome = driver.step().await?.expect_outcome();
+    driver.step().await?.expect_done();
     drop(driver);
     let command = f.app.update(Message::Outcome(outcome));
     let mut driver = command.driver(&mut f.effects);
     driver
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_ingredients()
@@ -197,8 +197,8 @@ async fn pending_save_finishes_while_hidden(success: bool) -> anyhow::Result<()>
         .resolve_render(|| async {})
         .await?;
     if success {
-        let terminal = driver.drive().await?.expect_outcome();
-        driver.drive().await?.expect_done();
+        let terminal = driver.step().await?.expect_outcome();
+        driver.step().await?.expect_done();
         drop(driver);
         f.apply_render(terminal).await?;
         assert_eq!(
@@ -206,7 +206,7 @@ async fn pending_save_finishes_while_hidden(success: bool) -> anyhow::Result<()>
             IngredientNavigation::List
         );
     } else {
-        driver.drive().await?.expect_done();
+        driver.step().await?.expect_done();
         drop(driver);
         let IngredientCatalogScreenView::Create(form) = f.app.view().ingredients.screen else {
             panic!()
@@ -243,7 +243,7 @@ async fn pending_delete_finishes_while_hidden(success: bool) -> anyhow::Result<(
 
     let mut driver = delete.driver(&mut f.effects);
     driver
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_ingredients()
@@ -251,7 +251,7 @@ async fn pending_delete_finishes_while_hidden(success: bool) -> anyhow::Result<(
         .resolve_render(|| async {})
         .await?;
     driver
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_ingredients()
@@ -264,14 +264,14 @@ async fn pending_delete_finishes_while_hidden(success: bool) -> anyhow::Result<(
             }
         })
         .await?;
-    let finished = driver.drive().await?.expect_outcome();
-    driver.drive().await?.expect_done();
+    let finished = driver.step().await?.expect_outcome();
+    driver.step().await?.expect_done();
     drop(driver);
 
     let command = f.app.update(Message::Outcome(finished));
     let mut driver = command.driver(&mut f.effects);
     driver
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_ingredients()
@@ -279,8 +279,8 @@ async fn pending_delete_finishes_while_hidden(success: bool) -> anyhow::Result<(
         .resolve_render(|| async {})
         .await?;
     if success {
-        let deleted = driver.drive().await?.expect_outcome();
-        driver.drive().await?.expect_done();
+        let deleted = driver.step().await?.expect_outcome();
+        driver.step().await?.expect_done();
         drop(driver);
         f.apply_render(deleted).await?;
         assert_eq!(
@@ -292,7 +292,7 @@ async fn pending_delete_finishes_while_hidden(success: bool) -> anyhow::Result<(
             IngredientListStatus::Ready { ref rows, .. } if rows.is_empty()
         ));
     } else {
-        driver.drive().await?.expect_done();
+        driver.step().await?.expect_done();
         drop(driver);
         let IngredientCatalogScreenView::Detail(detail) = f.app.view().ingredients.screen else {
             panic!("expected retained detail")
@@ -314,7 +314,7 @@ async fn counter_departure_cancels_ticks_but_preserves_accepted_writes() -> anyh
     let background = f.counter(CounterEvent::StartBackground);
     let mut driver = background.driver(&mut f.effects);
     driver
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_counter()
@@ -323,14 +323,14 @@ async fn counter_departure_cancels_ticks_but_preserves_accepted_writes() -> anyh
             assert_eq!(ms, 1000);
         })
         .await?;
-    let queued = driver.drive().await?.expect_outcome();
+    let queued = driver.step().await?.expect_outcome();
     drop(driver);
     let write = f.counter(CounterEvent::Increase);
     f.switch(AppTab::Ingredients).await?;
     empty(f.app.update(Message::Outcome(queued))).await;
     let mut driver = write.driver(&mut f.effects);
     driver
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_counter()
@@ -338,7 +338,7 @@ async fn counter_departure_cancels_ticks_but_preserves_accepted_writes() -> anyh
         .resolve_render(|| async {})
         .await?;
     driver
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_counter()
@@ -348,7 +348,7 @@ async fn counter_departure_cancels_ticks_but_preserves_accepted_writes() -> anyh
             Ok(())
         })
         .await?;
-    driver.drive().await?.expect_done();
+    driver.step().await?.expect_done();
     drop(driver);
     f.switch(AppTab::Counter).await?;
     let background = f.counter(CounterEvent::StartBackground);
@@ -368,20 +368,20 @@ async fn shutdown_hook_stops_counter_background_but_preserves_an_accepted_write(
     let write = f.counter(CounterEvent::Increase);
     let mut background = background.driver(&mut f.effects);
     let pending_clock = background
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_counter()
         .expect_clock();
 
     empty(f.app.begin_shutdown()).await;
-    background.drive().await?.expect_done();
+    background.step().await?.expect_done();
     drop(pending_clock);
     drop(background);
 
     let mut write = write.driver(&mut f.effects);
     write
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_counter()
@@ -389,7 +389,7 @@ async fn shutdown_hook_stops_counter_background_but_preserves_an_accepted_write(
         .resolve_render(|| async {})
         .await?;
     write
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_counter()
@@ -399,7 +399,7 @@ async fn shutdown_hook_stops_counter_background_but_preserves_an_accepted_write(
             Ok(())
         })
         .await?;
-    write.drive().await?.expect_done();
+    write.step().await?.expect_done();
 
     assert_eq!(f.app.view().counter.count, 8);
     Ok(())
@@ -420,36 +420,36 @@ async fn shutdown_hook_preserves_an_accepted_ingredient_save_and_follow_up() -> 
     empty(f.app.begin_shutdown()).await;
 
     let mut save = save.driver(&mut f.effects);
-    save.drive()
+    save.step()
         .await?
         .expect_effect()
         .expect_ingredients()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    save.drive()
+    save.step()
         .await?
         .expect_effect()
         .expect_ingredients()
         .expect_store()
         .resolve_save(|_| async { Ok(record()) })
         .await?;
-    let saved = save.drive().await?.expect_outcome();
-    save.drive().await?.expect_done();
+    let saved = save.step().await?.expect_outcome();
+    save.step().await?.expect_done();
     drop(save);
 
     let command = f.app.update(Message::Outcome(saved));
     let mut command = command.driver(&mut f.effects);
     command
-        .drive()
+        .step()
         .await?
         .expect_effect()
         .expect_ingredients()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    let terminal = command.drive().await?.expect_outcome();
-    command.drive().await?.expect_done();
+    let terminal = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
     drop(command);
     f.apply_render(terminal).await?;
 
@@ -539,13 +539,13 @@ impl Fixture {
     async fn render(&mut self, command: Command<AppOutcome>) -> anyhow::Result<()> {
         let mut driver = command.driver(&mut self.effects);
         driver
-            .drive()
+            .step()
             .await?
             .expect_effect()
             .any_route()
             .resolve_render(|| async {})
             .await?;
-        driver.drive().await?.expect_done();
+        driver.step().await?.expect_done();
         Ok(())
     }
     async fn apply_render(&mut self, outcome: AppOutcome) -> anyhow::Result<()> {
@@ -567,7 +567,7 @@ impl Fixture {
         // Both branches can finish in any order; drive effects until both outcomes arrive.
         let mut outcomes = vec![];
         for _ in 0..5 {
-            match driver.drive().await? {
+            match driver.step().await? {
                 CommandEffect::Effect(AppEffect::Ingredients(effect)) => match effect {
                     ingredients::capabilities::IngredientEffect::Render(e) => {
                         e.resolve_render(|| async {}).await?;
@@ -589,7 +589,7 @@ impl Fixture {
                 _ => panic!("unexpected initialization step"),
             }
         }
-        driver.drive().await?.expect_done();
+        driver.step().await?.expect_done();
         drop(driver);
         for outcome in outcomes {
             self.apply_render(outcome).await?;

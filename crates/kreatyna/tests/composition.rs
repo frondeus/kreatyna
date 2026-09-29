@@ -1,37 +1,34 @@
-use std::sync::Arc;
-
 use futures::{StreamExt, stream::select_all};
-use kreatyna::capabilities::{
-    ClockClient, DatabaseError, ResolveClock, ResolveCounterDatabase, ResolveRender,
-};
+use kreatyna::capabilities::{DatabaseError, ResolveClock, ResolveCounterDatabase, ResolveRender};
 use kreatyna::composability::{
-    CounterPair, CounterPairEffect, CounterPairEvent, CounterPairOutcome,
+    CounterPair, CounterPairEffect, CounterPairEffectStream, CounterPairEvent, CounterPairOutcome,
 };
-use kreatyna::{CLIENT_CAPABILITY, CounterCapabilities, CounterEvent, CounterOutcome};
+use kreatyna::{CounterCapabilities, CounterEvent, CounterOutcome};
 use krucyfiks::{Message, Widget, effects::CommandTestExt};
-use test_case::{test_case, test_matrix};
+use test_case::test_case;
 
-#[test_case(CounterPairEvent::Left(CounterEvent::Increase), true, 11, (11, 20); "left increase")]
-#[test_case(CounterPairEvent::Left(CounterEvent::Decrease), true, 9, (9, 20); "left decrease")]
-#[test_case(CounterPairEvent::Left(CounterEvent::Reset), true, 0, (0, 20); "left reset")]
-#[test_case(CounterPairEvent::Right(CounterEvent::Increase), false, 21, (10, 21); "right increase")]
-#[test_case(CounterPairEvent::Right(CounterEvent::Decrease), false, 19, (10, 19); "right decrease")]
-#[test_case(CounterPairEvent::Right(CounterEvent::Reset), false, 0, (10, 0); "right reset")]
+// Ordinary behavior
+
+#[test_case(CounterEvent::Increase, 11, (11, 20); "increase")]
+#[test_case(CounterEvent::Decrease, 9, (9, 20); "decrease")]
+#[test_case(CounterEvent::Reset, 0, (0, 20); "reset")]
 #[tokio::test]
-async fn event_changes_only_its_branch_and_routes_effects(
-    event: CounterPairEvent,
-    left: bool,
+async fn a_left_event_changes_only_the_left_count_and_routes_its_effects(
+    event: CounterEvent,
     expected_count: usize,
     expected_view: (usize, usize),
 ) -> anyhow::Result<()> {
-    let (mut pair, mut effects) = CounterPair::test_fixture();
-    assert_eq!(pair.view(), (0, 0));
-    let mut setup = pair
-        .update(Message::Outcome(CounterPairOutcome::Left(
-            CounterOutcome::Loaded { counter: 10 },
-        )))
+    let PairFixture {
+        mut pair,
+        mut effects,
+        ..
+    } = PairFixture::ready(10, 20).await?;
+    let mut command = pair
+        .update(Message::Event(CounterPairEvent::Left(event)))
         .driver(&mut effects);
-    setup
+    assert_eq!(pair.view(), expected_view);
+
+    command
         .step()
         .await?
         .expect_effect()
@@ -39,14 +36,42 @@ async fn event_changes_only_its_branch_and_routes_effects(
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    setup.step().await?.expect_done();
-    drop(setup);
-    let mut setup = pair
-        .update(Message::Outcome(CounterPairOutcome::Right(
-            CounterOutcome::Loaded { counter: 20 },
-        )))
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_database()
+        .resolve_set_count(move |count| async move {
+            assert_eq!(count, expected_count);
+            Ok(())
+        })
+        .await?;
+    command.step().await?.expect_done();
+
+    Ok(())
+}
+
+#[test_case(CounterEvent::Increase, 21, (10, 21); "increase")]
+#[test_case(CounterEvent::Decrease, 19, (10, 19); "decrease")]
+#[test_case(CounterEvent::Reset, 0, (10, 0); "reset")]
+#[tokio::test]
+async fn a_right_event_changes_only_the_right_count_and_routes_its_effects(
+    event: CounterEvent,
+    expected_count: usize,
+    expected_view: (usize, usize),
+) -> anyhow::Result<()> {
+    let PairFixture {
+        mut pair,
+        mut effects,
+        ..
+    } = PairFixture::ready(10, 20).await?;
+    let mut command = pair
+        .update(Message::Event(CounterPairEvent::Right(event)))
         .driver(&mut effects);
-    setup
+    assert_eq!(pair.view(), expected_view);
+
+    command
         .step()
         .await?
         .expect_effect()
@@ -54,156 +79,202 @@ async fn event_changes_only_its_branch_and_routes_effects(
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    setup.step().await?.expect_done();
-    drop(setup);
-
-    let mut command = pair.update(Message::Event(event)).driver(&mut effects);
-    assert_eq!(pair.view(), expected_view);
-    let render = command.step().await?.expect_effect();
-    let render = if left {
-        render.expect_left()
-    } else {
-        render.expect_right()
-    };
-    render.expect_render().resolve_render(|| async {}).await?;
-    let write = command.step().await?.expect_effect();
-    let write = if left {
-        write.expect_left()
-    } else {
-        write.expect_right()
-    };
-    write
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_right()
         .expect_database()
-        .resolve_set_count(|count| async move {
+        .resolve_set_count(move |count| async move {
             assert_eq!(count, expected_count);
             Ok(())
         })
         .await?;
     command.step().await?.expect_done();
+
     Ok(())
 }
 
-#[test_matrix([false, true], [Ok(None), Ok(Some(17)), Err(DatabaseError::Storage), Err(DatabaseError::OutOfRange), Err(DatabaseError::Transport)])]
+#[test_case(None, 0; "missing left row")]
+#[test_case(Some(0), 0; "stored left zero")]
+#[test_case(Some(17), 17; "stored left count")]
+#[test_case(Some(usize::MAX), usize::MAX; "stored left maximum")]
 #[tokio::test]
-async fn init_routes_both_outcomes_in_either_response_order(
-    right_first: bool,
-    left_reply: Result<Option<usize>, DatabaseError>,
+async fn initialization_routes_both_loaded_counts_when_the_left_read_finishes_first(
+    stored: Option<usize>,
+    expected: usize,
 ) -> anyhow::Result<()> {
     let (mut pair, mut effects) = CounterPair::test_fixture();
-    let expected_left = match &left_reply {
-        Ok(Some(value)) => *value,
-        _ => 0,
-    };
-    let mut init = pair.init().driver(&mut effects);
-    let first = init.step().await?.expect_effect();
-    let second = init.step().await?.expect_effect();
-    let (left, right) = match (first, second) {
+    let mut initialization = pair.init().driver(&mut effects);
+    assert_eq!(pair.view(), (0, 0));
+
+    // Both children must request their reads before either receives a response.
+    let first = initialization.step().await?.expect_effect();
+    let second = initialization.step().await?.expect_effect();
+    let (left_read, right_read) = match (first, second) {
         (CounterPairEffect::Left(left), CounterPairEffect::Right(right))
         | (CounterPairEffect::Right(right), CounterPairEffect::Left(left)) => {
             (left.expect_database(), right.expect_database())
         }
-        other => panic!("expected one read per branch: {other:?}"),
+        other => panic!("expected one database read per child, got {other:?}"),
     };
-    let first_outcome;
-    if right_first {
-        right
-            .resolve_count(|| async { Ok(Some(usize::MAX)) })
-            .await?;
-        first_outcome = init.step().await?.expect_outcome();
-        assert!(matches!(
-            first_outcome,
-            CounterPairOutcome::Right(CounterOutcome::Loaded {
-                counter: usize::MAX
-            })
-        ));
-        left.resolve_count(|| async move { left_reply }).await?;
-    } else {
-        left.resolve_count(|| async move { left_reply }).await?;
-        first_outcome = init.step().await?.expect_outcome();
-        assert!(
-            matches!(first_outcome, CounterPairOutcome::Left(CounterOutcome::Loaded { counter }) if counter == expected_left)
-        );
-        right
-            .resolve_count(|| async { Ok(Some(usize::MAX)) })
-            .await?;
-    }
-    let second_outcome = init.step().await?.expect_outcome();
-    if right_first {
-        assert!(
-            matches!(second_outcome, CounterPairOutcome::Left(CounterOutcome::Loaded { counter }) if counter == expected_left)
-        );
-    } else {
-        assert!(matches!(
-            second_outcome,
-            CounterPairOutcome::Right(CounterOutcome::Loaded {
-                counter: usize::MAX
-            })
-        ));
-    }
-    init.step().await?.expect_done();
-    drop(init);
-    assert_eq!(pair.view(), (0, 0));
 
-    // Apply each result in delivery order and verify the render follows its route.
-    for outcome in [first_outcome, second_outcome] {
-        let left = matches!(outcome, CounterPairOutcome::Left(_));
-        let before = pair.view();
-        let mut command = pair.update(Message::Outcome(outcome)).driver(&mut effects);
-        assert_eq!(
-            pair.view(),
-            if left {
-                (expected_left, before.1)
-            } else {
-                (before.0, usize::MAX)
-            }
-        );
-        let render = command.step().await?.expect_effect();
-        let render = if left {
-            render.expect_left()
-        } else {
-            render.expect_right()
-        };
-        render.expect_render().resolve_render(|| async {}).await?;
-        command.step().await?.expect_done();
-    }
-    assert_eq!(pair.view(), (expected_left, usize::MAX));
+    left_read
+        .resolve_count(|| async move { Ok(stored) })
+        .await?;
+    let first_outcome = initialization.step().await?.expect_outcome();
+    assert_eq!(
+        CounterPairOutcome::Left(CounterOutcome::Loaded { counter: expected }),
+        first_outcome
+    );
+
+    right_read
+        .resolve_count(|| async move { Ok(Some(usize::MAX)) })
+        .await?;
+    let second_outcome = initialization.step().await?.expect_outcome();
+    assert_eq!(
+        CounterPairOutcome::Right(CounterOutcome::Loaded {
+            counter: usize::MAX
+        }),
+        second_outcome
+    );
+    initialization.step().await?.expect_done();
+    drop(initialization);
+
+    let mut command = pair
+        .update(Message::Outcome(first_outcome))
+        .driver(&mut effects);
+    assert_eq!(pair.view(), (expected, 0));
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command.step().await?.expect_done();
+    drop(command);
+
+    let mut command = pair
+        .update(Message::Outcome(second_outcome))
+        .driver(&mut effects);
+    assert_eq!(pair.view(), (expected, usize::MAX));
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_right()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command.step().await?.expect_done();
+
     Ok(())
 }
 
-#[test_case(true; "stop left")]
-#[test_case(false; "stop right")]
+#[test_case(None, 0; "missing left row")]
+#[test_case(Some(0), 0; "stored left zero")]
+#[test_case(Some(17), 17; "stored left count")]
+#[test_case(Some(usize::MAX), usize::MAX; "stored left maximum")]
 #[tokio::test]
-async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
-    stop_left: bool,
+async fn initialization_routes_both_loaded_counts_when_the_right_read_finishes_first(
+    stored: Option<usize>,
+    expected: usize,
 ) -> anyhow::Result<()> {
-    let (mut left_caps, left_effects) = CounterCapabilities::testing();
-    let (mut right_caps, right_effects) = CounterCapabilities::testing();
-    let (left_clock, left_inbox) = ClockClient::new(CLIENT_CAPABILITY);
-    let (right_clock, right_inbox) = ClockClient::new(CLIENT_CAPABILITY);
-    left_caps.clock = Arc::new(left_clock);
-    right_caps.clock = Arc::new(right_clock);
-    let mut left_clock_effects = left_inbox.into_stream().boxed();
-    let mut right_clock_effects = right_inbox.into_stream().boxed();
-    let mut effects = select_all(vec![
-        left_effects.map(CounterPairEffect::Left).boxed(),
-        right_effects.map(CounterPairEffect::Right).boxed(),
-    ])
-    .boxed();
-    let mut pair = CounterPair::new(left_caps, right_caps);
+    let (mut pair, mut effects) = CounterPair::test_fixture();
+    let mut initialization = pair.init().driver(&mut effects);
+    assert_eq!(pair.view(), (0, 0));
+
+    // Both children must request their reads before either receives a response.
+    let first = initialization.step().await?.expect_effect();
+    let second = initialization.step().await?.expect_effect();
+    let (left_read, right_read) = match (first, second) {
+        (CounterPairEffect::Left(left), CounterPairEffect::Right(right))
+        | (CounterPairEffect::Right(right), CounterPairEffect::Left(left)) => {
+            (left.expect_database(), right.expect_database())
+        }
+        other => panic!("expected one database read per child, got {other:?}"),
+    };
+
+    right_read
+        .resolve_count(|| async move { Ok(Some(usize::MAX)) })
+        .await?;
+    let first_outcome = initialization.step().await?.expect_outcome();
+    assert_eq!(
+        CounterPairOutcome::Right(CounterOutcome::Loaded {
+            counter: usize::MAX
+        }),
+        first_outcome
+    );
+
+    left_read
+        .resolve_count(|| async move { Ok(stored) })
+        .await?;
+    let second_outcome = initialization.step().await?.expect_outcome();
+    assert_eq!(
+        CounterPairOutcome::Left(CounterOutcome::Loaded { counter: expected }),
+        second_outcome
+    );
+    initialization.step().await?.expect_done();
+    drop(initialization);
+
+    let mut command = pair
+        .update(Message::Outcome(first_outcome))
+        .driver(&mut effects);
+    assert_eq!(pair.view(), (0, usize::MAX));
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_right()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command.step().await?.expect_done();
+    drop(command);
+
+    let mut command = pair
+        .update(Message::Outcome(second_outcome))
+        .driver(&mut effects);
+    assert_eq!(pair.view(), (expected, usize::MAX));
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command.step().await?.expect_done();
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_left_tick_changes_only_its_child_and_routes_render_and_write() -> anyhow::Result<()> {
+    let PairFixture {
+        mut pair,
+        mut effects,
+        mut left_clock_effects,
+        ..
+    } = PairFixture::ready(10, 20).await?;
     let mut left = pair
         .update(Message::Event(CounterPairEvent::Left(
             CounterEvent::StartBackground,
         )))
         .driver(&mut left_clock_effects);
-    let mut right = pair
-        .update(Message::Event(CounterPairEvent::Right(
-            CounterEvent::StartBackground,
-        )))
-        .driver(&mut right_clock_effects);
+    assert_eq!(pair.view(), (10, 20));
 
     left.step()
         .await?
         .expect_effect()
+        .expect_left()
+        .expect_clock()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
@@ -211,12 +282,61 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
     let CounterPairOutcome::Left(CounterOutcome::Tick { id: left_id }) =
         left.step().await?.expect_outcome()
     else {
-        panic!("expected left tick");
+        panic!("expected a left tick");
     };
+
+    let mut command = pair
+        .update(Message::Outcome(CounterPairOutcome::Left(
+            CounterOutcome::Tick { id: left_id },
+        )))
+        .driver(&mut effects);
+    assert_eq!(pair.view(), (11, 20));
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_database()
+        .resolve_set_count(move |count| async move {
+            assert_eq!(count, 11);
+            Ok(())
+        })
+        .await?;
+    command.step().await?.expect_done();
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_right_tick_changes_only_its_child_and_routes_render_and_write() -> anyhow::Result<()> {
+    let PairFixture {
+        mut pair,
+        mut effects,
+        mut right_clock_effects,
+        ..
+    } = PairFixture::ready(10, 20).await?;
+    let mut right = pair
+        .update(Message::Event(CounterPairEvent::Right(
+            CounterEvent::StartBackground,
+        )))
+        .driver(&mut right_clock_effects);
+    assert_eq!(pair.view(), (10, 20));
+
     right
         .step()
         .await?
         .expect_effect()
+        .expect_right()
+        .expect_clock()
         .resolve_sleep_ms(|ms| async move {
             assert_eq!(ms, 1_000);
         })
@@ -224,57 +344,17 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
     let CounterPairOutcome::Right(CounterOutcome::Tick { id: right_id }) =
         right.step().await?.expect_outcome()
     else {
-        panic!("expected right tick");
+        panic!("expected a right tick");
     };
-    assert_ne!(left_id, right_id);
 
-    pair.update(Message::Outcome(CounterPairOutcome::Left(
-        CounterOutcome::Tick { id: right_id },
-    )))
-    .driver(&mut effects)
-    .step()
-    .await?
-    .expect_done();
-    pair.update(Message::Outcome(CounterPairOutcome::Right(
-        CounterOutcome::Tick { id: left_id },
-    )))
-    .driver(&mut effects)
-    .step()
-    .await?
-    .expect_done();
-    assert_eq!(pair.view(), (0, 0));
-    let mut applied = pair
-        .update(Message::Outcome(CounterPairOutcome::Left(
-            CounterOutcome::Tick { id: left_id },
-        )))
-        .driver(&mut effects);
-    applied
-        .step()
-        .await?
-        .expect_effect()
-        .expect_left()
-        .expect_render()
-        .resolve_render(|| async {})
-        .await?;
-    applied
-        .step()
-        .await?
-        .expect_effect()
-        .expect_left()
-        .expect_database()
-        .resolve_set_count(|count| async move {
-            assert_eq!(count, 1);
-            Ok(())
-        })
-        .await?;
-    applied.step().await?.expect_done();
-    drop(applied);
-    let mut applied = pair
+    let mut command = pair
         .update(Message::Outcome(CounterPairOutcome::Right(
             CounterOutcome::Tick { id: right_id },
         )))
         .driver(&mut effects);
-    applied
+    assert_eq!(pair.view(), (10, 21));
+
+    command
         .step()
         .await?
         .expect_effect()
@@ -282,93 +362,548 @@ async fn backgrounds_route_ticks_reject_sibling_ids_and_stop_independently(
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    applied
+    command
         .step()
         .await?
         .expect_effect()
         .expect_right()
         .expect_database()
-        .resolve_set_count(|count| async move {
-            assert_eq!(count, 1);
+        .resolve_set_count(move |count| async move {
+            assert_eq!(count, 21);
             Ok(())
         })
         .await?;
-    applied.step().await?.expect_done();
-    drop(applied);
-    assert_eq!(pair.view(), (1, 1));
+    command.step().await?.expect_done();
 
-    let stop = if stop_left {
-        CounterPairEvent::Left(CounterEvent::StopBackground)
-    } else {
-        CounterPairEvent::Right(CounterEvent::StopBackground)
+    Ok(())
+}
+
+// Edge cases and guards
+
+#[tokio::test]
+async fn ticks_from_the_siblings_command_are_ignored() -> anyhow::Result<()> {
+    let PairFixture {
+        mut pair,
+        mut effects,
+        mut left_clock_effects,
+        mut right_clock_effects,
+    } = PairFixture::ready(10, 20).await?;
+    let mut left = pair
+        .update(Message::Event(CounterPairEvent::Left(
+            CounterEvent::StartBackground,
+        )))
+        .driver(&mut left_clock_effects);
+    assert_eq!(pair.view(), (10, 20));
+
+    let mut right = pair
+        .update(Message::Event(CounterPairEvent::Right(
+            CounterEvent::StartBackground,
+        )))
+        .driver(&mut right_clock_effects);
+    assert_eq!(pair.view(), (10, 20));
+
+    left.step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_clock()
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
+        })
+        .await?;
+    let CounterPairOutcome::Left(CounterOutcome::Tick { id: left_id }) =
+        left.step().await?.expect_outcome()
+    else {
+        panic!("expected a left tick");
     };
-    pair.update(Message::Event(stop))
-        .driver(&mut effects)
+
+    right
         .step()
         .await?
-        .expect_done();
-    let stale = if stop_left {
-        CounterPairOutcome::Left(CounterOutcome::Tick { id: left_id })
-    } else {
-        CounterPairOutcome::Right(CounterOutcome::Tick { id: right_id })
+        .expect_effect()
+        .expect_right()
+        .expect_clock()
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
+        })
+        .await?;
+    let CounterPairOutcome::Right(CounterOutcome::Tick { id: right_id }) =
+        right.step().await?.expect_outcome()
+    else {
+        panic!("expected a right tick");
     };
-    pair.update(Message::Outcome(stale))
-        .driver(&mut effects)
+    assert_ne!(left_id, right_id);
+
+    let command = pair.update(Message::Outcome(CounterPairOutcome::Left(
+        CounterOutcome::Tick { id: right_id },
+    )));
+    assert_eq!(pair.view(), (10, 20));
+    command.driver(&mut effects).step().await?.expect_done();
+
+    let command = pair.update(Message::Outcome(CounterPairOutcome::Right(
+        CounterOutcome::Tick { id: left_id },
+    )));
+    assert_eq!(pair.view(), (10, 20));
+    command.driver(&mut effects).step().await?.expect_done();
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn stopping_the_left_background_preserves_the_right_background() -> anyhow::Result<()> {
+    let PairFixture {
+        mut pair,
+        mut effects,
+        mut left_clock_effects,
+        mut right_clock_effects,
+    } = PairFixture::ready(10, 20).await?;
+    let mut left = pair
+        .update(Message::Event(CounterPairEvent::Left(
+            CounterEvent::StartBackground,
+        )))
+        .driver(&mut left_clock_effects);
+    assert_eq!(pair.view(), (10, 20));
+
+    let mut right = pair
+        .update(Message::Event(CounterPairEvent::Right(
+            CounterEvent::StartBackground,
+        )))
+        .driver(&mut right_clock_effects);
+    assert_eq!(pair.view(), (10, 20));
+
+    left.step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_clock()
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
+        })
+        .await?;
+    let CounterPairOutcome::Left(CounterOutcome::Tick { id: left_id }) =
+        left.step().await?.expect_outcome()
+    else {
+        panic!("expected a left tick");
+    };
+
+    right
         .step()
         .await?
-        .expect_done();
-    let outcome = if stop_left {
-        left.step().await?.expect_done();
-        right
+        .expect_effect()
+        .expect_right()
+        .expect_clock()
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
+        })
+        .await?;
+    let CounterPairOutcome::Right(CounterOutcome::Tick { id: right_id }) =
+        right.step().await?.expect_outcome()
+    else {
+        panic!("expected a right tick");
+    };
+
+    let command = pair.update(Message::Event(CounterPairEvent::Left(
+        CounterEvent::StopBackground,
+    )));
+    assert_eq!(pair.view(), (10, 20));
+    command.driver(&mut effects).step().await?.expect_done();
+    left.step().await?.expect_done();
+
+    let command = pair.update(Message::Outcome(CounterPairOutcome::Left(
+        CounterOutcome::Tick { id: left_id },
+    )));
+    assert_eq!(pair.view(), (10, 20));
+    command.driver(&mut effects).step().await?.expect_done();
+
+    right
+        .step()
+        .await?
+        .expect_effect()
+        .expect_right()
+        .expect_clock()
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
+        })
+        .await?;
+    let outcome = right.step().await?.expect_outcome();
+    assert_eq!(
+        CounterPairOutcome::Right(CounterOutcome::Tick { id: right_id }),
+        outcome
+    );
+
+    let mut command = pair.update(Message::Outcome(outcome)).driver(&mut effects);
+    assert_eq!(pair.view(), (10, 21));
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_right()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_right()
+        .expect_database()
+        .resolve_set_count(move |count| async move {
+            assert_eq!(count, 21);
+            Ok(())
+        })
+        .await?;
+    command.step().await?.expect_done();
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn stopping_the_right_background_preserves_the_left_background() -> anyhow::Result<()> {
+    let PairFixture {
+        mut pair,
+        mut effects,
+        mut left_clock_effects,
+        mut right_clock_effects,
+    } = PairFixture::ready(10, 20).await?;
+    let mut left = pair
+        .update(Message::Event(CounterPairEvent::Left(
+            CounterEvent::StartBackground,
+        )))
+        .driver(&mut left_clock_effects);
+    assert_eq!(pair.view(), (10, 20));
+
+    let mut right = pair
+        .update(Message::Event(CounterPairEvent::Right(
+            CounterEvent::StartBackground,
+        )))
+        .driver(&mut right_clock_effects);
+    assert_eq!(pair.view(), (10, 20));
+
+    left.step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_clock()
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
+        })
+        .await?;
+    let CounterPairOutcome::Left(CounterOutcome::Tick { id: left_id }) =
+        left.step().await?.expect_outcome()
+    else {
+        panic!("expected a left tick");
+    };
+
+    right
+        .step()
+        .await?
+        .expect_effect()
+        .expect_right()
+        .expect_clock()
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
+        })
+        .await?;
+    let CounterPairOutcome::Right(CounterOutcome::Tick { id: right_id }) =
+        right.step().await?.expect_outcome()
+    else {
+        panic!("expected a right tick");
+    };
+
+    let command = pair.update(Message::Event(CounterPairEvent::Right(
+        CounterEvent::StopBackground,
+    )));
+    assert_eq!(pair.view(), (10, 20));
+    command.driver(&mut effects).step().await?.expect_done();
+    right.step().await?.expect_done();
+
+    let command = pair.update(Message::Outcome(CounterPairOutcome::Right(
+        CounterOutcome::Tick { id: right_id },
+    )));
+    assert_eq!(pair.view(), (10, 20));
+    command.driver(&mut effects).step().await?.expect_done();
+
+    left.step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_clock()
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
+        })
+        .await?;
+    let outcome = left.step().await?.expect_outcome();
+    assert_eq!(
+        CounterPairOutcome::Left(CounterOutcome::Tick { id: left_id }),
+        outcome
+    );
+
+    let mut command = pair.update(Message::Outcome(outcome)).driver(&mut effects);
+    assert_eq!(pair.view(), (11, 20));
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_database()
+        .resolve_set_count(move |count| async move {
+            assert_eq!(count, 11);
+            Ok(())
+        })
+        .await?;
+    command.step().await?.expect_done();
+
+    Ok(())
+}
+
+// Failures and recovery
+
+#[test_case(Err(DatabaseError::Storage), Ok(Some(20)), (0, 20); "left storage failure")]
+#[test_case(Err(DatabaseError::OutOfRange), Ok(Some(20)), (0, 20); "left out of range")]
+#[test_case(Err(DatabaseError::Transport), Ok(Some(20)), (0, 20); "left transport failure")]
+#[test_case(Ok(Some(10)), Err(DatabaseError::Storage), (10, 0); "right storage failure")]
+#[test_case(Ok(Some(10)), Err(DatabaseError::OutOfRange), (10, 0); "right out of range")]
+#[test_case(Ok(Some(10)), Err(DatabaseError::Transport), (10, 0); "right transport failure")]
+#[tokio::test]
+async fn a_failed_child_read_preserves_the_sibling_when_the_left_read_finishes_first(
+    left_reply: Result<Option<usize>, DatabaseError>,
+    right_reply: Result<Option<usize>, DatabaseError>,
+    expected_view: (usize, usize),
+) -> anyhow::Result<()> {
+    let (mut pair, mut effects) = CounterPair::test_fixture();
+    let mut initialization = pair.init().driver(&mut effects);
+    assert_eq!(pair.view(), (0, 0));
+
+    // Both children must request their reads before either receives a response.
+    let first = initialization.step().await?.expect_effect();
+    let second = initialization.step().await?.expect_effect();
+    let (left_read, right_read) = match (first, second) {
+        (CounterPairEffect::Left(left), CounterPairEffect::Right(right))
+        | (CounterPairEffect::Right(right), CounterPairEffect::Left(left)) => {
+            (left.expect_database(), right.expect_database())
+        }
+        other => panic!("expected one database read per child, got {other:?}"),
+    };
+
+    left_read
+        .resolve_count(|| async move { left_reply })
+        .await?;
+    let first_outcome = initialization.step().await?.expect_outcome();
+    assert_eq!(
+        CounterPairOutcome::Left(CounterOutcome::Loaded {
+            counter: expected_view.0
+        }),
+        first_outcome
+    );
+
+    right_read
+        .resolve_count(|| async move { right_reply })
+        .await?;
+    let second_outcome = initialization.step().await?.expect_outcome();
+    assert_eq!(
+        CounterPairOutcome::Right(CounterOutcome::Loaded {
+            counter: expected_view.1
+        }),
+        second_outcome
+    );
+    initialization.step().await?.expect_done();
+    drop(initialization);
+
+    let mut command = pair
+        .update(Message::Outcome(first_outcome))
+        .driver(&mut effects);
+    assert_eq!(pair.view(), (expected_view.0, 0));
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command.step().await?.expect_done();
+    drop(command);
+
+    let mut command = pair
+        .update(Message::Outcome(second_outcome))
+        .driver(&mut effects);
+    assert_eq!(pair.view(), (expected_view.0, expected_view.1));
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_right()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command.step().await?.expect_done();
+
+    Ok(())
+}
+
+#[test_case(Err(DatabaseError::Storage), Ok(Some(20)), (0, 20); "left storage failure")]
+#[test_case(Err(DatabaseError::OutOfRange), Ok(Some(20)), (0, 20); "left out of range")]
+#[test_case(Err(DatabaseError::Transport), Ok(Some(20)), (0, 20); "left transport failure")]
+#[test_case(Ok(Some(10)), Err(DatabaseError::Storage), (10, 0); "right storage failure")]
+#[test_case(Ok(Some(10)), Err(DatabaseError::OutOfRange), (10, 0); "right out of range")]
+#[test_case(Ok(Some(10)), Err(DatabaseError::Transport), (10, 0); "right transport failure")]
+#[tokio::test]
+async fn a_failed_child_read_preserves_the_sibling_when_the_right_read_finishes_first(
+    left_reply: Result<Option<usize>, DatabaseError>,
+    right_reply: Result<Option<usize>, DatabaseError>,
+    expected_view: (usize, usize),
+) -> anyhow::Result<()> {
+    let (mut pair, mut effects) = CounterPair::test_fixture();
+    let mut initialization = pair.init().driver(&mut effects);
+    assert_eq!(pair.view(), (0, 0));
+
+    // Both children must request their reads before either receives a response.
+    let first = initialization.step().await?.expect_effect();
+    let second = initialization.step().await?.expect_effect();
+    let (left_read, right_read) = match (first, second) {
+        (CounterPairEffect::Left(left), CounterPairEffect::Right(right))
+        | (CounterPairEffect::Right(right), CounterPairEffect::Left(left)) => {
+            (left.expect_database(), right.expect_database())
+        }
+        other => panic!("expected one database read per child, got {other:?}"),
+    };
+
+    right_read
+        .resolve_count(|| async move { right_reply })
+        .await?;
+    let first_outcome = initialization.step().await?.expect_outcome();
+    assert_eq!(
+        CounterPairOutcome::Right(CounterOutcome::Loaded {
+            counter: expected_view.1
+        }),
+        first_outcome
+    );
+
+    left_read
+        .resolve_count(|| async move { left_reply })
+        .await?;
+    let second_outcome = initialization.step().await?.expect_outcome();
+    assert_eq!(
+        CounterPairOutcome::Left(CounterOutcome::Loaded {
+            counter: expected_view.0
+        }),
+        second_outcome
+    );
+    initialization.step().await?.expect_done();
+    drop(initialization);
+
+    let mut command = pair
+        .update(Message::Outcome(first_outcome))
+        .driver(&mut effects);
+    assert_eq!(pair.view(), (0, expected_view.1));
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_right()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command.step().await?.expect_done();
+    drop(command);
+
+    let mut command = pair
+        .update(Message::Outcome(second_outcome))
+        .driver(&mut effects);
+    assert_eq!(pair.view(), (expected_view.0, expected_view.1));
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_left()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command.step().await?.expect_done();
+
+    Ok(())
+}
+
+// Test support
+
+struct PairFixture {
+    pair: CounterPair,
+    effects: CounterPairEffectStream,
+    left_clock_effects: CounterPairEffectStream,
+    right_clock_effects: CounterPairEffectStream,
+}
+
+impl PairFixture {
+    async fn ready(left_count: usize, right_count: usize) -> anyhow::Result<Self> {
+        // Independent clock streams let both backgrounds run while updates are driven.
+        let (mut left_capabilities, left_effects) = CounterCapabilities::testing();
+        let (mut right_capabilities, right_effects) = CounterCapabilities::testing();
+        let (left_clock_capabilities, left_clock_effects) = CounterCapabilities::testing();
+        let (right_clock_capabilities, right_clock_effects) = CounterCapabilities::testing();
+        left_capabilities.clock = left_clock_capabilities.clock;
+        right_capabilities.clock = right_clock_capabilities.clock;
+        let mut effects = select_all(vec![
+            left_effects.map(CounterPairEffect::Left).boxed(),
+            right_effects.map(CounterPairEffect::Right).boxed(),
+        ])
+        .boxed();
+        let mut pair = CounterPair::new(left_capabilities, right_capabilities);
+
+        let mut setup = pair
+            .update(Message::Outcome(CounterPairOutcome::Left(
+                CounterOutcome::Loaded {
+                    counter: left_count,
+                },
+            )))
+            .driver(&mut effects);
+        setup
             .step()
             .await?
             .expect_effect()
-            .resolve_sleep_ms(|ms| async move {
-                assert_eq!(ms, 1_000);
-            })
+            .expect_left()
+            .expect_render()
+            .resolve_render(|| async {})
             .await?;
-        let outcome = right.step().await?.expect_outcome();
-        assert!(
-            matches!(outcome, CounterPairOutcome::Right(CounterOutcome::Tick { id }) if id == right_id)
-        );
-        outcome
-    } else {
-        right.step().await?.expect_done();
-        left.step()
+        setup.step().await?.expect_done();
+        drop(setup);
+
+        let mut setup = pair
+            .update(Message::Outcome(CounterPairOutcome::Right(
+                CounterOutcome::Loaded {
+                    counter: right_count,
+                },
+            )))
+            .driver(&mut effects);
+        setup
+            .step()
             .await?
             .expect_effect()
-            .resolve_sleep_ms(|ms| async move {
-                assert_eq!(ms, 1_000);
-            })
+            .expect_right()
+            .expect_render()
+            .resolve_render(|| async {})
             .await?;
-        let outcome = left.step().await?.expect_outcome();
-        assert!(
-            matches!(outcome, CounterPairOutcome::Left(CounterOutcome::Tick { id }) if id == left_id)
-        );
-        outcome
-    };
-    let mut applied = pair.update(Message::Outcome(outcome)).driver(&mut effects);
-    let render = applied.step().await?.expect_effect();
-    let render = if stop_left {
-        render.expect_right()
-    } else {
-        render.expect_left()
-    };
-    render.expect_render().resolve_render(|| async {}).await?;
-    let write = applied.step().await?.expect_effect();
-    let write = if stop_left {
-        write.expect_right()
-    } else {
-        write.expect_left()
-    };
-    write
-        .expect_database()
-        .resolve_set_count(|count| async move {
-            assert_eq!(count, 2);
-            Ok(())
+        setup.step().await?.expect_done();
+        drop(setup);
+
+        Ok(Self {
+            pair,
+            effects,
+            left_clock_effects: left_clock_effects.map(CounterPairEffect::Left).boxed(),
+            right_clock_effects: right_clock_effects.map(CounterPairEffect::Right).boxed(),
         })
-        .await?;
-    applied.step().await?.expect_done();
-    assert_eq!(pair.view(), if stop_left { (1, 2) } else { (2, 1) });
-    Ok(())
+    }
 }

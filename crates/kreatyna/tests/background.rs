@@ -32,8 +32,8 @@ async fn applying_a_tick_increases_the_count_then_renders_and_persists(
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
@@ -89,8 +89,8 @@ async fn a_foreground_change_keeps_background_ticks_running_from_the_new_count(
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
@@ -125,8 +125,8 @@ async fn a_foreground_change_keeps_background_ticks_running_from_the_new_count(
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let outcome = background.step().await?.expect_outcome();
@@ -177,8 +177,8 @@ async fn starting_again_before_the_first_poll_keeps_the_original_command() -> an
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
@@ -225,8 +225,8 @@ async fn starting_again_after_a_tick_keeps_the_original_generation() -> anyhow::
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
@@ -242,8 +242,8 @@ async fn starting_again_after_a_tick_keeps_the_original_generation() -> anyhow::
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let outcome = background.step().await?.expect_outcome();
@@ -339,8 +339,8 @@ async fn a_tick_queued_before_stopping_is_ignored() -> anyhow::Result<()> {
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
@@ -372,8 +372,8 @@ async fn restarting_after_a_stop_rejects_old_ticks_and_accepts_new_ticks() -> an
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let CounterOutcome::Tick { id: old_id } = background.step().await?.expect_outcome() else {
@@ -399,8 +399,8 @@ async fn restarting_after_a_stop_rejects_old_ticks_and_accepts_new_ticks() -> an
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let CounterOutcome::Tick { id: new_id } = restarted.step().await?.expect_outcome() else {
@@ -454,8 +454,8 @@ async fn restarting_after_dropping_the_command_rejects_old_ticks_and_accepts_new
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let CounterOutcome::Tick { id: old_id } = background.step().await?.expect_outcome() else {
@@ -476,8 +476,8 @@ async fn restarting_after_dropping_the_command_rejects_old_ticks_and_accepts_new
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let CounterOutcome::Tick { id: new_id } = restarted.step().await?.expect_outcome() else {
@@ -534,8 +534,8 @@ async fn dropping_an_unpolled_background_command_allows_a_new_start() -> anyhow:
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
@@ -615,8 +615,8 @@ async fn beginning_shutdown_cancels_sleep_and_rejects_a_queued_tick() -> anyhow:
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
@@ -660,8 +660,8 @@ async fn a_failed_tick_write_keeps_the_count_and_the_next_tick_can_be_saved(
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let CounterOutcome::Tick { id } = background.step().await?.expect_outcome() else {
@@ -698,8 +698,8 @@ async fn a_failed_tick_write_keeps_the_count_and_the_next_tick_can_be_saved(
         .await?
         .expect_effect()
         .expect_clock()
-        .resolve_sleep_ms(|milliseconds| async move {
-            assert_eq!(milliseconds, 1_000);
+        .resolve_sleep_ms(|ms| async move {
+            assert_eq!(ms, 1_000);
         })
         .await?;
     let outcome = background.step().await?.expect_outcome();

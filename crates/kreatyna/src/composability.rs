@@ -19,7 +19,7 @@ pub enum CounterPairEvent {
     Right(CounterEvent),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CounterPairOutcome {
     Left(CounterOutcome),
     Right(CounterOutcome),
@@ -111,55 +111,5 @@ impl CounterPair {
 
         let this = Self::new(left_caps, right_caps);
         (this, effects)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use futures::executor::block_on;
-    use krucyfiks::effects::{CommandTestExt, Effect};
-
-    use crate::capabilities::{ResolveCounterDatabase, ResolveRender};
-
-    use super::*;
-
-    #[test]
-    fn test_composed_widgets() -> anyhow::Result<()> {
-        block_on(async {
-            let (mut counter, mut effects) = CounterPair::test_fixture();
-            assert_eq!(counter.view(), (0, 0));
-
-            let mut command = counter
-                .update(Message::Event(CounterPairEvent::Left(
-                    CounterEvent::Increase,
-                )))
-                .driver(&mut effects);
-
-            assert_eq!(counter.view(), (1, 0));
-
-            command
-                .step()
-                .await?
-                .expect_effect()
-                .expect_left()
-                .expect_render()
-                .resolve_render(|| async {})
-                .await?;
-
-            command
-                .step()
-                .await?
-                .expect_effect()
-                .any_route()
-                .resolve_set_count(|count| async move {
-                    assert_eq!(count, 1);
-                    Ok(())
-                })
-                .await?;
-
-            command.step().await?.expect_done();
-
-            Ok(())
-        })
     }
 }

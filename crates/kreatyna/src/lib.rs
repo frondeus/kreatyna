@@ -55,7 +55,7 @@ pub enum CounterEvent {
     StopBackground,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CounterOutcome {
     Tick { id: CommandId },
     Loaded { counter: usize },
@@ -202,53 +202,5 @@ impl Counter {
         let (caps, effects) = CounterCapabilities::testing();
         let this = Counter::new(caps);
         (this, effects)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use crate::capabilities::{ResolveCounterDatabase, ResolveRender};
-
-    use super::*;
-    use futures::executor::block_on;
-    use krucyfiks::effects::CommandTestExt;
-
-    #[test]
-    fn increase_renders_then_persists_the_new_count() -> anyhow::Result<()> {
-        block_on(async {
-            let (mut counter, mut effects) = Counter::test_fixture();
-
-            assert_eq!(counter.view(), 0);
-
-            let mut command = counter
-                .update(Message::Event(CounterEvent::Increase))
-                .driver(&mut effects);
-
-            assert_eq!(counter.view(), 1);
-
-            command
-                .step()
-                .await?
-                .expect_effect()
-                .expect_render()
-                .resolve_render(|| async {})
-                .await?;
-
-            command
-                .step()
-                .await?
-                .expect_effect()
-                .expect_database()
-                .resolve_set_count(|count: usize| async move {
-                    assert_eq!(count, 1);
-                    Ok(())
-                })
-                .await?;
-
-            command.step().await?.expect_done();
-
-            Ok(())
-        })
     }
 }

@@ -1,56 +1,801 @@
-use futures::StreamExt;
 use kreatyna::capabilities::ResolveRender;
 use kreatyna::ingredients::{
     Ingredient, IngredientId, IngredientList, IngredientListEvent, IngredientListOutcome,
-    IngredientListRefresh, IngredientListStatus, Nutrition, NutritionBasis,
+    IngredientListRefresh, IngredientListRow, IngredientListStatus, IngredientListView, Nutrition,
+    NutritionBasis, ReferenceUnit,
     capabilities::{IngredientEffectStream, IngredientLoadError, ResolveIngredientStore},
 };
-use krucyfiks::{Message, Widget, effects::CommandTestExt};
-use test_case::test_case;
+use krucyfiks::{
+    Message, Widget,
+    effects::{CommandTestExt, EnvelopeError},
+};
+use test_case::{test_case, test_matrix};
+use uuid::Uuid;
 
-#[test_case(Vec::new(); "empty catalog")]
-#[test_case(vec![ingredient("Basil"), ingredient("Garlic")]; "populated catalog")]
+// Ordinary behavior
+
+#[test_case(vec![], vec![]; "empty catalog")]
+#[test_case(vec![ingredient(2, "Garlic"), ingredient(1, "Basil")], vec![ingredient(1, "Basil"), ingredient(2, "Garlic")]; "sort populated catalog")]
+#[test_case(vec![ingredient(2, "STRASSE"), ingredient(1, "Straße")], vec![ingredient(1, "Straße"), ingredient(2, "STRASSE")]; "equal folded names use id order")]
 #[tokio::test]
-async fn initial_load_renders_before_store_and_exposes_records(
+async fn initialization_renders_then_reads_and_dispatching_its_result_exposes_sorted_rows(
     records: Vec<Ingredient>,
+    expected: Vec<Ingredient>,
 ) -> anyhow::Result<()> {
     let mut fixture = ListFixture::new();
-    let expected_count = records.len();
-    fixture.assert_initial_load(Ok(records)).await?;
-    let IngredientListStatus::Ready {
-        rows,
-        total_count,
-        refresh,
-    } = fixture.list.view().status
-    else {
-        panic!("expected ready list")
+    let mut command = fixture.list.init().driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), loading_view(""));
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { Ok(records.clone()) })
+        .await?;
+    let outcome = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
+    drop(command);
+
+    let IngredientListOutcome::LoadFinished { result, .. } = &outcome else {
+        panic!("expected a completed load");
     };
-    assert_eq!(rows.len(), expected_count);
-    assert_eq!(total_count, expected_count);
-    assert_eq!(refresh, IngredientListRefresh::Idle);
+    assert_eq!(result, &Ok(records.clone()));
+
+    // Reading records does not apply them. Dispatch the result to leave loading.
+    let mut render = fixture
+        .list
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view("", &expected, records.len(), IngredientListRefresh::Idle)
+    );
+    render
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    render.step().await?.expect_done();
+    drop(render);
     Ok(())
 }
 
-#[test_case(IngredientLoadError::Storage; "storage")]
-#[test_case(IngredientLoadError::Transport; "transport")]
+#[test_case("  STRAS  ", vec![ingredient(2, "Straße")]; "unicode folded substring")]
+#[test_case("GAR", vec![ingredient(3, "Garlic")]; "case folded substring")]
+#[test_case("  ", vec![ingredient(3, "Garlic"), ingredient(2, "Straße"), ingredient(1, "Σ")]; "blank query")]
+#[test_case("missing", vec![]; "no matches")]
 #[tokio::test]
-async fn initial_error_is_typed_and_retry_recovers(
+async fn search_filters_and_sorts_cached_records_without_reading_the_store(
+    query: &str,
+    expected: Vec<Ingredient>,
+) -> anyhow::Result<()> {
+    let mut fixture = ListFixture::ready(
+        vec![
+            ingredient(1, "Σ"),
+            ingredient(2, "Straße"),
+            ingredient(3, "Garlic"),
+        ],
+        "",
+    )
+    .await?;
+    let mut command = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Search(query.into())))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(query, &expected, 3, IngredientListRefresh::Idle)
+    );
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command.step().await?.expect_done();
+    Ok(())
+}
+
+#[test_case(vec![], vec![]; "refresh empties the catalog")]
+#[test_case(vec![ingredient(3, "Garden pea")], vec![ingredient(3, "Garden pea")]; "refresh replaces matching records")]
+#[test_case(vec![ingredient(3, "Peas")], vec![]; "refresh removes all search matches")]
+#[tokio::test]
+async fn refresh_keeps_cached_rows_until_dispatch_then_replaces_records_and_preserves_search(
+    records: Vec<Ingredient>,
+    expected: Vec<Ingredient>,
+) -> anyhow::Result<()> {
+    let garlic = ingredient(1, "Garlic");
+    let mut fixture =
+        ListFixture::ready(vec![garlic.clone(), ingredient(2, "Basil")], "gar").await?;
+    let mut command = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Refresh))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view("gar", &[garlic], 2, IngredientListRefresh::Loading)
+    );
+
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { Ok(records.clone()) })
+        .await?;
+    let outcome = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
+    drop(command);
+
+    let mut render = fixture
+        .list
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view("gar", &expected, records.len(), IngredientListRefresh::Idle)
+    );
+    render
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    render.step().await?.expect_done();
+    drop(render);
+    Ok(())
+}
+
+#[test_case(IngredientListEvent::Select(id(1)), IngredientListOutcome::OpenDetail { ingredient: ingredient(1, "Garlic") }; "open detail")]
+#[test_case(IngredientListEvent::Edit(id(1)), IngredientListOutcome::OpenEdit { ingredient: ingredient(1, "Garlic") }; "open editor")]
+#[tokio::test]
+async fn choosing_a_visible_record_emits_the_complete_ingredient_without_changing_the_list(
+    event: IngredientListEvent,
+    expected: IngredientListOutcome,
+) -> anyhow::Result<()> {
+    let mut fixture =
+        ListFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Basil")], "gar").await?;
+    let before = fixture.list.view();
+    let mut command = fixture
+        .list
+        .update(Message::Event(event))
+        .driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), before);
+
+    let outcome = command.step().await?.expect_outcome();
+    assert_eq!(outcome, expected);
+    command.step().await?.expect_done();
+    Ok(())
+}
+
+#[test_case(vec![]; "empty catalog")]
+#[test_case(vec![ingredient(1, "Basil")]; "populated catalog")]
+#[tokio::test]
+async fn requesting_creation_emits_navigation_without_changing_the_list(
+    records: Vec<Ingredient>,
+) -> anyhow::Result<()> {
+    let mut fixture = ListFixture::ready(records, "").await?;
+    let before = fixture.list.view();
+    let mut command = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::CreateRequested))
+        .driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), before);
+
+    let outcome = command.step().await?.expect_outcome();
+    assert_eq!(outcome, IngredientListOutcome::CreateRequested);
+    command.step().await?.expect_done();
+    Ok(())
+}
+
+#[tokio::test]
+async fn creation_is_available_while_the_initial_load_is_pending() -> anyhow::Result<()> {
+    let mut fixture = ListFixture::new();
+    let load = fixture.list.init();
+    let mut command = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::CreateRequested))
+        .driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), loading_view(""));
+
+    let outcome = command.step().await?.expect_outcome();
+    assert_eq!(outcome, IngredientListOutcome::CreateRequested);
+    command.step().await?.expect_done();
+    drop(load);
+    Ok(())
+}
+
+#[tokio::test]
+async fn search_entered_during_initial_loading_is_used_when_records_arrive() -> anyhow::Result<()> {
+    let mut fixture = ListFixture::new();
+    let load = fixture.list.init();
+    let mut search = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Search("gar".into())))
+        .driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), loading_view("gar"));
+
+    search
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    search.step().await?.expect_done();
+    drop(search);
+
+    let mut command = load.driver(&mut fixture.effects);
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { Ok(vec![ingredient(1, "Garlic"), ingredient(2, "Basil")]) })
+        .await?;
+    let outcome = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
+    drop(command);
+
+    let mut render = fixture
+        .list
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "gar",
+            &[ingredient(1, "Garlic")],
+            2,
+            IngredientListRefresh::Idle
+        )
+    );
+    render
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    render.step().await?.expect_done();
+    drop(render);
+    Ok(())
+}
+
+// Edge cases and guards
+
+#[test_case(IngredientListEvent::Select(id(2)); "select hidden record")]
+#[test_case(IngredientListEvent::Edit(id(2)); "edit hidden record")]
+#[test_case(IngredientListEvent::Select(id(3)); "select missing record")]
+#[test_case(IngredientListEvent::Edit(id(3)); "edit missing record")]
+#[tokio::test]
+async fn choosing_a_hidden_or_missing_record_does_nothing(
+    event: IngredientListEvent,
+) -> anyhow::Result<()> {
+    let mut fixture =
+        ListFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Basil")], "gar").await?;
+    let before = fixture.list.view();
+    let mut command = fixture
+        .list
+        .update(Message::Event(event))
+        .driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), before);
+    command.step().await?.expect_done();
+    Ok(())
+}
+
+#[test_case(IngredientListEvent::Select(id(1)); "select during loading")]
+#[test_case(IngredientListEvent::Edit(id(1)); "edit during loading")]
+#[tokio::test]
+async fn choosing_a_record_before_the_catalog_arrives_does_nothing(
+    event: IngredientListEvent,
+) -> anyhow::Result<()> {
+    let mut fixture = ListFixture::new();
+    let load = fixture.list.init();
+    let mut command = fixture
+        .list
+        .update(Message::Event(event))
+        .driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), loading_view(""));
+    command.step().await?.expect_done();
+    drop(load);
+    Ok(())
+}
+
+#[test_case(IngredientListEvent::Select(id(1)), IngredientListOutcome::OpenDetail { ingredient: ingredient(1, "Garlic") }; "open detail during refresh")]
+#[test_case(IngredientListEvent::Edit(id(1)), IngredientListOutcome::OpenEdit { ingredient: ingredient(1, "Garlic") }; "open editor during refresh")]
+#[tokio::test]
+async fn cached_records_remain_available_while_refresh_is_pending(
+    event: IngredientListEvent,
+    expected: IngredientListOutcome,
+) -> anyhow::Result<()> {
+    let mut fixture = ListFixture::ready(vec![ingredient(1, "Garlic")], "gar").await?;
+    let refresh = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Refresh));
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "gar",
+            &[ingredient(1, "Garlic")],
+            1,
+            IngredientListRefresh::Loading
+        )
+    );
+    let before = fixture.list.view();
+    let mut command = fixture
+        .list
+        .update(Message::Event(event))
+        .driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), before);
+    let outcome = command.step().await?.expect_outcome();
+    assert_eq!(outcome, expected);
+    command.step().await?.expect_done();
+    drop(refresh);
+    Ok(())
+}
+
+#[tokio::test]
+async fn refresh_cancels_an_initial_load_that_has_not_started() -> anyhow::Result<()> {
+    let mut fixture = ListFixture::new();
+    let initial = fixture.list.init();
+    let refresh = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Refresh));
+    assert_eq!(fixture.list.view(), loading_view(""));
+    let mut cancelled = initial.driver(&mut fixture.effects);
+    cancelled.step().await?.expect_done();
+    drop(cancelled);
+
+    let mut command = refresh.driver(&mut fixture.effects);
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { Ok(vec![ingredient(1, "Basil")]) })
+        .await?;
+    let outcome = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
+    drop(command);
+
+    let mut render = fixture
+        .list
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "",
+            &[ingredient(1, "Basil")],
+            1,
+            IngredientListRefresh::Idle
+        )
+    );
+    render
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    render.step().await?.expect_done();
+    drop(render);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_second_refresh_cancels_the_first_before_it_reads_the_store() -> anyhow::Result<()> {
+    let mut fixture = ListFixture::ready(vec![ingredient(1, "Basil")], "").await?;
+    let mut first = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Refresh))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "",
+            &[ingredient(1, "Basil")],
+            1,
+            IngredientListRefresh::Loading
+        )
+    );
+
+    first
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    let replacement = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Refresh));
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "",
+            &[ingredient(1, "Basil")],
+            1,
+            IngredientListRefresh::Loading
+        )
+    );
+    first.step().await?.expect_done();
+    drop(first);
+
+    let mut command = replacement.driver(&mut fixture.effects);
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { Ok(vec![ingredient(2, "Peas")]) })
+        .await?;
+    let outcome = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
+    drop(command);
+
+    let mut render = fixture
+        .list
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view("", &[ingredient(2, "Peas")], 1, IngredientListRefresh::Idle)
+    );
+    render
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    render.step().await?.expect_done();
+    drop(render);
+    Ok(())
+}
+
+#[test_case(Ok(vec![ingredient(2, "Garlic")]); "stale success")]
+#[test_case(Err(IngredientLoadError::Storage); "stale storage failure")]
+#[test_case(Err(IngredientLoadError::Transport); "stale transport failure")]
+#[tokio::test]
+async fn a_queued_refresh_result_is_ignored_after_a_newer_refresh_starts(
+    result: Result<Vec<Ingredient>, IngredientLoadError>,
+) -> anyhow::Result<()> {
+    let mut fixture = ListFixture::ready(vec![ingredient(1, "Basil")], "").await?;
+    let mut first = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Refresh))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "",
+            &[ingredient(1, "Basil")],
+            1,
+            IngredientListRefresh::Loading
+        )
+    );
+
+    first
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    first
+        .step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { result })
+        .await?;
+    let queued = first.step().await?.expect_outcome();
+    first.step().await?.expect_done();
+    drop(first);
+
+    let newest = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Refresh));
+    let refreshing = ready_view(
+        "",
+        &[ingredient(1, "Basil")],
+        1,
+        IngredientListRefresh::Loading,
+    );
+    assert_eq!(fixture.list.view(), refreshing);
+    let mut stale = fixture
+        .list
+        .update(Message::Outcome(queued))
+        .driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), refreshing);
+    stale.step().await?.expect_done();
+    drop(stale);
+
+    let mut command = newest.driver(&mut fixture.effects);
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { Ok(vec![ingredient(3, "Peas")]) })
+        .await?;
+    let outcome = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
+    drop(command);
+
+    let mut render = fixture
+        .list
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view("", &[ingredient(3, "Peas")], 1, IngredientListRefresh::Idle)
+    );
+    render
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    render.step().await?.expect_done();
+    drop(render);
+    Ok(())
+}
+
+#[tokio::test]
+async fn dispatching_a_load_result_twice_does_not_render_again() -> anyhow::Result<()> {
+    let mut fixture = ListFixture::new();
+    let mut command = fixture.list.init().driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), loading_view(""));
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { Ok(vec![ingredient(1, "Basil")]) })
+        .await?;
+    let outcome = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
+    drop(command);
+
+    let mut render = fixture
+        .list
+        .update(Message::Outcome(outcome.clone()))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "",
+            &[ingredient(1, "Basil")],
+            1,
+            IngredientListRefresh::Idle
+        )
+    );
+    render
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    render.step().await?.expect_done();
+    drop(render);
+
+    let before = fixture.list.view();
+    let mut duplicate = fixture
+        .list
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), before);
+    duplicate.step().await?.expect_done();
+    Ok(())
+}
+
+#[tokio::test]
+async fn dropping_the_widget_cancels_the_load_before_the_store_request() -> anyhow::Result<()> {
+    let mut fixture = ListFixture::new();
+    let mut command = fixture.list.init().driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), loading_view(""));
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    drop(fixture.list);
+    command.step().await?.expect_done();
+    Ok(())
+}
+
+#[tokio::test]
+async fn refresh_cancels_an_in_flight_store_request_and_accepts_only_the_replacement()
+-> anyhow::Result<()> {
+    let mut fixture = ListFixture::ready(vec![ingredient(1, "Basil")], "").await?;
+    let mut first = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Refresh))
+        .driver(&mut fixture.effects);
+    let refreshing = ready_view(
+        "",
+        &[ingredient(1, "Basil")],
+        1,
+        IngredientListRefresh::Loading,
+    );
+    assert_eq!(fixture.list.view(), refreshing);
+    first
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    let request = first.step().await?.expect_effect().expect_store();
+
+    let replacement = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Refresh));
+    assert_eq!(fixture.list.view(), refreshing);
+    first.step().await?.expect_done();
+    drop(first);
+    assert!(matches!(
+        request
+            .resolve_list(|| async { Ok(vec![ingredient(2, "Garlic")]) })
+            .await,
+        Err(EnvelopeError::Send(_))
+    ));
+
+    let mut command = replacement.driver(&mut fixture.effects);
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { Ok(vec![ingredient(3, "Peas")]) })
+        .await?;
+    let outcome = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
+    drop(command);
+
+    let mut render = fixture
+        .list
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view("", &[ingredient(3, "Peas")], 1, IngredientListRefresh::Idle)
+    );
+    render
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    render.step().await?.expect_done();
+    Ok(())
+}
+
+// Failures and recovery
+
+#[test_case(IngredientLoadError::Storage; "storage failure")]
+#[test_case(IngredientLoadError::Transport; "transport failure")]
+#[tokio::test]
+async fn an_initial_load_failure_is_typed_and_refresh_can_recover(
     error: IngredientLoadError,
 ) -> anyhow::Result<()> {
     let mut fixture = ListFixture::new();
-    fixture.assert_initial_load(Err(error.clone())).await?;
+    let mut command = fixture.list.init().driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), loading_view(""));
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { Err(error.clone()) })
+        .await?;
+    let outcome = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
+    drop(command);
+
+    let mut render = fixture
+        .list
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
     assert_eq!(
-        fixture.list.view().status,
-        IngredientListStatus::Failed(error)
+        fixture.list.view(),
+        IngredientListView {
+            search: String::new(),
+            status: IngredientListStatus::Failed(error)
+        }
     );
+    render
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    render.step().await?.expect_done();
+    drop(render);
+
     let mut retry = fixture
         .list
         .update(Message::Event(IngredientListEvent::Refresh))
         .driver(&mut fixture.effects);
-    assert!(matches!(
-        fixture.list.view().status,
-        IngredientListStatus::Loading
-    ));
+    assert_eq!(fixture.list.view(), loading_view(""));
+
     retry
         .step()
         .await?
@@ -63,15 +808,25 @@ async fn initial_error_is_typed_and_retry_recovers(
         .await?
         .expect_effect()
         .expect_store()
-        .resolve_list(|| async { Ok(vec![ingredient("Basil")]) })
+        .resolve_list(|| async { Ok(vec![ingredient(1, "Basil")]) })
         .await?;
-    let completed = retry.step().await?.expect_outcome();
+    let outcome = retry.step().await?.expect_outcome();
     retry.step().await?.expect_done();
     drop(retry);
+
     let mut render = fixture
         .list
-        .update(Message::Outcome(completed))
+        .update(Message::Outcome(outcome))
         .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "",
+            &[ingredient(1, "Basil")],
+            1,
+            IngredientListRefresh::Idle
+        )
+    );
     render
         .step()
         .await?
@@ -80,30 +835,32 @@ async fn initial_error_is_typed_and_retry_recovers(
         .resolve_render(|| async {})
         .await?;
     render.step().await?.expect_done();
-    assert_eq!(rows(&fixture.list), ["Basil"]);
+    drop(render);
     Ok(())
 }
 
-#[test_case("  STRAS  ", vec!["Straße"]; "unicode folded substring")]
-#[test_case("gar", vec!["Garlic"]; "ordinary substring")]
-#[test_case("  ", vec!["Garlic", "Straße", "Σ"]; "blank query")]
-#[test_case("missing", Vec::new(); "no matches")]
+#[test_case(IngredientLoadError::Storage; "storage failure")]
+#[test_case(IngredientLoadError::Transport; "transport failure")]
 #[tokio::test]
-async fn search_is_local_and_sorted(query: &str, expected: Vec<&str>) -> anyhow::Result<()> {
-    let mut fixture = ListFixture::new();
-    fixture
-        .assert_initial_load(Ok(vec![
-            ingredient("Σ"),
-            ingredient("Straße"),
-            ingredient("Garlic"),
-        ]))
-        .await?;
+async fn a_refresh_failure_keeps_cached_rows_and_retry_replaces_them(
+    error: IngredientLoadError,
+) -> anyhow::Result<()> {
+    let mut fixture =
+        ListFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Basil")], "gar").await?;
     let mut command = fixture
         .list
-        .update(Message::Event(IngredientListEvent::Search(query.into())))
+        .update(Message::Event(IngredientListEvent::Refresh))
         .driver(&mut fixture.effects);
-    assert_eq!(fixture.list.view().search, query);
-    assert_eq!(rows(&fixture.list), expected);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "gar",
+            &[ingredient(1, "Garlic")],
+            2,
+            IngredientListRefresh::Loading
+        )
+    );
+
     command
         .step()
         .await?
@@ -111,94 +868,125 @@ async fn search_is_local_and_sorted(query: &str, expected: Vec<&str>) -> anyhow:
         .expect_render()
         .resolve_render(|| async {})
         .await?;
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { Err(error.clone()) })
+        .await?;
+    let outcome = command.step().await?.expect_outcome();
     command.step().await?.expect_done();
-    assert!(matches!(
-        fixture.list.view().status,
-        IngredientListStatus::Ready { total_count: 3, .. }
-    ));
-    Ok(())
-}
+    drop(command);
 
-#[tokio::test]
-async fn equal_folded_names_use_id_tie_breaker() -> anyhow::Result<()> {
-    let mut fixture = ListFixture::new();
-    let mut low = ingredient("Straße");
-    let mut high = ingredient("STRASSE");
-    if low.id > high.id {
-        std::mem::swap(&mut low, &mut high);
-    }
-    fixture
-        .assert_initial_load(Ok(vec![high.clone(), low.clone()]))
-        .await?;
-    let IngredientListStatus::Ready { rows, .. } = fixture.list.view().status else {
-        panic!("expected ready")
-    };
-    assert_eq!(
-        rows.into_iter().map(|row| row.id).collect::<Vec<_>>(),
-        [low.id, high.id]
-    );
-    Ok(())
-}
-
-#[test_case(IngredientLoadError::Storage; "storage refresh error")]
-#[test_case(IngredientLoadError::Transport; "transport refresh error")]
-#[tokio::test]
-async fn refresh_failure_keeps_cached_rows_and_retry_replaces_them(
-    error: IngredientLoadError,
-) -> anyhow::Result<()> {
-    let mut fixture = ListFixture::new();
-    let original = ingredient("Garlic");
-    let old_completion = fixture
-        .assert_initial_load(Ok(vec![original.clone()]))
-        .await?;
-    let mut search = fixture
+    let mut render = fixture
         .list
-        .update(Message::Event(IngredientListEvent::Search("gar".into())))
+        .update(Message::Outcome(outcome))
         .driver(&mut fixture.effects);
-    search
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "gar",
+            &[ingredient(1, "Garlic")],
+            2,
+            IngredientListRefresh::Failed(error)
+        )
+    );
+    render
         .step()
         .await?
         .expect_effect()
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    search.step().await?.expect_done();
-    drop(search);
+    render.step().await?.expect_done();
+    drop(render);
 
+    let mut retry = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Refresh))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "gar",
+            &[ingredient(1, "Garlic")],
+            2,
+            IngredientListRefresh::Loading
+        )
+    );
+
+    retry
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    retry
+        .step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { Ok(vec![ingredient(3, "Garden pea")]) })
+        .await?;
+    let outcome = retry.step().await?.expect_outcome();
+    retry.step().await?.expect_done();
+    drop(retry);
+
+    let mut render = fixture
+        .list
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "gar",
+            &[ingredient(3, "Garden pea")],
+            1,
+            IngredientListRefresh::Idle
+        )
+    );
+    render
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    render.step().await?.expect_done();
+    drop(render);
+    Ok(())
+}
+
+#[test_matrix(
+    [IngredientLoadError::Storage, IngredientLoadError::Transport],
+    [
+        (IngredientListEvent::Select(id(1)), IngredientListOutcome::OpenDetail { ingredient: ingredient(1, "Garlic") }),
+        (IngredientListEvent::Edit(id(1)), IngredientListOutcome::OpenEdit { ingredient: ingredient(1, "Garlic") }),
+        (IngredientListEvent::CreateRequested, IngredientListOutcome::CreateRequested)
+    ]
+)]
+#[tokio::test]
+async fn a_refresh_failure_keeps_cached_navigation_and_creation_available(
+    error: IngredientLoadError,
+    (event, expected): (IngredientListEvent, IngredientListOutcome),
+) -> anyhow::Result<()> {
+    let mut fixture = ListFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
     let mut refresh = fixture
         .list
         .update(Message::Event(IngredientListEvent::Refresh))
         .driver(&mut fixture.effects);
-    assert_eq!(rows(&fixture.list), ["Garlic"]);
-    assert!(matches!(
-        fixture.list.view().status,
-        IngredientListStatus::Ready {
-            refresh: IngredientListRefresh::Loading,
-            ..
-        }
-    ));
-    let during_refresh = fixture
-        .list
-        .update(Message::Event(IngredientListEvent::Select(original.id)))
-        .into_stream()
-        .next()
-        .await
-        .unwrap();
     assert_eq!(
-        during_refresh,
-        IngredientListOutcome::OpenDetail {
-            ingredient: original.clone()
-        }
+        fixture.list.view(),
+        ready_view(
+            "",
+            &[ingredient(1, "Garlic")],
+            1,
+            IngredientListRefresh::Loading
+        )
     );
-    assert!(
-        fixture
-            .list
-            .update(Message::Outcome(old_completion))
-            .into_stream()
-            .next()
-            .await
-            .is_none()
-    );
+
     refresh
         .step()
         .await?
@@ -213,255 +1001,23 @@ async fn refresh_failure_keeps_cached_rows_and_retry_replaces_them(
         .expect_store()
         .resolve_list(|| async { Err(error.clone()) })
         .await?;
-    let failure = refresh.step().await?.expect_outcome();
-    refresh.step().await?.expect_done();
-    drop(refresh);
-    let mut render = fixture
-        .list
-        .update(Message::Outcome(failure))
-        .driver(&mut fixture.effects);
-    render
-        .step()
-        .await?
-        .expect_effect()
-        .expect_render()
-        .resolve_render(|| async {})
-        .await?;
-    render.step().await?.expect_done();
-    drop(render);
-    assert_eq!(rows(&fixture.list), ["Garlic"]);
-    assert!(matches!(
-        fixture.list.view().status,
-        IngredientListStatus::Ready {
-            refresh: IngredientListRefresh::Failed(_),
-            ..
-        }
-    ));
-    let after_failure = fixture
-        .list
-        .update(Message::Event(IngredientListEvent::Select(original.id)))
-        .into_stream()
-        .next()
-        .await
-        .unwrap();
-    assert_eq!(
-        after_failure,
-        IngredientListOutcome::OpenDetail {
-            ingredient: original
-        }
-    );
-
-    let mut retry = fixture
-        .list
-        .update(Message::Event(IngredientListEvent::Refresh))
-        .driver(&mut fixture.effects);
-    retry
-        .step()
-        .await?
-        .expect_effect()
-        .expect_render()
-        .resolve_render(|| async {})
-        .await?;
-    retry
-        .step()
-        .await?
-        .expect_effect()
-        .expect_store()
-        .resolve_list(|| async { Ok(vec![ingredient("Garden pea")]) })
-        .await?;
-    let success = retry.step().await?.expect_outcome();
-    retry.step().await?.expect_done();
-    drop(retry);
-    let mut render = fixture
-        .list
-        .update(Message::Outcome(success))
-        .driver(&mut fixture.effects);
-    render
-        .step()
-        .await?
-        .expect_effect()
-        .expect_render()
-        .resolve_render(|| async {})
-        .await?;
-    render.step().await?.expect_done();
-    assert_eq!(fixture.list.view().search, "gar");
-    assert_eq!(rows(&fixture.list), ["Garden pea"]);
-    Ok(())
-}
-
-#[tokio::test]
-async fn stale_results_are_ignored() -> anyhow::Result<()> {
-    let mut fixture = ListFixture::new();
-    let mut first = fixture.list.init().driver(&mut fixture.effects);
-    first
-        .step()
-        .await?
-        .expect_effect()
-        .expect_render()
-        .resolve_render(|| async {})
-        .await?;
-    first
-        .step()
-        .await?
-        .expect_effect()
-        .expect_store()
-        .resolve_list(|| async { Ok(vec![ingredient("Basil")]) })
-        .await?;
-    let completed = first.step().await?.expect_outcome();
-    first.step().await?.expect_done();
-    drop(first);
-    let mut render = fixture
-        .list
-        .update(Message::Outcome(completed.clone()))
-        .driver(&mut fixture.effects);
-    render
-        .step()
-        .await?
-        .expect_effect()
-        .expect_render()
-        .resolve_render(|| async {})
-        .await?;
-    render.step().await?.expect_done();
-    drop(render);
-    let mut stale = fixture
-        .list
-        .update(Message::Outcome(completed))
-        .driver(&mut fixture.effects);
-    stale.step().await?.expect_done();
-    assert_eq!(rows(&fixture.list), ["Basil"]);
-    Ok(())
-}
-
-#[tokio::test]
-async fn selection_uses_visible_complete_records_and_create_always_works() -> anyhow::Result<()> {
-    let mut fixture = ListFixture::new();
-    let garlic = ingredient("Garlic");
-    let basil = ingredient("Basil");
-    fixture
-        .assert_initial_load(Ok(vec![garlic.clone(), basil.clone()]))
-        .await?;
-    let mut search = fixture
-        .list
-        .update(Message::Event(IngredientListEvent::Search("gar".into())))
-        .driver(&mut fixture.effects);
-    search
-        .step()
-        .await?
-        .expect_effect()
-        .expect_render()
-        .resolve_render(|| async {})
-        .await?;
-    search.step().await?.expect_done();
-    drop(search);
-    for event in [
-        IngredientListEvent::Select(basil.id),
-        IngredientListEvent::Edit(IngredientId::new()),
-    ] {
-        let mut command = fixture
-            .list
-            .update(Message::Event(event))
-            .driver(&mut fixture.effects);
-        command.step().await?.expect_done();
-    }
-    let mut detail = fixture
-        .list
-        .update(Message::Event(IngredientListEvent::Select(garlic.id)))
-        .driver(&mut fixture.effects);
-    let outcome = detail.step().await?.expect_outcome();
-    assert_eq!(
-        outcome,
-        IngredientListOutcome::OpenDetail {
-            ingredient: garlic.clone()
-        }
-    );
-    detail.step().await?.expect_done();
-    drop(detail);
-    let mut ignored = fixture
-        .list
-        .update(Message::Outcome(outcome))
-        .driver(&mut fixture.effects);
-    ignored.step().await?.expect_done();
-    drop(ignored);
-    let mut edit = fixture
-        .list
-        .update(Message::Event(IngredientListEvent::Edit(garlic.id)))
-        .driver(&mut fixture.effects);
-    assert_eq!(
-        edit.step().await?.expect_outcome(),
-        IngredientListOutcome::OpenEdit { ingredient: garlic }
-    );
-    edit.step().await?.expect_done();
-    drop(edit);
-    let mut create = fixture
-        .list
-        .update(Message::Event(IngredientListEvent::CreateRequested))
-        .driver(&mut fixture.effects);
-    assert_eq!(
-        create.step().await?.expect_outcome(),
-        IngredientListOutcome::CreateRequested
-    );
-    create.step().await?.expect_done();
-    Ok(())
-}
-
-#[tokio::test]
-async fn create_is_available_during_loading_and_errors() -> anyhow::Result<()> {
-    let mut fixture = ListFixture::new();
-    let mut create = fixture
-        .list
-        .update(Message::Event(IngredientListEvent::CreateRequested))
-        .driver(&mut fixture.effects);
-    assert_eq!(
-        create.step().await?.expect_outcome(),
-        IngredientListOutcome::CreateRequested
-    );
-    create.step().await?.expect_done();
-    drop(create);
-    fixture
-        .assert_initial_load(Err(IngredientLoadError::Storage))
-        .await?;
-    let mut create = fixture
-        .list
-        .update(Message::Event(IngredientListEvent::CreateRequested))
-        .driver(&mut fixture.effects);
-    assert_eq!(
-        create.step().await?.expect_outcome(),
-        IngredientListOutcome::CreateRequested
-    );
-    create.step().await?.expect_done();
-    Ok(())
-}
-
-#[tokio::test]
-async fn refresh_replaces_initial_load() -> anyhow::Result<()> {
-    let mut fixture = ListFixture::new();
-    let initial = fixture.list.init();
-    let mut refresh = fixture
-        .list
-        .update(Message::Event(IngredientListEvent::Refresh))
-        .driver(&mut fixture.effects);
-    assert!(initial.into_stream().next().await.is_none());
-    refresh
-        .step()
-        .await?
-        .expect_effect()
-        .expect_render()
-        .resolve_render(|| async {})
-        .await?;
-    refresh
-        .step()
-        .await?
-        .expect_effect()
-        .expect_store()
-        .resolve_list(|| async { Ok(vec![ingredient("Basil")]) })
-        .await?;
     let outcome = refresh.step().await?.expect_outcome();
     refresh.step().await?.expect_done();
     drop(refresh);
+
     let mut render = fixture
         .list
         .update(Message::Outcome(outcome))
         .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "",
+            &[ingredient(1, "Garlic")],
+            1,
+            IngredientListRefresh::Failed(error)
+        )
+    );
     render
         .step()
         .await?
@@ -470,33 +1026,83 @@ async fn refresh_replaces_initial_load() -> anyhow::Result<()> {
         .resolve_render(|| async {})
         .await?;
     render.step().await?.expect_done();
-    assert_eq!(rows(&fixture.list), ["Basil"]);
+    drop(render);
+
+    let before = fixture.list.view();
+    let mut command = fixture
+        .list
+        .update(Message::Event(event))
+        .driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), before);
+    let outcome = command.step().await?.expect_outcome();
+    assert_eq!(outcome, expected);
+    command.step().await?.expect_done();
+    Ok(())
+}
+
+#[test_case(IngredientLoadError::Storage; "storage failure")]
+#[test_case(IngredientLoadError::Transport; "transport failure")]
+#[tokio::test]
+async fn creation_is_available_after_the_initial_load_fails(
+    error: IngredientLoadError,
+) -> anyhow::Result<()> {
+    let mut fixture = ListFixture::new();
+    let mut load = fixture.list.init().driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), loading_view(""));
+    load.step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    load.step()
+        .await?
+        .expect_effect()
+        .expect_store()
+        .resolve_list(|| async { Err(error.clone()) })
+        .await?;
+    let outcome = load.step().await?.expect_outcome();
+    load.step().await?.expect_done();
+    drop(load);
+
+    let mut render = fixture
+        .list
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        IngredientListView {
+            search: String::new(),
+            status: IngredientListStatus::Failed(error)
+        }
+    );
+    render
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    render.step().await?.expect_done();
+    drop(render);
+
+    let before = fixture.list.view();
+    let mut command = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::CreateRequested))
+        .driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), before);
+    let outcome = command.step().await?.expect_outcome();
+    assert_eq!(outcome, IngredientListOutcome::CreateRequested);
+    command.step().await?.expect_done();
     Ok(())
 }
 
 #[tokio::test]
-async fn latest_refresh_cancels_previous_and_rejects_queued_result() -> anyhow::Result<()> {
+async fn a_dropped_initial_store_response_exposes_a_transport_failure() -> anyhow::Result<()> {
     let mut fixture = ListFixture::new();
-    let old = fixture
-        .assert_initial_load(Ok(vec![ingredient("Basil")]))
-        .await?;
-    let cancelled = fixture
-        .list
-        .update(Message::Event(IngredientListEvent::Refresh));
-    let replacement = fixture
-        .list
-        .update(Message::Event(IngredientListEvent::Refresh));
-    assert!(cancelled.into_stream().next().await.is_none());
-    assert!(
-        fixture
-            .list
-            .update(Message::Outcome(old))
-            .into_stream()
-            .next()
-            .await
-            .is_none()
-    );
-    let mut command = replacement.driver(&mut fixture.effects);
+    let mut command = fixture.list.init().driver(&mut fixture.effects);
+    assert_eq!(fixture.list.view(), loading_view(""));
     command
         .step()
         .await?
@@ -504,30 +1110,54 @@ async fn latest_refresh_cancels_previous_and_rejects_queued_result() -> anyhow::
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    command
-        .step()
-        .await?
-        .expect_effect()
-        .expect_store()
-        .resolve_list(|| async { Ok(vec![ingredient("Garlic")]) })
-        .await?;
-    let queued = command.step().await?.expect_outcome();
+    drop(command.step().await?.expect_effect().expect_store());
+    let outcome = command.step().await?.expect_outcome();
+    let IngredientListOutcome::LoadFinished { result, .. } = &outcome else {
+        panic!("expected a completed load");
+    };
+    assert_eq!(result, &Err(IngredientLoadError::Transport));
     command.step().await?.expect_done();
     drop(command);
-    let newest = fixture
+
+    let mut render = fixture
         .list
-        .update(Message::Event(IngredientListEvent::Refresh));
-    assert!(
-        fixture
-            .list
-            .update(Message::Outcome(queued))
-            .into_stream()
-            .next()
-            .await
-            .is_none()
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        IngredientListView {
+            search: String::new(),
+            status: IngredientListStatus::Failed(IngredientLoadError::Transport)
+        }
     );
-    assert_eq!(rows(&fixture.list), ["Basil"]);
-    let mut command = newest.driver(&mut fixture.effects);
+    render
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    render.step().await?.expect_done();
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_dropped_refresh_response_keeps_cached_rows_and_exposes_a_transport_failure()
+-> anyhow::Result<()> {
+    let mut fixture = ListFixture::ready(vec![ingredient(1, "Garlic")], "gar").await?;
+    let mut command = fixture
+        .list
+        .update(Message::Event(IngredientListEvent::Refresh))
+        .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "gar",
+            &[ingredient(1, "Garlic")],
+            1,
+            IngredientListRefresh::Loading
+        )
+    );
     command
         .step()
         .await?
@@ -535,20 +1165,24 @@ async fn latest_refresh_cancels_previous_and_rejects_queued_result() -> anyhow::
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    command
-        .step()
-        .await?
-        .expect_effect()
-        .expect_store()
-        .resolve_list(|| async { Ok(vec![ingredient("Peas")]) })
-        .await?;
+    drop(command.step().await?.expect_effect().expect_store());
     let outcome = command.step().await?.expect_outcome();
     command.step().await?.expect_done();
     drop(command);
+
     let mut render = fixture
         .list
         .update(Message::Outcome(outcome))
         .driver(&mut fixture.effects);
+    assert_eq!(
+        fixture.list.view(),
+        ready_view(
+            "gar",
+            &[ingredient(1, "Garlic")],
+            1,
+            IngredientListRefresh::Failed(IngredientLoadError::Transport)
+        )
+    );
     render
         .step()
         .await?
@@ -557,39 +1191,61 @@ async fn latest_refresh_cancels_previous_and_rejects_queued_result() -> anyhow::
         .resolve_render(|| async {})
         .await?;
     render.step().await?.expect_done();
-    assert_eq!(rows(&fixture.list), ["Peas"]);
     Ok(())
 }
 
-#[tokio::test]
-async fn dropping_widget_cancels_pending_load() -> anyhow::Result<()> {
-    let mut fixture = ListFixture::new();
-    let mut command = fixture.list.init().driver(&mut fixture.effects);
-    command
-        .step()
-        .await?
-        .expect_effect()
-        .expect_render()
-        .resolve_render(|| async {})
-        .await?;
-    drop(fixture.list);
-    command.step().await?.expect_done();
-    Ok(())
+// Test support
+
+fn id(value: u128) -> IngredientId {
+    Uuid::from_u128(value).into()
 }
 
-fn ingredient(name: &str) -> Ingredient {
+fn ingredient(value: u128, name: &str) -> Ingredient {
     Ingredient {
-        id: IngredientId::new(),
+        id: id(value),
         name: name.into(),
         notes: Some("complete record".into()),
         nutrition: Nutrition {
             basis: NutritionBasis::Per100Grams,
-            calories: None,
-            protein: None,
+            calories: Some(rust_decimal::Decimal::from(149).into()),
+            protein: Some(rust_decimal::Decimal::from(6).into()),
             carbohydrates: None,
-            fat: None,
+            fat: Some(rust_decimal::Decimal::ZERO.into()),
         },
-        units: vec![],
+        units: vec![ReferenceUnit {
+            name: "clove".into(),
+            grams: Some(rust_decimal::Decimal::from(3).into()),
+            millilitres: None,
+        }],
+    }
+}
+
+fn loading_view(search: &str) -> IngredientListView {
+    IngredientListView {
+        search: search.into(),
+        status: IngredientListStatus::Loading,
+    }
+}
+
+fn ready_view(
+    search: &str,
+    visible: &[Ingredient],
+    total_count: usize,
+    refresh: IngredientListRefresh,
+) -> IngredientListView {
+    IngredientListView {
+        search: search.into(),
+        status: IngredientListStatus::Ready {
+            rows: visible
+                .iter()
+                .map(|ingredient| IngredientListRow {
+                    id: ingredient.id,
+                    name: ingredient.name.clone(),
+                })
+                .collect(),
+            total_count,
+            refresh,
+        },
     }
 }
 
@@ -604,37 +1260,29 @@ impl ListFixture {
         Self { list, effects }
     }
 
-    /// Check the initial loading view, render/store sequence, and completion render.
-    async fn assert_initial_load(
-        &mut self,
-        result: Result<Vec<Ingredient>, IngredientLoadError>,
-    ) -> anyhow::Result<IngredientListOutcome> {
-        let mut command = self.list.init().driver(&mut self.effects);
-        assert!(matches!(
-            self.list.view().status,
-            IngredientListStatus::Loading
-        ));
-        command
-            .step()
+    async fn ready(records: Vec<Ingredient>, search: &str) -> anyhow::Result<Self> {
+        let mut fixture = Self::new();
+        let mut load = fixture.list.init().driver(&mut fixture.effects);
+        load.step()
             .await?
             .expect_effect()
             .expect_render()
             .resolve_render(|| async {})
             .await?;
-        command
-            .step()
+        load.step()
             .await?
             .expect_effect()
             .expect_store()
-            .resolve_list(|| async move { result })
+            .resolve_list(|| async { Ok(records) })
             .await?;
-        let outcome = command.step().await?.expect_outcome();
-        command.step().await?.expect_done();
-        drop(command);
-        let mut render = self
+        let outcome = load.step().await?.expect_outcome();
+        load.step().await?.expect_done();
+        drop(load);
+
+        let mut render = fixture
             .list
-            .update(Message::Outcome(outcome.clone()))
-            .driver(&mut self.effects);
+            .update(Message::Outcome(outcome))
+            .driver(&mut fixture.effects);
         render
             .step()
             .await?
@@ -643,13 +1291,20 @@ impl ListFixture {
             .resolve_render(|| async {})
             .await?;
         render.step().await?.expect_done();
-        Ok(outcome)
+        drop(render);
+        let mut command = fixture
+            .list
+            .update(Message::Event(IngredientListEvent::Search(search.into())))
+            .driver(&mut fixture.effects);
+        command
+            .step()
+            .await?
+            .expect_effect()
+            .expect_render()
+            .resolve_render(|| async {})
+            .await?;
+        command.step().await?.expect_done();
+        drop(command);
+        Ok(fixture)
     }
-}
-
-fn rows(list: &IngredientList) -> Vec<String> {
-    let IngredientListStatus::Ready { rows, .. } = list.view().status else {
-        panic!("expected ready list")
-    };
-    rows.into_iter().map(|row| row.name).collect()
 }

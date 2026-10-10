@@ -1,6 +1,7 @@
 # S01 — Swift integration and presentation
 
-Status: planned. The user handed over the Swift side for this task.
+Status: awaiting review. Change: `nqouwrvs`. The user handed over the Swift
+side for this task.
 
 ## Contract
 
@@ -23,6 +24,9 @@ It adds no business, validation, or navigation decisions.
   sheets that cannot be dismissed interactively. Back, Cancel, and dialog
   dismissal only send events.
 - Swift maps typed load, save, delete, startup, and validation errors to text.
+- Text fields and search show typed text at once. `TextEcho` keeps
+  keystrokes that Rust has not rendered yet, and it accepts values that
+  Rust changes on its own.
 
 ## Tests
 
@@ -32,6 +36,8 @@ It adds no business, validation, or navigation decisions.
   each visual state of the startup, list, detail, form, and counter screens.
 - XCTest smoke flows on the real core: create, edit, and delete; relaunch
   persistence; both tabs.
+- `DemoCaptureUITests` captures the demo screenshots. It runs only with
+  `TEST_RUNNER_KREATYNA_CAPTURE_DEMO=1`.
 
 Rust tests own all behavior rules. Swift does not repeat them.
 

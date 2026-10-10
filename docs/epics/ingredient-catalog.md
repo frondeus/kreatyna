@@ -3,7 +3,8 @@
 Status: architecture and task graph approved. R01–R11, including R07a and R09a,
 are approved. R12 is awaiting review; its
 [implementation plan](ingredient-catalog/tasks/R12-uniffi-types.md) is part of
-that change. Later tasks remain planned.
+that change. S01, the Swift integration, is awaiting review; see its
+[demo](ingredient-catalog/demo.md). Other later tasks remain planned.
 
 ## Goal and scope
 

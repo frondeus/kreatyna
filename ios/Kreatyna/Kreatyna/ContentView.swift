@@ -1,60 +1,75 @@
-//
-//  ContentView.swift
-//  Kreatyna
-//
-//  Created by Wojciech  Polak on 13/09/2026.
-//
-
 import SwiftUI
 
 struct ContentView: View {
-    @State private var model = CounterModel()
+    @State private var model = AppModel()
 
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Counter: \(model.value)")
-                .accessibilityIdentifier("counterValue")
-            HStack {
-                Button("Decrease", systemImage: "minus") {
-                    model.dispatch(.decrease)
-                }
-                .accessibilityIdentifier("decreaseCounter")
+        RootView(
+            view: model.view,
+            errorMessage: model.errorMessage,
+            send: model.dispatch,
+            retryInitialization: model.retryInitialization
+        )
+    }
+}
 
-                Button("Increase", systemImage: "plus") {
-                    model.dispatch(.increase)
-                }
-                .accessibilityIdentifier("increaseCounter")
-            }
-            .buttonStyle(.bordered)
-            Button("Reset", systemImage: "arrow.counterclockwise") {
-                model.dispatch(.reset)
-            }
-            .accessibilityIdentifier("resetCounter")
-            .buttonStyle(.bordered)
-            HStack {
-                Button("Start", systemImage: "play.fill") {
-                    model.dispatch(.startBackground)
-                }
-                .accessibilityIdentifier("startBackground")
+/// Renders an `AppView` value; it holds no app state of its own.
+struct RootView: View {
+    let view: AppView
+    let errorMessage: String?
+    let send: (AppEvent) -> Void
+    let retryInitialization: () -> Void
 
-                Button("Stop", systemImage: "stop.fill") {
-                    model.dispatch(.stopBackground)
+    var body: some View {
+        Group {
+            switch view {
+            case .initializing:
+                ProgressView("Starting…")
+                    .accessibilityIdentifier("appInitializing")
+            case .initializationFailed(let error):
+                ContentUnavailableView {
+                    Label("Kreatyna could not start", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(error.message)
+                } actions: {
+                    Button("Retry", action: retryInitialization)
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier("retryInitialization")
                 }
-                .accessibilityIdentifier("stopBackground")
-            }
-            .buttonStyle(.bordered)
-            if let errorMessage = model.errorMessage {
-                Text(errorMessage)
-                    .foregroundStyle(.red)
-                    .accessibilityIdentifier("counterError")
+                .accessibilityIdentifier("appInitializationFailed")
+            case .running(let app):
+                AppTabsView(app: app, send: send)
             }
         }
-        .padding()
-        .onDisappear {
-            model.dispatch(.stopBackground)
+        .safeAreaInset(edge: .bottom) {
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .padding(8)
+                    .accessibilityIdentifier("appError")
+            }
+        }
+    }
+}
+
+struct AppTabsView: View {
+    let app: RunningAppView
+    let send: (AppEvent) -> Void
+
+    var body: some View {
+        TabView(selection: Binding(
+            get: { app.tab },
+            set: { send(.selectTab(tab: $0)) }
+        )) {
+            Tab("Ingredients", systemImage: "carrot", value: AppTab.ingredients) {
+                IngredientCatalogScreen(view: app.ingredients) { send(app.ingredients($0)) }
+            }
+            .accessibilityIdentifier("ingredientsTab")
+            Tab("Counter", systemImage: "number", value: AppTab.counter) {
+                CounterScreen(view: app.counter) { send(app.counter($0)) }
+            }
+            .accessibilityIdentifier("counterTab")
         }
     }
 }

@@ -1,6 +1,8 @@
-{ lib, config,  pkgs, ... }:
+{ lib, config, pkgs, inputs, ... }:
 
 let
+  rustBin = inputs.rust-overlay.lib.mkRustBin { } pkgs.buildPackages;
+
   iosSetup = ''
     set -euo pipefail
     cd ${lib.escapeShellArg config.devenv.root}
@@ -16,17 +18,7 @@ let
       exit 2
     fi
 
-    # Nix's DEVELOPER_DIR/SDKROOT refer to its macOS SDK, not the iOS SDK.
-    # Override per command without changing the system's xcode-select setting.
-    export DEVELOPER_DIR="''${IOS_DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
     export CARGO_TARGET_DIR="$PWD/target"
-
-    # Host build scripts, proc macros, and bindgen also need Xcode's linker:
-    # Nix's older linker cannot read the macOS 27 SDK's arm64e.x1 stubs.
-    host_target="$(rustc -vV | sed -n 's/^host: //p')"
-    host_target_env="$(echo "$host_target" | tr '[:lower:]-' '[:upper:]_')"
-    host_clang="$(/usr/bin/xcrun --sdk macosx --find clang)"
-    export "CARGO_TARGET_''${host_target_env}_LINKER=$host_clang"
 
     # Keep the default aligned with the Xcode app's deployment target.
     export IPHONEOS_DEPLOYMENT_TARGET="''${IPHONEOS_DEPLOYMENT_TARGET:-26.2}"
@@ -51,6 +43,16 @@ let
   '';
 in
 {
+  # Use Xcode's toolchain instead of Nix's on macOS. Nix's apple-sdk exports
+  # DEVELOPER_DIR/SDKROOT and puts xcbuild's xcrun on PATH, which hides Xcode
+  # from xcodebuild. Nix's cc wrapper and cctools ld cannot read the macOS 27
+  # SDK's arm64e.x1 stubs, so cc/ld must resolve to Xcode's /usr/bin shims.
+  apple.sdk = null;
+  stdenv = pkgs.stdenvNoCC;
+  languages.c.enable = false;
+  # Select Xcode for this shell without changing the system's xcode-select.
+  env.DEVELOPER_DIR = "/Applications/Xcode.app/Contents/Developer";
+
   # https://devenv.sh/languages/rust/
   languages.rust = {
     enable = true;
@@ -59,6 +61,16 @@ in
       "aarch64-apple-ios"
       "aarch64-apple-ios-sim"
     ];
+    # rust-overlay propagates Nix's cc wrapper, which would shadow Xcode's
+    # cc/ld on PATH. Drop it so cargo links with the Xcode toolchain.
+    toolchainPackage =
+      (rustBin.stable.latest.minimal.override {
+        extensions = [ "clippy" "rustfmt" ];
+        inherit (config.languages.rust) targets;
+      }).overrideAttrs {
+        depsHostHostPropagated = [ ];
+        propagatedBuildInputs = [ ];
+      };
   };
 
   packages = [

@@ -1,6 +1,6 @@
 import Foundation
 
-final class CounterClock: ClockHandler {
+final class AppClock: ClockHandler {
     nonisolated func sleepMs(ms: UInt64) async {
         do {
             try await Task.sleep(for: .milliseconds(Double(ms)))

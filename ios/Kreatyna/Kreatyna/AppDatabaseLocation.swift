@@ -1,6 +1,6 @@
 import Foundation
 
-enum CounterDatabaseLocation {
+enum AppDatabaseLocation {
     static func path(
         fileManager: FileManager = .default,
         applicationSupportDirectory: URL? = nil

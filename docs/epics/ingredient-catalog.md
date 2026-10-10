@@ -182,13 +182,17 @@ are approved. The user's approval authorizes completing the Swift side in one go
 
 | ID | Review surface and outcome | Direct dependencies | Acceptance evidence |
 | --- | --- | --- | --- |
-| S01 | Complete Swift integration and presentation in one change: generated bindings, app adapter, native tabs, ingredient list/detail/form, navigation projection, test infrastructure, and a simulator demo. | H | Swift Testing covers real-core dispatch/render, main-actor updates, lifecycle, errors, and isolated databases; controlled snapshots cover screen states and are reviewed visually; real-core XCTest covers create/relaunch/edit/delete, dirty back/cancel, detail replacement, search, and both tabs. Counter behavior remains intact. A `demo.md` with simulator screenshots shows the completed flows and their edge cases. |
+| S01 | Complete Swift integration and presentation in one change: generated bindings, app adapter, native tabs, ingredient list/detail/form, navigation projection, test infrastructure, and a simulator demo. | H | Swift Testing covers real-core dispatch/render, main-actor updates, lifecycle, errors, and isolated databases; controlled snapshots cover screen states and are reviewed visually; real-core XCTest smoke flows cover create/edit/delete, relaunch persistence, and both tabs. Dirty back/cancel, detail replacement, and search stay covered by Rust tests. Counter behavior remains intact. A `demo.md` with simulator screenshots shows the completed flows and their edge cases. |
 
 S01 may be implemented in internal steps, but it is delivered as one complete
 Swift change for review. Swift renders Rust view data and forwards Rust events;
 it does not add business or navigation decisions. If integration reveals missing
 business behavior, add a focused Rust follow-up to the DAG and keep that logic
 out of Swift.
+
+Follow [build-swift-presentation](../../.agents/skills/build-swift-presentation/SKILL.md):
+Swift tests cover wiring, adapters, and rendering, not logic already tested in
+Rust. The task plan is [S01](ingredient-catalog/tasks/S01-swift-integration.md).
 
 Follow [document-ios-delivery](../../.agents/skills/document-ios-delivery/SKILL.md)
 and deliver `docs/epics/ingredient-catalog/demo.md` in S01. Its scenarios cover

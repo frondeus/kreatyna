@@ -33,7 +33,7 @@
 		342BE1A93056D4F600D3C936 /* KreatynaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KreatynaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		342BE1B33056D4F600D3C936 /* KreatynaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KreatynaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		342BE1C93057041800D3C936 /* libkreatyna_ffi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libkreatyna_ffi.a; path = "../../target/aarch64-apple-ios-sim/debug/libkreatyna_ffi.a"; sourceTree = "<group>"; };
-		34C9C5EF3059551D004DA1E0 /* kreatyna_ffi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = kreatyna_ffi.swift; path = "../../target/generated/ios/aarch64-apple-ios-sim/debug/kreatyna_ffi.swift"; sourceTree = SOURCE_ROOT; };
+		34C9C5EF3059551D004DA1E0 /* kreatyna_ffi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = kreatyna_ffi.swift; path = "../../target/generated/apple/aarch64-apple-ios-sim/debug/kreatyna_ffi.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -441,7 +441,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = "$(SRCROOT)/../../target/generated/ios/aarch64-apple-ios-sim/debug/kreatyna_ffiFFI.h";
+				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = "$(SRCROOT)/../../target/generated/apple/aarch64-apple-ios-sim/debug/kreatyna_ffiFFI.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

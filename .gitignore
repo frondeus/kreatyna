@@ -13,3 +13,6 @@ target/
 
 # Editor swap files
 *.swp
+
+# Xcode per-user state
+xcuserdata/

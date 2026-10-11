@@ -91,7 +91,7 @@ done
 
 echo "==> Building Kreatyna (log: $log_dir/build.log)"
 if ! "${clean_env[@]}" xcodebuild \
-    -project ios/Kreatyna/Kreatyna.xcodeproj -scheme Kreatyna \
+    -project apple/Kreatyna/Kreatyna.xcodeproj -scheme Kreatyna \
     -configuration Debug -destination "id=${udids[0]}" \
     -derivedDataPath "$derived_data" build >"$log_dir/build.log" 2>&1; then
   grep -E "error:|BUILD FAILED" "$log_dir/build.log" >&2 || tail -40 "$log_dir/build.log" >&2

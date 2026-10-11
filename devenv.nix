@@ -101,7 +101,7 @@ in
       # The generator runs on macOS and reads metadata from each iOS archive.
       export SDKROOT="$(/usr/bin/xcrun --sdk macosx --show-sdk-path)"
       for target in aarch64-apple-ios aarch64-apple-ios-sim; do
-        output="$CARGO_TARGET_DIR/generated/ios/$target/$profile"
+        output="$CARGO_TARGET_DIR/generated/apple/$target/$profile"
         cargo run --locked -p kreatyna-ffi --features bindgen --bin uniffi-bindgen -- \
           generate "$CARGO_TARGET_DIR/$target/$profile/libkreatyna_ffi.a" \
           --language swift --out-dir "$output"

@@ -56,21 +56,21 @@ Those images use hand-built view data, not the running app.
 ## States shown with snapshot fixtures
 
 These baselines live in
-`ios/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/`.
+`apple/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/`.
 They were reviewed visually before they were committed.
 
 | State | Snapshot |
 | --- | --- |
-| Startup in progress | ![](../../../ios/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/initializing.1.png) |
-| Startup failed, Retry | ![](../../../ios/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/initializationFailed.1.png) |
-| List loading | ![](../../../ios/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/list-name-status.loading.png) |
-| List load failed, Retry | ![](../../../ios/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/list-name-status.failed.png) |
-| Refresh failed over loaded rows | ![](../../../ios/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/list-name-status.refreshFailed.png) |
-| Saving | ![](../../../ios/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/formSaving.1.png) |
-| Field and unit validation | ![](../../../ios/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/formValidationIssues.1.png) |
-| Deleting | ![](../../../ios/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/detail-name-deletion.deleting.png) |
-| Delete failed | ![](../../../ios/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/detail-name-deletion.deleteFailed.png) |
-| Dispatch rejected by the adapter | ![](../../../ios/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/adapterError.1.png) |
+| Startup in progress | ![](../../../apple/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/initializing.1.png) |
+| Startup failed, Retry | ![](../../../apple/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/initializationFailed.1.png) |
+| List loading | ![](../../../apple/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/list-name-status.loading.png) |
+| List load failed, Retry | ![](../../../apple/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/list-name-status.failed.png) |
+| Refresh failed over loaded rows | ![](../../../apple/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/list-name-status.refreshFailed.png) |
+| Saving | ![](../../../apple/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/formSaving.1.png) |
+| Field and unit validation | ![](../../../apple/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/formValidationIssues.1.png) |
+| Deleting | ![](../../../apple/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/detail-name-deletion.deleting.png) |
+| Delete failed | ![](../../../apple/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/detail-name-deletion.deleteFailed.png) |
+| Dispatch rejected by the adapter | ![](../../../apple/Kreatyna/KreatynaTests/Snapshots/__Snapshots__/ScreenSnapshotTests/adapterError.1.png) |
 
 ## Checks
 

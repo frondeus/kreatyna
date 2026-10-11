@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recipes Discovery Mockups</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --surface-2: #f4f4f6;
+    --sidebar: #ebebef;
+    --border: #d8d8de;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --accent: #0a74e6;
+    --accent-soft: rgba(10, 116, 230, 0.12);
+    --linked: #2b8a3e;
+    --linked-soft: rgba(43, 138, 62, 0.12);
+    --suggest: #b35c00;
+    --suggest-soft: rgba(230, 119, 0, 0.14);
+    --q: #c2255c;
+    --q-soft: rgba(194, 37, 92, 0.1);
+    --d: #2b8a3e;
+    --d-soft: rgba(43, 138, 62, 0.1);
+    --node: #ffffff;
+    --node-wait: #f4f4f6;
+    --edge: #8e8e96;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111113; --surface: #1e1e21; --surface-2: #26262a; --sidebar: #19191c;
+      --border: #38383e; --text: #f2f2f4; --muted: #9a9aa2; --accent: #4aa3ff;
+      --accent-soft: rgba(74, 163, 255, 0.16); --linked: #69db7c; --linked-soft: rgba(105, 219, 124, 0.14);
+      --suggest: #ffa94d; --suggest-soft: rgba(255, 169, 77, 0.14); --q: #f06595; --q-soft: rgba(240, 101, 149, 0.14);
+      --d: #69db7c; --d-soft: rgba(105, 219, 124, 0.1);
+      --node: #2a2a2e; --node-wait: #212124; --edge: #7a7a82; --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111113; --surface: #1e1e21; --surface-2: #26262a; --sidebar: #19191c;
+    --border: #38383e; --text: #f2f2f4; --muted: #9a9aa2; --accent: #4aa3ff;
+    --accent-soft: rgba(74, 163, 255, 0.16); --linked: #69db7c; --linked-soft: rgba(105, 219, 124, 0.14);
+    --suggest: #ffa94d; --suggest-soft: rgba(255, 169, 77, 0.14); --q: #f06595; --q-soft: rgba(240, 101, 149, 0.14);
+    --d: #69db7c; --d-soft: rgba(105, 219, 124, 0.1);
+    --node: #2a2a2e; --node-wait: #212124; --edge: #7a7a82; --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  }
+  a { color: var(--accent); }
+  .page { max-width: 1160px; margin: 0 auto; padding: 32px 16px 80px; }
+  header.top { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+  header.top h1 { margin: 0 0 4px; font-size: 28px; letter-spacing: -0.01em; }
+  header.top p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .theme-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  nav.toc { margin: 20px 0 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+  nav.toc a { text-decoration: none; padding: 4px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 13px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 13px; margin: 12px 0 0; align-items: center; }
+
+  section.screen { margin-top: 56px; }
+  section.screen > h2 { font-size: 20px; margin: 0 0 4px; }
+  section.screen > p.lede { margin: 0 0 16px; color: var(--muted); max-width: 80ch; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; vertical-align: middle; margin-left: 6px; }
+  .tag.mvp { background: var(--accent-soft); color: var(--accent); }
+  .tag.later { background: var(--suggest-soft); color: var(--suggest); }
+  .scroll { overflow-x: auto; padding: 4px 4px 12px; margin: 0 -4px; }
+
+  /* Question and decision badges */
+  .q, .d { display: inline-flex; align-items: center; font: 600 11px/1 ui-monospace, "SF Mono", Menlo, monospace; border-radius: 999px; padding: 3px 7px; text-decoration: none; white-space: nowrap; vertical-align: middle; }
+  .q { color: #fff; background: var(--q); }
+  .d { color: var(--d); background: var(--d-soft); }
+  .f { display: inline-flex; font: 600 11px/1 ui-monospace, Menlo, monospace; color: var(--suggest); background: var(--suggest-soft); border-radius: 999px; padding: 3px 7px; vertical-align: middle; white-space: nowrap; }
+  .notes { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+  .box { border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+  .box.open { background: var(--q-soft); }
+  .box.done { background: var(--d-soft); }
+  .box ul { margin: 6px 0 0; padding-left: 0; list-style: none; }
+  .box li { margin: 5px 0; }
+
+  /* Mac window chrome */
+  .win { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; min-width: 980px; }
+  .titlebar { height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+  .lights { display: flex; gap: 8px; }
+  .lights i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+  .lights i:nth-child(1) { background: #ff5f57; } .lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+  .titlebar .title { font-weight: 600; font-size: 13px; }
+  .titlebar .spacer { flex: 1; }
+  .tb-btn { border: 1px solid var(--border); background: var(--surface); border-radius: 7px; padding: 3px 10px; font-size: 12px; color: var(--text); }
+  .tb-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tb-btn.disabled { opacity: .45; }
+
+  /* Main window */
+  .main-grid { display: grid; grid-template-columns: 190px 270px 1fr; min-height: 520px; }
+  .sidebar { background: var(--sidebar); border-right: 1px solid var(--border); padding: 12px 8px; font-size: 13px; }
+  .sidebar h4 { margin: 14px 8px 4px; font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .sidebar .item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; }
+  .sidebar .item.sel { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .listcol { border-right: 1px solid var(--border); padding: 10px; }
+  .search { border: 1px solid var(--border); background: var(--surface-2); border-radius: 7px; padding: 5px 10px; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .row { padding: 8px 10px; border-radius: 8px; }
+  .row.sel { background: var(--accent); color: #fff; }
+  .row .meta { font-size: 12px; color: var(--muted); }
+  .row.sel .meta { color: rgba(255, 255, 255, .8); }
+  .detail { padding: 20px 26px; }
+  .detail h1 { font-size: 24px; margin: 0 0 6px; }
+  .detail h3 { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 20px 0 6px; }
+  .card { background: var(--surface-2); border-radius: 10px; padding: 4px 12px; }
+  .ing { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .ing:last-child { border-bottom: 0; }
+  .ing .amt { width: 76px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ing .name { flex: 1; }
+  .ing .note { color: var(--muted); font-style: italic; }
+  .chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .chip.linked { background: var(--linked-soft); color: var(--linked); }
+  .chip.suggest { background: var(--suggest-soft); color: var(--suggest); }
+  .chip.none { color: var(--muted); border: 1px dashed var(--border); }
+  .level { margin: 8px 0 12px; }
+  .level .lvl-h { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .stepline { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; font-size: 13px; }
+  .stepline .letter { font: 600 11px/1 ui-monospace, Menlo, monospace; background: var(--accent-soft); color: var(--accent); border-radius: 5px; padding: 3px 5px; }
+  .stepline .dur { color: var(--muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
+
+  /* Editor */
+  .editor-grid { display: grid; grid-template-columns: 1fr 300px; min-height: 640px; }
+  .canvas-wrap { position: relative; background-color: var(--surface);
+    background-image: radial-gradient(var(--border) 1px, transparent 1px); background-size: 18px 18px; border-bottom: 1px solid var(--border); }
+  .canvas-wrap svg { display: block; width: 100%; height: auto; }
+  .ing-table { padding: 12px 16px; }
+  .ing-table h3 { margin: 0 0 6px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; display: flex; align-items: center; gap: 8px; }
+  .inspector { border-left: 1px solid var(--border); background: var(--surface-2); padding: 14px 16px; font-size: 13px; }
+  .inspector h3 { margin: 0 0 10px; font-size: 13px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+  .input { border: 1px solid var(--border); background: var(--surface); border-radius: 7px; padding: 6px 9px; min-height: 30px; }
+  .input.area { min-height: 64px; color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+  .seg span { padding: 4px 10px; font-size: 12px; }
+  .seg span.on { background: var(--accent); color: #fff; }
+  .hrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hint { margin-top: 4px; color: var(--muted); font-size: 12px; }
+
+  /* SVG graph */
+  .g-node rect.box { fill: var(--node); stroke: var(--border); stroke-width: 1.2; }
+  .g-node.waiting rect.box { fill: var(--node-wait); stroke-dasharray: 5 4; stroke: var(--edge); }
+  .g-node.sel rect.box { stroke: var(--accent); stroke-width: 2.4; }
+  .g-node .t { fill: var(--text); font: 600 13px -apple-system, system-ui, sans-serif; }
+  .g-node .m { fill: var(--muted); font: 11px -apple-system, system-ui, sans-serif; }
+  .g-node .badge { fill: var(--accent-soft); }
+  .g-node .badge-t { fill: var(--accent); font: 600 10px ui-monospace, Menlo, monospace; }
+  .g-port { fill: var(--surface); stroke: var(--edge); stroke-width: 1.6; }
+  .g-port.out { fill: var(--edge); }
+  .g-node.sel .g-port.out { fill: var(--accent); stroke: var(--accent); }
+  .g-edge { fill: none; stroke: var(--edge); stroke-width: 1.6; }
+  .g-edge.drag { stroke: var(--accent); stroke-dasharray: 6 5; }
+  .g-arrow { fill: var(--edge); }
+  .g-menu rect.bg { fill: var(--surface); stroke: var(--border); filter: drop-shadow(0 6px 14px rgba(0,0,0,.18)); }
+  .g-menu rect.hl { fill: var(--accent); }
+  .g-menu text { font: 13px -apple-system, system-ui, sans-serif; fill: var(--text); }
+  .g-menu text.on { fill: #fff; }
+  .g-menu text.off { fill: var(--muted); }
+  .g-menu line { stroke: var(--border); }
+  .g-cursor { fill: var(--text); stroke: var(--surface); stroke-width: 1.2; }
+  .g-note { font: 12px -apple-system, system-ui, sans-serif; fill: var(--muted); }
+
+  /* Variants */
+  .variants { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .variant { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .variant h4 { margin: 0 0 2px; font-size: 14px; }
+  .variant .why { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+
+  /* Line editor popover */
+  .popover { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 16px; }
+  .popover .grid { display: grid; grid-template-columns: 90px 150px 1fr; gap: 8px; }
+  .menu { border: 1px solid var(--border); border-radius: 9px; background: var(--surface); box-shadow: var(--shadow); padding: 4px; font-size: 13px; margin-top: 6px; }
+  .menu div { padding: 5px 9px; border-radius: 6px; display: flex; gap: 8px; align-items: center; }
+  .menu .hl { background: var(--accent); color: #fff; }
+  .menu .sep { height: 1px; padding: 0; background: var(--border); margin: 4px 6px; }
+  .menu .sub { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .menu .hl .sub { color: rgba(255, 255, 255, .8); }
+  .menu .head { font-size: 11px; color: var(--muted); padding: 4px 9px 2px; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; align-items: start; }
+
+  /* Cooking */
+  .cook-timers { display: flex; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
+  .timer { background: var(--suggest-soft); color: var(--suggest); border-radius: 10px; padding: 8px 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .timer.start { background: transparent; color: var(--accent); border: 1.5px dashed var(--accent); }
+  .cook-grid { display: grid; grid-template-columns: 1.3fr 1fr 0.8fr; min-height: 360px; }
+  .cook-col { padding: 14px 16px; border-right: 1px solid var(--border); }
+  .cook-col:last-child { border-right: 0; }
+  .cook-col h3 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .cstep { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; background: var(--surface); }
+  .cstep.now { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .cstep.warn { border-color: var(--q); }
+  .cstep .ct { font-size: 18px; font-weight: 600; }
+  .cstep .cm { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .cstep .cu { font-size: 13px; margin-top: 6px; }
+  .cstep .cw { font-size: 12px; margin-top: 6px; color: var(--q); }
+  .cstep.done { opacity: .55; text-decoration: line-through; }
+  .variant .cstep .ct { font-size: 15px; }
+  .kbd { font: 11px ui-monospace, Menlo, monospace; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; color: var(--muted); }
+
+  /* Tokens */
+  .token-src { font: 13px/1.6 ui-monospace, "SF Mono", Menlo, monospace; background: var(--surface-2); border-radius: 8px; padding: 10px 12px; }
+  .tok { background: var(--accent-soft); color: var(--accent); border-radius: 5px; padding: 1px 5px; font-weight: 600; }
+  .tok.timer-tok::before { content: "⏱ "; }
+  .rendered { font-size: 15px; line-height: 1.8; }
+
+  /* Timeline */
+  .gantt { font-size: 12px; }
+  .g-row { display: grid; grid-template-columns: 130px 1fr; align-items: center; height: 24px; }
+  .g-row .lbl { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .g-track { position: relative; height: 16px; background-image: linear-gradient(to right, var(--border) 1px, transparent 1px); background-size: 12.5% 100%; }
+  .g-bar { position: absolute; top: 2px; height: 12px; border-radius: 4px; background: var(--accent); }
+  .g-bar.waiting { background: repeating-linear-gradient(45deg, var(--edge) 0 4px, transparent 4px 8px); border: 1px solid var(--edge); }
+  .g-axis { display: grid; grid-template-columns: 130px 1fr; color: var(--muted); font-size: 11px; margin-top: 4px; }
+  .g-axis .ticks { display: flex; justify-content: space-between; }
+  .g-total { margin-top: 8px; font-weight: 600; }
+
+  .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+  .status-grid ol { padding-left: 0; list-style: none; margin: 0; }
+  .status-grid li { padding: 6px 0; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: baseline; }
+  .status-grid li:target { background: var(--q-soft); }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="top">
+  <div>
+    <h1>Recipes — discovery mockups</h1>
+    <p>Static sketches for the discovery conversation, not designs to build pixel-for-pixel.
+      This is the final state of the discovery: <span class="d">D-xx</span> marks a decision
+      and <span class="f">F-xx</span> a feature parked for after the MVP. Both are listed in <a href="brief.md">brief.md</a>.
+      The example recipe throughout is <em>Roasted tomato pasta</em>.</p>
+  </div>
+  <button class="theme-btn" id="themeBtn" type="button">Theme: auto</button>
+</header>
+
+<nav class="toc">
+  <a href="#main">1 · Main window</a>
+  <a href="#editor">2 · Recipe editor</a>
+  <a href="#line">3 · Ingredient line</a>
+  <a href="#totaltime">4 · Total time</a>
+  <a href="#cooking">5 · Cooking mode</a>
+  <a href="#tokens">6 · Units &amp; tokens</a>
+  <a href="#status">Parked features</a>
+</nav>
+<div class="legend">
+  <span class="tag mvp">MVP</span> part of the first usable version
+  <span class="tag later">Later</span> preview, so the MVP model doesn't block it
+  <span><span class="chip linked">→ tomato</span> linked to catalog</span>
+  <span><span class="chip suggest">tomato?</span> suggested link</span>
+  <span><span class="chip none">no link</span> free-standing line</span>
+</div>
+
+<!-- 1. MAIN WINDOW -->
+<section class="screen" id="main">
+  <h2>1 · Main window <span class="tag mvp">MVP</span></h2>
+  <p class="lede">A Mac layout with a sidebar, a list and a detail pane. Recipes sit next to the ingredient catalog;
+    Counter is gone. <em>Edit</em> and <em>Cook</em> replace the detail pane instead of opening new windows.</p>
+  <div class="scroll">
+    <div class="win">
+      <div class="titlebar">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <span class="title">Kreatyna</span><span class="spacer"></span>
+        <span class="tb-btn">＋ New recipe</span>
+        <span class="tb-btn primary">Edit</span>
+        <span class="tb-btn disabled" title="Cooking mode is a later rung">▶ Cook</span>
+      </div>
+      <div class="main-grid">
+        <aside class="sidebar">
+          <h4>Kitchen</h4>
+          <div class="item sel">📖 Recipes</div>
+          <div class="item">🥕 Ingredients</div>
+        </aside>
+        <div class="listcol">
+          <div class="search">🔍 Search recipes</div>
+          <div class="row sel"><div>Roasted tomato pasta</div><div class="meta">⏱ 38 min · 8 steps</div></div>
+          <div class="row"><div>Shakshuka</div><div class="meta">⏱ 30 min · 6 steps</div></div>
+          <div class="row"><div>Sunday roast chicken</div><div class="meta">⏱ 1 h 40 min · 11 steps</div></div>
+          <div class="row"><div>Overnight oats</div><div class="meta">⏱ 8 h 5 min · 3 steps</div></div>
+        </div>
+        <div class="detail">
+          <h1>Roasted tomato pasta</h1>
+          <h3>Ingredients</h3>
+          <div class="card" id="detailIngs"></div>
+          <h3>Steps</h3>
+          <div id="detailSteps"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="box done"><strong>Decided</strong><ul>
+      <li><span class="d">D-14</span> Title only in the MVP; servings, source, notes, tags and photo are parked (<span class="f">F-01</span>).</li>
+      <li><span class="d">D-15</span> A row shows title, total time and step count.</li>
+      <li><span class="d">D-29</span> <span class="d">D-33</span> Total time is the one-cook estimate, prep included (section 4).</li>
+      <li><span class="d">D-28</span> The Mac catalog gets full create/edit/delete, like iOS.</li>
+      <li><span class="d">D-16</span> The read view is a list of stages ("what can start together").</li>
+      <li><span class="d">D-17</span> Counter is removed from the app.</li>
+      <li><span class="d">D-39</span> Recipe titles are unique (case-insensitive), like catalog names.</li>
+      <li><span class="d">D-18</span> Edit and Cook replace this pane.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 2. EDITOR -->
+<section class="screen" id="editor">
+  <h2>2 · Recipe editor: canvas <span class="tag mvp">MVP</span></h2>
+  <p class="lede">A node editor, in the spirit of ComfyUI. <strong>Right-click</strong> on empty canvas to add a step.
+    <strong>Drag</strong> from a step's output port (●, right side) to another step's input port (○, left side) to say "this comes after that".
+    You place the nodes and the app remembers where they are.
+    Solid nodes are <strong>active</strong> (hands busy); dashed nodes are <strong>waiting</strong> (hands free).</p>
+  <div class="scroll">
+    <div class="win">
+      <div class="titlebar">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <span class="title">Editing — Roasted tomato pasta</span><span class="spacer"></span>
+        <span class="tb-btn">Cancel</span>
+        <span class="tb-btn primary">Save</span>
+      </div>
+      <div class="editor-grid">
+        <div>
+          <div class="canvas-wrap"><svg id="editorCanvas" aria-label="Step graph"></svg></div>
+          <div class="ing-table">
+            <h3>Ingredients <span class="tb-btn" style="text-transform:none;letter-spacing:0">＋ Line</span></h3>
+            <div class="card" id="editorIngs"></div>
+          </div>
+        </div>
+        <aside class="inspector">
+          <h3>Step D</h3>
+          <div class="field"><label>Title</label><div class="input">Fry onion &amp; garlic</div></div>
+          <div class="field"><label>Instructions (optional)</label><div class="input area">Medium heat, stir often, until the onion is translucent.</div></div>
+          <div class="field"><label>Duration</label>
+            <div class="hrow"><div class="input" style="width:70px">6</div><span>min</span>
+              <div class="seg"><span class="on">Active</span><span>Waiting</span></div></div>
+          </div>
+          <div class="field"><label>After</label>
+            <div class="hrow"><span class="chip none">B · Dice onion</span><span class="chip none">C · Mince garlic</span></div>
+            <div class="hint">Drawn on the canvas; mirrored here.</div>
+          </div>
+          <div class="field"><label>Uses</label>
+            <div class="card">
+              <div class="ing"><span class="amt">2 tbsp</span><span class="name">olive oil</span></div>
+            </div>
+            <div style="margin-top:6px"><span class="tb-btn">＋ Use ingredient…</span></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="box done"><strong>Decided</strong><ul>
+      <li><span class="d">D-19</span> Node positions are stored. No auto-arrange (<span class="f">F-02</span>).</li>
+      <li><span class="d">D-20</span> Right-click menu to add; drag between ports to connect.</li>
+      <li><span class="d">D-21</span> A duration is one value. Ranges (<span class="f">F-06</span>) and "with my oven it takes…" (<span class="f">F-07</span>) come later.</li>
+      <li><span class="d">D-22</span> Several loose ends are fine; no mandatory "Serve" step.</li>
+      <li><span class="d">D-37</span> Save needs a title, one ingredient, one step, and a duration on every step. While something is missing, Save is disabled and the toolbar says what (“Step I has no duration”).</li>
+      <li><span class="d">D-40</span> No drafts in the MVP (<span class="f">F-12</span>).</li>
+      <li><span class="d">D-30</span> A step is either active or waiting. "Put in the oven" and "Bake 20 min" are two steps.</li>
+      <li><span class="d">D-32</span> <span class="d">D-34</span> <span class="d">D-35</span> A yes/no "can be done ahead" flag arrives with timing, not in this editor. "How far ahead" is parked (<span class="f">F-11</span>).</li>
+      <li>Parked: using part of a line (<span class="f">F-03</span>), ingredient groups (<span class="f">F-04</span>).</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 3. INGREDIENT LINE -->
+<section class="screen" id="line">
+  <h2>3 · Ingredient line editor <span class="tag mvp">MVP</span></h2>
+  <p class="lede">A line has amount + unit + its own name + an optional note, and an <em>optional</em> catalog link.
+    The recipe keeps saying "Mutti tomatoes" even when it links to <em>tomato</em>.</p>
+  <div class="two">
+    <div class="popover">
+      <div class="grid">
+        <div class="field"><label>Amount</label><div class="input">2</div></div>
+        <div class="field"><label>Unit</label><div class="input">clove ▾</div>
+          <div class="menu">
+            <div>g</div><div>kg</div><div>ml</div><div>l</div><div>tsp</div><div>tbsp</div><div>cup</div><div>piece</div>
+            <div class="sep"></div>
+            <div class="head">From catalog: garlic</div>
+            <div class="hl">clove <span class="sub">≈ 5 g</span></div>
+            <div class="sep"></div>
+            <div>Custom unit…</div>
+          </div>
+        </div>
+        <div class="field"><label>Name in recipe</label><div class="input">garlic</div>
+          <div class="field" style="margin-top:12px"><label>Note</label><div class="input" style="color:var(--muted)">finely minced</div></div>
+          <div class="field" style="margin-top:12px"><label>Catalog link</label><div class="input"><span class="chip linked">→ garlic</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="popover">
+        <div class="field"><label>Catalog link (optional) — suggestions while typing</label>
+          <div class="input">Mutti tom|</div>
+          <div class="menu">
+            <div class="hl">tomato <span class="sub">catalog · best match</span></div>
+            <div>canned tomatoes <span class="sub">catalog</span></div>
+            <div class="sep"></div>
+            <div style="color:var(--muted)">Leave unlinked</div>
+          </div>
+        </div>
+      </div>
+      <div class="popover" style="margin-top:16px">
+        <div class="field"><label>Unlinked line with a custom unit</label>
+          <div class="card">
+            <div class="ing"><span class="amt">1 knob</span><span class="name">ginger</span><span class="chip none">no link</span></div>
+          </div>
+          <div class="hint">Custom units are kept exactly as written. Only known units (g, ml, tbsp…) and catalog reference units can be converted.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="margin:28px 0 10px;font-size:15px">Deleting a catalog ingredient that recipes use <span class="d">D-36</span></h3>
+  <div class="popover" style="max-width:420px">
+    <div style="font-weight:600;margin-bottom:6px">Delete “tomato”?</div>
+    <div style="font-size:13px;color:var(--muted)">It's linked from 3 recipes. Their lines keep their text (“400 g Mutti tomatoes”) and lose the link.</div>
+    <div class="hrow" style="justify-content:flex-end;margin-top:12px"><span class="tb-btn">Cancel</span><span class="tb-btn" style="background:#e03131;border-color:#e03131;color:#fff">Delete</span></div>
+  </div>
+
+  <h3 style="margin:28px 0 10px;font-size:15px">How lines look in the list</h3>
+  <div class="card" style="max-width:560px">
+    <div class="ing"><span class="amt">300 g</span><span class="name">penne</span><span class="chip suggest">pasta?</span></div>
+    <div class="ing"><span class="amt">2 tbsp</span><span class="name">olive oil</span><span class="chip none">no link</span></div>
+    <div class="ing"><span class="amt">400 g</span><span class="name">Mutti tomatoes</span><span class="chip linked">→ tomato</span></div>
+  </div>
+  <div class="notes">
+    <div class="box done"><strong>Decided</strong><ul>
+      <li><span class="d">D-23</span> The app suggests catalog matches while you type.</li>
+      <li><span class="d">D-24</span> Unlinked lines get a gentle nudge: a suggestion chip when a match is likely, otherwise a quiet "no link".</li>
+      <li><span class="d">D-25</span> Units: the known list, plus the linked ingredient's reference units, plus any custom unit, even when the line is unlinked.</li>
+      <li>Parked: create a catalog ingredient from here (<span class="f">F-05</span>).</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 4. TOTAL TIME -->
+<section class="screen" id="totaltime">
+  <h2>4 · Total time: one cook <span class="tag mvp">MVP</span></h2>
+  <p class="lede">The list row's total time (D-15) is the one-cook estimate (D-29): your hands-on steps never overlap,
+    and waiting steps run in the background. It covers the whole cook, prep included (D-33), so it tells you whether you
+    have time for this recipe tonight. The MVP shows only the number; the timeline below explains it and is parked for later (F-13).
+    Solid bars are active (hands busy); striped bars are waiting (hands free).</p>
+  <div class="variant" style="max-width:600px">
+    <h4>Roasted tomato pasta</h4>
+    <p class="why">For comparison: the longest chain would be 35 min (it assumes two pairs of hands), and the plain sum of all steps is 59 min.</p>
+    <div class="gantt" id="ganttB"></div>
+  </div>
+  <div class="notes">
+    <div class="box done"><strong>Decided</strong><ul>
+      <li><span class="d">D-41</span> This timeline view belongs in the real app, after the MVP (<span class="f">F-13</span>). The MVP shows only the total.</li>
+      <li><span class="d">D-29</span> One cook. <span class="d">D-33</span> Prep counts.</li>
+      <li>Parked: "Two cooks" mode (<span class="f">F-09</span>); a pantry-aware total, e.g. leftover diced onion in the fridge skips a step (<span class="f">F-10</span>).</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- 5. COOKING -->
+<section class="screen" id="cooking">
+  <h2>5 · Cooking mode <span class="tag later">Later</span></h2>
+  <p class="lede">A preview of a later rung, so the MVP data doesn't block it. We are 8 minutes in:
+    steps B and C are done, so D is unblocked; the oven is still preheating on a timer.</p>
+  <div class="scroll">
+    <div class="win">
+      <div class="titlebar">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <span class="title">Cooking — Roasted tomato pasta</span><span class="spacer"></span>
+        <span class="tb-btn">Finish</span>
+      </div>
+      <div class="cook-timers">
+        <span class="timer">⏱ Preheat oven — 02:00</span>
+        <span class="timer start">▶ Start Cook pasta in 17:00</span>
+        <span style="color:var(--muted);font-size:13px">Orange: a step is running. Blue: when to start a waiting step.</span>
+      </div>
+      <div class="cook-grid" id="cookGrid"></div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="box done"><strong>Decided</strong><ul>
+      <li><span class="d">D-27</span> One recipe at a time; several timers; <span class="kbd">Space</span> marks the focused step done; progress survives quitting the app.</li>
+      <li><span class="d">D-31</span> Cooking mode ships with timing. "Cook pasta" isn't offered at minute 8 just because nothing blocks it; it waits under "Coming up" until it's time to start.</li>
+      <li><span class="d">D-42</span> Two kinds of timers in the bar: <em>running</em> (a step is in progress) and <em>start</em> (counts down to when a waiting step should begin).</li>
+      <li><span class="d">D-43</span> Text size uses the standard <span class="kbd">⌘+</span> / <span class="kbd">⌘−</span> and the View menu; no button in the window.</li>
+    </ul></div>
+  </div>
+
+</section>
+
+<!-- 6. TOKENS -->
+<section class="screen" id="tokens">
+  <h2>6 · Units &amp; inline tokens <span class="tag later">Later</span></h2>
+  <p class="lede">Preview of a later rung (D-13). The step text stores canonical values; the display follows your preference.</p>
+  <div class="variants">
+    <div class="variant">
+      <h4>Stored</h4>
+      <p class="why">What the database holds (metric).</p>
+      <div class="token-src">Preheat oven to <span class="tok">{temp:200°C}</span>.<br>Bake <span class="tok">{dur:20min}</span> until bubbling.</div>
+    </div>
+    <div class="variant">
+      <h4>Shown — °C</h4>
+      <p class="why">&nbsp;</p>
+      <div class="rendered">Preheat oven to <span class="tok">200 °C</span>.<br>Bake <span class="tok timer-tok">20 min</span> until bubbling.</div>
+    </div>
+    <div class="variant">
+      <h4>Shown — °F</h4>
+      <p class="why">Rounded to what an oven dial shows.</p>
+      <div class="rendered">Preheat oven to <span class="tok">400 °F</span>.<br>Bake <span class="tok timer-tok">20 min</span> until bubbling.</div>
+    </div>
+  </div>
+  <h3 style="margin:28px 0 10px;font-size:15px">The preference, per dimension <span class="d">D-26</span></h3>
+  <div class="card" style="max-width:460px">
+    <div class="ing"><span class="name">Temperature</span><div class="seg"><span class="on">°C</span><span>°F</span></div></div>
+    <div class="ing"><span class="name">Weight</span><div class="seg"><span class="on">g</span><span>oz / lb</span></div></div>
+    <div class="ing"><span class="name">Volume</span><div class="seg"><span>ml</span><span class="on">cups</span></div></div>
+  </div>
+</section>
+
+<!-- STATUS -->
+<section class="screen" id="status">
+  <h2>Parked for after the MVP</h2>
+  <p class="lede">No questions are open. All decisions (D-01 … D-43) are logged in <a href="brief.md">brief.md</a>.
+    What comes after the MVP is picked after using it (D-38).</p>
+  <div class="status-grid">
+    <div>
+      <ol>
+        <li><span class="f">F-01</span> Recipe fields: servings, source, notes, tags, photo</li>
+        <li><span class="f">F-02</span> Auto-arrange for the canvas</li>
+        <li><span class="f">F-03</span> A step uses part of a line ("half the butter")</li>
+        <li><span class="f">F-04</span> Ingredient groups ("For the sauce")</li>
+        <li><span class="f">F-05</span> Create a catalog ingredient from a recipe line</li>
+        <li><span class="f">F-06</span> Approximate duration ranges</li>
+        <li><span class="f">F-07</span> Personal timings and cooking notes ("with my oven…")</li>
+        <li><span class="f">F-08</span> Move the Counter example into <code>krucyfiks</code></li>
+        <li><span class="f">F-09</span> "Two cooks" mode for cooking together</li>
+        <li><span class="f">F-10</span> Pantry-aware total time (leftovers skip steps)</li>
+        <li><span class="f">F-11</span> How far ahead a prep step can be done</li>
+        <li><span class="f">F-12</span> Drafts for half-written recipes</li>
+        <li><span class="f">F-13</span> Timeline view of the one-cook schedule</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<footer>Discovery artifact for vibetyna/kreatyna. Not a design specification. No code depends on it.</footer>
+</div>
+
+<script>
+  // Example recipe shared by every mockup on this page.
+  const ingredients = [
+    { id: 1, amt: "400 g", name: "Mutti tomatoes", link: "tomato", state: "linked" },
+    { id: 2, amt: "1", name: "onion", link: "onion", state: "linked" },
+    { id: 3, amt: "2 cloves", name: "garlic", link: "garlic", state: "linked" },
+    { id: 4, amt: "300 g", name: "penne", link: "pasta", state: "suggest" },
+    { id: 5, amt: "2 tbsp", name: "olive oil", state: "none" },
+    { id: 6, amt: "", name: "salt", note: "to taste", link: "salt", state: "linked" },
+    { id: 7, amt: "50 g", name: "parmesan", state: "none" },
+  ];
+  const steps = [
+    { id: "A", title: "Preheat oven", min: 10, kind: "waiting", after: [], uses: [], x: 20, y: 20 },
+    { id: "B", title: "Dice onion", min: 5, kind: "active", after: [], uses: [2], x: 20, y: 110 },
+    { id: "C", title: "Mince garlic", min: 3, kind: "active", after: [], uses: [3], x: 20, y: 200 },
+    { id: "G", title: "Cook pasta", min: 11, kind: "waiting", after: [], uses: [4, 6], x: 20, y: 300 },
+    { id: "D", title: "Fry onion & garlic", min: 6, kind: "active", after: ["B", "C"], uses: [5], x: 220, y: 160 },
+    { id: "E", title: "Add tomatoes", min: 2, kind: "active", after: ["D"], uses: [1, 6], x: 400, y: 160 },
+    { id: "F", title: "Bake sauce", min: 20, kind: "waiting", after: ["A", "E"], uses: [], x: 590, y: 50 },
+    { id: "H", title: "Combine & serve", min: 2, kind: "active", after: ["F", "G"], uses: [7], x: 770, y: 230 },
+  ];
+  const byId = Object.fromEntries(steps.map(s => [s.id, s]));
+  const dur = s => `${s.min} min`;
+  const NW = 150, NH = 54;
+  const SVG = "http://www.w3.org/2000/svg";
+
+  function el(tag, attrs = {}, text) {
+    const e = document.createElementNS(SVG, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function edgePath(x1, y1, x2, y2) {
+    const dx = Math.max(30, (x2 - x1) / 2);
+    return `M${x1} ${y1} C${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+  }
+
+  function renderEditorCanvas(svg) {
+    svg.setAttribute("viewBox", "0 0 940 390");
+    const defs = el("defs");
+    const marker = el("marker", { id: "arrow", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" });
+    marker.append(el("path", { d: "M0,0 L10,5 L0,10 z", class: "g-arrow" }));
+    defs.append(marker);
+    svg.append(defs);
+
+    for (const s of steps) {
+      for (const dep of s.after) {
+        const a = byId[dep];
+        svg.append(el("path", { class: "g-edge", d: edgePath(a.x + NW + 6, a.y + NH / 2, s.x - 7, s.y + NH / 2), "marker-end": "url(#arrow)" }));
+      }
+    }
+    for (const s of steps) {
+      const g = el("g", { class: `g-node ${s.kind}${s.id === "D" ? " sel" : ""}` });
+      g.append(el("rect", { class: "box", x: s.x, y: s.y, width: NW, height: NH, rx: 10 }));
+      g.append(el("text", { class: "t", x: s.x + 14, y: s.y + 23 }, s.title));
+      g.append(el("text", { class: "m", x: s.x + 14, y: s.y + 41 }, `${s.id} · ${dur(s)} · ${s.kind}`));
+      if (s.uses.length) {
+        g.append(el("rect", { class: "badge", x: s.x + NW - 32, y: s.y + 30, width: 22, height: 16, rx: 8 }));
+        g.append(el("text", { class: "badge-t", x: s.x + NW - 21, y: s.y + 42, "text-anchor": "middle" }, "≡" + s.uses.length));
+      }
+      g.append(el("circle", { class: "g-port in", cx: s.x, cy: s.y + NH / 2, r: 5 }));
+      g.append(el("circle", { class: "g-port out", cx: s.x + NW, cy: s.y + NH / 2, r: 5 }));
+      svg.append(g);
+    }
+
+    // A connection being dragged out of E's output port.
+    const e = byId.E;
+    svg.append(el("path", { class: "g-edge drag", d: edgePath(e.x + NW + 6, e.y + NH / 2 + 4, 640, 228) }));
+    svg.append(el("circle", { class: "g-handle-dot", cx: 640, cy: 228, r: 4, fill: "var(--accent)" }));
+    svg.append(el("text", { class: "g-note", x: 590, y: 250 }, "dragging a connection…"));
+
+    // Right-click menu on empty canvas.
+    const m = el("g", { class: "g-menu" });
+    const mx = 250, my = 228;
+    m.append(el("rect", { class: "bg", x: mx, y: my, width: 190, height: 76, rx: 8 }));
+    m.append(el("rect", { class: "hl", x: mx + 4, y: my + 4, width: 182, height: 26, rx: 5 }));
+    m.append(el("text", { class: "on", x: mx + 14, y: my + 22 }, "＋ Add step here"));
+    m.append(el("line", { x1: mx + 8, x2: mx + 182, y1: my + 38, y2: my + 38 }));
+    m.append(el("text", { class: "off", x: mx + 14, y: my + 60 }, "Auto-arrange (later, F-02)"));
+    svg.append(m);
+    svg.append(el("path", { class: "g-cursor", d: `M${mx - 4} ${my - 6} l0 16 l4 -4 l3 7 l3 -1 l-3 -7 l6 0 z` }));
+  }
+
+  function ingRow(i, opts = {}) {
+    const chip = i.state === "linked" ? `<span class="chip linked">→ ${i.link}</span>`
+      : i.state === "suggest" ? `<span class="chip suggest">${i.link}?</span>`
+      : `<span class="chip none">no link</span>`;
+    const note = i.note ? ` <span class="note">${i.note}</span>` : "";
+    const usedBy = opts.usedBy ? `<span style="color:var(--muted);font-size:12px">${steps.filter(s => s.uses.includes(i.id)).map(s => s.id).join(", ") || "—"}</span>` : "";
+    return `<div class="ing"><span class="amt">${i.amt || "—"}</span><span class="name">${i.name}${note}</span>${usedBy}${chip}</div>`;
+  }
+
+  // Stages: a step's stage is one after its latest dependency.
+  const level = {};
+  const lv = s => level[s.id] ??= s.after.length ? 1 + Math.max(...s.after.map(d => lv(byId[d]))) : 0;
+  steps.forEach(lv);
+  function stagesHtml() {
+    const max = Math.max(...Object.values(level));
+    let html = "";
+    for (let l = 0; l <= max; l++) {
+      html += `<div class="level"><div class="lvl-h">${l === 0 ? "Start — these can run together" : "Then"}</div>`;
+      for (const s of steps.filter(s => level[s.id] === l)) {
+        const after = s.after.length ? ` <span style="color:var(--muted);font-size:12px">after ${s.after.join(", ")}</span>` : "";
+        html += `<div class="stepline"><span class="letter">${s.id}</span><span>${s.title}${after}</span><span class="dur">${dur(s)} · ${s.kind}</span></div>`;
+      }
+      html += `</div>`;
+    }
+    return html;
+  }
+
+  function cookingHtml() {
+    const minute = 8;
+    const done = new Set(["B", "C"]);
+    const running = new Set(["A"]);
+    const unblocked = s => !done.has(s.id) && !running.has(s.id) && s.after.every(d => done.has(d));
+    const ready = s => unblocked(s) && scheduleB[s.id] <= minute;
+    const uses = s => s.uses.map(id => ingredients.find(i => i.id === id)).map(i => `${i.amt} ${i.name}`.trim()).join(" · ");
+    const card = (s, cls, meta) => `<div class="cstep ${cls}"><div class="ct">${s.title}</div><div class="cm">${meta}</div>${s.uses.length && cls !== "done" ? `<div class="cu"><span style="color:var(--muted)">Uses</span> ${uses(s)}</div>` : ""}</div>`;
+    const now = steps.filter(ready).sort((a, b) => (a.kind === "active" ? 0 : 1) - (b.kind === "active" ? 0 : 1))
+      .map((s, i) => card(s, i === 0 ? "now" : "", `${dur(s)} · ${s.kind}${i === 0 ? ' · <span class="kbd">Space</span> done' : ""}`)).join("");
+    const waits = steps.filter(s => !done.has(s.id) && !running.has(s.id) && !ready(s))
+      .map(s => card(s, "", unblocked(s)
+        ? `⏰ start in ~${scheduleB[s.id] - minute} min so it's ready on time`
+        : `waits for ${s.after.filter(d => !done.has(d)).map(d => byId[d].title).join(", ")}`)).join("");
+    const fin = steps.filter(s => done.has(s.id)).map(s => card(s, "done", dur(s))).join("");
+    return `<div class="cook-col"><h3>Now — you can do</h3>${now}</div><div class="cook-col"><h3>Coming up</h3>${waits}</div><div class="cook-col"><h3>Done</h3>${fin}</div>`;
+  }
+
+  // One-cook schedules (D-29): start minute per step; durations come from the recipe.
+  const scheduleB = { A: 0, B: 0, C: 5, D: 8, E: 14, F: 16, G: 25, H: 36 };
+  function ganttHtml(schedule) {
+    const span = 40;
+    const order = ["A", "B", "C", "D", "E", "F", "G", "H"];
+    const end = Math.max(...order.map(id => schedule[id] + byId[id].min));
+    let html = "";
+    for (const id of order) {
+      const s = byId[id];
+      const left = (schedule[id] / span) * 100, width = (s.min / span) * 100;
+      html += `<div class="g-row"><span class="lbl">${id} · ${s.title}</span><div class="g-track"><div class="g-bar ${s.kind}" style="left:${left}%;width:${width}%"></div></div></div>`;
+    }
+    html += `<div class="g-axis"><span></span><div class="ticks"><span>0</span><span>10</span><span>20</span><span>30</span><span>40 min</span></div></div>`;
+    html += `<div class="g-total">Total: ${end} min</div>`;
+    return html;
+  }
+
+  renderEditorCanvas(document.getElementById("editorCanvas"));
+  document.getElementById("detailIngs").innerHTML = ingredients.map(i => ingRow(i)).join("");
+  document.getElementById("editorIngs").innerHTML = ingredients.map(i => ingRow(i, { usedBy: true })).join("");
+  document.getElementById("detailSteps").innerHTML = stagesHtml();
+  document.getElementById("cookGrid").innerHTML = cookingHtml();
+  document.getElementById("ganttB").innerHTML = ganttHtml(scheduleB);
+
+  const themes = ["auto", "light", "dark"];
+  const btn = document.getElementById("themeBtn");
+  let t = 0;
+  btn.addEventListener("click", () => {
+    t = (t + 1) % themes.length;
+    if (themes[t] === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", themes[t]);
+    btn.textContent = "Theme: " + themes[t];
+  });
+</script>
+</body>
+</html>

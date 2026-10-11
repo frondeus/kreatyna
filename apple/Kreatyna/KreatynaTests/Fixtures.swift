@@ -68,14 +68,7 @@ enum Fixtures {
         IngredientCatalogView(navigation: navigation, list: list, scope: ScopeId(value: 2), screen: screen)
     }
 
-    static func running(
-        tab: AppTab,
-        screen: IngredientCatalogScreenView,
-        counter: CounterView = CounterView(count: 7, status: .ready)
-    ) -> RunningAppView {
-        RunningAppView(
-            tab: tab, scope: ScopeId(value: 1),
-            ingredients: catalog(screen: screen), counter: counter
-        )
+    static func running(screen: IngredientCatalogScreenView) -> RunningAppView {
+        RunningAppView(ingredients: catalog(screen: screen))
     }
 }

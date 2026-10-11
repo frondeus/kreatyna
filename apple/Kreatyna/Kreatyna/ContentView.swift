@@ -38,7 +38,7 @@ struct RootView: View {
                 }
                 .accessibilityIdentifier("appInitializationFailed")
             case .running(let app):
-                AppTabsView(app: app, send: send)
+                IngredientCatalogScreen(view: app.ingredients) { send(app.ingredients($0)) }
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -49,27 +49,6 @@ struct RootView: View {
                     .padding(8)
                     .accessibilityIdentifier("appError")
             }
-        }
-    }
-}
-
-struct AppTabsView: View {
-    let app: RunningAppView
-    let send: (AppEvent) -> Void
-
-    var body: some View {
-        TabView(selection: Binding(
-            get: { app.tab },
-            set: { send(.selectTab(tab: $0)) }
-        )) {
-            Tab("Ingredients", systemImage: "carrot", value: AppTab.ingredients) {
-                IngredientCatalogScreen(view: app.ingredients) { send(app.ingredients($0)) }
-            }
-            .accessibilityIdentifier("ingredientsTab")
-            Tab("Counter", systemImage: "number", value: AppTab.counter) {
-                CounterScreen(view: app.counter) { send(app.counter($0)) }
-            }
-            .accessibilityIdentifier("counterTab")
         }
     }
 }

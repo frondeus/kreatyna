@@ -1,6 +1,6 @@
 # MAC-10 — Generate the Xcode project with XcodeGen
 
-Status: awaiting review. Change: `ompwommq`. Dependencies: MAC-09 (approved).
+Status: approved. Change: `ompwommq`. Dependencies: MAC-09 (approved).
 
 ## Open questions
 

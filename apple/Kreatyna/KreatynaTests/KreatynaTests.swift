@@ -29,9 +29,9 @@ extension MainActorTests {
         @Test func dispatchedEventReturnsThroughRenderCallback() async throws {
             let model = AppModel(databasePath: ":memory:")
             defer { model.shutdown() }
-            _ = try await waitForRunning(model)
-            model.dispatch(.selectTab(tab: .counter))
-            try await waitUntil { running(model)?.tab == .counter }
+            let app = try await waitForRunning(model)
+            model.dispatch(app.ingredients(app.ingredients.list(.search(query: "gar"))))
+            try await waitUntil { running(model)?.ingredients.list.search == "gar" }
             #expect(model.errorMessage == nil)
         }
 
@@ -45,9 +45,9 @@ extension MainActorTests {
 
         @Test func dispatchAfterShutdownIsVisible() async throws {
             let model = AppModel(databasePath: ":memory:")
-            _ = try await waitForRunning(model)
+            let app = try await waitForRunning(model)
             model.shutdown()
-            model.dispatch(.selectTab(tab: .counter))
+            model.dispatch(app.ingredients(app.ingredients.list(.search(query: "gar"))))
             #expect(model.errorMessage != nil)
         }
 
@@ -110,8 +110,7 @@ struct AppDatabaseLocationTests {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let path = try AppDatabaseLocation.path(applicationSupportDirectory: root)
-        // The file name predates the ingredient catalog; keeping it preserves data.
-        #expect(path == root.appendingPathComponent("Kreatyna/counter.sqlite").path)
+        #expect(path == root.appendingPathComponent("Kreatyna/kreatyna.sqlite").path)
         #expect(try AppDatabaseLocation.path(applicationSupportDirectory: root) == path)
         var isDirectory: ObjCBool = false
         #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent("Kreatyna").path, isDirectory: &isDirectory))

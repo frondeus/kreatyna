@@ -7,20 +7,17 @@ use test_case::test_case;
 use super::*;
 
 #[test]
-fn nested_event_conversion_preserves_both_scope_ids() {
+fn nested_event_conversion_preserves_the_catalog_scope() {
     let event = AppEvent::Ingredients {
-        scope: ScopeId { value: 17 },
         event: IngredientCatalogEvent::Form {
             scope: ScopeId { value: 29 },
             event: IngredientFormEvent::Save,
         },
     };
 
-    let core::AppEvent::Ingredients(outer) = core::AppEvent::try_from(event).unwrap() else {
-        panic!("expected ingredient event")
-    };
-    assert_eq!(u64::from(outer.scope), 17);
-    let ingredient::IngredientCatalogEvent::Form(inner) = outer.value else {
+    let core::AppEvent::Ingredients(ingredient::IngredientCatalogEvent::Form(inner)) =
+        core::AppEvent::try_from(event).unwrap()
+    else {
         panic!("expected form event")
     };
     assert_eq!(u64::from(inner.scope), 29);
@@ -33,25 +30,38 @@ fn converted_stale_event_is_rejected_by_existing_app_routing() {
         let (mut app, _effects) = core::AppWidget::test_fixture();
         let old = RunningAppView::try_from(app.view()).unwrap();
 
-        drop(app.update(Message::Event(core::AppEvent::SelectTab(
-            core::AppTab::Counter,
-        ))));
-        drop(app.update(Message::Event(core::AppEvent::SelectTab(
-            core::AppTab::Ingredients,
-        ))));
-
-        let stale = AppEvent::Ingredients {
-            scope: old.scope,
+        let create = AppEvent::Ingredients {
             event: IngredientCatalogEvent::List {
                 scope: old.ingredients.scope,
                 event: IngredientListEvent::CreateRequested,
+            },
+        };
+        let outcome = app
+            .update(Message::Event(create.try_into().unwrap()))
+            .into_stream()
+            .next()
+            .await
+            .expect("create request should produce an outcome");
+        drop(app.update(Message::Outcome(outcome)));
+        let current = app.view();
+        assert!(matches!(
+            current.ingredients.screen,
+            ingredient::IngredientCatalogScreenView::Create(_)
+        ));
+
+        let stale = AppEvent::Ingredients {
+            event: IngredientCatalogEvent::List {
+                scope: old.ingredients.scope,
+                event: IngredientListEvent::Search {
+                    query: "gar".into(),
+                },
             },
         };
         let mut command = app
             .update(Message::Event(stale.try_into().unwrap()))
             .into_stream();
         assert!(command.next().await.is_none());
-        assert_eq!(app.view().tab, core::AppTab::Ingredients);
+        assert_eq!(app.view(), current);
     });
 }
 
@@ -83,22 +93,6 @@ fn index_conversion_is_checked_but_out_of_bounds_values_remain_events() {
     } else {
         assert!(result.is_ok());
     }
-}
-
-#[test_case(core::CounterStatus::Loading, CounterStatus::Loading; "loading")]
-#[test_case(core::CounterStatus::Ready, CounterStatus::Ready; "ready")]
-fn counter_view_preserves_readiness(core_status: core::CounterStatus, expected: CounterStatus) {
-    assert_eq!(
-        CounterView::try_from(core::CounterView {
-            count: 42,
-            status: core_status,
-        })
-        .unwrap(),
-        CounterView {
-            count: 42,
-            status: expected,
-        }
-    );
 }
 
 #[test]

@@ -1,6 +1,6 @@
 # MAC-11 — Counter becomes a `krucyfiks` example
 
-Status: awaiting review. Change in `vibetyna`: `swxlwslq` (this plan, the
+Status: approved. Change in `vibetyna`: `swxlwslq` (this plan, the
 folder rename paths, epic status, brief). Change in `krucyfiks`: `usmwykuw`
 (on top of `ypqzonus`). Dependencies: none.
 

@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use futures::StreamExt;
 use kreatyna::{
     CLIENT_CAPABILITY,
-    capabilities::{CounterDatabase, CounterDatabaseClient, DatabaseError},
     ingredients::capabilities::{IngredientLoadError, IngredientStore, IngredientStoreClient},
 };
 use tokio::sync::oneshot;
@@ -14,15 +13,11 @@ use super::{DatabaseEffect, DatabaseWorker, RUNTIME, SqliteDatabase};
 fn close_and_wait_finishes_while_clients_are_retained() {
     RUNTIME.block_on(async {
         let database = TemporaryDatabase::new();
-        let (mut worker, counter, ingredients) = start_worker(database.path()).await;
+        let (mut worker, ingredients) = start_worker(database.path()).await;
 
         worker.request_close();
         worker.wait().await.expect("database worker should finish");
 
-        assert!(matches!(
-            counter.count().await,
-            Err(DatabaseError::Transport)
-        ));
         assert!(matches!(
             ingredients.list().await,
             Err(IngredientLoadError::Transport)
@@ -31,23 +26,19 @@ fn close_and_wait_finishes_while_clients_are_retained() {
 }
 
 #[test]
-fn admitted_requests_from_both_capabilities_finish_after_close() {
+fn admitted_requests_finish_after_close() {
     RUNTIME.block_on(async {
         let database = TemporaryDatabase::new();
         let mut database_connection = SqliteDatabase::new(database.path())
             .await
             .expect("database should open");
-        let (counter, counter_rx) = CounterDatabaseClient::new(CLIENT_CAPABILITY);
         let (ingredients, ingredient_rx) = IngredientStoreClient::new(CLIENT_CAPABILITY);
-        let close_handles = vec![counter_rx.close_handle(), ingredient_rx.close_handle()];
+        let close_handles = vec![ingredient_rx.close_handle()];
         let (admitted_tx, admitted_rx) = oneshot::channel();
         let (release_tx, release_rx) = oneshot::channel();
 
         let task = RUNTIME.spawn(async move {
-            let mut inbox = Box::pin(futures::stream::select(
-                counter_rx.into_stream().map(DatabaseEffect::Counter),
-                ingredient_rx.into_stream().map(DatabaseEffect::Ingredient),
-            ));
+            let mut inbox = Box::pin(ingredient_rx.into_stream().map(DatabaseEffect::Ingredient));
             let mut admitted = Vec::with_capacity(2);
             for _ in 0..2 {
                 admitted.push(inbox.next().await.expect("request should be admitted"));
@@ -63,8 +54,8 @@ fn admitted_requests_from_both_capabilities_finish_after_close() {
             close_handles,
         };
 
-        let count = RUNTIME.spawn(async move { counter.count().await });
-        let list = RUNTIME.spawn(async move { ingredients.list().await });
+        let lists =
+            RUNTIME.spawn(async move { futures::join!(ingredients.list(), ingredients.list()) });
         admitted_rx
             .await
             .expect("worker should observe both admitted requests");
@@ -72,16 +63,9 @@ fn admitted_requests_from_both_capabilities_finish_after_close() {
         worker.request_close();
         release_tx.send(()).expect("worker should still be waiting");
 
-        assert_eq!(
-            count.await.expect("count task should finish").unwrap(),
-            None
-        );
-        assert!(
-            list.await
-                .expect("list task should finish")
-                .unwrap()
-                .is_empty()
-        );
+        let (first, second) = lists.await.expect("list task should finish");
+        assert!(first.unwrap().is_empty());
+        assert!(second.unwrap().is_empty());
         worker.wait().await.expect("database worker should finish");
     });
 }
@@ -93,12 +77,12 @@ fn drop_requests_close_without_aborting_the_worker() {
         let mut database_connection = SqliteDatabase::new(database.path())
             .await
             .expect("database should open");
-        let (counter, counter_rx) = CounterDatabaseClient::new(CLIENT_CAPABILITY);
-        let close_handles = vec![counter_rx.close_handle()];
+        let (ingredients, ingredient_rx) = IngredientStoreClient::new(CLIENT_CAPABILITY);
+        let close_handles = vec![ingredient_rx.close_handle()];
         let (finished_tx, finished_rx) = oneshot::channel();
         let task = RUNTIME.spawn(async move {
             database_connection
-                .worker(counter_rx.into_stream().map(DatabaseEffect::Counter))
+                .worker(ingredient_rx.into_stream().map(DatabaseEffect::Ingredient))
                 .await;
             let _ = finished_tx.send(());
         });
@@ -113,31 +97,26 @@ fn drop_requests_close_without_aborting_the_worker() {
             .await
             .expect("detached worker should drain and finish");
         assert!(matches!(
-            counter.count().await,
-            Err(DatabaseError::Transport)
+            ingredients.list().await,
+            Err(IngredientLoadError::Transport)
         ));
     });
 }
 
-async fn start_worker(
-    path: &str,
-) -> (DatabaseWorker, CounterDatabaseClient, IngredientStoreClient) {
+async fn start_worker(path: &str) -> (DatabaseWorker, IngredientStoreClient) {
     let mut database = SqliteDatabase::new(path)
         .await
         .expect("database should open");
-    let (counter, counter_rx) = CounterDatabaseClient::new(CLIENT_CAPABILITY);
     let (ingredients, ingredient_rx) = IngredientStoreClient::new(CLIENT_CAPABILITY);
     let worker = DatabaseWorker {
-        close_handles: vec![counter_rx.close_handle(), ingredient_rx.close_handle()],
+        close_handles: vec![ingredient_rx.close_handle()],
         task: RUNTIME.spawn(async move {
-            let inbox = futures::stream::select(
-                counter_rx.into_stream().map(DatabaseEffect::Counter),
-                ingredient_rx.into_stream().map(DatabaseEffect::Ingredient),
-            );
-            database.worker(inbox).await;
+            database
+                .worker(ingredient_rx.into_stream().map(DatabaseEffect::Ingredient))
+                .await;
         }),
     };
-    (worker, counter, ingredients)
+    (worker, ingredients)
 }
 
 struct TemporaryDatabase(PathBuf);

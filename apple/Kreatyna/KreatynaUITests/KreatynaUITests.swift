@@ -51,21 +51,6 @@ final class KreatynaUITests: XCTestCase {
     }
 
     @MainActor
-    func testTabsKeepTheirState() throws {
-        let app = launch(databaseId: UUID())
-        createIngredient(named: "Basil", in: app)
-
-        app.tabBars.buttons["Counter"].tap()
-        let value = app.staticTexts["counterValue"]
-        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 0", timeout: 5))
-        app.buttons["increaseCounter"].tap()
-        XCTAssertTrue(value.wait(for: \.label, toEqual: "Counter: 1", timeout: 5))
-
-        app.tabBars.buttons["Ingredients"].tap()
-        XCTAssertTrue(row(named: "Basil", in: app).waitForExistence(timeout: 5))
-    }
-
-    @MainActor
     func testLaunchPerformance() throws {
         measure(metrics: [XCTApplicationLaunchMetric()]) {
             XCUIApplication().launch()

@@ -1,5 +1,4 @@
 use std::{
-    future::pending,
     path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
@@ -14,7 +13,6 @@ fn app_ffi_initializes_before_exposing_the_running_app() {
     let app = app(
         AppCapabilities {
             render: Arc::new(render),
-            clock: Arc::new(TestClock),
         },
         database.path().into(),
     );
@@ -25,12 +23,10 @@ fn app_ffi_initializes_before_exposing_the_running_app() {
 
     app.start().unwrap();
     assert!(matches!(app.start(), Err(AppFfiError::AlreadyStarted)));
-    let ready = wait_until_ready(&app, &rendered);
-    assert_eq!(ready.tab, AppTab::Ingredients);
+    wait_until_ready(&app, &rendered);
 
     assert!(matches!(
         app.dispatch(AppEvent::Ingredients {
-            scope: running_view(&app).scope,
             event: IngredientCatalogEvent::List {
                 scope: running_view(&app).ingredients.scope,
                 event: IngredientListEvent::Select {
@@ -48,8 +44,13 @@ fn app_ffi_initializes_before_exposing_the_running_app() {
     app.shutdown();
     assert!(matches!(app.start(), Err(AppFfiError::Terminated)));
     assert!(matches!(
-        app.dispatch(AppEvent::SelectTab {
-            tab: AppTab::Counter,
+        app.dispatch(AppEvent::Ingredients {
+            event: IngredientCatalogEvent::List {
+                scope: running_view(&app).ingredients.scope,
+                event: IngredientListEvent::Search {
+                    query: "gar".into(),
+                },
+            },
         }),
         Err(AppFfiError::Terminated)
     ));
@@ -62,7 +63,6 @@ fn failed_initialization_can_retry_with_fresh_database_setup() {
     let app = app(
         AppCapabilities {
             render: Arc::new(render),
-            clock: Arc::new(TestClock),
         },
         database.path(),
     );
@@ -92,9 +92,6 @@ fn graceful_shutdown_before_initialization_is_polled_drains_prepared_children() 
         render: Arc::new(RenderHandlerShim {
             handler: Arc::new(render),
         }),
-        clock: Arc::new(ClockHandlerShim {
-            handler: Arc::new(TestClock),
-        }),
     };
     let runtime = Arc::new(krucyfiks_runtime::Runtime::new(
         crate::app_shell::AppShell::new(setup),
@@ -107,7 +104,6 @@ fn graceful_shutdown_before_initialization_is_polled_drains_prepared_children() 
     let AppView::Running { app } = runtime.view().unwrap() else {
         panic!("preparation should finish while the runtime drains")
     };
-    assert_eq!(app.counter.status, CounterStatus::Ready);
     assert!(matches!(
         app.ingredients.list.status,
         IngredientListStatus::Ready { .. }
@@ -129,15 +125,6 @@ impl TestRender {
 impl RenderHandler for TestRender {
     async fn render(&self) {
         let _ = self.rendered.send(());
-    }
-}
-
-struct TestClock;
-
-#[async_trait::async_trait]
-impl ClockHandler for TestClock {
-    async fn sleep_ms(&self, _: u64) {
-        pending::<()>().await;
     }
 }
 
@@ -199,11 +186,10 @@ fn wait_until_ready(app: &AppFfi, rendered: &flume::Receiver<()>) -> RunningAppV
         let AppView::Running { app } = view else {
             return false;
         };
-        app.counter.status == CounterStatus::Ready
-            && matches!(
-                app.ingredients.list.status,
-                IngredientListStatus::Ready { .. }
-            )
+        matches!(
+            app.ingredients.list.status,
+            IngredientListStatus::Ready { .. }
+        )
     });
     running_view(app)
 }

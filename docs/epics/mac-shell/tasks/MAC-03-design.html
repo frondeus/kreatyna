@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAC-03 Design</title>
+<style>
+:root {
+  --bg: #f4f4f6; --surface: #ffffff; --phone: #f2f2f7; --row: #ffffff; --text: #1c1c1e;
+  --muted: #6e6e73; --line: #d8d8dc; --accent: #0a84ff; --search: #e3e3e8; --bar: #ffffff;
+  --removed: #d70015; --removed-bg: #ffe5e7; --kept: #248a3d; --kept-bg: #e3f6e8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111113; --surface: #1c1c1e; --phone: #000000; --row: #1c1c1e; --text: #f2f2f7;
+    --muted: #98989f; --line: #38383a; --accent: #0a84ff; --search: #2c2c2e; --bar: #2c2c2e;
+    --removed: #ff6961; --removed-bg: #3a1517; --kept: #30d158; --kept-bg: #10301a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111113; --surface: #1c1c1e; --phone: #000000; --row: #1c1c1e; --text: #f2f2f7;
+  --muted: #98989f; --line: #38383a; --accent: #0a84ff; --search: #2c2c2e; --bar: #2c2c2e;
+  --removed: #ff6961; --removed-bg: #3a1517; --kept: #30d158; --kept-bg: #10301a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+.page { max-width: 880px; margin: 0 auto; padding: 24px 16px 48px; }
+header { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+h1 { margin: 0 0 4px; font-size: 24px; }
+p { margin: 0 0 12px; }
+.muted { color: var(--muted); }
+button { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+.pair { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; margin: 24px 0; }
+figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+figcaption { font-weight: 600; }
+.phone { width: 260px; height: 540px; border-radius: 36px; border: 8px solid var(--line);
+  background: var(--phone); position: relative; overflow: hidden; padding: 40px 14px 0; }
+.plus { position: absolute; top: 34px; right: 14px; width: 34px; height: 34px; border-radius: 50%;
+  background: var(--row); display: grid; place-items: center; font-size: 22px; }
+.title { font-size: 26px; font-weight: 700; margin: 34px 0 10px; }
+.search { background: var(--search); border-radius: 10px; padding: 7px 10px; color: var(--muted); font-size: 13px; }
+.search.bottom { position: absolute; bottom: 18px; left: 14px; right: 14px; border-radius: 20px; background: var(--bar); }
+.list { background: var(--row); border-radius: 12px; margin-top: 12px; }
+.list div { padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.list div:last-child { border-bottom: 0; }
+.tabbar { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px;
+  background: var(--bar); border-radius: 22px; padding: 4px; outline: 2px dashed var(--removed); outline-offset: 3px; }
+.tab { padding: 4px 14px; border-radius: 18px; font-size: 11px; text-align: center; }
+.tab.on { color: var(--accent); background: var(--search); }
+.note { position: absolute; bottom: 70px; left: 14px; right: 14px; text-align: center; font-size: 12px; }
+.tag { display: inline-block; border-radius: 6px; padding: 1px 6px; font-size: 12px; font-weight: 600; }
+.tag.removed { color: var(--removed); background: var(--removed-bg); }
+.tag.kept { color: var(--kept); background: var(--kept-bg); }
+ul { padding-left: 20px; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div>
+      <h1>MAC-03 — Counter leaves the app</h1>
+      <p class="muted">iOS app, iPhone, after a successful start. Example data: Canned tomatoes, Cucumber, Garlic.</p>
+    </div>
+    <button id="theme" type="button">Theme: auto</button>
+  </header>
+
+  <div class="pair">
+    <figure>
+      <figcaption>Before (today)</figcaption>
+      <div class="phone" aria-label="Before: the catalog with a tab bar">
+        <div class="plus">+</div>
+        <div class="title">Ingredients</div>
+        <div class="search">Search ingredients</div>
+        <div class="list"><div>Canned tomatoes</div><div>Cucumber</div><div>Garlic</div></div>
+        <div class="note"><span class="tag removed">removed in MAC-03</span></div>
+        <div class="tabbar"><div class="tab on">🥕<br>Ingredients</div><div class="tab">#<br>Counter</div></div>
+      </div>
+    </figure>
+    <figure>
+      <figcaption>After MAC-03</figcaption>
+      <div class="phone" aria-label="After: the catalog without a tab bar, search at the bottom">
+        <div class="plus">+</div>
+        <div class="title">Ingredients</div>
+        <div class="list"><div>Canned tomatoes</div><div>Cucumber</div><div>Garlic</div></div>
+        <div class="search bottom">Search ingredients</div>
+      </div>
+    </figure>
+  </div>
+
+  <ul>
+    <li><span class="tag removed">Removed</span> The tab bar and the <b>Counter</b> tab. There is no Counter screen.</li>
+    <li><span class="tag removed">Moved</span> The search field moves from under the title to the bottom of the screen.
+      iOS 26 puts it there when a screen has no tab bar. The list snapshots, which render without a tab bar, already show it there.
+      Found in the snapshot review during implementation.</li>
+    <li><span class="tag kept">Unchanged</span> The catalog list, <b>+</b>, detail, form and delete confirmation.
+      They look exactly like the ingredient-catalog demo (<code>docs/epics/ingredient-catalog/demo/05-catalog.png</code>), without the bar.</li>
+    <li><span class="tag kept">Unchanged</span> “Starting…” and “Kreatyna could not start” with <b>Retry</b>.</li>
+    <li>The Mac is not affected: the Mac target does not exist yet (MAC-00).</li>
+  </ul>
+</div>
+<script>
+(function () {
+  const btn = document.getElementById("theme");
+  const modes = ["auto", "light", "dark"];
+  let i = 0;
+  try { i = Math.max(0, modes.indexOf(localStorage.getItem("mac03-theme") || "auto")); } catch (e) {}
+  function apply() {
+    const m = modes[i];
+    if (m === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", m);
+    btn.textContent = "Theme: " + m;
+  }
+  btn.addEventListener("click", function () {
+    i = (i + 1) % modes.length;
+    try { localStorage.setItem("mac03-theme", modes[i]); } catch (e) {}
+    apply();
+  });
+  apply();
+})();
+</script>
+</body>
+</html>

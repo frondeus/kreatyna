@@ -38,7 +38,7 @@ and actual workload are known.
 | Problem | Severity | Main effect |
 | --- | --- | --- |
 | P01 — Database startup (solved) | P2 | Expected setup failures leave an app with no usable store and no startup error result. |
-| P07 — Counter write order (deferred) | P2 | A later database write can restore an older value without reporting an error. |
+| P07 — Counter write order (resolved by removal) | P2 | A later database write can restore an older value without reporting an error. |
 | P02 — Early callbacks (solved) | P3 | A callback can run before its owner has the app reference. |
 | P03 — Shutdown completion | P3 | Callers cannot establish when app work and callbacks have stopped. |
 | P08 — Callback reference cycle | P3 | A strong reference cycle prevents destruction and retains app resources. |
@@ -59,7 +59,7 @@ make a disposable example a production blocker.
 | Problem | Affected scope | Disposition |
 | --- | --- | --- |
 | P01 | Shared app initialization, including ingredients | Solved. |
-| P07 | Counter's overlapping snapshot writes | Deferred until Counter removal; not a current ingredient-catalog blocker. |
+| P07 | Counter's overlapping snapshot writes | Resolved by removal: MAC-03 removed Counter from the app. |
 | P02 | Shared facade/callback publication | Solved by explicit start and its documented caller contract. |
 | P03 | Shared runtime and callbacks | Keep open. |
 | P08 | Shared callback ownership, conditional on a strong back-reference | Keep open. |
@@ -139,11 +139,10 @@ factory result.
 
 ## P07 — Counter write order can differ from event order
 
-**Status: deferred, Counter-only.** Counter is scheduled for removal when the
-recipe catalog supplies the second production screen. Do not add a save queue or
-revision scheme solely for this example. Retain the finding until Counter is
-removed, and revisit the policy if a production widget introduces overlapping
-writes to the same record.
+**Status: resolved by removal (MAC-03, 2026-10-12).** Counter left the app. Its
+code lives on in `krucyfiks/examples/counter` (MAC-11), where the widget's doc
+comment warns about this write order. Revisit the policy if a production widget
+introduces overlapping writes to the same record.
 
 The current ingredient form enters `Saving` synchronously in `update()`, accepts
 Save only while `Editing`, and ignores editing and close requests during the save.
@@ -464,7 +463,7 @@ explain the trigger for P07, but either problem can be examined on its own.
 P08 can prevent cleanup from starting; P04 can prevent database cleanup even
 when explicit shutdown has occurred.
 
-P01 and P02 are complete and P07 is deferred. Continue discussion with P03.
+P01 and P02 are complete and P07 is resolved by removal. Continue discussion with P03.
 No solution has been selected for the remaining open problems.
 
 ## Boundaries that are already sound

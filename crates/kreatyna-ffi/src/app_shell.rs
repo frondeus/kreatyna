@@ -2,8 +2,7 @@ use std::{fmt, sync::Arc};
 
 use futures::StreamExt;
 use kreatyna::{
-    AppWidget, CLIENT_CAPABILITY,
-    capabilities::{Clock, CounterDatabaseClient, Render},
+    AppWidget, CLIENT_CAPABILITY, capabilities::Render,
     ingredients::capabilities::IngredientStoreClient,
 };
 use krucyfiks::{Command, CommandExt, Message, Widget, effects::RequestCloseHandle};
@@ -16,7 +15,6 @@ use kreatyna_db::sqlite::{DatabaseEffect, SqliteDatabase};
 pub(crate) struct AppSetup {
     pub(crate) database_path: String,
     pub(crate) render: Arc<dyn Render>,
-    pub(crate) clock: Arc<dyn Clock>,
 }
 
 pub(crate) enum AppShellEvent {
@@ -205,30 +203,20 @@ impl Drop for DatabaseWorker {
 
 async fn prepare_app(setup: AppSetup) -> Result<Box<PreparedApp>, AppInitializationError> {
     let mut database = SqliteDatabase::new(&setup.database_path).await?;
-    let (database_client, counter_rx) = CounterDatabaseClient::new(CLIENT_CAPABILITY);
     let (ingredient_store, ingredient_rx) = IngredientStoreClient::new(CLIENT_CAPABILITY);
     let worker = DatabaseWorker {
-        close_handles: vec![ingredient_rx.close_handle(), counter_rx.close_handle()],
+        close_handles: vec![ingredient_rx.close_handle()],
         task: RUNTIME.spawn(async move {
-            let inbox = futures::stream::select(
-                counter_rx.into_stream().map(DatabaseEffect::Counter),
-                ingredient_rx.into_stream().map(DatabaseEffect::Ingredient),
-            );
+            let inbox = ingredient_rx.into_stream().map(DatabaseEffect::Ingredient);
             database.worker(inbox).await;
         }),
     };
 
     let app = AppWidget::new(kreatyna::AppCapabilities {
         ingredients: kreatyna::ingredients::capabilities::IngredientCapabilities {
-            render: setup.render.clone(),
+            render: setup.render,
             store: Arc::new(ingredient_store),
         },
-        counter: kreatyna::CounterCapabilities {
-            render: setup.render.clone(),
-            clock: setup.clock,
-            db: Arc::new(database_client),
-        },
-        render: setup.render,
     });
 
     Ok(Box::new(PreparedApp {

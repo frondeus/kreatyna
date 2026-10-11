@@ -1,7 +1,6 @@
 use std::{future::Future, path::PathBuf};
 
 use diesel::RunQueryDsl;
-use kreatyna::capabilities::CounterDatabaseMut;
 use kreatyna::ingredients::{
     DraftMode, IngredientDraft, IngredientId, IngredientWrite, NutritionBasis, ReferenceUnitDraft,
     capabilities::{IngredientLoadError, IngredientSaveError, IngredientStoreMut},
@@ -76,7 +75,6 @@ fn create_update_list_and_reopen_preserve_values(basis: NutritionBasis) {
         let file = TemporaryDatabase::new();
         let mut db = SqliteDatabase::new(file.path()).await.unwrap();
         assert!(db.list().await.unwrap().is_empty());
-        db.set_count(27).await.unwrap();
         let saved = db.save(write(&draft("  Tomatoes  ", basis))).await.unwrap();
         assert_eq!(saved.name, "Tomatoes");
         assert_eq!(saved.nutrition.basis, basis);
@@ -135,7 +133,6 @@ fn create_update_list_and_reopen_preserve_values(basis: NutritionBasis) {
 
         drop(db);
         let mut reopened = SqliteDatabase::new(file.path()).await.unwrap();
-        assert_eq!(reopened.count().await.unwrap(), Some(27));
         assert_eq!(
             reopened.list().await.unwrap().as_slice(),
             std::slice::from_ref(&updated)
@@ -149,7 +146,6 @@ fn create_update_list_and_reopen_preserve_values(basis: NutritionBasis) {
             .await
             .unwrap();
         assert_eq!(remaining, 0);
-        assert_eq!(reopened.count().await.unwrap(), Some(27));
     });
 }
 

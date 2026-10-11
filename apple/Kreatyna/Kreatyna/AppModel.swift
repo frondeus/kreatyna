@@ -9,7 +9,7 @@ final class AppModel {
     private(set) var errorMessage: String?
     @ObservationIgnored private let core: AppFfi?
 
-    init(databasePath: String? = nil, clock: (any ClockHandler)? = nil) {
+    init(databasePath: String? = nil) {
         // Previews and tests can create a model without running the App initializer.
         RustLogging.start()
         let path: String
@@ -22,7 +22,7 @@ final class AppModel {
         }
         let renderer = AppRenderer()
         let core = app(
-            caps: AppCapabilities(render: renderer, clock: clock ?? AppClock()),
+            caps: AppCapabilities(render: renderer),
             databasePath: path
         )
         self.core = core

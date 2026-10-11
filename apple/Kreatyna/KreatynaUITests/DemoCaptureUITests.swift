@@ -96,13 +96,6 @@ final class DemoCaptureUITests: XCTestCase {
         app = launch(databaseId: databaseId)
         XCTAssertTrue(row("Cucumber", app).waitForExistence(timeout: 5))
         capture("15-after-relaunch", app)
-
-        app.tabBars.buttons["Counter"].tap()
-        let counter = app.staticTexts["counterValue"]
-        XCTAssertTrue(counter.waitForExistence(timeout: 5))
-        app.buttons["increaseCounter"].tap()
-        XCTAssertTrue(counter.wait(for: \.label, toEqual: "Counter: 1", timeout: 5))
-        capture("16-counter-tab", app)
     }
 
     // MARK: Support

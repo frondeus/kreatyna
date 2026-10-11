@@ -81,7 +81,7 @@ in
   ];
 
   env.DATABASE_URL =
-    "${config.devenv.root}/crates/kreatyna-ffi/counter-dev.sqlite";
+    "${config.devenv.root}/crates/kreatyna-ffi/kreatyna-dev.sqlite";
 
   scripts.ios-build-device = {
     description = "Build the Rust library for iPhone/iPad: ios-build-device [debug|release]";

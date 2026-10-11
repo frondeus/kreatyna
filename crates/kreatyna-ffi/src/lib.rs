@@ -59,8 +59,8 @@ impl AppFfi {
 
     /// Starts runtime execution and asynchronous application initialization.
     ///
-    /// Prepare all dependencies used by the render and clock handlers before
-    /// calling this method: callbacks may begin before it returns. A handler
+    /// Prepare all dependencies used by the render handler before calling this
+    /// method: callbacks may begin before it returns. A handler
     /// that reads `view()` must already have access to this facade; a handler
     /// that only records a dirty flag need not hold a facade reference.
     /// Construction alone does not invoke these handlers.
@@ -112,27 +112,9 @@ impl kreatyna::capabilities::Render for RenderHandlerShim {
     }
 }
 
-#[uniffi::export(foreign)]
-#[async_trait::async_trait]
-pub trait ClockHandler: Send + Sync {
-    async fn sleep_ms(&self, ms: u64);
-}
-
-struct ClockHandlerShim {
-    handler: Arc<dyn ClockHandler>,
-}
-
-#[async_trait::async_trait]
-impl kreatyna::capabilities::Clock for ClockHandlerShim {
-    async fn sleep_ms(&self, ms: u64) {
-        self.handler.sleep_ms(ms).await
-    }
-}
-
 #[derive(uniffi::Record)]
 pub struct AppCapabilities {
     render: Arc<dyn RenderHandler>,
-    clock: Arc<dyn ClockHandler>,
 }
 
 #[uniffi::export]
@@ -140,14 +122,10 @@ pub fn app(caps: AppCapabilities, database_path: String) -> Arc<AppFfi> {
     let render: Arc<dyn kreatyna::capabilities::Render> = Arc::new(RenderHandlerShim {
         handler: caps.render,
     });
-    let clock: Arc<dyn kreatyna::capabilities::Clock> = Arc::new(ClockHandlerShim {
-        handler: caps.clock,
-    });
 
     let widget = AppShell::new(AppSetup {
         database_path,
         render,
-        clock,
     });
     let runtime = Arc::new(Runtime::new(widget));
 

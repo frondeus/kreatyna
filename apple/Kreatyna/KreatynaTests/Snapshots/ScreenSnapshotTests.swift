@@ -26,16 +26,16 @@ extension MainActorTests {
             ))
         }
 
-        @Test func runningIngredientsTab() {
+        @Test func runningCatalog() {
             snapshot(RootView(
-                view: .running(app: Fixtures.running(tab: .ingredients, screen: .list)),
+                view: .running(app: Fixtures.running(screen: .list)),
                 errorMessage: nil, send: { _ in }, retryInitialization: {}
             ))
         }
 
         @Test func adapterError() {
             snapshot(RootView(
-                view: .running(app: Fixtures.running(tab: .ingredients, screen: .list)),
+                view: .running(app: Fixtures.running(screen: .list)),
                 errorMessage: "The app could not accept this action.",
                 send: { _ in }, retryInitialization: {}
             ))
@@ -99,16 +99,6 @@ extension MainActorTests {
 
         @Test func formSaving() {
             snapshot(formScreen(Fixtures.form(Fixtures.garlicDraft, dirty: true, status: .saving)))
-        }
-
-        // MARK: Counter
-
-        @Test(arguments: [
-            ("ready", CounterView(count: 7, status: .ready)),
-            ("loading", CounterView(count: 0, status: .loading)),
-        ])
-        func counter(name: String, view: CounterView) {
-            snapshot(CounterScreen(view: view, send: { _ in }), named: name)
         }
 
         // MARK: Support

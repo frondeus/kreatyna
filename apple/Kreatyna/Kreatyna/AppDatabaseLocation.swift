@@ -24,6 +24,6 @@ enum AppDatabaseLocation {
             at: directory,
             withIntermediateDirectories: true
         )
-        return directory.appendingPathComponent("counter.sqlite").path
+        return directory.appendingPathComponent("kreatyna.sqlite").path
     }
 }

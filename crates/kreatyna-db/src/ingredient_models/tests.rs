@@ -10,7 +10,7 @@ use rust_decimal::Decimal;
 use test_case::test_case;
 
 use super::*;
-use crate::schema::{counter, ingredient_units as u, ingredients as i};
+use crate::schema::{ingredient_units as u, ingredients as i};
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
@@ -53,31 +53,29 @@ fn insert_parent(db: &mut SqliteConnection, id: IngredientId, name: &str) -> Loc
         .unwrap()
 }
 
+fn counter_table_exists(db: &mut SqliteConnection) -> bool {
+    diesel::select(diesel::dsl::sql::<diesel::sql_types::Bool>(
+        "EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'counter')",
+    ))
+    .get_result(db)
+    .unwrap()
+}
+
 #[test]
 fn empty_database_migrates_and_rerun_is_harmless() {
     let mut db = SqliteConnection::establish(":memory:").unwrap();
     db.batch_execute("PRAGMA foreign_keys = ON;").unwrap();
-    assert_eq!(db.run_pending_migrations(MIGRATIONS).unwrap().len(), 2);
+    assert_eq!(db.run_pending_migrations(MIGRATIONS).unwrap().len(), 3);
     assert!(db.run_pending_migrations(MIGRATIONS).unwrap().is_empty());
     assert_eq!(i::table.count().get_result::<i64>(&mut db).unwrap(), 0);
     assert_eq!(u::table.count().get_result::<i64>(&mut db).unwrap(), 0);
-    diesel::insert_into(counter::table)
-        .values((counter::id.eq(1), counter::value.eq(17_i64)))
-        .execute(&mut db)
-        .unwrap();
-    assert_eq!(
-        counter::table
-            .select(counter::value)
-            .first::<i64>(&mut db)
-            .unwrap(),
-        17
-    );
+    assert!(!counter_table_exists(&mut db));
 }
 
 #[test]
-fn counter_only_database_migrates_and_reopens_without_data_loss() {
+fn counter_database_upgrades_and_keeps_ingredients() {
     let path = std::env::temp_dir().join(format!(
-        "kreatyna-r04-{}-{}.sqlite",
+        "kreatyna-mac03-{}-{}.sqlite",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -87,42 +85,29 @@ fn counter_only_database_migrates_and_reopens_without_data_loss() {
     {
         let mut db = SqliteConnection::establish(path.to_str().unwrap()).unwrap();
         db.batch_execute("PRAGMA foreign_keys = ON;").unwrap();
+        // The schema before MAC-03: the counter and ingredient migrations only.
         db.run_next_migration(MIGRATIONS).unwrap();
-        diesel::insert_into(counter::table)
-            .values((counter::id.eq(1), counter::value.eq(27_i64)))
-            .execute(&mut db)
+        db.run_next_migration(MIGRATIONS).unwrap();
+        db.batch_execute("INSERT INTO counter (id, value) VALUES (1, 27);")
             .unwrap();
-        assert_eq!(db.run_pending_migrations(MIGRATIONS).unwrap().len(), 1);
         let data = write_data(NutritionBasis::Per100Grams, "1.2300", "2");
-        let id = IngredientId::new();
         diesel::insert_into(i::table)
-            .values(NewIngredientRow::from_write(id, &data).unwrap())
+            .values(NewIngredientRow::from_write(IngredientId::new(), &data).unwrap())
             .execute(&mut db)
             .unwrap();
-        assert_eq!(
-            counter::table
-                .select(counter::value)
-                .first::<i64>(&mut db)
-                .unwrap(),
-            27
-        );
-        assert!(db.run_pending_migrations(MIGRATIONS).unwrap().is_empty());
+
+        assert_eq!(db.run_pending_migrations(MIGRATIONS).unwrap().len(), 1);
+        assert!(!counter_table_exists(&mut db));
     }
     {
         let mut db = SqliteConnection::establish(path.to_str().unwrap()).unwrap();
         db.batch_execute("PRAGMA foreign_keys = ON;").unwrap();
         assert!(db.run_pending_migrations(MIGRATIONS).unwrap().is_empty());
-        assert_eq!(
-            counter::table
-                .select(counter::value)
-                .first::<i64>(&mut db)
-                .unwrap(),
-            27
-        );
         let row = i::table
             .select(IngredientRow::as_select())
             .first::<IngredientRow>(&mut db)
             .unwrap();
+        assert_eq!(row.name, "Canned tomatoes");
         assert_eq!(Decimal::from(row.calories.unwrap().0).to_string(), "1.2300");
     }
     std::fs::remove_file(path).unwrap();

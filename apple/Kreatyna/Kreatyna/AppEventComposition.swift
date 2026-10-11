@@ -5,11 +5,7 @@ import Foundation
 
 extension RunningAppView {
     func ingredients(_ event: IngredientCatalogEvent) -> AppEvent {
-        .ingredients(scope: scope, event: event)
-    }
-
-    func counter(_ event: CounterEvent) -> AppEvent {
-        .counter(scope: scope, event: event)
+        .ingredients(event: event)
     }
 }
 

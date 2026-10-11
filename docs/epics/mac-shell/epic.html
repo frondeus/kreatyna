@@ -347,7 +347,7 @@ const EPIC = {
       refs: [],
     },
     {
-      id: "MAC-10", kind: "tooling", status: "awaiting-review", short: "XcodeGen", plan: "tasks/MAC-10.md",
+      id: "MAC-10", kind: "tooling", status: "approved", short: "XcodeGen", plan: "tasks/MAC-10.md",
       title: "Generate the Xcode project with XcodeGen",
       outcome: "A readable `apple/Kreatyna/project.yml` (E-15) describes the existing iOS app and its test targets. `xcodegen` (added to devenv) generates the `.xcodeproj` from it. From now on, Xcode changes are YAML diffs.",
       layers: [], deps: ["MAC-09"],
@@ -359,7 +359,7 @@ const EPIC = {
       refs: [],
     },
     {
-      id: "MAC-11", status: "awaiting-review", short: "Counter → krucyfiks", plan: "tasks/MAC-11.md",
+      id: "MAC-11", status: "approved", short: "Counter → krucyfiks", plan: "tasks/MAC-11.md",
       title: "Counter becomes a `krucyfiks` example",
       outcome: "The `krucyfiks` repository gets an `examples/` folder with the Counter widget, its background ticking flow, the two-counter composition example, and their tests, checked by `cargo test`. The app is unchanged in this slice.",
       layers: ["rust"], deps: [],
@@ -415,7 +415,7 @@ const EPIC = {
       refs: [],
     },
     {
-      id: "MAC-03", status: "planned", short: "Remove Counter",
+      id: "MAC-03", status: "approved", short: "Remove Counter", plan: "tasks/MAC-03.md",
       title: "Counter leaves the app",
       outcome: "The iOS app opens straight into the ingredient catalog with no tab bar. Counter's widget, capability, persistence code, table, bindings, screen and tests are gone. It now lives on in `krucyfiks`.",
       layers: ["db", "rust", "ffi", "swift"], deps: ["MAC-11"],

@@ -4,16 +4,14 @@ import Testing
 struct EventCompositionTests {
 
     @Test func parentsWrapChildEventsWithDisplayedScopes() {
-        let app = Fixtures.running(tab: .ingredients, screen: .list)
+        let app = Fixtures.running(screen: .list)
         let catalog = app.ingredients
 
         let event = app.ingredients(catalog.list(.createRequested))
 
         #expect(event == .ingredients(
-            scope: ScopeId(value: 1),
             event: .list(scope: ScopeId(value: 2), event: .createRequested)
         ))
-        #expect(app.counter(.increase) == .counter(scope: ScopeId(value: 1), event: .increase))
         #expect(catalog.back == .back(scope: ScopeId(value: 2)))
     }
 

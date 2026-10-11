@@ -1,13 +1,6 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    counter (id) {
-        id -> Integer,
-        value -> BigInt,
-    }
-}
-
-diesel::table! {
     ingredients (local_id) {
         local_id -> BigInt,
         remote_id -> Text,
@@ -34,4 +27,4 @@ diesel::table! {
 }
 
 diesel::joinable!(ingredient_units -> ingredients (ingredient_local_id));
-diesel::allow_tables_to_appear_in_same_query!(counter, ingredients, ingredient_units);
+diesel::allow_tables_to_appear_in_same_query!(ingredients, ingredient_units);

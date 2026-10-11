@@ -2,7 +2,8 @@
 
 ## Architecture
 
-Build a native iOS application with SwiftUI and UniFFI bindings to a handwritten
+Build a native Apple application, macOS first and iOS second, with SwiftUI and
+UniFFI bindings to a handwritten
 Elm/Crux-inspired Rust core. User interactions become Rust events; Rust updates
 application state and supplies view data for SwiftUI to render.
 
@@ -18,12 +19,14 @@ through the core's event/effect interface. Business decisions stay in Rust.
 
 - Agents may maintain Rust implementation, Rust tests, Cargo configuration, and
   Rust-side binding definitions as part of requested work.
-- After explicit handover of the Swift side, agents maintain SwiftUI views, Swift
-  integration code, Apple platform adapters, Xcode configuration, and Swift-side
-  tests. Do not assume that handover has happened.
-- The user manually creates and configures the initial Xcode project. Provide
-  beginner-friendly, step-by-step guidance without automating setup. The user is
-  new to iOS development and is using Xcode 26.2 with the iOS SDK.
+- The Swift side was permanently handed over on 2026-10-11. Agents maintain
+  SwiftUI views, Swift integration code, Apple platform adapters, Xcode
+  configuration (including new targets), and Swift-side tests on macOS and iOS,
+  as part of the vertical slices they deliver.
+- The user prefers not to work in Xcode. Xcode configuration moves to XcodeGen
+  (`project.yml`, Mac shell epic) so agents can change it as reviewable text.
+  Until then, change the project only in ways `xcodebuild` can verify. The user
+  is new to Apple development and is using Xcode 26.2.
 
 ## Initial Xcode choices
 
@@ -71,5 +74,5 @@ specified or implemented.
 
 This agreement documents the intended architecture and responsibilities. App
 scaffolding, persistence implementation, bindings, test infrastructure, and the
-debugging interface are later tasks. Creating this document does not authorize
-automating the user's initial Xcode setup.
+debugging interface are later tasks. The user created the initial Xcode
+project by hand; later Xcode changes belong to agents (see above).

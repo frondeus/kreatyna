@@ -60,6 +60,7 @@ Annotations answer questions in bulk and raise new ones. Process every
 annotation:
 
 - An answer becomes a `D-xx` entry; "not in MVP" becomes an `F-xx` entry.
+  A **Looks good** label on a proposal is an answer: the user accepts it.
 - A partial answer gets its decided part logged, and the rest becomes a new,
   narrower `Q-xx`.
 - "What's this?" or "I don't understand" means the mockup failed. Relabel the

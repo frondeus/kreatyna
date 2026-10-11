@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recipe MVP Epic</title>
+<!--
+  Epic page, per .agents/skills/plan-reviewable-epics/SKILL.md.
+  Edit the EPIC data object near the end of this file; the graph, cards,
+  order and status summary are rendered from it. Prose sections are plain HTML.
+-->
+<style>
+  :root {
+    --bg: #f5f5f7; --surface: #ffffff; --surface-2: #f0f0f3; --border: #d8d8de;
+    --text: #1d1d1f; --muted: #6e6e73; --accent: #0a74e6; --accent-soft: rgba(10,116,230,.12);
+    --edge: #a0a0a8; --edge-hot: #0a74e6;
+    --st-planned: #8e8e96;   --st-planned-bg: #f4f4f6;
+    --st-ready: #0a74e6;     --st-ready-bg: #e8f1fd;
+    --st-progress: #b35c00;  --st-progress-bg: #fdf1e3;
+    --st-review: #7048e8;    --st-review-bg: #efeafd;
+    --st-approved: #2b8a3e;  --st-approved-bg: #e6f4ea;
+    --gate: #c2255c; --gate-soft: rgba(194,37,92,.10);
+    --tool: #5c7cfa; --tool-soft: rgba(92,124,250,.12);
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 6px 18px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111113; --surface: #1e1e21; --surface-2: #26262a; --border: #38383e;
+      --text: #f2f2f4; --muted: #9a9aa2; --accent: #4aa3ff; --accent-soft: rgba(74,163,255,.16);
+      --edge: #5f5f68; --edge-hot: #4aa3ff;
+      --st-planned: #9a9aa2;   --st-planned-bg: #26262a;
+      --st-ready: #4aa3ff;     --st-ready-bg: #182a40;
+      --st-progress: #ffa94d;  --st-progress-bg: #3a2914;
+      --st-review: #b197fc;    --st-review-bg: #2a2342;
+      --st-approved: #69db7c;  --st-approved-bg: #19331f;
+      --gate: #f06595; --gate-soft: rgba(240,101,149,.14);
+      --tool: #91a7ff; --tool-soft: rgba(145,167,255,.14);
+      --shadow: 0 1px 3px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111113; --surface: #1e1e21; --surface-2: #26262a; --border: #38383e;
+    --text: #f2f2f4; --muted: #9a9aa2; --accent: #4aa3ff; --accent-soft: rgba(74,163,255,.16);
+    --edge: #5f5f68; --edge-hot: #4aa3ff;
+    --st-planned: #9a9aa2;   --st-planned-bg: #26262a;
+    --st-ready: #4aa3ff;     --st-ready-bg: #182a40;
+    --st-progress: #ffa94d;  --st-progress-bg: #3a2914;
+    --st-review: #b197fc;    --st-review-bg: #2a2342;
+    --st-approved: #69db7c;  --st-approved-bg: #19331f;
+    --gate: #f06595; --gate-soft: rgba(240,101,149,.14);
+    --tool: #91a7ff; --tool-soft: rgba(145,167,255,.14);
+    --shadow: 0 1px 3px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  }
+  a { color: var(--accent); }
+  code { font: 0.88em ui-monospace, "SF Mono", Menlo, monospace; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  .page { max-width: 1160px; margin: 0 auto; padding: 32px 16px 96px; }
+  header.top { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+  .eyebrow { margin: 0 0 4px; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+  header.top h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.01em; line-height: 1.2; }
+  header.top .lede { margin: 0; color: var(--muted); max-width: 72ch; }
+  .theme-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 18px 0 0; padding: 10px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 14px; }
+  nav.toc a { text-decoration: none; }
+  section { margin-top: 40px; }
+  h2 { font-size: 21px; margin: 0 0 12px; letter-spacing: -0.005em; }
+  h3 { font-size: 16px; margin: 18px 0 6px; }
+  .prose { max-width: 80ch; }
+  .prose p, .prose li { margin: 6px 0; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  td:first-child { white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .table-wrap { overflow-x: auto; }
+
+  /* summary */
+  .summary { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .bar { flex: 1 1 260px; display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: var(--surface-2); }
+  .bar span { display: block; height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 13px; color: var(--muted); margin: 8px 0 12px; }
+  .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; border: 2px solid; }
+
+  /* status pills */
+  .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  .st-planned { color: var(--st-planned); background: var(--st-planned-bg); border-color: var(--st-planned); }
+  .st-ready { color: var(--st-ready); background: var(--st-ready-bg); border-color: var(--st-ready); }
+  .st-in-progress { color: var(--st-progress); background: var(--st-progress-bg); border-color: var(--st-progress); }
+  .st-awaiting-review { color: var(--st-review); background: var(--st-review-bg); border-color: var(--st-review); }
+  .st-approved { color: var(--st-approved); background: var(--st-approved-bg); border-color: var(--st-approved); }
+  .kind { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 5px; }
+  .kind-gate { color: var(--gate); background: var(--gate-soft); }
+  .kind-tooling { color: var(--tool); background: var(--tool-soft); }
+
+  /* graph */
+  .dag-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; box-shadow: var(--shadow); }
+  #dag { display: block; margin: 0 auto; }
+  #dag .edge { fill: none; stroke: var(--edge); stroke-width: 1.4; }
+  #dag .edge.critical { stroke: var(--edge-hot); stroke-width: 2.4; }
+  #dag .edge.dim { opacity: .15; }
+  #dag .edge.hot { stroke: var(--edge-hot); stroke-width: 2.4; opacity: 1; }
+  #dag .node { cursor: pointer; }
+  #dag .node rect { stroke-width: 2; }
+  #dag .node.dim { opacity: .35; }
+  #dag .node text { font: 600 12px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; fill: var(--text); }
+  #dag .node text.sub { font-weight: 400; font-size: 11px; fill: var(--muted); }
+  #dag .n-planned rect { fill: var(--st-planned-bg); stroke: var(--st-planned); }
+  #dag .n-ready rect { fill: var(--st-ready-bg); stroke: var(--st-ready); }
+  #dag .n-in-progress rect { fill: var(--st-progress-bg); stroke: var(--st-progress); }
+  #dag .n-awaiting-review rect { fill: var(--st-review-bg); stroke: var(--st-review); }
+  #dag .n-approved rect { fill: var(--st-approved-bg); stroke: var(--st-approved); }
+  #dag .k-gate rect { stroke-dasharray: 6 4; stroke: var(--gate); }
+  #dag .k-tooling rect { stroke-dasharray: 2 3; }
+  #dag .k-external rect { fill: var(--surface-2); stroke: var(--edge); stroke-dasharray: 4 3; }
+  #dag marker path { fill: var(--edge); }
+  #dag marker#arrow-hot path { fill: var(--edge-hot); }
+  .graph-note { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+
+  /* order */
+  ol.order { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 0; counter-reset: o; }
+  ol.order li { counter-increment: o; }
+  ol.order a { display: inline-flex; gap: 6px; align-items: center; text-decoration: none; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 3px 9px; font-size: 13px; }
+  ol.order a::before { content: counter(o); color: var(--muted); font-size: 11px; }
+  ol.order li.phase { flex-basis: 100%; font-size: 13px; color: var(--muted); margin-top: 6px; counter-increment: none; }
+
+  /* cards */
+  #cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); scroll-margin-top: 16px; }
+  .card:target { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .card header { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .card .id { font: 700 13px ui-monospace, "SF Mono", Menlo, monospace; }
+  .card h3 { margin: 6px 0 4px; font-size: 16px; }
+  .card p { margin: 4px 0 8px; }
+  .card dl { margin: 8px 0 0; display: grid; grid-template-columns: 92px 1fr; gap: 4px 10px; font-size: 13.5px; }
+  .card dt { color: var(--muted); font-weight: 600; }
+  .card dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  .card code, .guide code { overflow-wrap: anywhere; }
+  .card dd ul, .card dd ol { margin: 0; padding-left: 18px; }
+  .card dd li { margin: 2px 0; }
+  .layers { display: flex; flex-wrap: wrap; gap: 4px; }
+  .layer { font-size: 11.5px; padding: 1px 7px; border-radius: 5px; border: 1px solid var(--border); color: var(--muted); }
+  .layer.on { color: var(--accent); background: var(--accent-soft); border-color: transparent; font-weight: 600; }
+  .muted { color: var(--muted); }
+  .guide { margin-top: 10px; background: var(--gate-soft); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; }
+  .guide strong { color: var(--gate); }
+  .guide ol { margin: 6px 0 0; padding-left: 20px; }
+  .guide li { margin: 4px 0; }
+  kbd { font: 12px ui-monospace, Menlo, monospace; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--surface-2); }
+
+  @media (max-width: 560px) {
+    header.top h1 { font-size: 24px; }
+    #cards { grid-template-columns: 1fr; }
+    .card dl { grid-template-columns: 1fr; }
+    .card dt { margin-top: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div>
+      <p class="eyebrow" id="eyebrow"></p>
+      <h1 id="title"></h1>
+      <p class="lede" id="lede"></p>
+    </div>
+    <button class="theme-btn" id="theme-btn" type="button">Theme: auto</button>
+  </header>
+  <nav class="toc">
+    <a href="#status">Status</a><a href="#context">Context</a><a href="#architecture">Architecture</a>
+    <a href="#decisions">Decisions</a><a href="#graph">Graph</a><a href="#order">Order</a>
+    <a href="#slices">Slices</a><a href="#open">Open questions</a><a href="#scope">Out of scope</a>
+  </nav>
+
+  <section id="status">
+    <h2>Status</h2>
+    <div class="panel">
+      <div class="summary"><div class="bar" id="bar"></div><span id="counts" class="muted"></span></div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <section id="context">
+    <h2>Context</h2>
+    <div class="prose">
+      <p>This epic builds the <b>hand-made DAG recipe</b>, the MVP from the accepted
+        <a href="../../tasks/recipes/brief.md">recipes brief</a> (D-06). The <a href="../../tasks/recipes/mockups.html">mockups</a>
+        sections 1–4 show the target. A recipe is a title, a list of ingredient lines (“400 g Mutti tomatoes → tomato”),
+        and steps on a canvas connected into a graph (“Fry onion &amp; garlic” comes after “Dice onion” and “Mince garlic”).
+        The app shows it as stages and gives a one-cook total time (“38 min”).</p>
+      <p>It assumes the <a href="../mac-shell/epic.html">Mac shell epic</a> is done: a Mac window over the Rust core, with
+        the catalog at parity and Counter gone. Recipes are Mac-only for now; iPhone recipe screens are a non-goal.</p>
+      <p><b>Goal:</b> on the Mac you can create, read, edit, search and delete recipes. Each has ingredient lines (optionally
+        linked to the catalog) and a canvas of timed, connected steps, and saves only when complete (D-37).</p>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <h2>Architecture</h2>
+    <div class="prose">
+      <h3>Domain and persistence</h3>
+      <ul>
+        <li>A new <code>recipes</code> module in <code>crates/kreatyna</code>, next to <code>ingredients</code>, with UUID newtype
+          identities for recipes, ingredient lines and steps. Recipe titles use the catalog's name key, so “Shakshuka” and
+          “shakshuka ” collide (D-39).</li>
+        <li>Tables arrive one slice at a time as forward-only migrations: recipes (REC-01), ingredient lines (REC-07,
+          catalog link added in REC-10), step nodes with canvas positions (REC-14), step edges (REC-18) and step uses of
+          lines (REC-20).</li>
+        <li><b>No drafts</b> (D-40): the editor holds the whole recipe in Rust and saves it in one transaction on Save.
+          Cancel throws the edit away.</li>
+        <li>Amounts reuse the catalog's exact decimals. Units are <i>known</i> (g, kg, ml, l, tsp, tbsp, cup, piece),
+          a linked ingredient's <i>reference</i> unit (“clove”), or <i>custom</i> text kept as written (D-25).</li>
+      </ul>
+      <h3>Widgets and navigation</h3>
+      <ul>
+        <li>Recipe list, read view and editor widgets, composed by a recipe coordinator with typed navigation that mirrors
+          the catalog's: list → read view → editor, and list → editor for a new recipe. Edit replaces the detail pane (D-18).</li>
+        <li>REC-01 introduces Rust-owned <b>app sections</b> (Recipes, Ingredients). The Mac sidebar projects them; iOS keeps
+          showing only Ingredients.</li>
+        <li>The catalog is reached through capabilities: name suggestions (REC-11), reference units (REC-12), and “how many
+          recipes link this ingredient” for the delete confirmation (REC-13).</li>
+      </ul>
+      <h3>The graph</h3>
+      <ul>
+        <li>Pure Rust functions over steps and edges, each arriving with the slice that needs it: the cycle check (REC-18),
+          stages, meaning “what can start together” (REC-19), and the one-cook scheduler (REC-21: active steps never overlap,
+          waiting steps run in the background).</li>
+        <li>The canvas is a SwiftUI view. <b>Rust owns</b> node positions, edges, selection and every rule. <b>Swift owns</b>
+          only the drag in progress, hover, and the rubber-band line while you drag from a port. Dropping sends one event
+          (move, connect); if Rust rejects it, the next render shows the truth.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="decisions">
+    <h2>Epic decisions</h2>
+    <div class="table-wrap panel">
+      <table>
+        <tr><th>#</th><th>Decision</th><th>Why</th></tr>
+        <tr><td>E-01</td><td>The recipe epic starts after the Mac shell epic. Technically REC-01 only needs MAC-01 (Mac window) and MAC-03 (Counter gone).</td><td>The user's order (D-04).</td></tr>
+        <tr><td>E-02</td><td><b>The save rule grows.</b> Until REC-22, a recipe needs only a non-empty, unique title. REC-22 enforces the full D-37 rule. Recipes saved during development may be incomplete; there is no cleanup migration.</td><td>Lets every early slice save and demo something. Pre-alpha data is disposable.</td></tr>
+        <tr><td>E-03</td><td>Recipes can be deleted, with a confirmation (D-44).</td><td>Decided during epic planning, mirroring the catalog.</td></tr>
+        <tr><td>E-04</td><td>Recipe screens are Mac-only. iOS ignores the Recipes section.</td><td>iPhone recipes are a non-goal (D-02).</td></tr>
+        <tr><td>E-05</td><td>The <b>▶ Cook</b> button from the mockups is not shown in the MVP.</td><td>Cooking mode needs timing (D-31) and is not in the MVP (D-06). A dead button would only confuse.</td></tr>
+        <tr><td>E-06</td><td>Every slice is vertical; agents own the Swift side.</td><td>Swift handover is permanent (<code>AGENTS.md</code>, 2026-10-11).</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="graph">
+    <h2>Slice graph</h2>
+    <p class="prose">An arrow means “needs”: the lower slice builds on the upper one. Rows are dependency depth, not a schedule.
+      Hover a slice to see what it needs and what needs it; click it to jump to its card.
+      The thick blue chain is the one named under the graph.</p>
+    <div class="legend" id="kind-legend">
+      <span><span class="sw" style="border-color:var(--st-planned);border-style:solid"></span>vertical slice</span>
+      <span data-kind="gate"><span class="sw" style="border-color:var(--gate);border-style:dashed"></span>human gate (only you can do it)</span>
+      <span data-kind="tooling"><span class="sw" style="border-color:var(--st-planned);border-style:dotted"></span>tooling</span>
+      <span data-kind="external"><span class="sw" style="border-color:var(--edge);border-style:dashed;background:var(--surface-2)"></span>another epic</span>
+    </div>
+    <div class="dag-wrap"><svg id="dag" role="img" aria-label="Slice dependency graph"></svg></div>
+    <p class="graph-note" id="critical"></p>
+  </section>
+
+  <section id="order">
+    <h2>Suggested order</h2>
+    <p class="prose" id="order-note"></p>
+    <ol class="order" id="order-list"></ol>
+  </section>
+
+  <section id="slices">
+    <h2>Slices</h2>
+    <p class="prose">Each slice is its own jj change and review. Its implementation plan is written in
+      <code>tasks/&lt;ID&gt;.md</code> when the slice starts, not before.
+      Layers show where the slice changes code: <b>db</b> migration and Diesel, <b>rust</b> domain and widgets,
+      <b>ffi</b> UniFFI types and build, <b>swift</b> SwiftUI and its tests.</p>
+    <div id="cards"></div>
+  </section>
+
+  <section id="open">
+    <h2>Open questions</h2>
+    <p class="prose">Details the brief leaves open. Each has a proposal, settled in the slice's plan with the user.</p>
+    <div class="table-wrap panel">
+      <table>
+        <tr><th>#</th><th>Question</th><th>Proposal</th><th>Settled in</th></tr>
+        <tr><td>Q-R1</td><td>In what order do ingredient lines appear? Can you reorder them?</td><td>The order you added them. Reordering is parked.</td><td><a href="#REC-07">REC-07</a></td></tr>
+        <tr><td>Q-R2</td><td>Can you remove an ingredient line that steps use?</td><td>Yes; the steps simply stop using it.</td><td><a href="#REC-20">REC-20</a></td></tr>
+        <tr><td>Q-R3</td><td>In what order are steps listed within one stage of the read view?</td><td>Top-to-bottom, then left-to-right, by canvas position.</td><td><a href="#REC-19">REC-19</a></td></tr>
+        <tr><td>Q-R4</td><td>Is right-click the only way to add a step?</td><td>Yes in the MVP (D-20); the node lands where you clicked.</td><td><a href="#REC-14">REC-14</a></td></tr>
+        <tr><td>Q-R5</td><td>How long does a step get by default when it's created?</td><td>None: it shows “no duration” until set, which REC-22 then blocks on Save.</td><td><a href="#REC-17">REC-17</a></td></tr>
+        <tr><td>Q-R6</td><td>When does a suggestion chip count as a “likely match” (D-24)?</td><td>The line's name contains a catalog name key, or the reverse, as a whole word.</td><td><a href="#REC-11">REC-11</a></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="scope">
+    <h2>Out of scope</h2>
+    <div class="prose">
+      <p>Everything after the MVP stays on the brief's roadmap, to be picked after using the MVP (D-38):</p>
+      <ul>
+        <li>Timing and the make-ahead flag, cooking mode and timers, inline tokens and the unit setting, paste/URL import,
+          combining recipes, the iPhone shell and sync.</li>
+        <li>Parked features F-01 … F-13: recipe fields beyond the title, auto-arrange, partial line use, ingredient groups,
+          creating catalog ingredients from a line, duration ranges, personal timings, two cooks, pantry-aware time,
+          “how far ahead”, drafts, and the timeline view.</li>
+        <li>Undo/redo on the canvas, zooming and panning beyond scrolling, keyboard-only canvas editing.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+const EPIC = {
+  eyebrow: "Epic · recipes · planned 2026-10-11",
+  title: "Recipe MVP Epic",
+  lede: "The hand-made DAG recipe on the Mac (D-06): a recipe list with one-cook total time, a read view in stages, ingredient lines with an optional catalog link, and steps on an editable canvas. It's built in 22 thin vertical slices.",
+  external: [
+    { id: "mac-shell", label: "Mac shell epic", href: "../mac-shell/epic.html" },
+  ],
+  critical: ["REC-01", "REC-02", "REC-03", "REC-04", "REC-14", "REC-17", "REC-21"],
+  criticalLabel: "Highlighted: the chain to the one-cook total time",
+  criticalNote: "Many chains are seven slices long, so none is uniquely critical; stages (REC-19) and the full save rule (REC-22) are just as deep.",
+  orderNote: "One valid order; it is a preference, not extra dependencies. Get a recipe you can create and open, then build the step graph early, because it's the reason the feature exists and the riskiest UI. Ingredient details follow. Housekeeping and the full save rule come last.",
+  order: [
+    { phase: "Skeleton: a recipe you can create, open and rename" }, "REC-01", "REC-02", "REC-03", "REC-04",
+    { phase: "The step graph" }, "REC-14", "REC-15", "REC-16", "REC-17", "REC-18", "REC-19", "REC-21",
+    { phase: "Ingredient lines" }, "REC-07", "REC-08", "REC-20", "REC-10", "REC-11", "REC-09", "REC-12", "REC-13",
+    { phase: "Housekeeping and the full save rule" }, "REC-05", "REC-06", "REC-22",
+  ],
+  slices: [
+    {
+      id: "REC-01", status: "planned", short: "Recipes section",
+      title: "An empty Recipes section in the sidebar",
+      outcome: "The Mac sidebar shows **Recipes** above **Ingredients**. Selecting it shows an empty list: “No recipes yet”.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["mac-shell"],
+      stubs: ["**+ New recipe** in the toolbar is visible but does nothing (REC-02).", "The detail pane says “Select a recipe” (REC-03)."],
+      acceptance: [
+        "Migration adds a `recipes` table (UUID, title, title key). The store can list recipes.",
+        "Rust owns app sections (Recipes, Ingredients) and the selected one; iOS still shows only Ingredients.",
+        "Rust tests: section switching keeps each section's state; list loads, empty state, load failure and retry.",
+        "Snapshots: empty recipe list, sidebar with both sections. UI smoke: switch sections.",
+      ],
+      refs: ["D-03", "D-17", "D-18"],
+    },
+    {
+      id: "REC-02", status: "planned", short: "Create by title",
+      title: "Create a recipe with just a title",
+      outcome: "**+ New recipe** turns the detail pane into the editor with a title field, Cancel and Save. Saving “Shakshuka” adds a row to the list. A second “shakshuka” is refused with “A recipe with this title already exists”.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-01"],
+      stubs: [
+        "The editor shows empty **Ingredients** and canvas areas with “coming soon” (REC-07, REC-14).",
+        "List rows show the title only; time and step count come in REC-14 and REC-21.",
+      ],
+      acceptance: [
+        "Save rule for now: non-empty, unique title (E-02, D-39). Typed validation and duplicate errors from the store.",
+        "The recipe and its title key are saved in one transaction; a race on the same title still fails cleanly.",
+        "Rust tests for the editor widget and coordinator routing. Snapshots: empty editor, duplicate title. UI smoke: create, relaunch, still listed.",
+      ],
+      refs: ["D-39", "D-40", "D-18"],
+    },
+    {
+      id: "REC-03", status: "planned", short: "Read view",
+      title: "Open a recipe to read it",
+      outcome: "Clicking “Shakshuka” shows its read view in the detail pane: the title, with **Ingredients** and **Steps** headings that are still empty.",
+      layers: ["rust", "ffi", "swift"], deps: ["REC-02"],
+      stubs: ["**Edit** in the toolbar is visible but does nothing (REC-04).", "Empty Ingredients and Steps sections say “None yet”."],
+      acceptance: [
+        "Recipe navigation: list → read view. The list selection comes from the Rust route; clicking only sends an event. Opening another recipe replaces the read view.",
+        "After creating a recipe, its read view opens.",
+        "Snapshot: read view. UI smoke: open a recipe.",
+      ],
+      refs: ["D-16", "D-18"],
+    },
+    {
+      id: "REC-04", status: "planned", short: "Edit title",
+      title: "Edit a recipe's title",
+      outcome: "**Edit** in the read view opens the editor for that recipe. Save returns to the updated read view. Cancel with changes asks “Discard changes?”, and so does clicking another recipe.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-03"],
+      acceptance: [
+        "Store update by UUID; a missing recipe is an error, never a silent insert. Uniqueness still holds when renaming.",
+        "Navigation: read view → editor → back to the same read view; dirty discard decided in Rust.",
+        "Snapshot: discard confirmation. UI smoke: rename a recipe.",
+      ],
+      refs: ["D-18", "D-39"],
+    },
+    {
+      id: "REC-05", status: "planned", short: "Delete recipe",
+      title: "Delete a recipe",
+      outcome: "**Delete** in the read view asks “Delete Shakshuka?”. Confirming removes it and empties the detail pane.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-03"],
+      acceptance: [
+        "Deletion cascades to everything the recipe owns at that point (lines, steps, edges as they exist).",
+        "Uses the shared confirmation widget. Snapshot: confirmation. UI smoke: delete, relaunch, gone.",
+      ],
+      refs: ["D-44"],
+    },
+    {
+      id: "REC-06", status: "planned", short: "Search recipes",
+      title: "Search recipes",
+      outcome: "Typing “sha” in the search field narrows the list to “Shakshuka”, with a “No matches” state.",
+      layers: ["rust", "ffi", "swift"], deps: ["REC-02"],
+      acceptance: ["Rust filters by the title key, like the catalog. Snapshots: filtered list, no matches."],
+      refs: [],
+    },
+    {
+      id: "REC-07", status: "planned", short: "Lines: name only",
+      title: "Ingredient lines with a name",
+      outcome: "The editor's Ingredients column gets **+ Line**. You add “penne pasta” and “olive oil”, remove one, and save. The read view lists them.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-04"],
+      stubs: ["Each line shows only its name; amount, unit and note come in REC-08."],
+      acceptance: [
+        "Migration adds ingredient lines (UUID, recipe, position, name). Lines are saved with the recipe in one transaction.",
+        "A line needs a non-empty name. Rust tests for add, remove and validation with line indices.",
+        "Snapshots: editor with lines, read view with lines.",
+      ],
+      refs: ["D-10"],
+    },
+    {
+      id: "REC-08", status: "planned", short: "Amount, unit, note",
+      title: "Amount, known unit and note on a line",
+      outcome: "A line becomes “300 g penne pasta” or “1 tbsp olive oil, extra virgin”. The unit picker offers g, kg, ml, l, tsp, tbsp, cup and piece. Amount and unit are optional, so “salt, to taste” works.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-07"],
+      acceptance: [
+        "Exact decimal amounts (catalog rules). Unit present without amount, or a non-positive amount, is a typed issue.",
+        "Snapshots: line editor popover, lines in the read view.",
+      ],
+      refs: ["D-12", "D-25"],
+    },
+    {
+      id: "REC-09", status: "planned", short: "Custom units",
+      title: "Custom units",
+      outcome: "**Custom unit…** in the picker lets a line say “1 knob ginger”, kept exactly as written.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-08"],
+      acceptance: ["Custom unit text is stored as written and never converted. Snapshot: custom unit line."],
+      refs: ["D-25"],
+    },
+    {
+      id: "REC-10", status: "planned", short: "Catalog link",
+      title: "Link a line to a catalog ingredient",
+      outcome: "In the line editor you pick a catalog ingredient, so the line reads “400 g Mutti tomatoes → tomato”. **Unlink** removes the link. Unlinked lines show a quiet “no link”.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-07"],
+      stubs: ["The picker is a plain searchable list for now; suggestions while typing come in REC-11."],
+      acceptance: [
+        "Nullable link from line to ingredient. The line keeps its own name (D-11).",
+        "Snapshots: linked and unlinked lines.",
+      ],
+      refs: ["D-11", "D-24"],
+    },
+    {
+      id: "REC-11", status: "planned", short: "Suggestions + nudge",
+      title: "Catalog suggestions while typing",
+      outcome: "Typing “Mutti tom” offers “tomato” and “canned tomatoes”; one click links it. A saved unlinked line with a likely match shows a suggestion chip “→ tomato?” (Q-R6).",
+      layers: ["rust", "ffi", "swift"], deps: ["REC-10"],
+      acceptance: ["Matching runs in Rust against catalog name keys. Rust tests for ranking and the likely-match rule. Snapshots: suggestion list, chip."],
+      refs: ["D-23", "D-24"],
+    },
+    {
+      id: "REC-12", status: "planned", short: "Reference units",
+      title: "The linked ingredient's units in the picker",
+      outcome: "When a line links to “garlic”, the unit picker also offers “clove ≈ 5 g”, taken from the catalog.",
+      layers: ["rust", "ffi", "swift"], deps: ["REC-08", "REC-10"],
+      acceptance: [
+        "Choosing a reference unit stores it by name; if the link is removed later, the line keeps the unit as custom text.",
+        "Snapshot: picker with reference units.",
+      ],
+      refs: ["D-25"],
+    },
+    {
+      id: "REC-13", status: "planned", short: "Catalog delete keeps lines",
+      title: "Deleting a catalog ingredient that recipes use",
+      outcome: "Deleting “tomato” from the catalog says “It's linked from 3 recipes. Their lines keep their text and lose the link.” After deleting, those lines read “400 g Mutti tomatoes”, unlinked.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-10"],
+      acceptance: [
+        "Deleting an ingredient clears links in the same transaction. The count comes from the store.",
+        "Catalog detail widget shows the count. Snapshot: catalog delete confirmation with count.",
+      ],
+      refs: ["D-36"],
+    },
+    {
+      id: "REC-14", status: "planned", short: "Canvas: add steps",
+      title: "Add steps on a canvas",
+      outcome: "The editor shows a canvas. Right-click on empty space ▸ **Add step** places a node where you clicked. Selecting a node opens the inspector, where you type its title (“Dice onion”). The read view lists the steps, and the list row shows “3 steps”.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-04"],
+      stubs: [
+        "Nodes can't be moved yet (REC-15) or deleted (REC-16).",
+        "The inspector shows Duration, Instructions and After as disabled placeholders (REC-17, REC-18).",
+        "The read view shows a flat list; stages come in REC-19.",
+      ],
+      acceptance: [
+        "Migration adds steps (UUID, recipe, title, x, y). Positions are Rust state, saved with the recipe.",
+        "A step needs a title. Rust tests: add, select, rename, step count.",
+        "Snapshots: canvas with nodes, inspector. UI smoke: add a step via the context menu and save.",
+      ],
+      refs: ["D-08", "D-19", "D-20", "D-15"],
+    },
+    {
+      id: "REC-15", status: "planned", short: "Drag nodes",
+      title: "Move steps on the canvas",
+      outcome: "You drag “Dice onion” to a new place; after saving and reopening, it's still there.",
+      layers: ["rust", "ffi", "swift"], deps: ["REC-14"],
+      acceptance: ["Swift owns only the drag in progress and sends one move event on drop. Rust test for moves; UI smoke: drag, save, reopen."],
+      refs: ["D-19"],
+    },
+    {
+      id: "REC-16", status: "planned", short: "Delete step",
+      title: "Delete a step",
+      outcome: "Select a node and press [[⌫]], or right-click it ▸ **Delete step**. It disappears, along with its connections once those exist.",
+      layers: ["rust", "ffi", "swift"], deps: ["REC-14"],
+      acceptance: ["Rust removes the step and anything that refers to it. Rust tests; snapshot of the context menu."],
+      refs: [],
+    },
+    {
+      id: "REC-17", status: "planned", short: "Step details",
+      title: "Duration, active/waiting and instructions",
+      outcome: "The inspector sets “6 min”, **Active** or **Waiting**, and optional instructions (“Medium heat, stir often”). Active nodes are solid, waiting nodes dashed. The read view shows each step's duration.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-14"],
+      acceptance: [
+        "A duration is one positive value (D-21); a new step has none until set (Q-R5).",
+        "Rust tests for parsing and validation. Snapshots: active and waiting nodes, inspector filled in.",
+      ],
+      refs: ["D-09", "D-21", "D-30"],
+    },
+    {
+      id: "REC-18", status: "planned", short: "Connect steps",
+      title: "Connect steps into a graph",
+      outcome: "Drag from the ● on “Dice onion” to the ○ on “Fry onion & garlic”: an arrow appears, and the inspector's **After** lists “Dice onion”. A connection that would make a loop snaps back. Click an arrow and press [[⌫]] to remove it.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-14"],
+      acceptance: [
+        "Migration adds step edges. Rust rejects cycles, self-loops and duplicates, with property-style tests for the cycle check.",
+        "Several loose ends are fine (D-22). Snapshots: connected graph, port-drag preview.",
+      ],
+      refs: ["D-20", "D-22"],
+    },
+    {
+      id: "REC-19", status: "planned", short: "Stages",
+      title: "The read view shows stages",
+      outcome: "The read view groups steps by what can start together: “1 · Dice onion, Mince garlic, Boil water”, then “2 · Fry onion & garlic”…",
+      layers: ["rust", "ffi", "swift"], deps: ["REC-18"],
+      acceptance: ["Pure Rust stage function with tests (diamonds, loose ends, single step). Order within a stage per Q-R3. Snapshot: staged read view."],
+      refs: ["D-16"],
+    },
+    {
+      id: "REC-20", status: "planned", short: "Steps use lines",
+      title: "Steps use ingredient lines",
+      outcome: "The inspector's **Uses** adds “2 tbsp olive oil” to “Fry onion & garlic”. The read view shows each step's ingredients under it.",
+      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-07", "REC-14"],
+      acceptance: ["Migration adds step-uses-line links. Removing a line or step removes its uses (Q-R2). Snapshots: inspector Uses, read view."],
+      refs: ["D-10"],
+    },
+    {
+      id: "REC-21", status: "planned", short: "Total time",
+      title: "One-cook total time",
+      outcome: "The list row reads “Roasted tomato pasta · 38 min · 8 steps”, and so does the read view. 38 min is one pair of hands: active steps never overlap, while waiting steps run in the background. That compares to 35 min for the longest chain and 59 min for the plain sum.",
+      layers: ["rust", "ffi", "swift"], deps: ["REC-17", "REC-18"],
+      acceptance: [
+        "Pure Rust one-cook scheduler, tested on the mockup's example (38 min) and edge cases. Prep counts (D-33).",
+        "While any step has no duration (possible before REC-22), the total shows “—”.",
+        "Snapshot: list rows with totals.",
+      ],
+      refs: ["D-15", "D-29", "D-33"],
+    },
+    {
+      id: "REC-22", status: "planned", short: "Full save rule",
+      title: "Save only complete recipes",
+      outcome: "Save stays disabled until the recipe has a title, at least one ingredient, at least one step, and a duration on every step. The toolbar says what's missing: “Step I has no duration”.",
+      layers: ["rust", "ffi", "swift"], deps: ["REC-07", "REC-14", "REC-17"],
+      acceptance: [
+        "Rust computes the missing-items list and the first message. Table-driven Rust tests over the D-37 rules.",
+        "Old incomplete recipes still open; they must be completed before their next save (E-02).",
+        "Snapshot: disabled Save with message.",
+      ],
+      refs: ["D-37", "D-40"],
+    },
+  ],
+};
+</script>
+<script>
+(function () {
+  const STATUS = [
+    ["planned", "Planned", "--st-planned"],
+    ["ready", "Ready", "--st-ready"],
+    ["in-progress", "In progress", "--st-progress"],
+    ["awaiting-review", "Awaiting review", "--st-review"],
+    ["approved", "Approved", "--st-approved"],
+  ];
+  const STATUS_LABEL = Object.fromEntries(STATUS.map(([k, l]) => [k, l]));
+  const LAYERS = ["db", "rust", "ffi", "swift"];
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // Light inline markup for data strings: `code`, **bold**, <kbd>-style [[Key]].
+  const md = (s) => esc(s)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    .replace(/\[\[([^\]]+)\]\]/g, "<kbd>$1</kbd>");
+
+  const slices = EPIC.slices;
+  const byId = new Map(slices.map((s) => [s.id, s]));
+  const external = new Map((EPIC.external || []).map((e) => [e.id, e]));
+  for (const s of slices) for (const d of s.deps) {
+    if (!byId.has(d) && !external.has(d)) console.error(`${s.id} depends on unknown ${d}`);
+  }
+
+  // Header
+  document.title = EPIC.title;
+  $("eyebrow").textContent = EPIC.eyebrow;
+  $("title").textContent = EPIC.title;
+  $("lede").innerHTML = md(EPIC.lede);
+
+  // Theme toggle: auto → light → dark
+  const modes = ["auto", "light", "dark"];
+  let mode = "auto";
+  try { mode = localStorage.getItem("epic-theme") || "auto"; } catch (e) {}
+  const applyTheme = () => {
+    if (mode === "auto") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = mode;
+    $("theme-btn").textContent = "Theme: " + mode;
+  };
+  $("theme-btn").addEventListener("click", () => {
+    mode = modes[(modes.indexOf(mode) + 1) % modes.length];
+    try { localStorage.setItem("epic-theme", mode); } catch (e) {}
+    applyTheme();
+  });
+  applyTheme();
+
+  // Status summary
+  const counts = Object.fromEntries(STATUS.map(([k]) => [k, 0]));
+  for (const s of slices) counts[s.status] = (counts[s.status] || 0) + 1;
+  $("bar").innerHTML = STATUS.filter(([k]) => counts[k]).map(([k, l, v]) =>
+    `<span title="${l}: ${counts[k]}" style="width:${(100 * counts[k]) / slices.length}%;background:var(${v})"></span>`).join("");
+  $("counts").textContent = `${slices.length} slices · ` + STATUS.filter(([k]) => counts[k]).map(([k, l]) => `${counts[k]} ${l.toLowerCase()}`).join(" · ");
+  $("legend").innerHTML = STATUS.map(([k, l, v]) =>
+    `<span><span class="sw" style="border-color:var(${v});background:var(${v}-bg, transparent)"></span>${l}</span>`).join("")
+    + `<span>Only the user moves a slice to Approved.</span>`;
+
+  // Show only the node kinds this epic uses in the graph legend.
+  for (const el of document.querySelectorAll("#kind-legend [data-kind]")) {
+    const k = el.dataset.kind;
+    const used = k === "external" ? external.size > 0 : slices.some((s) => s.kind === k);
+    if (!used) el.remove();
+  }
+
+  // Graph layout: rows by depth (longest path from a root).
+  const nodes = [...[...external.keys()].filter((id) => slices.some((s) => s.deps.includes(id))), ...slices.map((s) => s.id)];
+  const depsOf = (id) => (byId.get(id) ? byId.get(id).deps : []);
+  const depth = {};
+  const depthOf = (id) => {
+    if (id in depth) return depth[id];
+    const ds = depsOf(id);
+    return (depth[id] = ds.length ? 1 + Math.max(...ds.map(depthOf)) : 0);
+  };
+  nodes.forEach(depthOf);
+  const orderIndex = Object.fromEntries((EPIC.order || []).filter((x) => typeof x === "string").map((id, i) => [id, i]));
+  const rank = (id) => (id in orderIndex ? orderIndex[id] : external.has(id) ? -1 : 999);
+  const rows = [];
+  for (const id of nodes) (rows[depth[id]] = rows[depth[id]] || []).push(id);
+  rows.forEach((r) => r.sort((a, b) => rank(a) - rank(b)));
+  // Barycenter passes to reduce crossings.
+  for (let pass = 0; pass < 3; pass++) {
+    for (let r = 1; r < rows.length; r++) {
+      const pos = {};
+      for (let q = 0; q < r; q++) rows[q].forEach((id, i) => (pos[id] = (i + 0.5) / rows[q].length));
+      const bary = (id) => { const ds = depsOf(id).filter((d) => d in pos); return ds.length ? ds.reduce((a, d) => a + pos[d], 0) / ds.length : 0.5; };
+      rows[r].sort((a, b) => bary(a) - bary(b) || rank(a) - rank(b));
+    }
+  }
+  const W = 124, H = 46, GX = 14, GY = 52, PAD = 12;
+  const maxRow = Math.max(...rows.map((r) => r.length));
+  const width = maxRow * (W + GX) - GX + 2 * PAD;
+  const height = rows.length * (H + GY) - GY + 2 * PAD;
+  const xy = {};
+  rows.forEach((r, ri) => {
+    const rowW = r.length * (W + GX) - GX;
+    const x0 = (width - rowW) / 2;
+    r.forEach((id, i) => (xy[id] = { x: x0 + i * (W + GX), y: PAD + ri * (H + GY) }));
+  });
+
+  // Highlighted chain: EPIC.critical when given (ties make "the" longest chain ambiguous),
+  // otherwise the first longest chain of slices (externals excluded).
+  const chain = {};
+  const chainOf = (id) => {
+    if (id in chain) return chain[id];
+    const ds = depsOf(id).filter((d) => byId.has(d));
+    let best = null;
+    for (const d of ds) if (!best || chainOf(d).length > chainOf(best).length) best = d;
+    return (chain[id] = best ? [...chainOf(best), id] : [id]);
+  };
+  let critical = EPIC.critical || [];
+  if (!critical.length) for (const s of slices) if (chainOf(s.id).length > critical.length) critical = chainOf(s.id);
+  const critEdges = new Set(critical.slice(1).map((id, i) => critical[i] + ">" + id));
+  $("critical").innerHTML = `${esc(EPIC.criticalLabel || "Critical path")} (${critical.length} slices): ` + critical.map((id) => `<a href="#${id}">${id}</a>`).join(" → ")
+    + (EPIC.criticalNote ? ". " + md(EPIC.criticalNote) : "");
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = $("dag");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("width", width);
+  svg.setAttribute("height", height);
+  svg.innerHTML = `<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="arrow-hot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>`;
+  const edgeEls = [];
+  for (const s of slices) for (const d of s.deps) {
+    if (!xy[d]) continue;
+    const a = xy[d], b = xy[s.id];
+    // Points: source bottom, then a gap in every skipped row, then target top.
+    const pts = [[a.x + W / 2, a.y + H]];
+    for (let r = depth[d] + 1; r < depth[s.id]; r++) {
+      const t = (r - depth[d]) / (depth[s.id] - depth[d]);
+      const want = a.x + (b.x - a.x) * t + W / 2;
+      const xs = rows[r].map((id) => xy[id].x);
+      const gaps = [xs[0] - GX / 2, ...xs.map((x) => x + W + GX / 2)];
+      const gx = gaps.reduce((best, g) => (Math.abs(g - want) < Math.abs(best - want) ? g : best), gaps[0]);
+      const top = PAD + r * (H + GY);
+      pts.push([gx, top - 6], [gx, top + H + 6]);
+    }
+    pts.push([b.x + W / 2, b.y - 1]);
+    let dPath = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 1; i < pts.length; i++) {
+      const [x1, y1] = pts[i - 1], [x2, y2] = pts[i];
+      if (i % 2 === 0 && x1 === x2) { dPath += ` L${x2},${y2}`; continue; }
+      const dy = Math.max(16, (y2 - y1) * 0.45);
+      dPath += ` C${x1},${y1 + dy} ${x2},${y2 - dy} ${x2},${y2}`;
+    }
+    const p = document.createElementNS(svgNS, "path");
+    p.setAttribute("d", dPath);
+    const isCrit = critEdges.has(d + ">" + s.id);
+    p.setAttribute("class", "edge" + (isCrit ? " critical" : ""));
+    p.setAttribute("marker-end", isCrit ? "url(#arrow-hot)" : "url(#arrow)");
+    p.dataset.from = d; p.dataset.to = s.id;
+    svg.appendChild(p); edgeEls.push(p);
+  }
+  const nodeEls = {};
+  for (const id of nodes) {
+    const s = byId.get(id), e = external.get(id);
+    const g = document.createElementNS(svgNS, "g");
+    const cls = s ? `node n-${s.status} k-${s.kind || "slice"}` : "node k-external";
+    g.setAttribute("class", cls);
+    g.setAttribute("transform", `translate(${xy[id].x},${xy[id].y})`);
+    const label = s ? s.short || s.title : e.label;
+    const sub = s ? (s.kind === "gate" ? "gate" : s.kind === "tooling" ? "tooling" : STATUS_LABEL[s.status]) : "other epic";
+    g.innerHTML = `<title>${esc(s ? `${s.id} — ${s.title} (${STATUS_LABEL[s.status]})` : e.label)}</title>
+      <rect width="${W}" height="${H}" rx="9"/>
+      <text x="9" y="18">${esc(s ? id : "↗")}<tspan class="sub" dx="6" font-weight="400">${esc(sub)}</tspan></text>
+      <text x="9" y="35" class="sub">${esc(label.length > 19 ? label.slice(0, 18) + "…" : label)}</text>`;
+    g.addEventListener("click", () => {
+      if (s) location.hash = id; else if (e.href) location.href = e.href;
+    });
+    g.addEventListener("mouseenter", () => highlight(id));
+    g.addEventListener("mouseleave", () => highlight(null));
+    svg.appendChild(g); nodeEls[id] = g;
+  }
+  function highlight(id) {
+    const near = new Set(id ? [id] : []);
+    for (const p of edgeEls) {
+      const on = id && (p.dataset.from === id || p.dataset.to === id);
+      if (on) { near.add(p.dataset.from); near.add(p.dataset.to); }
+      p.classList.toggle("hot", !!on);
+      p.classList.toggle("dim", !!id && !on);
+      if (on) p.setAttribute("marker-end", "url(#arrow-hot)");
+      else p.setAttribute("marker-end", p.classList.contains("critical") ? "url(#arrow-hot)" : "url(#arrow)");
+    }
+    for (const [nid, g] of Object.entries(nodeEls)) g.classList.toggle("dim", !!id && !near.has(nid));
+  }
+
+  // Suggested order (strings are slice IDs; {phase} objects are headings).
+  $("order-note").innerHTML = md(EPIC.orderNote || "");
+  $("order-list").innerHTML = (EPIC.order || []).map((x) => typeof x === "string"
+    ? `<li><a href="#${x}">${x} ${esc(byId.get(x).short || "")}</a></li>`
+    : `<li class="phase">${md(x.phase)}</li>`).join("");
+
+  // Cards, in suggested order.
+  const ordered = [...(EPIC.order || []).filter((x) => typeof x === "string"), ...slices.map((s) => s.id)]
+    .filter((id, i, a) => a.indexOf(id) === i);
+  const depLink = (d) => byId.has(d) ? `<a href="#${d}">${d}</a>`
+    : `<a href="${esc(external.get(d).href || "#")}">${esc(external.get(d).label)}</a>`;
+  const list = (xs) => `<ul>${xs.map((x) => `<li>${md(x)}</li>`).join("")}</ul>`;
+  $("cards").innerHTML = ordered.map((id) => {
+    const s = byId.get(id);
+    const kind = s.kind && s.kind !== "slice" ? `<span class="kind kind-${s.kind}">${s.kind === "gate" ? "Human gate" : "Tooling"}</span>` : "";
+    const layers = `<div class="layers">${LAYERS.map((l) => `<span class="layer${(s.layers || []).includes(l) ? " on" : ""}">${l}</span>`).join("")}</div>`;
+    const dependents = slices.filter((x) => x.deps.includes(id)).map((x) => x.id);
+    const rows = [
+      ["Layers", layers],
+      ["Needs", s.deps.length ? s.deps.map(depLink).join(", ") : `<span class="muted">nothing</span>`],
+      ["Unblocks", dependents.length ? dependents.map(depLink).join(", ") : `<span class="muted">nothing in this epic</span>`],
+      s.stubs && s.stubs.length ? ["Stubs", list(s.stubs)] : null,
+      ["Done when", list(s.acceptance)],
+      s.refs && s.refs.length ? ["Brief", esc(s.refs.join(", "))] : null,
+      ["Plan", s.plan ? `<a href="${esc(s.plan)}">${esc(s.plan)}</a>` : `<span class="muted">written when the slice starts</span>`],
+    ].filter(Boolean);
+    const guide = s.guide ? `<div class="guide"><strong>Step by step</strong><ol>${s.guide.map((g) => `<li>${md(g)}</li>`).join("")}</ol></div>` : "";
+    return `<article class="card" id="${id}">
+      <header><span class="id">${id}</span>${kind}<span class="pill st-${s.status}">${STATUS_LABEL[s.status]}</span></header>
+      <h3>${md(s.title)}</h3>
+      <p>${md(s.outcome)}</p>
+      <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>
+      ${guide}
+    </article>`;
+  }).join("");
+})();
+</script>
+</body>
+</html>

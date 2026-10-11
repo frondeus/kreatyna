@@ -1,11 +1,13 @@
 # Recipes — discovery brief
 
-Status: **complete, awaiting the user's acceptance** (rounds 1–4 and mockup reviews 1–4 done; no open questions). This
+Status: **accepted** on 2026-10-11 (rounds 1–4 and mockup reviews 1–4 done; no open questions). Epic planning added D-44 and D-45. This
 is not an epic. Discovery ends with this brief and the final mockups. Splitting the
 work into epics happens only when the user asks for it, using
 [plan-reviewable-epics](../../../.agents/skills/plan-reviewable-epics/SKILL.md).
 
 Mockups: [mockups.html](mockups.html). Open it in a browser; it works offline.
+
+Epics: [Mac shell](../../epics/mac-shell/epic.html), then [Recipe MVP](../../epics/recipes/epic.html).
 
 ## Vision
 
@@ -48,6 +50,8 @@ syncing between devices come later.
 | D-12 | Amounts | Number + unit + free note ("a pinch", "to taste"). | Enables scaling, conversion and shopping later. |
 | D-14 | Recipe-level fields (MVP) | **Title only**, besides ingredients and steps. | Servings, source, notes, tags and photo are parked as F-01. |
 | D-36 | Deleting a linked catalog ingredient | Allowed. Linked recipe lines **keep their text** and lose the link. The delete confirmation says how many recipes use it. | The recipe stays as written; the catalog never holds it hostage. |
+| D-45 | Counter's future | Counter moves to `krucyfix/examples/` within the Mac shell epic (MAC-11), before it leaves the app. The counter table is dropped. | It still shows background execution flows. Un-parks F-08. |
+| D-44 | Deleting a recipe | Allowed in the MVP, with a confirmation, like deleting a catalog ingredient. | Decided during epic planning. |
 | D-37 | What a saved recipe needs | A title, **at least one ingredient**, **at least one step**, and **a duration on every step**. | Guarantees the total time is always complete. |
 | D-40 | Half-written recipes | **No drafts** in the MVP: a recipe is saved only when complete. | Keeps the MVP small; drafts are parked as F-12. |
 | D-39 | Recipe titles | **Unique**, using the same case-insensitive name rule as catalog ingredients. | "Shakshuka (spicy)" instead of two "Shakshuka"s. |
@@ -99,7 +103,7 @@ Each step should be useful on its own and buildable in thin vertical slices
 **Planned, in order:**
 
 1. **Mac catalog shell**: the existing ingredient catalog in a Mac window, with
-   full create/edit/delete (D-28); Counter removed (D-17).
+   full create/edit/delete (D-28); Counter moved to `krucyfix` and removed (D-17, D-45).
 2. **Hand-made DAG recipe (MVP)**: recipe list with one-cook total time, read
    view as stages, ingredient lines with optional catalog link, steps on an
    editable canvas, step ↔ ingredient links, durations.
@@ -136,7 +140,7 @@ Ideas the user wants, but not in the MVP. Each can be picked up in any later run
 | F-05 | Create a catalog ingredient straight from a recipe line | Q-05 |
 | F-06 | Approximate duration ranges ("20–25 min") | Q-12 |
 | F-07 | Personal timings and cooking notes ("with *my* oven it's done in 18 min") | Q-12 |
-| F-08 | Move the Counter example into the `krucyfiks` repository | Q-16 |
+| F-08 | ~~Move the Counter example into the `krucyfiks` repository~~ Planned as MAC-11 (D-45) | Q-16 |
 | F-09 | "Two cooks" mode: schedule for more than one pair of hands (cooking together) | Q-19 |
 | F-10 | Pantry-aware total time: leftover diced onion in the fridge skips that step | Q-24 |
 | F-11 | "How far ahead" a prep step can be done (same day, overnight, minutes before) | Q-23 |

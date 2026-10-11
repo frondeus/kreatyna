@@ -119,9 +119,10 @@ direction; it does not remove the review boundary between slices.
 
 Pick the next slice whose dependencies are approved. In its own jj change:
 
-1. Write its implementation plan at `docs/epics/<epic>/tasks/<ID>.md`: files and
-   types, contracts and state transitions, steps, checks, stubs, and explicit
-   exclusions. Do not prewrite plans for later slices.
+1. Write its implementation plan at `docs/epics/<epic>/tasks/<ID>.md`, following
+   [write-slice-plan](../write-slice-plan/SKILL.md). If the plan has open
+   questions, stop for the user's answers before implementing. Do not prewrite
+   plans for later slices.
 2. Implement the slice across its layers, following the layer skills
    ([forward-only-migrations](../forward-only-migrations/SKILL.md),
    [model-effectful-initialization](../model-effectful-initialization/SKILL.md),

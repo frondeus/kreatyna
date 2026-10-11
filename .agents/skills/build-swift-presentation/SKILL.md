@@ -52,4 +52,13 @@ Rust behavior changed is in the wrong layer.
   that UI events reach Rust, its views reach the screen, and data persists
   across relaunch. Do not build edge-case matrices in UI tests.
 
-Run the checks for each change and report any that could not run.
+Run the checks for each change and report any that could not run. Inside the
+devenv shell, `ios-bindings debug` rebuilds the Rust core and `ios-test` runs
+all iOS tests (Swift Testing, snapshots, and UI tests) on a booted simulator.
+
+## Xcode project
+
+Change targets, files, packages, and build settings only in
+`apple/Kreatyna/project.yml`, then run `apple-generate`. The generated
+`Kreatyna.xcodeproj` is not committed; never edit it. New Swift files in a
+target's folder need no project change.

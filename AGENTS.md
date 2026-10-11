@@ -23,10 +23,11 @@ through the core's event/effect interface. Business decisions stay in Rust.
   SwiftUI views, Swift integration code, Apple platform adapters, Xcode
   configuration (including new targets), and Swift-side tests on macOS and iOS,
   as part of the vertical slices they deliver.
-- The user prefers not to work in Xcode. Xcode configuration moves to XcodeGen
-  (`project.yml`, Mac shell epic) so agents can change it as reviewable text.
-  Until then, change the project only in ways `xcodebuild` can verify. The user
-  is new to Apple development and is using Xcode 26.2.
+- The user prefers not to work in Xcode. XcodeGen generates the Xcode project
+  from `apple/Kreatyna/project.yml`, so agents change it as reviewable text.
+  Edit `project.yml`, never the generated `.xcodeproj` (it is not committed),
+  and run `apple-generate` after each edit. The user is new to Apple
+  development and is using Xcode 26.2.
 
 ## Initial Xcode choices
 

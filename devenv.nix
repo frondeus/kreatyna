@@ -77,6 +77,7 @@ in
     pkgs.diesel-cli
     pkgs.sqlite
     pkgs.pkg-config
+    pkgs.xcodegen
   ];
 
   env.DATABASE_URL =
@@ -98,15 +99,61 @@ in
       ios-build-device "$profile"
       ios-build-simulator "$profile"
 
-      # The generator runs on macOS and reads metadata from each iOS archive.
+      # The generator runs on macOS and reads metadata from an iOS archive.
+      # Bindings are identical for every Apple target and profile, so the
+      # Xcode project uses one copy for all of them.
       export SDKROOT="$(/usr/bin/xcrun --sdk macosx --show-sdk-path)"
-      for target in aarch64-apple-ios aarch64-apple-ios-sim; do
-        output="$CARGO_TARGET_DIR/generated/apple/$target/$profile"
-        cargo run --locked -p kreatyna-ffi --features bindgen --bin uniffi-bindgen -- \
-          generate "$CARGO_TARGET_DIR/$target/$profile/libkreatyna_ffi.a" \
-          --language swift --out-dir "$output"
-        echo "Generated Swift bindings in $output"
-      done
+      output="$CARGO_TARGET_DIR/generated/apple/swift"
+      cargo run --locked -p kreatyna-ffi --features bindgen --bin uniffi-bindgen -- \
+        generate "$CARGO_TARGET_DIR/aarch64-apple-ios-sim/$profile/libkreatyna_ffi.a" \
+        --language swift --out-dir "$output"
+      echo "Generated Swift bindings in $output"
+    '';
+  };
+
+  scripts.apple-generate = {
+    description = "Generate the Xcode project from apple/Kreatyna/project.yml";
+    exec = ''
+      set -euo pipefail
+      cd ${lib.escapeShellArg config.devenv.root}
+      xcodegen generate --spec apple/Kreatyna/project.yml --quiet
+    '';
+  };
+
+  scripts.ios-test = {
+    description = "Generate the Xcode project and run all iOS tests: ios-test [simulator-udid]";
+    exec = ''
+      set -euo pipefail
+      cd ${lib.escapeShellArg config.devenv.root}
+      apple-generate
+
+      # Xcode needs nothing from the Nix shell. A minimal environment keeps Nix
+      # compiler variables (LD, CC, SDKROOT, NIX_LDFLAGS) out of its link step.
+      clean_env=(env -i HOME="$HOME" USER="$USER" PATH=/usr/bin:/bin:/usr/sbin:/sbin
+        DEVELOPER_DIR="$DEVELOPER_DIR")
+
+      udid="''${1:-}"
+      if [ -z "$udid" ]; then
+        udid="$("''${clean_env[@]}" xcrun simctl list devices booted |
+          awk '/^-- /{ios = ($2 == "iOS")} ios && /\(Booted\)/ {
+            match($0, /\([0-9A-F-]{36}\)/); print substr($0, RSTART + 1, RLENGTH - 2); exit
+          }')"
+      fi
+      if [ -z "$udid" ]; then
+        echo "No booted iOS simulator. Boot one or pass its UDID: ios-test <udid>" >&2
+        exit 1
+      fi
+
+      mkdir -p target/xcode
+      echo "==> Testing on $udid (log: target/xcode/test.log)"
+      if ! "''${clean_env[@]}" xcodebuild test \
+          -project apple/Kreatyna/Kreatyna.xcodeproj -scheme Kreatyna \
+          -destination "id=$udid" -derivedDataPath target/xcode/DerivedData \
+          >target/xcode/test.log 2>&1; then
+        grep -E "error:|failed|TEST FAILED" target/xcode/test.log >&2 || tail -40 target/xcode/test.log >&2
+        exit 1
+      fi
+      grep -E "Test run with|TEST SUCCEEDED" target/xcode/test.log || true
     '';
   };
 }

@@ -69,6 +69,14 @@ if [ "$skip_rust" -eq 0 ]; then
   ios-bindings debug
 fi
 
+# The Xcode project is generated from apple/Kreatyna/project.yml (MAC-10).
+if ! command -v apple-generate >/dev/null; then
+  echo "apple-generate not on PATH: run inside the devenv shell." >&2
+  exit 1
+fi
+echo "==> Generating the Xcode project"
+apple-generate
+
 open_simulator_app
 if [ "${#udids[@]}" -eq 0 ]; then
   echo "==> Waiting for a booted iOS simulator"

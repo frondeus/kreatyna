@@ -17,15 +17,18 @@ The script performs these steps:
    in `target/`. Xcode links these prebuilt files and has no cargo build
    phase, so skipping this step runs stale Rust. Pass `--skip-rust` only when
    nothing in `crates/` changed since the last build.
-2. It opens DeviceHub. Xcode 27 has no `Simulator.app`; its replacement is
+2. It runs `apple-generate`, which generates `Kreatyna.xcodeproj` from
+   `apple/Kreatyna/project.yml`. The generated project is not in version
+   control, so this step is never skipped.
+3. It opens DeviceHub. Xcode 27 has no `Simulator.app`; its replacement is
    `/Applications/Xcode.app/Contents/Applications/DeviceHub.app`.
-3. It targets the device the user sees: every booted iOS simulator. If none is booted,
+4. It targets the device the user sees: every booted iOS simulator. If none is booted,
    it waits for the device that DeviceHub boots. Do not boot a different device
    yourself. The user would not see it, and DeviceHub keeps its own default.
    Use `--udid <UDID>` only when the user names a device.
-4. It builds with `xcodebuild` in a minimal environment, using DerivedData under
+5. It builds with `xcodebuild` in a minimal environment, using DerivedData under
    `target/xcode/`. The user's Xcode build folder stays untouched.
-5. It installs the app and launches it with `--terminate-running-process`, so the app
+6. It installs the app and launches it with `--terminate-running-process`, so the app
    comes to the foreground. Then it saves a screenshot for each device to
    `target/xcode/launch-<UDID>.png`.
 
@@ -45,7 +48,7 @@ If it is not, look for a crash log in `~/Library/Logs/DiagnosticReports`.
   this. If you run `xcodebuild` by hand, run it the same way. A shell that exports these
   variables comes from an older `devenv.nix`. The current file does not set them,
   so tell the user to run `direnv reload`. Do not edit `devenv.nix` to work around it.
-- `ios-bindings` is missing from PATH when you are not in the devenv shell.
+- `ios-bindings` or `apple-generate` is missing from PATH when you are not in the devenv shell.
   Run the command through `devenv shell -- <command>`.
 - Build output is kept in `target/xcode/build.log`.
 

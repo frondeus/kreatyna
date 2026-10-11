@@ -1,6 +1,6 @@
 # MAC-09 — Rename the `ios/` folder to `apple/`
 
-Status: awaiting review. Change: `qttlvxyx`. Dependencies: none.
+Status: approved. Change: `qttlvxyx`. Dependencies: none.
 
 ## Open questions
 

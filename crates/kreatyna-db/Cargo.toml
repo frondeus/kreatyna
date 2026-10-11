@@ -14,7 +14,7 @@ tracing = "0.1.44"
 rust_decimal = { version = "1.43.0", default-features = false, features = ["std"] }
 
 kreatyna = { path = "../kreatyna" }
-krucyfiks = { path = "../../../krucyfix/core" }
+krucyfiks = { path = "../../../krucyfiks/core" }
 
 [dev-dependencies]
 test-case = "3"

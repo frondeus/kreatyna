@@ -195,7 +195,7 @@
         Counter leaves the app (D-17).</p>
       <p>Today there is only the iOS app in <code>ios/Kreatyna/Kreatyna.xcodeproj</code> (from the
         <a href="../ingredient-catalog.md">ingredient catalog epic</a>). The Rust core, SQLite store and ingredient
-        widgets already exist and are tested; this epic adds a Mac window over them, moves Counter to <code>krucyfix</code>'s examples, and removes it from the app.</p>
+        widgets already exist and are tested; this epic adds a Mac window over them, moves Counter to <code>krucyfiks</code>'s examples, and removes it from the app.</p>
       <p><b>Goal:</b> launching the Mac app shows the ingredient catalog in a native three-column window, where you can
         browse, search, create, edit and delete ingredients, with data kept in Rust's SQLite store. The iOS app keeps working.</p>
     </div>
@@ -233,7 +233,7 @@
           independent panes, each with its own widget. When a Mac rule differs, a Mac-specific coordinator composes the
           <i>same</i> list, detail and form widgets with its own navigation rules (E-14). Not everything has to be
           unified across platforms; how islands work is discovery for later epics. Either way, Rust makes the decisions.</li>
-        <li>Counter moves to an <code>examples/</code> folder in the <code>krucyfix</code> repository (MAC-11), where it
+        <li>Counter moves to an <code>examples/</code> folder in the <code>krucyfiks</code> repository (MAC-11), where it
           keeps showing how background effects work. Then it leaves this app (MAC-03), together with the tab concept and
           the counter table. The app is just the catalog until the recipes epic introduces Rust-owned sidebar sections
           (REC-01).</li>
@@ -256,17 +256,18 @@
         <tr><td>E-02</td><td>This epic comes before the recipe epic.</td><td>D-04. Recipes need the Mac window to exist.</td></tr>
         <tr><td>E-03</td><td>The Swift side is permanently handed over to agents; every slice is vertical.</td><td>Decided 2026-10-11, recorded in <code>AGENTS.md</code>.</td></tr>
         <tr><td>E-04</td><td>Create and edit replace the detail pane; there are no sheets or extra windows.</td><td>Same window model as recipes (D-18).</td></tr>
-        <tr><td>E-05</td><td>The counter table is dropped by a new forward-only migration.</td><td>No dead tables. Counter's code lives on in <code>krucyfix</code>, not its data.</td></tr>
+        <tr><td>E-05</td><td>The counter table is dropped by a new forward-only migration.</td><td>No dead tables. Counter's code lives on in <code>krucyfiks</code>, not its data.</td></tr>
         <tr><td>E-06</td><td><code>ios/</code> is renamed to <code>apple/</code>, in its own change.</td><td>The folder will hold both apps; renaming early is cheap.</td></tr>
         <tr><td>E-07</td><td>XcodeGen generates the Xcode project; agents own all Xcode configuration. No human gates in this epic.</td><td>You'd rather not touch Xcode, and YAML diffs are reviewable.</td></tr>
-        <tr><td>E-08</td><td>Counter, including its two-counter composition example, moves to <code>krucyfix/examples/</code> before it's removed here.</td><td>It still shows background execution flows. This un-parks F-08.</td></tr>
+        <tr><td>E-08</td><td>Counter, including its two-counter composition example, moves to <code>krucyfiks/examples/</code> before it's removed here.</td><td>It still shows background execution flows. This un-parks F-08.</td></tr>
         <tr><td>E-09</td><td>Navigation starts from today's stack of views; the Mac may diverge into “islands” (independent panes or windows, each with its own widget). Platforms don't have to share one navigation model.</td><td>A stack fits iOS; the Mac's always-visible list and later multi-window work don't. Designing islands properly is later discovery.</td></tr>
         <tr><td>E-10</td><td>Clicking another ingredient while a form has unsaved changes asks the same “Discard changes?” question as Cancel. Clean forms just switch.</td><td>One rule for every way of leaving a dirty form. Decided in review (was Q-M1).</td></tr>
-        <tr><td>E-11</td><td>The Counter example in <code>krucyfix</code> is the widget plus its tests, with capabilities only as test fixtures. No runnable app.</td><td>Tests are enough to show the background flow (was Q-M6).</td></tr>
+        <tr><td>E-11</td><td>The Counter example in <code>krucyfiks</code> is the widget plus its tests, with capabilities only as test fixtures. No runnable app.</td><td>Tests are enough to show the background flow (was Q-M6).</td></tr>
         <tr><td>E-12</td><td>Both targets share the bindings and the Swift adapter through one shared source folder listed in each target in <code>project.yml</code>. Generated files stay untouched.</td><td>The simplest sharing that XcodeGen expresses directly. Accepted in review (was Q-M2).</td></tr>
         <tr><td>E-13</td><td>The generated <code>.xcodeproj</code> is not committed. Build, test and run scripts regenerate it; <code>project.yml</code> is the only source of truth.</td><td>No generated noise in reviews, and no drift between the YAML and the project. Accepted in review (was Q-M5).</td></tr>
         <tr><td>E-14</td><td>MAC-04 starts with today's stack: the list in one column, the top layer in the other. A Mac coordinator over the same list, detail and form widgets is added as soon as a Mac rule differs; E-10 (clicking a row while a form is dirty) suggests it will be needed.</td><td>The smallest first step that works. Accepted in review (was Q-M4).</td></tr>
         <tr><td>E-15</td><td><code>project.yml</code> lives in <code>apple/Kreatyna/</code>, next to the generated <code>Kreatyna.xcodeproj</code>; the Mac target joins the same spec.</td><td>XcodeGen writes wrong source paths when the spec and the project are in different folders. Nothing moves. Decided in MAC-10 review (was MAC-10/Q1).</td></tr>
+        <tr><td>E-16</td><td>The local folder <code>krucyfix</code> is renamed to <code>krucyfiks</code>, the name of its crates and its remote. MAC-11 does the rename and updates every reference.</td><td>One name for one thing. Decided in MAC-11 review (was MAC-11/Q3).</td></tr>
       </table>
     </div>
   </section>
@@ -324,7 +325,7 @@
 const EPIC = {
   eyebrow: "Epic · mac-shell · planned 2026-10-11",
   title: "Mac Shell Epic",
-  lede: "The existing ingredient catalog in a native Mac window, with full create, edit and delete. Counter moves to `krucyfix` as an example, and Xcode configuration becomes reviewable YAML. It comes before the recipe epic (D-04).",
+  lede: "The existing ingredient catalog in a native Mac window, with full create, edit and delete. Counter moves to `krucyfiks` as an example, and Xcode configuration becomes reviewable YAML. It comes before the recipe epic (D-04).",
   external: [],
   orderNote: "One valid order. Only the arrows are real dependencies. Repository groundwork goes first, so every later slice works in `apple/` with a generated project. Counter leaves before the Mac adapter exists, so the adapter never deals with it. The rest follows the user-visible flow.",
   order: [
@@ -358,12 +359,12 @@ const EPIC = {
       refs: [],
     },
     {
-      id: "MAC-11", status: "planned", short: "Counter → krucyfix",
-      title: "Counter becomes a `krucyfix` example",
-      outcome: "The `krucyfix` repository gets an `examples/` folder with the Counter widget, its background ticking flow, the two-counter composition example, and their tests, checked by `cargo test`. The app is unchanged in this slice.",
+      id: "MAC-11", status: "awaiting-review", short: "Counter → krucyfiks", plan: "tasks/MAC-11.md",
+      title: "Counter becomes a `krucyfiks` example",
+      outcome: "The `krucyfiks` repository gets an `examples/` folder with the Counter widget, its background ticking flow, the two-counter composition example, and their tests, checked by `cargo test`. The app is unchanged in this slice.",
       layers: ["rust"], deps: [],
       acceptance: [
-        "Lands as its own jj change in the `krucyfix` repository, reviewed like any slice.",
+        "Lands as its own jj change in the `krucyfiks` repository, reviewed like any slice.",
         "The example is the widgets plus tests, with no kreatyna types; capabilities exist only as test fixtures (E-11). The tests show the background flow and composition, adapted from today's tests.",
         "Brief F-08 is marked as done.",
       ],
@@ -416,7 +417,7 @@ const EPIC = {
     {
       id: "MAC-03", status: "planned", short: "Remove Counter",
       title: "Counter leaves the app",
-      outcome: "The iOS app opens straight into the ingredient catalog with no tab bar. Counter's widget, capability, persistence code, table, bindings, screen and tests are gone. It now lives on in `krucyfix`.",
+      outcome: "The iOS app opens straight into the ingredient catalog with no tab bar. Counter's widget, capability, persistence code, table, bindings, screen and tests are gone. It now lives on in `krucyfiks`.",
       layers: ["db", "rust", "ffi", "swift"], deps: ["MAC-11"],
       acceptance: [
         "No Counter types remain in `kreatyna`, `kreatyna-db` or `kreatyna-ffi`; `AppTab` and tab selection are removed with them.",

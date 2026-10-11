@@ -15,7 +15,7 @@ outcomes cannot replace newer data; the command slot cancels work when the widge
 is dropped. Create, detail, and edit intents are outcomes for a later parent to
 handle. Selection uses only currently visible records and carries complete data.
 
-`Widget::init` now takes `&mut self` in the shared krucyfix change `nuzpozyw`,
+`Widget::init` now takes `&mut self` in the shared krucyfiks change `nuzpozyw`,
 so the widget starts its tracked load directly. Fluent `CommandExt::latest` and
 `LatestCommandSlot` in that shared change replace older loads and own both
 cancellation and generation checking. Completed results remain valid until
@@ -30,6 +30,6 @@ navigation, runtime, binding, or Swift implementation.
 
 Validation: all core tests, including 17 list-widget scenarios, pass. Clippy
 with warnings denied, FFI compilation, and changed-file formatting pass. The
-krucyfix workspace tests, Clippy, and formatting pass with its shared API change.
+krucyfiks workspace tests, Clippy, and formatting pass with its shared API change.
 Workspace formatting still reports existing import-order differences in
 unrelated counter and FFI files.

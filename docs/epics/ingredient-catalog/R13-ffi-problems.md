@@ -89,8 +89,8 @@ established defect in the current ingredient flow.
 - [SQLite setup and workers](../../../crates/kreatyna-ffi/src/database/sqlite.rs)
 - [Current facade test](../../../crates/kreatyna-ffi/src/app_runtime_tests.rs)
 - [Counter commands](../../../crates/kreatyna/src/lib.rs)
-- Framework: `krucyfix/runtime/src/lib.rs`, `Runtime::run`, `dispatch`, and `shutdown`.
-- Framework: `krucyfix/macros/src/capability.rs`, generated clients and mutable resolvers.
+- Framework: `krucyfiks/runtime/src/lib.rs`, `Runtime::run`, `dispatch`, and `shutdown`.
+- Framework: `krucyfiks/macros/src/capability.rs`, generated clients and mutable resolvers.
 
 Most lifecycle problems also apply to `CounterFfi`. The app makes their effect
 more visible because it owns more commands and more persistent data.

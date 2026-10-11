@@ -48,9 +48,9 @@ unrelated formatting failures or unavailable platform checks separately.
 
 Validation completed on 2026-09-26:
 
-- `cargo test --workspace --offline` in krucyfix
-- `cargo clippy --workspace --all-targets --offline -- -D warnings` in krucyfix
-- `cargo fmt --all -- --check` in krucyfix
+- `cargo test --workspace --offline` in krucyfiks
+- `cargo clippy --workspace --all-targets --offline -- -D warnings` in krucyfiks
+- `cargo fmt --all -- --check` in krucyfiks
 - `cargo test -p kreatyna -p kreatyna-ffi --offline`
 - `cargo clippy -p kreatyna -p kreatyna-ffi --all-targets --offline -- -D warnings`
 - `devenv shell ios-bindings -- debug` for device, simulator, and Swift bindings

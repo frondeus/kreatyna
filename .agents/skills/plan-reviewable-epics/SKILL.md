@@ -73,7 +73,7 @@ Turn the slices into a directed acyclic graph. An edge means the later slice
 needs the earlier one's behavior or contract; do not add edges merely to force
 a sequence. Give each slice a stable ID with an epic prefix (`MAC-04`,
 `REC-12`), and never reuse an ID; new slices get the next free number, even if
-they run earlier. A slice may live in another repository (such as `krucyfix`);
+they run earlier. A slice may live in another repository (such as `krucyfiks`);
 it gets its own jj change and review there. Show one suggested order, and mark the
 ordering choices that are the user's preference rather than dependencies.
 Name the critical path.

@@ -8,7 +8,7 @@ async-stream = "0.3.6"
 async-trait = "0.1.92"
 thiserror = "2.0.20"
 
-krucyfiks = { path = "../../../krucyfix/core" }
+krucyfiks = { path = "../../../krucyfiks/core" }
 tracing = "0.1.44"
 futures = "0.3.34"
 rust_decimal = { version = "1.43.0", default-features = false, features = ["std"] }

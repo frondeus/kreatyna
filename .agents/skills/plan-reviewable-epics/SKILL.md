@@ -10,6 +10,10 @@ Build larger features gradually; do not implement the whole epic in one change.
 
 ## Agree on architecture first
 
+If the intended behavior is still unclear, run
+[run-product-discovery](../run-product-discovery/SKILL.md) first and plan from
+its brief.
+
 Start with the intended behavior, scope, and non-goals. Inspect the current code
 and project agreement, then describe the major components, their responsibilities,
 state ownership, interfaces, and data flow. Identify new concepts and unresolved

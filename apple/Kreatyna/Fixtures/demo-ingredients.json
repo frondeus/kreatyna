@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Garlic",
+    "notes": "Peel the cloves. Approximate values.",
+    "calories": 149, "protein": 6.4, "carbohydrates": 33, "fat": 0.5,
+    "units": [{ "name": "clove", "grams": 5 }, { "name": "bulb", "grams": 50 }]
+  },
+  {
+    "name": "Tomato",
+    "notes": "Approximate values.",
+    "calories": 18, "protein": 0.9, "carbohydrates": 3.9, "fat": 0.2,
+    "units": [{ "name": "medium tomato", "grams": 120 }]
+  },
+  {
+    "name": "Canned tomatoes",
+    "notes": "Chopped, without salt. Approximate values.",
+    "calories": 21, "protein": 0.8, "carbohydrates": 4, "fat": 0.1,
+    "units": [{ "name": "can", "grams": 400 }]
+  },
+  {
+    "name": "Cucumber",
+    "calories": 15, "protein": 0.7, "carbohydrates": 3.6, "fat": 0.1,
+    "units": [{ "name": "cucumber", "grams": 300 }]
+  },
+  {
+    "name": "Olive oil",
+    "basis": "100ml",
+    "notes": "Approximate values.",
+    "calories": 820, "protein": 0, "carbohydrates": 0, "fat": 91,
+    "units": [{ "name": "tablespoon", "millilitres": 15, "grams": 14 }]
+  }
+]

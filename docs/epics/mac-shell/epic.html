@@ -268,7 +268,7 @@
         <tr><td>E-14</td><td>MAC-04 starts with today's stack: the list in one column, the top layer in the other. A Mac coordinator over the same list, detail and form widgets is added as soon as a Mac rule differs; E-10 (clicking a row while a form is dirty) suggests it will be needed.</td><td>The smallest first step that works. Accepted in review (was Q-M4).</td></tr>
         <tr><td>E-15</td><td><code>project.yml</code> lives in <code>apple/Kreatyna/</code>, next to the generated <code>Kreatyna.xcodeproj</code>; the Mac target joins the same spec.</td><td>XcodeGen writes wrong source paths when the spec and the project are in different folders. Nothing moves. Decided in MAC-10 review (was MAC-10/Q1).</td></tr>
         <tr><td>E-16</td><td>The local folder <code>krucyfix</code> is renamed to <code>krucyfiks</code>, the name of its crates and its remote. MAC-11 does the rename and updates every reference.</td><td>One name for one thing. Decided in MAC-11 review (was MAC-11/Q3).</td></tr>
-        <tr><td>E-17</td><td>UI tests and demos seed data through the Rust function <code>seed_ingredients</code>. Swift calls it only in Debug builds, only for an isolated test database (<code>KREATYNA_TEST_DATABASE_ID</code> plus <code>KREATYNA_TEST_SEED</code>). Rust validates the names and skips existing ones.</td><td>The Mac cannot create ingredients before MAC-05, and a UI test cannot write into the app's sandbox. Decided in MAC-01 review (was MAC-01/Q1).</td></tr>
+        <tr><td>E-17</td><td>UI tests and demos seed data through the Rust function <code>seed_ingredients</code>. Swift calls it only in Debug builds, only for an isolated test database (<code>KREATYNA_TEST_DATABASE_ID</code> plus <code>KREATYNA_TEST_SEED</code>). The seed is JSON text: an array of names and ingredient objects with the form's fields. Swift passes the text unchanged; Rust parses it, validates each item with the form's rules, and skips existing names.</td><td>The Mac cannot create ingredients before MAC-05, and a UI test cannot write into the app's sandbox. Decided in MAC-01 review (was MAC-01/Q1). JSON replaced the comma list in MAC-02 review (MAC-02/Q2), so demos and MAC-04 tests get full data.</td></tr>
         <tr><td>E-18</td><td>Tests never open the real database. In Debug builds, a unit-test host uses <code>:memory:</code>, and UI-test databases live in the container's temporary folder.</td><td>Mac tests run in the app's real sandbox container, not in a throwaway Simulator. Decided in MAC-01 review (was MAC-01/Q2).</td></tr>
       </table>
     </div>
@@ -405,12 +405,13 @@ const EPIC = {
       refs: ["D-02", "D-03"],
     },
     {
-      id: "MAC-02", kind: "tooling", status: "planned", short: "Run/demo tooling",
+      id: "MAC-02", kind: "tooling", status: "approved", short: "Run/demo tooling", plan: "tasks/MAC-02.md",
       title: "Run and demo the Mac app from the terminal",
-      outcome: "A `run-macos-app` skill builds the core and the Mac app and opens the window for the user. The delivery skill learns to capture Mac window screenshots as well as simulator ones.",
-      layers: [], deps: ["MAC-01"],
+      outcome: "A `run-macos-app` skill builds the core and the Mac app and opens the window for the user, optionally with an isolated database seeded from a JSON file. The delivery skill learns to capture Mac window screenshots as well as simulator ones.",
+      layers: ["ffi", "swift"], deps: ["MAC-01"],
       acceptance: [
         "One command from the repo root (inside devenv) builds and opens the Mac app.",
+        "Seeds are JSON (E-17): names or full ingredients, validated by Rust with the form's rules. A demo fixture with full data is checked by a Rust test.",
         "`document-ios-delivery` covers Mac evidence (or is generalised and renamed), stating macOS version and window size.",
         "Both skills are symlinked into `.claude/skills/`.",
       ],

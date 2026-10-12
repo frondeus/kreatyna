@@ -719,6 +719,8 @@ dependencies = [
  "krucyfiks-runtime",
  "parking_lot",
  "rust_decimal",
+ "serde",
+ "serde_json",
  "tempfile",
  "test-case",
  "thiserror",

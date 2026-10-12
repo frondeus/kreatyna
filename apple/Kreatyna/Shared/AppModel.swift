@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import OSLog
 
 /// Holds the Rust app facade and publishes its latest view on the main actor.
 @MainActor
@@ -21,11 +22,13 @@ final class AppModel {
             return
         }
         #if DEBUG
-        let seed = TestSeed.names()
-        if !seed.isEmpty {
+        if let seed = TestSeed.json() {
             do {
-                try seedIngredients(databasePath: path, names: seed)
+                try seedIngredients(databasePath: path, json: seed)
             } catch {
+                // The run script's user reads Rust's reason in the log.
+                Logger(subsystem: "pl.frondeus.Kreatyna", category: "seed")
+                    .error("Seeding failed: \(String(describing: error), privacy: .public)")
                 errorMessage = "Test data could not be added."
             }
         }

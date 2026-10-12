@@ -2,8 +2,8 @@ import XCTest
 
 /// Captures the simulator screenshots for `docs/epics/ingredient-catalog/demo.md`.
 ///
-/// This is delivery evidence, not a behavior check. It runs only on request:
-/// `TEST_RUNNER_KREATYNA_CAPTURE_DEMO=1 xcodebuild test -only-testing:KreatynaUITests/DemoCaptureUITests`.
+/// This is delivery evidence, not a behavior check. It runs only on request, through
+/// `.agents/skills/document-apple-delivery/scripts/capture-demo.sh ios KreatynaUITests/DemoCaptureUITests <folder>`.
 /// Screenshots are attached to the result bundle with their demo file names.
 final class DemoCaptureUITests: XCTestCase {
 

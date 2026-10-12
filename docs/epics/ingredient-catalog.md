@@ -195,7 +195,7 @@ Follow [build-swift-presentation](../../.agents/skills/build-swift-presentation/
 Swift tests cover wiring, adapters, and rendering, not logic already tested in
 Rust. The task plan is [S01](ingredient-catalog/tasks/S01-swift-integration.md).
 
-Follow [document-ios-delivery](../../.agents/skills/document-ios-delivery/SKILL.md)
+Follow [document-apple-delivery](../../.agents/skills/document-apple-delivery/SKILL.md)
 and deliver `docs/epics/ingredient-catalog/demo.md` in S01. Its scenarios cover
 the main create, browse, search, edit, delete, relaunch, and tab flows, plus the
 implemented edge states: empty catalog, loading and retry, validation and

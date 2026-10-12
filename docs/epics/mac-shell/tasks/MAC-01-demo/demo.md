@@ -12,10 +12,8 @@ temporary folder (E-18). Rust saved the listed names before the app started
 To capture again:
 
 ```sh
-TEST_RUNNER_KREATYNA_CAPTURE_DEMO=1 xcodebuild test \
-  -project apple/Kreatyna/Kreatyna.xcodeproj -scheme KreatynaMac \
-  -destination "platform=macOS,arch=arm64" \
-  -only-testing:KreatynaMacUITests/MacDemoCaptureUITests
+.agents/skills/document-apple-delivery/scripts/capture-demo.sh mac \
+  KreatynaMacUITests/MacDemoCaptureUITests docs/epics/mac-shell/tasks/MAC-01-demo
 ```
 
 ## 1. Catalog with rows

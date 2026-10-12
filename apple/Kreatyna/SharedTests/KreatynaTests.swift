@@ -81,7 +81,7 @@ extension MainActorTests {
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
             defer { try? FileManager.default.removeItem(at: root) }
             let path = root.appendingPathComponent("app.sqlite").path
-            try seedIngredients(databasePath: path, names: ["Garlic"])
+            try seedIngredients(databasePath: path, json: #"["Garlic"]"#)
 
             let model = AppModel(databasePath: path)
             defer { model.shutdown() }
@@ -159,12 +159,17 @@ struct AppDatabaseLocationTests {
 
 struct TestSeedTests {
 
-    @Test func readsNamesForIsolatedDatabase() {
-        let environment = ["KREATYNA_TEST_DATABASE_ID": UUID().uuidString, "KREATYNA_TEST_SEED": "Garlic,Tomato"]
-        #expect(TestSeed.names(environment: environment) == ["Garlic", "Tomato"])
+    @Test func passesJSONTextForIsolatedDatabase() {
+        let json = #"["Garlic", {"name": "Tomato", "calories": 18}]"#
+        let environment = ["KREATYNA_TEST_DATABASE_ID": UUID().uuidString, "KREATYNA_TEST_SEED": json]
+        #expect(TestSeed.json(environment: environment) == json)
     }
 
     @Test func ignoresSeedWithoutIsolatedDatabase() {
-        #expect(TestSeed.names(environment: ["KREATYNA_TEST_SEED": "Garlic"]).isEmpty)
+        #expect(TestSeed.json(environment: ["KREATYNA_TEST_SEED": #"["Garlic"]"#]) == nil)
+    }
+
+    @Test func noSeedWithoutSeedVariable() {
+        #expect(TestSeed.json(environment: ["KREATYNA_TEST_DATABASE_ID": UUID().uuidString]) == nil)
     }
 }

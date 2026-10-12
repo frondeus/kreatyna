@@ -10,7 +10,7 @@ final class KreatynaMacUITests: XCTestCase {
 
     @MainActor
     func testLaunchShowsSeededCatalog() throws {
-        let app = launch(seed: ["Garlic", "Tomato"])
+        let app = try launch(seed: ["Garlic", "Tomato"])
 
         XCTAssertTrue(row(named: "Garlic", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(row(named: "Tomato", in: app).exists)
@@ -19,17 +19,19 @@ final class KreatynaMacUITests: XCTestCase {
 
     @MainActor
     func testLaunchShowsEmptyCatalog() throws {
-        let app = launch(seed: [])
+        let app = try launch(seed: [])
 
         XCTAssertTrue(app.staticTexts["No ingredients yet"].waitForExistence(timeout: 5))
     }
 
     @MainActor
-    private func launch(seed: [String]) -> XCUIApplication {
+    private func launch(seed: [String]) throws -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
         if !seed.isEmpty {
-            app.launchEnvironment["KREATYNA_TEST_SEED"] = seed.joined(separator: ",")
+            // The seed is a JSON array of names (E-17).
+            let json = try JSONEncoder().encode(seed)
+            app.launchEnvironment["KREATYNA_TEST_SEED"] = String(decoding: json, as: UTF8.self)
         }
         app.launch()
         return app

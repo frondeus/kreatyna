@@ -27,7 +27,7 @@ through the core's event/effect interface. Business decisions stay in Rust.
   from `apple/Kreatyna/project.yml`, so agents change it as reviewable text.
   Edit `project.yml`, never the generated `.xcodeproj` (it is not committed),
   and run `apple-generate` after each edit. The user is new to Apple
-  development and is using Xcode 26.2.
+  development and is using Xcode 27.0.
 
 ## Initial Xcode choices
 

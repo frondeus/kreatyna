@@ -55,6 +55,8 @@ Rust behavior changed is in the wrong layer.
 Run the checks for each change and report any that could not run. Inside the
 devenv shell, `ios-bindings debug` rebuilds the Rust core and `ios-test` runs
 all iOS tests (Swift Testing, snapshots, and UI tests) on a booted simulator.
+`mac-test` runs all Mac tests on this Mac; its UI tests need Automation Mode
+without a password prompt (`automationmodetool`).
 
 ## Xcode project
 

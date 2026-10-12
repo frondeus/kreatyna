@@ -85,6 +85,25 @@ settings:
       SWIFT_COMPILATION_MODE: wholemodule
       VALIDATE_PRODUCT: YES
 
+settingGroups:
+  # Shared by the three Mac targets. The project-level settings above are for
+  # iOS; this group overrides the SDK (MAC-00).
+  macOS:
+    SDKROOT: macosx
+    MACOSX_DEPLOYMENT_TARGET: "26.2"
+    CODE_SIGN_STYLE: Automatic
+    # Sign to Run Locally: this Mac has no Apple developer certificate.
+    CODE_SIGN_IDENTITY: "-"
+    # Only notarisation needs the hardened runtime. With ad-hoc signing it
+    # stops the test bundle from loading into the app ("different Team IDs").
+    ENABLE_HARDENED_RUNTIME: NO
+    CURRENT_PROJECT_VERSION: 1
+    GENERATE_INFOPLIST_FILE: YES
+    MARKETING_VERSION: "1.0"
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
+    SWIFT_VERSION: "5.0"
+
 targets:
   Kreatyna:
     type: application
@@ -187,3 +206,68 @@ targets:
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         TEST_TARGET_NAME: Kreatyna
+
+  KreatynaMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: KreatynaMac
+        type: syncedFolder
+    settings:
+      groups: [macOS]
+      base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        COMBINE_HIDPI_IMAGES: YES
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_PREVIEWS: YES
+        LD_RUNPATH_SEARCH_PATHS: ["$(inherited)", "@executable_path/../Frameworks"]
+        # The same identifier as the iOS app (MAC-00/Q2). The sandbox
+        # container is ~/Library/Containers/pl.frondeus.Kreatyna/Data.
+        PRODUCT_BUNDLE_IDENTIFIER: pl.frondeus.Kreatyna
+        # The menu bar and Finder show "Kreatyna".
+        PRODUCT_NAME: Kreatyna
+        STRING_CATALOG_GENERATE_SYMBOLS: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_EMIT_LOC_STRINGS: YES
+    scheme:
+      testTargets:
+        - name: KreatynaMacTests
+          parallelizable: true
+        - name: KreatynaMacUITests
+          parallelizable: true
+
+  KreatynaMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: KreatynaMacTests
+        type: syncedFolder
+    dependencies:
+      - target: KreatynaMac
+    settings:
+      groups: [macOS]
+      base:
+        BUNDLE_LOADER: $(TEST_HOST)
+        PRODUCT_BUNDLE_IDENTIFIER: pl.frondeus.KreatynaMacTests
+        PRODUCT_NAME: $(TARGET_NAME)
+        STRING_CATALOG_GENERATE_SYMBOLS: NO
+        SWIFT_EMIT_LOC_STRINGS: NO
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Kreatyna.app/Contents/MacOS/Kreatyna
+
+  KreatynaMacUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: KreatynaMacUITests
+        type: syncedFolder
+    dependencies:
+      - target: KreatynaMac
+    settings:
+      groups: [macOS]
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pl.frondeus.KreatynaMacUITests
+        PRODUCT_NAME: $(TARGET_NAME)
+        STRING_CATALOG_GENERATE_SYMBOLS: NO
+        SWIFT_EMIT_LOC_STRINGS: NO
+        TEST_TARGET_NAME: KreatynaMac

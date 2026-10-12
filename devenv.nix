@@ -41,6 +41,13 @@ let
 
     echo "Built $CARGO_TARGET_DIR/${target}/$profile/libkreatyna_ffi.a"
   '';
+
+  # Xcode needs nothing from the Nix shell. A minimal environment keeps Nix
+  # compiler variables (LD, CC, SDKROOT, NIX_LDFLAGS) out of its link step.
+  xcodeEnv = ''
+    clean_env=(env -i HOME="$HOME" USER="$USER" PATH=/usr/bin:/bin:/usr/sbin:/sbin
+      DEVELOPER_DIR="$DEVELOPER_DIR")
+  '';
 in
 {
   # Use Xcode's toolchain instead of Nix's on macOS. Nix's apple-sdk exports
@@ -126,11 +133,7 @@ in
       set -euo pipefail
       cd ${lib.escapeShellArg config.devenv.root}
       apple-generate
-
-      # Xcode needs nothing from the Nix shell. A minimal environment keeps Nix
-      # compiler variables (LD, CC, SDKROOT, NIX_LDFLAGS) out of its link step.
-      clean_env=(env -i HOME="$HOME" USER="$USER" PATH=/usr/bin:/bin:/usr/sbin:/sbin
-        DEVELOPER_DIR="$DEVELOPER_DIR")
+      ${xcodeEnv}
 
       udid="''${1:-}"
       if [ -z "$udid" ]; then
@@ -154,6 +157,29 @@ in
         exit 1
       fi
       grep -E "Test run with|TEST SUCCEEDED" target/xcode/test.log || true
+    '';
+  };
+
+  scripts.mac-test = {
+    description = "Generate the Xcode project and run all macOS tests: mac-test";
+    exec = ''
+      set -euo pipefail
+      cd ${lib.escapeShellArg config.devenv.root}
+      apple-generate
+      ${xcodeEnv}
+
+      # The UI tests need Automation Mode without a prompt (MAC-00/Q1):
+      # sudo automationmodetool enable-automationmode-without-authentication
+      mkdir -p target/xcode
+      echo "==> Testing on this Mac (log: target/xcode/mac-test.log)"
+      if ! "''${clean_env[@]}" xcodebuild test \
+          -project apple/Kreatyna/Kreatyna.xcodeproj -scheme KreatynaMac \
+          -destination "platform=macOS,arch=arm64" -derivedDataPath target/xcode/DerivedData \
+          >target/xcode/mac-test.log 2>&1; then
+        grep -E "error:|failed|TEST FAILED" target/xcode/mac-test.log >&2 || tail -40 target/xcode/mac-test.log >&2
+        exit 1
+      fi
+      grep -E "Test run with|TEST SUCCEEDED" target/xcode/mac-test.log || true
     '';
   };
 }

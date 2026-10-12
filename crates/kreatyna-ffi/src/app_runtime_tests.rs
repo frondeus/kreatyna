@@ -15,6 +15,7 @@ fn app_ffi_initializes_before_exposing_the_running_app() {
             render: Arc::new(render),
         },
         database.path().into(),
+        AppLayout::Stack,
     );
 
     let initial = app.view().unwrap();
@@ -28,7 +29,7 @@ fn app_ffi_initializes_before_exposing_the_running_app() {
     assert!(matches!(
         app.dispatch(AppEvent::Ingredients {
             event: IngredientCatalogEvent::List {
-                scope: running_view(&app).ingredients.scope,
+                scope: stack_view(&app).scope,
                 event: IngredientListEvent::Select {
                     id: "not-a-uuid".into(),
                 },
@@ -46,7 +47,7 @@ fn app_ffi_initializes_before_exposing_the_running_app() {
     assert!(matches!(
         app.dispatch(AppEvent::Ingredients {
             event: IngredientCatalogEvent::List {
-                scope: running_view(&app).ingredients.scope,
+                scope: stack_view(&app).scope,
                 event: IngredientListEvent::Search {
                     query: "gar".into(),
                 },
@@ -65,6 +66,7 @@ fn failed_initialization_can_retry_with_fresh_database_setup() {
             render: Arc::new(render),
         },
         database.path(),
+        AppLayout::Stack,
     );
 
     app.start().unwrap();
@@ -84,6 +86,29 @@ fn failed_initialization_can_retry_with_fresh_database_setup() {
 }
 
 #[test]
+fn the_split_layout_reaches_a_ready_split_catalog() {
+    let database = TemporaryDatabase::new();
+    let (render, rendered) = TestRender::new();
+    let app = app(
+        AppCapabilities {
+            render: Arc::new(render),
+        },
+        database.path().into(),
+        AppLayout::Split,
+    );
+
+    app.start().unwrap();
+    let running = wait_until_ready(&app, &rendered);
+
+    let IngredientsView::Split { catalog } = running.ingredients else {
+        panic!("expected the split layout")
+    };
+    assert_eq!(catalog.selected, None);
+    assert_eq!(catalog.pane.value, IngredientSplitPaneView::Empty);
+    app.shutdown();
+}
+
+#[test]
 fn graceful_shutdown_before_initialization_is_polled_drains_prepared_children() {
     let database = TemporaryDatabase::new();
     let (render, _rendered) = TestRender::new();
@@ -92,6 +117,7 @@ fn graceful_shutdown_before_initialization_is_polled_drains_prepared_children() 
         render: Arc::new(RenderHandlerShim {
             handler: Arc::new(render),
         }),
+        layout: kreatyna::AppLayout::Stack,
     };
     let runtime = Arc::new(krucyfiks_runtime::Runtime::new(
         crate::app_shell::AppShell::new(setup),
@@ -105,7 +131,7 @@ fn graceful_shutdown_before_initialization_is_polled_drains_prepared_children() 
         panic!("preparation should finish while the runtime drains")
     };
     assert!(matches!(
-        app.ingredients.list.status,
+        list_status(&app),
         IngredientListStatus::Ready { .. }
     ));
 }
@@ -189,12 +215,23 @@ fn wait_until_ready(app: &AppFfi, rendered: &flume::Receiver<()>) -> RunningAppV
         let AppView::Running { app } = view else {
             return false;
         };
-        matches!(
-            app.ingredients.list.status,
-            IngredientListStatus::Ready { .. }
-        )
+        matches!(list_status(app), IngredientListStatus::Ready { .. })
     });
     running_view(app)
+}
+
+fn stack_view(app: &AppFfi) -> IngredientCatalogView {
+    let IngredientsView::Stack { catalog } = running_view(app).ingredients else {
+        panic!("expected the stack layout")
+    };
+    catalog
+}
+
+fn list_status(app: &RunningAppView) -> &IngredientListStatus {
+    match &app.ingredients {
+        IngredientsView::Stack { catalog } => &catalog.list.status,
+        IngredientsView::Split { catalog } => &catalog.list.value.status,
+    }
 }
 
 fn wait_until(app: &AppFfi, rendered: &flume::Receiver<()>, predicate: impl Fn(&AppView) -> bool) {

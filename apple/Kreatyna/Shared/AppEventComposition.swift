@@ -7,6 +7,38 @@ extension RunningAppView {
     func ingredients(_ event: IngredientCatalogEvent) -> AppEvent {
         .ingredients(event: event)
     }
+
+    func splitIngredients(_ event: IngredientSplitCatalogEvent) -> AppEvent {
+        .splitIngredients(event: event)
+    }
+}
+
+extension IngredientsView {
+    /// The catalog of the stack layout (iOS), or `nil` in the split layout.
+    var stack: IngredientCatalogView? {
+        if case .stack(let catalog) = self { catalog } else { nil }
+    }
+
+    /// The catalog of the split layout (Mac), or `nil` in the stack layout.
+    var split: IngredientSplitCatalogView? {
+        if case .split(let catalog) = self { catalog } else { nil }
+    }
+}
+
+// Each part of the split view carries its own scope. The list keeps one for
+// its whole life; the pane gets a new one for each selection.
+extension IngredientSplitCatalogView {
+    func list(_ event: IngredientListEvent) -> IngredientSplitCatalogEvent {
+        .list(scope: list.scope, event: event)
+    }
+
+    func detail(_ event: IngredientDetailEvent) -> IngredientSplitCatalogEvent {
+        .detail(scope: pane.scope, event: event)
+    }
+
+    var clearSelection: IngredientSplitCatalogEvent {
+        .clearSelection(scope: pane.scope)
+    }
 }
 
 extension IngredientCatalogView {

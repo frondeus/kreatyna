@@ -22,7 +22,7 @@ struct IngredientDetailScreen: View {
             if !ingredient.units.isEmpty {
                 Section("Reference units") {
                     ForEach(Array(ingredient.units.enumerated()), id: \.offset) { _, unit in
-                        LabeledContent(unit.name, value: measurement(unit))
+                        LabeledContent(unit.name, value: unit.measurementText)
                     }
                 }
             }
@@ -72,12 +72,6 @@ struct IngredientDetailScreen: View {
 
     private var deleteError: IngredientDeleteError? {
         if case .confirming(_, let error) = view.deletion { error } else { nil }
-    }
-
-    private func measurement(_ unit: ReferenceUnit) -> String {
-        [unit.grams.map { "\($0) g" }, unit.millilitres.map { "\($0) ml" }]
-            .compactMap { $0 }
-            .joined(separator: " · ")
     }
 }
 

@@ -16,7 +16,7 @@ async fn initialization_loads_the_catalog_once() -> anyhow::Result<()> {
     empty(f.app.init()).await;
     f.drive_initialization(command).await?;
     assert!(matches!(
-        f.app.view().ingredients.list.status,
+        f.stack().list.status,
         IngredientListStatus::Ready { ref rows, .. }
             if rows.iter().map(|row| row.name.as_str()).eq(["Garlic"])
     ));
@@ -30,10 +30,10 @@ async fn catalog_events_and_outcomes_route_through_the_app() -> anyhow::Result<(
     f.initialize().await?;
     let command = f.list(IngredientListEvent::Search("gar".into()));
     f.render(command).await?;
-    assert_eq!(f.app.view().ingredients.list.search, "gar");
+    assert_eq!(f.stack().list.search, "gar");
     f.create().await?;
     assert!(matches!(
-        f.app.view().ingredients.screen,
+        f.stack().screen,
         IngredientCatalogScreenView::Create(_)
     ));
     Ok(())
@@ -87,15 +87,61 @@ async fn shutdown_hook_preserves_an_accepted_ingredient_save_and_follow_up() -> 
     drop(command);
     f.apply_render(terminal).await?;
 
-    assert_eq!(
-        f.app.view().ingredients.navigation,
-        IngredientNavigation::List
-    );
+    assert_eq!(f.stack().navigation, IngredientNavigation::List);
     assert!(matches!(
-        f.app.view().ingredients.list.status,
+        f.stack().list.status,
         IngredientListStatus::Ready { ref rows, .. }
             if rows.iter().any(|row| row.name == "Garlic")
     ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_split_layout_runs_the_split_catalog() -> anyhow::Result<()> {
+    let mut f = Fixture::with(AppLayout::Split);
+    f.initialize().await?;
+    let catalog = f.split();
+    assert!(matches!(
+        catalog.list.value.status,
+        IngredientListStatus::Ready { ref rows, .. }
+            if rows.iter().map(|row| row.name.as_str()).eq(["Garlic"])
+    ));
+    assert_eq!(catalog.selected, None);
+
+    let row = record_id(&catalog.list.value);
+    let command = f.app.update(Message::Event(AppEvent::SplitIngredients(
+        IngredientSplitCatalogEvent::List(Scoped::new(
+            catalog.list.scope,
+            IngredientListEvent::Select(row),
+        )),
+    )));
+    let outcome = command.into_stream().next().await.unwrap();
+    f.apply_render(outcome).await?;
+    assert_eq!(f.split().selected, Some(row));
+    Ok(())
+}
+
+#[tokio::test]
+async fn an_event_for_the_other_layout_is_ignored() -> anyhow::Result<()> {
+    let mut stack = Fixture::new();
+    stack.initialize().await?;
+    let before = stack.app.view();
+    let scope = stack.stack().scope;
+    empty(stack.app.update(Message::Event(AppEvent::SplitIngredients(
+        IngredientSplitCatalogEvent::ClearSelection { scope },
+    ))))
+    .await;
+    assert_eq!(stack.app.view(), before);
+
+    let mut split = Fixture::with(AppLayout::Split);
+    split.initialize().await?;
+    let before = split.app.view();
+    let scope = split.split().list.scope;
+    empty(split.app.update(Message::Event(AppEvent::Ingredients(
+        IngredientCatalogEvent::List(Scoped::new(scope, IngredientListEvent::CreateRequested)),
+    ))))
+    .await;
+    assert_eq!(split.app.view(), before);
     Ok(())
 }
 
@@ -122,6 +168,12 @@ fn record() -> Ingredient {
         units: vec![],
     }
 }
+fn record_id(list: &IngredientListView) -> IngredientId {
+    let IngredientListStatus::Ready { rows, .. } = &list.status else {
+        panic!("expected a ready list");
+    };
+    rows[0].id
+}
 async fn empty(command: Command<AppOutcome>) {
     assert!(command.into_stream().next().await.is_none());
 }
@@ -131,8 +183,23 @@ struct Fixture {
 }
 impl Fixture {
     fn new() -> Self {
-        let (app, effects) = AppWidget::test_fixture();
+        Self::with(AppLayout::Stack)
+    }
+    fn with(layout: AppLayout) -> Self {
+        let (app, effects) = AppWidget::test_fixture_with(layout);
         Self { app, effects }
+    }
+    fn stack(&self) -> IngredientCatalogView {
+        let IngredientsView::Stack(catalog) = self.app.view().ingredients else {
+            panic!("expected the stack layout");
+        };
+        catalog
+    }
+    fn split(&self) -> IngredientSplitCatalogView {
+        let IngredientsView::Split(catalog) = self.app.view().ingredients else {
+            panic!("expected the split layout");
+        };
+        catalog
     }
     fn ingredients(&mut self, event: IngredientCatalogEvent) -> Command<AppOutcome> {
         self.app
@@ -140,13 +207,13 @@ impl Fixture {
     }
     fn list(&mut self, event: IngredientListEvent) -> Command<AppOutcome> {
         self.ingredients(IngredientCatalogEvent::List(Scoped::new(
-            self.app.view().ingredients.scope,
+            self.stack().scope,
             event,
         )))
     }
     fn form(&mut self, event: IngredientFormEvent) -> Command<AppOutcome> {
         self.ingredients(IngredientCatalogEvent::Form(Scoped::new(
-            self.app.view().ingredients.scope,
+            self.stack().scope,
             event,
         )))
     }

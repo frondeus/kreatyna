@@ -18,6 +18,35 @@ final class KreatynaMacUITests: XCTestCase {
     }
 
     @MainActor
+    func testSelectingRowsShowsTheirDetail() throws {
+        let app = try launch(json: #"""
+            [{"name": "Garlic", "units": [{"name": "clove", "grams": 5}]}, "Basil"]
+            """#)
+
+        XCTAssertTrue(row(named: "Garlic", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientDetailPlaceholder"].exists)
+
+        row(named: "Garlic", in: app).click()
+        XCTAssertTrue(app.staticTexts["clove"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["5 g"].exists)
+
+        row(named: "Basil", in: app).click()
+        XCTAssertTrue(waitForNonExistence(app.staticTexts["clove"], timeout: 5))
+        XCTAssertTrue(app.staticTexts["Basil"].firstMatch.exists)
+
+        // ↓ moves the selection like a click: Basil → Garlic.
+        app.typeKey(.downArrow, modifierFlags: [])
+        XCTAssertTrue(app.staticTexts["clove"].waitForExistence(timeout: 5))
+
+        // ⌘-click on the selected row clears the selection.
+        XCUIElement.perform(withKeyModifiers: .command) {
+            row(named: "Garlic", in: app).click()
+        }
+        XCTAssertTrue(waitForNonExistence(app.staticTexts["clove"], timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientDetailPlaceholder"].exists)
+    }
+
+    @MainActor
     func testLaunchShowsEmptyCatalog() throws {
         let app = try launch(seed: [])
 
@@ -26,15 +55,24 @@ final class KreatynaMacUITests: XCTestCase {
 
     @MainActor
     private func launch(seed: [String]) throws -> XCUIApplication {
+        // The seed is a JSON array of names (E-17).
+        try launch(json: seed.isEmpty ? nil : String(decoding: JSONEncoder().encode(seed), as: UTF8.self))
+    }
+
+    @MainActor
+    private func launch(json: String?) throws -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
-        if !seed.isEmpty {
-            // The seed is a JSON array of names (E-17).
-            let json = try JSONEncoder().encode(seed)
-            app.launchEnvironment["KREATYNA_TEST_SEED"] = String(decoding: json, as: UTF8.self)
+        if let json {
+            app.launchEnvironment["KREATYNA_TEST_SEED"] = json
         }
         app.launch()
         return app
+    }
+
+    private func waitForNonExistence(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
+        return XCTWaiter().wait(for: [gone], timeout: timeout) == .completed
     }
 
     @MainActor

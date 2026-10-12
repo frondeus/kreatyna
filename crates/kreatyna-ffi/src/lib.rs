@@ -120,7 +120,7 @@ pub struct AppCapabilities {
 }
 
 #[uniffi::export]
-pub fn app(caps: AppCapabilities, database_path: String) -> Arc<AppFfi> {
+pub fn app(caps: AppCapabilities, database_path: String, layout: AppLayout) -> Arc<AppFfi> {
     let render: Arc<dyn kreatyna::capabilities::Render> = Arc::new(RenderHandlerShim {
         handler: caps.render,
     });
@@ -128,6 +128,7 @@ pub fn app(caps: AppCapabilities, database_path: String) -> Arc<AppFfi> {
     let widget = AppShell::new(AppSetup {
         database_path,
         render,
+        layout: layout.into(),
     });
     let runtime = Arc::new(Runtime::new(widget));
 

@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAC-04 Design</title>
+<style>
+:root {
+  --bg: #f4f4f6; --surface: #ffffff; --window: #ffffff; --sidebar: #eceaee; --bar: #f6f6f8;
+  --text: #1c1c1e; --muted: #6e6e73; --line: #d8d8dc; --accent: #0a84ff; --sel: #dcdce1;
+  --warn: #d70015; --stub: #a15c00; --stub-bg: #fff3dc;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111113; --surface: #1c1c1e; --window: #1e1e20; --sidebar: #29282c; --bar: #2a2a2d;
+    --text: #f2f2f7; --muted: #98989f; --line: #3a3a3d; --accent: #0a84ff; --sel: #3a3a3e;
+    --warn: #ff6961; --stub: #ffb340; --stub-bg: #3a2a10;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111113; --surface: #1c1c1e; --window: #1e1e20; --sidebar: #29282c; --bar: #2a2a2d;
+  --text: #f2f2f7; --muted: #98989f; --line: #3a3a3d; --accent: #0a84ff; --sel: #3a3a3e;
+  --warn: #ff6961; --stub: #ffb340; --stub-bg: #3a2a10;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+.page { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+header { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+h1 { margin: 0 0 4px; font-size: 24px; }
+h2 { margin: 32px 0 6px; font-size: 18px; }
+p { margin: 0 0 12px; }
+.muted { color: var(--muted); }
+button.theme { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.scroll { overflow-x: auto; padding: 4px 0 8px; }
+.win { width: 860px; height: 480px; border: 1px solid var(--line); border-radius: 12px; background: var(--window);
+  overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 28px rgba(0,0,0,.12); }
+.titlebar { height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: var(--bar);
+  border-bottom: 1px solid var(--line); font-size: 13px; }
+.lights { display: flex; gap: 7px; width: 186px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; display: block; }
+.lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+.coltitle { font-weight: 600; width: 220px; }
+.spacer { flex: 1; }
+.tb { border: 1px solid var(--line); border-radius: 6px; padding: 1px 9px; font-size: 16px; }
+.tb.disabled { opacity: .35; }
+.grid { flex: 1; display: grid; grid-template-columns: 200px 280px 1fr; min-height: 0; }
+.sidebar { background: var(--sidebar); padding: 10px 8px; border-right: 1px solid var(--line); font-size: 13px; }
+.sidebar h4 { margin: 4px 8px 6px; font-size: 11px; color: var(--muted); font-weight: 600; }
+.item { padding: 4px 8px; border-radius: 6px; }
+.item.sel { background: var(--sel); }
+.list { border-right: 1px solid var(--line); font-size: 13px; position: relative; }
+.row { padding: 7px 14px; border-bottom: 1px solid var(--line); }
+.row.sel { background: var(--accent); color: #fff; border-radius: 6px; margin: 2px 6px; border-bottom: 0; }
+.pane { padding: 18px 22px; overflow: hidden; }
+.pane h3 { margin: 0 0 14px; font-size: 20px; }
+.group { border: 1px solid var(--line); border-radius: 8px; margin: 4px 0 14px; background: var(--surface); }
+.group .kv { display: flex; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.group .kv:last-child { border-bottom: 0; }
+.group .kv span:last-child { color: var(--muted); }
+.glabel { font-size: 11px; font-weight: 600; color: var(--muted); margin: 0 4px; }
+.note { padding: 8px 12px; font-size: 13px; }
+.center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; padding: 16px; gap: 4px; }
+.center strong { font-size: 15px; }
+.center .btn { margin-top: 8px; background: var(--accent); color: #fff; border-radius: 6px; padding: 3px 12px; font-size: 13px; }
+.detail { position: relative; }
+.full { flex: 1; position: relative; }
+.stub { display: inline-block; color: var(--stub); background: var(--stub-bg); border-radius: 6px;
+  padding: 1px 6px; font-size: 12px; font-weight: 600; }
+.warn { color: var(--warn); }
+ul { padding-left: 20px; margin: 6px 0 0; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div>
+      <h1>MAC-04 — Select an ingredient to see its details</h1>
+      <p class="muted">Target state after MAC-04. The list stays live. Clicking a row sends one event; Rust opens the
+        detail, and the highlight comes from Rust's selection. No row is selected at launch (MAC-04/Q2).</p>
+    </div>
+    <button class="theme" id="themeBtn" type="button">Theme: auto</button>
+  </header>
+
+  <h2>1 · Garlic selected: full data</h2>
+  <p class="muted">Seeded from <code>demo-ingredients.json</code>. Sections: Notes, Nutrition per 100 g, Reference units.</p>
+  <div class="scroll"><div class="win">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="spacer"></span><span class="tb disabled">＋</span><span class="tb disabled">Edit</span><span class="tb disabled">Delete</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="row">Basil</div><div class="row">Canned tomatoes</div><div class="row">Cucumber</div><div class="row sel">Garlic</div><div class="row">Olive oil</div><div class="row">Tomato</div></div>
+      <div class="detail pane"><h3>Garlic</h3>
+        <div class="glabel">Notes</div><div class="group"><div class="note">Peel the cloves. Approximate values.</div></div>
+        <div class="glabel">Nutrition per 100 g</div><div class="group">
+          <div class="kv"><span>Calories</span><span>149 kcal</span></div><div class="kv"><span>Protein</span><span>6.4 g</span></div>
+          <div class="kv"><span>Carbohydrates</span><span>33 g</span></div><div class="kv"><span>Fat</span><span>0.5 g</span></div></div>
+        <div class="glabel">Reference units</div><div class="group">
+          <div class="kv"><span>clove</span><span>5 g</span></div><div class="kv"><span>bulb</span><span>50 g</span></div></div></div>
+    </div>
+  </div></div>
+
+  <p><span class="stub">stub</span> <b>Edit</b> is disabled (MAC-06). <span class="stub">stub</span> <b>Delete</b> is disabled
+    (MAC-07). <span class="stub">stub</span> <b>＋</b> is disabled (MAC-05).</p>
+
+  <h2>2 · Another row: a name only</h2>
+  <p class="muted">Clicking Basil replaces Garlic's detail. Basil is a name-only item (<code>"Basil"</code>) in the fixture. An ingredient with only a name has no Notes and no
+    Reference units sections. Unknown nutrition values show “—”, like iOS.</p>
+  <div class="scroll"><div class="win">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="spacer"></span><span class="tb disabled">＋</span><span class="tb disabled">Edit</span><span class="tb disabled">Delete</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="row sel">Basil</div><div class="row">Canned tomatoes</div><div class="row">Cucumber</div><div class="row">Garlic</div><div class="row">Olive oil</div><div class="row">Tomato</div></div>
+      <div class="detail pane"><h3>Basil</h3>
+        <div class="glabel">Nutrition per 100 g</div><div class="group">
+          <div class="kv"><span>Calories</span><span>—</span></div><div class="kv"><span>Protein</span><span>—</span></div>
+          <div class="kv"><span>Carbohydrates</span><span>—</span></div><div class="kv"><span>Fat</span><span>—</span></div></div></div>
+    </div>
+  </div></div>
+
+
+  <h2>Not shown</h2>
+  <ul>
+    <li><b>Launch</b>: no row selected, the detail pane says “Select an ingredient” (as in MAC-01).</li>
+    <li><b>⌘-click on the selected row</b>: Rust clears the selection, and the pane returns to “Select an ingredient”.</li>
+    <li><b>Arrow keys</b>: move the selection like a click; each move sends one event.</li>
+  </ul>
+</div>
+<script>
+(function () {
+  const btn = document.getElementById("themeBtn");
+  const modes = ["auto", "light", "dark"];
+  let mode = "auto";
+  try { mode = localStorage.getItem("mac04-theme") || "auto"; } catch (e) {}
+  function apply() {
+    if (mode === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", mode);
+    btn.textContent = "Theme: " + mode;
+  }
+  btn.addEventListener("click", function () {
+    mode = modes[(modes.indexOf(mode) + 1) % modes.length];
+    try { localStorage.setItem("mac04-theme", mode); } catch (e) {}
+    apply();
+  });
+  apply();
+})();
+</script>
+</body>
+</html>

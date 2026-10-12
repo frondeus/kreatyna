@@ -1,6 +1,6 @@
 use futures::{StreamExt, executor::block_on};
 use kreatyna::{self as core, ingredients as ingredient};
-use krucyfiks::{CommandScopeId, Message, Widget};
+use krucyfiks::{CommandScopeId, Message, Scoped, Widget};
 use rust_decimal::Decimal;
 use test_case::test_case;
 
@@ -28,11 +28,11 @@ fn nested_event_conversion_preserves_the_catalog_scope() {
 fn converted_stale_event_is_rejected_by_existing_app_routing() {
     block_on(async {
         let (mut app, _effects) = core::AppWidget::test_fixture();
-        let old = RunningAppView::try_from(app.view()).unwrap();
+        let old = stack(RunningAppView::try_from(app.view()).unwrap());
 
         let create = AppEvent::Ingredients {
             event: IngredientCatalogEvent::List {
-                scope: old.ingredients.scope,
+                scope: old.scope,
                 event: IngredientListEvent::CreateRequested,
             },
         };
@@ -45,13 +45,16 @@ fn converted_stale_event_is_rejected_by_existing_app_routing() {
         drop(app.update(Message::Outcome(outcome)));
         let current = app.view();
         assert!(matches!(
-            current.ingredients.screen,
-            ingredient::IngredientCatalogScreenView::Create(_)
+            current.ingredients,
+            core::IngredientsView::Stack(ingredient::IngredientCatalogView {
+                screen: ingredient::IngredientCatalogScreenView::Create(_),
+                ..
+            })
         ));
 
         let stale = AppEvent::Ingredients {
             event: IngredientCatalogEvent::List {
-                scope: old.ingredients.scope,
+                scope: old.scope,
                 event: IngredientListEvent::Search {
                     query: "gar".into(),
                 },
@@ -63,6 +66,98 @@ fn converted_stale_event_is_rejected_by_existing_app_routing() {
         assert!(command.next().await.is_none());
         assert_eq!(app.view(), current);
     });
+}
+
+#[test]
+fn split_event_conversion_preserves_the_scopes() {
+    let clear = AppEvent::SplitIngredients {
+        event: IngredientSplitCatalogEvent::ClearSelection {
+            scope: ScopeId { value: 7 },
+        },
+    };
+    let core::AppEvent::SplitIngredients(ingredient::IngredientSplitCatalogEvent::ClearSelection {
+        scope,
+    }) = core::AppEvent::try_from(clear).unwrap()
+    else {
+        panic!("expected a clear-selection event")
+    };
+    assert_eq!(u64::from(scope), 7);
+
+    let detail = AppEvent::SplitIngredients {
+        event: IngredientSplitCatalogEvent::Detail {
+            scope: ScopeId { value: 8 },
+            event: IngredientDetailEvent::Edit,
+        },
+    };
+    let core::AppEvent::SplitIngredients(ingredient::IngredientSplitCatalogEvent::Detail(inner)) =
+        core::AppEvent::try_from(detail).unwrap()
+    else {
+        panic!("expected a detail event")
+    };
+    assert_eq!(u64::from(inner.scope), 8);
+    assert_eq!(inner.value, ingredient::IngredientDetailEvent::Edit);
+
+    let select = IngredientSplitCatalogEvent::List {
+        scope: ScopeId { value: 9 },
+        event: IngredientListEvent::Select { id: "bad".into() },
+    };
+    assert!(matches!(
+        ingredient::IngredientSplitCatalogEvent::try_from(select),
+        Err(AppTypeConversionError::InvalidIngredientId { .. })
+    ));
+}
+
+#[test]
+fn split_view_conversion_keeps_the_selection_and_the_detail() {
+    let id = ingredient::IngredientId::new();
+    let garlic = ingredient::Ingredient {
+        id,
+        name: "Garlic".into(),
+        notes: None,
+        nutrition: ingredient::Nutrition {
+            basis: ingredient::NutritionBasis::Per100Grams,
+            calories: None,
+            protein: None,
+            carbohydrates: None,
+            fat: None,
+        },
+        units: vec![],
+    };
+    let view = core::IngredientsView::Split(ingredient::IngredientSplitCatalogView {
+        list: Scoped::new(
+            CommandScopeId::from(3),
+            ingredient::IngredientListView {
+                search: String::new(),
+                status: ingredient::IngredientListStatus::Loading,
+            },
+        ),
+        selected: Some(id),
+        pane: Scoped::new(
+            CommandScopeId::from(4),
+            ingredient::IngredientSplitPaneView::Detail(ingredient::IngredientDetailView {
+                ingredient: garlic,
+                deletion: ingredient::IngredientDetailDeletion::Idle,
+            }),
+        ),
+    });
+
+    let IngredientsView::Split { catalog } = IngredientsView::try_from(view).unwrap() else {
+        panic!("expected the split layout")
+    };
+    assert_eq!(catalog.selected.as_deref(), Some(id.to_string().as_str()));
+    assert_eq!(catalog.list.scope, ScopeId { value: 3 });
+    assert_eq!(catalog.pane.scope, ScopeId { value: 4 });
+    let IngredientSplitPaneView::Detail { detail } = catalog.pane.value else {
+        panic!("expected a detail pane")
+    };
+    assert_eq!(detail.ingredient.name, "Garlic");
+}
+
+fn stack(view: RunningAppView) -> IngredientCatalogView {
+    let IngredientsView::Stack { catalog } = view.ingredients else {
+        panic!("expected the stack layout")
+    };
+    catalog
 }
 
 #[test_case(IngredientListEvent::Select { id: "bad".into() }; "select")]

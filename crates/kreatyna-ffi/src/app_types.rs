@@ -5,6 +5,7 @@ mod draft;
 mod form;
 mod ingredient;
 mod list;
+mod split_catalog;
 mod support;
 
 pub use app::*;
@@ -14,6 +15,7 @@ pub use draft::*;
 pub use form::*;
 pub use ingredient::*;
 pub use list::*;
+pub use split_catalog::*;
 pub use support::{AppTypeConversionError, ScopeId};
 
 #[cfg(test)]

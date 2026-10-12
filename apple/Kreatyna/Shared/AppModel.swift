@@ -10,7 +10,7 @@ final class AppModel {
     private(set) var errorMessage: String?
     @ObservationIgnored private let core: AppFfi?
 
-    init(databasePath: String? = nil) {
+    init(layout: AppLayout = .platform, databasePath: String? = nil) {
         // Previews and tests can create a model without running the App initializer.
         RustLogging.start()
         let path: String
@@ -36,7 +36,8 @@ final class AppModel {
         let renderer = AppRenderer()
         let core = app(
             caps: AppCapabilities(render: renderer),
-            databasePath: path
+            databasePath: path,
+            layout: layout
         )
         self.core = core
         // Rust retains the renderer; a weak reference avoids a facade cycle.

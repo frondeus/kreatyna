@@ -3,9 +3,9 @@ import Testing
 
 struct EventCompositionTests {
 
-    @Test func parentsWrapChildEventsWithDisplayedScopes() {
+    @Test func parentsWrapChildEventsWithDisplayedScopes() throws {
         let app = Fixtures.running(screen: .list)
-        let catalog = app.ingredients
+        let catalog = try #require(app.ingredients.stack)
 
         let event = app.ingredients(catalog.list(.createRequested))
 
@@ -13,6 +13,26 @@ struct EventCompositionTests {
             event: .list(scope: ScopeId(value: 2), event: .createRequested)
         ))
         #expect(catalog.back == .back(scope: ScopeId(value: 2)))
+    }
+
+    @Test func splitEventsUseTheListAndPaneScopes() throws {
+        let app = RunningAppView(ingredients: .split(catalog: Fixtures.splitCatalog(selected: Fixtures.garlic)))
+        let catalog = try #require(app.ingredients.split)
+
+        #expect(app.splitIngredients(catalog.list(.select(id: Fixtures.cucumberId))) == .splitIngredients(
+            event: .list(scope: ScopeId(value: 3), event: .select(id: Fixtures.cucumberId))
+        ))
+        #expect(catalog.detail(.edit) == .detail(scope: ScopeId(value: 4), event: .edit))
+        #expect(catalog.clearSelection == .clearSelection(scope: ScopeId(value: 4)))
+        #expect(app.ingredients.stack == nil)
+    }
+
+    @Test func platformLayoutMatchesTheTestHost() {
+        #if os(macOS)
+        #expect(AppLayout.platform == .split)
+        #else
+        #expect(AppLayout.platform == .stack)
+        #endif
     }
 
     @Test(arguments: [

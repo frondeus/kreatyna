@@ -20,34 +20,34 @@ extension MainActorTests {
     struct AppModelTests {
 
         @Test func startsAndRendersRunningApp() async throws {
-            let model = AppModel(databasePath: ":memory:")
+            let model = AppModel(layout: .stack, databasePath: ":memory:")
             defer { model.shutdown() }
             _ = try await waitForRunning(model)
             #expect(model.errorMessage == nil)
         }
 
         @Test func dispatchedEventReturnsThroughRenderCallback() async throws {
-            let model = AppModel(databasePath: ":memory:")
+            let model = AppModel(layout: .stack, databasePath: ":memory:")
             defer { model.shutdown() }
             let app = try await waitForRunning(model)
-            model.dispatch(app.ingredients(app.ingredients.list(.search(query: "gar"))))
-            try await waitUntil { running(model)?.ingredients.list.search == "gar" }
+            model.dispatch(app.ingredients(stack(app).list(.search(query: "gar"))))
+            try await waitUntil { running(model)?.ingredients.stack?.list.search == "gar" }
             #expect(model.errorMessage == nil)
         }
 
         @Test func rejectedConversionIsVisible() async throws {
-            let model = AppModel(databasePath: ":memory:")
+            let model = AppModel(layout: .stack, databasePath: ":memory:")
             defer { model.shutdown() }
             let app = try await waitForRunning(model)
-            model.dispatch(app.ingredients(app.ingredients.list(.select(id: "not-a-uuid"))))
+            model.dispatch(app.ingredients(stack(app).list(.select(id: "not-a-uuid"))))
             #expect(model.errorMessage != nil)
         }
 
         @Test func dispatchAfterShutdownIsVisible() async throws {
-            let model = AppModel(databasePath: ":memory:")
+            let model = AppModel(layout: .stack, databasePath: ":memory:")
             let app = try await waitForRunning(model)
             model.shutdown()
-            model.dispatch(app.ingredients(app.ingredients.list(.search(query: "gar"))))
+            model.dispatch(app.ingredients(stack(app).list(.search(query: "gar"))))
             #expect(model.errorMessage != nil)
         }
 
@@ -69,7 +69,7 @@ extension MainActorTests {
         }
 
         @Test func rustCallbackDoesNotRetainModel() async throws {
-            var model: AppModel? = AppModel(databasePath: ":memory:")
+            var model: AppModel? = AppModel(layout: .stack, databasePath: ":memory:")
             weak let reference = model
             _ = try await waitForRunning(try #require(model))
             model = nil
@@ -83,10 +83,10 @@ extension MainActorTests {
             let path = root.appendingPathComponent("app.sqlite").path
             try seedIngredients(databasePath: path, json: #"["Garlic"]"#)
 
-            let model = AppModel(databasePath: path)
+            let model = AppModel(layout: .stack, databasePath: path)
             defer { model.shutdown() }
             try await waitUntil {
-                guard case .ready(let rows, _, _) = running(model)?.ingredients.list.status else { return false }
+                guard case .ready(let rows, _, _) = running(model)?.ingredients.stack?.list.status else { return false }
                 return rows.map(\.name) == ["Garlic"]
             }
             #expect(model.errorMessage == nil)
@@ -98,6 +98,20 @@ extension MainActorTests {
             renderer.onRender = { calls += 1 }
             await Task.detached { await renderer.render() }.value
             #expect(calls == 1)
+        }
+
+        @Test func splitLayoutEventReturnsThroughRenderCallback() async throws {
+            let model = AppModel(layout: .split, databasePath: ":memory:")
+            defer { model.shutdown() }
+            let app = try await waitForRunning(model)
+            let catalog = try #require(app.ingredients.split)
+            model.dispatch(app.splitIngredients(catalog.list(.search(query: "gar"))))
+            try await waitUntil { running(model)?.ingredients.split?.list.value.search == "gar" }
+            #expect(model.errorMessage == nil)
+        }
+
+        private func stack(_ app: RunningAppView) -> IngredientCatalogView {
+            app.ingredients.stack!
         }
 
         private func running(_ model: AppModel) -> RunningAppView? {

@@ -270,6 +270,7 @@
         <tr><td>E-16</td><td>The local folder <code>krucyfix</code> is renamed to <code>krucyfiks</code>, the name of its crates and its remote. MAC-11 does the rename and updates every reference.</td><td>One name for one thing. Decided in MAC-11 review (was MAC-11/Q3).</td></tr>
         <tr><td>E-17</td><td>UI tests and demos seed data through the Rust function <code>seed_ingredients</code>. Swift calls it only in Debug builds, only for an isolated test database (<code>KREATYNA_TEST_DATABASE_ID</code> plus <code>KREATYNA_TEST_SEED</code>). The seed is JSON text: an array of names and ingredient objects with the form's fields. Swift passes the text unchanged; Rust parses it, validates each item with the form's rules, and skips existing names.</td><td>The Mac cannot create ingredients before MAC-05, and a UI test cannot write into the app's sandbox. Decided in MAC-01 review (was MAC-01/Q1). JSON replaced the comma list in MAC-02 review (MAC-02/Q2), so demos and MAC-04 tests get full data.</td></tr>
         <tr><td>E-18</td><td>Tests never open the real database. In Debug builds, a unit-test host uses <code>:memory:</code>, and UI-test databases live in the container's temporary folder.</td><td>Mac tests run in the app's real sandbox container, not in a throwaway Simulator. Decided in MAC-01 review (was MAC-01/Q2).</td></tr>
+        <tr><td>E-19</td><td>Swift passes a layout to <code>app(…)</code> once, at startup: <code>stack</code> on the iPhone, <code>split</code> on the Mac. Rust builds the matching coordinator. The Mac's <code>IngredientSplitCatalog</code> uses the same list and detail widgets as the iPhone's stack, keeps the list live, gives the list one scope for its whole life, and gives the pane a new scope for each selection. Its view says which row is selected.</td><td>On the Mac the list stays visible while a detail is open, so a click must replace the detail; the iPhone stack ignores list events then. This is E-14's "Mac coordinator". Decided in MAC-04 review (was MAC-04/Q1).</td></tr>
       </table>
     </div>
   </section>
@@ -431,7 +432,7 @@ const EPIC = {
       refs: ["D-17"],
     },
     {
-      id: "MAC-04", status: "planned", short: "Detail pane",
+      id: "MAC-04", status: "approved", short: "Detail pane", plan: "tasks/MAC-04.md",
       title: "Select an ingredient to see its details",
       outcome: "Clicking “Garlic” in the list shows its notes, nutrition and reference units (“clove ≈ 5 g”) in the detail pane. Clicking another row replaces it.",
       layers: ["rust", "ffi", "swift"], deps: ["MAC-01"],
@@ -448,7 +449,7 @@ const EPIC = {
       id: "MAC-05", status: "planned", short: "Create",
       title: "Create an ingredient from the toolbar",
       outcome: "The **+** toolbar button opens the ingredient form in the detail pane. Save adds it to the list and shows its detail; validation messages and duplicate names appear inline, as on iOS.",
-      layers: ["swift"], deps: ["MAC-04"],
+      layers: ["rust", "ffi", "swift"], deps: ["MAC-04"],
       acceptance: [
         "The form reuses the Rust form widget; Swift only supplies text for typed errors.",
         "Cancel on an empty form returns to the previous detail pane content.",
@@ -471,7 +472,7 @@ const EPIC = {
       id: "MAC-07", status: "planned", short: "Delete",
       title: "Delete an ingredient with confirmation",
       outcome: "**Delete** in the detail toolbar asks “Delete Garlic?”. Confirming removes it from the list and empties the detail pane.",
-      layers: ["swift"], deps: ["MAC-04"],
+      layers: ["rust", "ffi", "swift"], deps: ["MAC-04"],
       acceptance: [
         "The confirmation dialog shows whatever the Rust confirmation widget says; its buttons only send events.",
         "Snapshot: delete confirmation. UI smoke: delete and it stays gone after relaunch.",

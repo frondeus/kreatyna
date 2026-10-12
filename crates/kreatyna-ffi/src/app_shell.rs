@@ -15,6 +15,7 @@ use kreatyna_db::sqlite::{DatabaseEffect, SqliteDatabase};
 pub(crate) struct AppSetup {
     pub(crate) database_path: String,
     pub(crate) render: Arc<dyn Render>,
+    pub(crate) layout: kreatyna::AppLayout,
 }
 
 pub(crate) enum AppShellEvent {
@@ -212,12 +213,15 @@ async fn prepare_app(setup: AppSetup) -> Result<Box<PreparedApp>, AppInitializat
         }),
     };
 
-    let app = AppWidget::new(kreatyna::AppCapabilities {
-        ingredients: kreatyna::ingredients::capabilities::IngredientCapabilities {
-            render: setup.render,
-            store: Arc::new(ingredient_store),
+    let app = AppWidget::new(
+        kreatyna::AppCapabilities {
+            ingredients: kreatyna::ingredients::capabilities::IngredientCapabilities {
+                render: setup.render,
+                store: Arc::new(ingredient_store),
+            },
         },
-    });
+        setup.layout,
+    );
 
     Ok(Box::new(PreparedApp {
         app,

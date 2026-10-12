@@ -183,6 +183,7 @@ fn demo_fixture_is_valid() {
     assert_eq!(
         stored_names(&database),
         [
+            "Basil",
             "Canned tomatoes",
             "Cucumber",
             "Garlic",

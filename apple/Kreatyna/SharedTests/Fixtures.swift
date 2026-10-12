@@ -69,6 +69,29 @@ enum Fixtures {
     }
 
     static func running(screen: IngredientCatalogScreenView) -> RunningAppView {
-        RunningAppView(ingredients: catalog(screen: screen))
+        RunningAppView(ingredients: .stack(catalog: catalog(screen: screen)))
+    }
+
+    /// An ingredient with a name only.
+    static let basil = Ingredient(
+        id: "3a7d0f52-6c1e-4b8a-9d2f-5e4c3b2a1908",
+        name: "Basil",
+        notes: nil,
+        nutrition: Nutrition(basis: .per100Grams, calories: nil, protein: nil, carbohydrates: nil, fat: nil),
+        units: []
+    )
+
+    static func splitCatalog(
+        list: IngredientListView = list(),
+        selected: Ingredient? = nil
+    ) -> IngredientSplitCatalogView {
+        IngredientSplitCatalogView(
+            list: ScopedIngredientListView(scope: ScopeId(value: 3), value: list),
+            selected: selected?.id,
+            pane: ScopedIngredientSplitPaneView(
+                scope: ScopeId(value: 4),
+                value: selected.map { .detail(detail: IngredientDetailView(ingredient: $0, deletion: .idle)) } ?? .empty
+            )
+        )
     }
 }

@@ -8,6 +8,7 @@ mod form;
 mod list;
 mod model;
 mod navigation;
+mod split_catalog;
 
 pub use draft::{
     DraftMode, IngredientDraft, IngredientDraftField, IngredientWrite, IngredientWriteData,
@@ -37,6 +38,11 @@ pub use detail::{
 pub use form::{
     IngredientForm, IngredientFormEvent, IngredientFormOutcome, IngredientFormStatus,
     IngredientFormView,
+};
+
+pub use split_catalog::{
+    IngredientSplitCatalog, IngredientSplitCatalogEvent, IngredientSplitCatalogOutcome,
+    IngredientSplitCatalogView, IngredientSplitPaneView,
 };
 
 pub use navigation::{

@@ -25,6 +25,20 @@ extension MainActorTests {
         }
 
         @Test(arguments: Appearance.allCases)
+        func detailWithFullData(appearance: Appearance) {
+            snapshot(running(Fixtures.list(), selected: Fixtures.garlic), appearance: appearance)
+        }
+
+        @Test(arguments: Appearance.allCases)
+        func detailWithNameOnly(appearance: Appearance) {
+            let rows = [IngredientListRow(id: Fixtures.basil.id, name: "Basil")] + Fixtures.rows
+            snapshot(
+                running(Fixtures.list(.ready(rows: rows, totalCount: 4, refresh: .idle)), selected: Fixtures.basil),
+                appearance: appearance
+            )
+        }
+
+        @Test(arguments: Appearance.allCases)
         func startupFailure(appearance: Appearance) {
             snapshot(
                 MacRootView(
@@ -46,9 +60,9 @@ extension MainActorTests {
         /// The catalog without its sidebar. The sidebar material draws only
         /// through the window server, so an off-screen capture shows it blank
         /// (white in dark mode). The sidebar has one static item (REC-01).
-        private func running(_ list: IngredientListView) -> some View {
+        private func running(_ list: IngredientListView, selected: Ingredient? = nil) -> some View {
             MacCatalogView(
-                view: Fixtures.catalog(screen: .list, list: list),
+                view: Fixtures.splitCatalog(list: list, selected: selected),
                 columnVisibility: .doubleColumn,
                 send: { _ in }
             )

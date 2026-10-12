@@ -26,7 +26,10 @@ struct MacRootView: View {
                 }
                 .accessibilityIdentifier("appInitializationFailed")
             case .running(let app):
-                MacCatalogView(view: app.ingredients) { send(app.ingredients($0)) }
+                // The Mac always starts with the split layout (`AppLayout.platform`).
+                if let catalog = app.ingredients.split {
+                    MacCatalogView(view: catalog) { send(app.splitIngredients($0)) }
+                }
             }
         }
         .safeAreaInset(edge: .bottom) {

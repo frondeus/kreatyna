@@ -1,9 +1,17 @@
 import SwiftUI
 
-/// The catalog list column. Rows are text only until they become selectable (MAC-04).
+/// The catalog list column.
+///
+/// Swift keeps no selection: the highlight is Rust's `selected`, and a click,
+/// an arrow key, or a ⌘-click only reports the new choice through `select`.
 struct MacIngredientList: View {
     let view: IngredientListView
+    let selected: String?
+    let select: (String?) -> Void
     let send: (IngredientListEvent) -> Void
+
+    /// Presentation only: keyboard focus, so the arrow keys move the selection.
+    @FocusState private var focused: Bool
 
     var body: some View {
         content
@@ -36,7 +44,7 @@ struct MacIngredientList: View {
             }
             .accessibilityIdentifier("ingredientListFailed")
         case .ready(let rows, let totalCount, let refresh):
-            List {
+            List(selection: Binding(get: { selected }, set: select)) {
                 if case .failed(let error) = refresh {
                     Section {
                         Text(error.message)
@@ -47,9 +55,15 @@ struct MacIngredientList: View {
                 }
                 ForEach(rows, id: \.id) { row in
                     Text(row.name)
+                        .tag(row.id)
                         .accessibilityIdentifier("ingredientRow")
                 }
             }
+            .accessibilityIdentifier("ingredientList")
+            .focused($focused)
+            // A click selects through the binding but does not focus the list.
+            // Focusing it on each selection lets ↑ and ↓ work after a click.
+            .onChange(of: selected) { focused = true }
             .overlay {
                 if rows.isEmpty {
                     if totalCount == 0 {

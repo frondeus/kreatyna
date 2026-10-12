@@ -38,7 +38,10 @@ struct RootView: View {
                 }
                 .accessibilityIdentifier("appInitializationFailed")
             case .running(let app):
-                IngredientCatalogScreen(view: app.ingredients) { send(app.ingredients($0)) }
+                // iOS always starts with the stack layout (`AppLayout.platform`).
+                if let catalog = app.ingredients.stack {
+                    IngredientCatalogScreen(view: catalog) { send(app.ingredients($0)) }
+                }
             }
         }
         .safeAreaInset(edge: .bottom) {

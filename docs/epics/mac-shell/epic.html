@@ -268,6 +268,8 @@
         <tr><td>E-14</td><td>MAC-04 starts with today's stack: the list in one column, the top layer in the other. A Mac coordinator over the same list, detail and form widgets is added as soon as a Mac rule differs; E-10 (clicking a row while a form is dirty) suggests it will be needed.</td><td>The smallest first step that works. Accepted in review (was Q-M4).</td></tr>
         <tr><td>E-15</td><td><code>project.yml</code> lives in <code>apple/Kreatyna/</code>, next to the generated <code>Kreatyna.xcodeproj</code>; the Mac target joins the same spec.</td><td>XcodeGen writes wrong source paths when the spec and the project are in different folders. Nothing moves. Decided in MAC-10 review (was MAC-10/Q1).</td></tr>
         <tr><td>E-16</td><td>The local folder <code>krucyfix</code> is renamed to <code>krucyfiks</code>, the name of its crates and its remote. MAC-11 does the rename and updates every reference.</td><td>One name for one thing. Decided in MAC-11 review (was MAC-11/Q3).</td></tr>
+        <tr><td>E-17</td><td>UI tests and demos seed data through the Rust function <code>seed_ingredients</code>. Swift calls it only in Debug builds, only for an isolated test database (<code>KREATYNA_TEST_DATABASE_ID</code> plus <code>KREATYNA_TEST_SEED</code>). Rust validates the names and skips existing ones.</td><td>The Mac cannot create ingredients before MAC-05, and a UI test cannot write into the app's sandbox. Decided in MAC-01 review (was MAC-01/Q1).</td></tr>
+        <tr><td>E-18</td><td>Tests never open the real database. In Debug builds, a unit-test host uses <code>:memory:</code>, and UI-test databases live in the container's temporary folder.</td><td>Mac tests run in the app's real sandbox container, not in a throwaway Simulator. Decided in MAC-01 review (was MAC-01/Q2).</td></tr>
       </table>
     </div>
   </section>
@@ -383,7 +385,7 @@ const EPIC = {
       refs: ["D-02", "D-04"],
     },
     {
-      id: "MAC-01", status: "planned", short: "Mac window + list",
+      id: "MAC-01", status: "approved", short: "Mac window + list", plan: "tasks/MAC-01.md",
       title: "The Mac window shows the ingredient catalog",
       outcome: "Launching the Mac app starts the real Rust core with its own SQLite database and shows three columns: a sidebar with **Ingredients**, the catalog list (“Garlic”, “Tomato”…), and an empty detail pane. If startup fails, the window shows the error and a Retry button.",
       layers: ["ffi", "swift"], deps: ["MAC-00"],

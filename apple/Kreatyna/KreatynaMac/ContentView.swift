@@ -1,19 +1,14 @@
 import SwiftUI
 
-/// Xcode's template window. MAC-01 replaces it with the ingredient catalog.
 struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-                .accessibilityIdentifier("greeting")
-        }
-        .padding()
-    }
-}
+    @State private var model = AppModel()
 
-#Preview {
-    ContentView()
+    var body: some View {
+        MacRootView(
+            view: model.view,
+            errorMessage: model.errorMessage,
+            send: model.dispatch,
+            retryInitialization: model.retryInitialization
+        )
+    }
 }

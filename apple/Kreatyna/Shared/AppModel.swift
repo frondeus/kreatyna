@@ -20,6 +20,16 @@ final class AppModel {
             errorMessage = "The app's storage directory could not be created."
             return
         }
+        #if DEBUG
+        let seed = TestSeed.names()
+        if !seed.isEmpty {
+            do {
+                try seedIngredients(databasePath: path, names: seed)
+            } catch {
+                errorMessage = "Test data could not be added."
+            }
+        }
+        #endif
         let renderer = AppRenderer()
         let core = app(
             caps: AppCapabilities(render: renderer),

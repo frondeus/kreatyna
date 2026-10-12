@@ -55,12 +55,17 @@ Rust behavior changed is in the wrong layer.
 Run the checks for each change and report any that could not run. Inside the
 devenv shell, `ios-bindings debug` rebuilds the Rust core and `ios-test` runs
 all iOS tests (Swift Testing, snapshots, and UI tests) on a booted simulator.
-`mac-test` runs all Mac tests on this Mac; its UI tests need Automation Mode
-without a password prompt (`automationmodetool`).
+`mac-bindings debug` rebuilds the Rust core for the Mac, and `mac-test` runs all
+Mac tests on this Mac; its UI tests need Automation Mode without a password
+prompt (`automationmodetool`). Mac tests run in the app's real sandbox
+container, so tests never open the real database (E-18), and UI tests seed data
+through Rust's `seed_ingredients` (E-17), never through files.
 
 ## Xcode project
 
 Change targets, files, packages, and build settings only in
-`apple/Kreatyna/project.yml`, then run `apple-generate`. The generated
+`apple/Kreatyna/project.yml`, then run `apple-generate`. Both apps compile the
+Swift adapter in `apple/Kreatyna/Shared/`; both unit-test targets run
+`apple/Kreatyna/SharedTests/`. Views stay per platform. The generated
 `Kreatyna.xcodeproj` is not committed; never edit it. New Swift files in a
 target's folder need no project change.

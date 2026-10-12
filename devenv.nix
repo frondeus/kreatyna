@@ -3,7 +3,7 @@
 let
   rustBin = inputs.rust-overlay.lib.mkRustBin { } pkgs.buildPackages;
 
-  iosSetup = ''
+  appleSetup = ''
     set -euo pipefail
     cd ${lib.escapeShellArg config.devenv.root}
 
@@ -20,26 +20,38 @@ let
 
     export CARGO_TARGET_DIR="$PWD/target"
 
-    # Keep the default aligned with the Xcode app's deployment target.
+    # Keep the defaults aligned with the Xcode apps' deployment targets.
     export IPHONEOS_DEPLOYMENT_TARGET="''${IPHONEOS_DEPLOYMENT_TARGET:-26.2}"
+    export MACOSX_DEPLOYMENT_TARGET="''${MACOSX_DEPLOYMENT_TARGET:-26.2}"
   '';
 
-  iosBuild = target: sdk: iosSetup + ''
+  appleBuild = target: sdk: appleSetup + ''
     export SDKROOT="$(/usr/bin/xcrun --sdk ${sdk} --show-sdk-path)"
-    ios_clang="$(/usr/bin/xcrun --sdk ${sdk} --find clang)"
-    ios_ar="$(/usr/bin/xcrun --sdk ${sdk} --find ar)"
+    sdk_clang="$(/usr/bin/xcrun --sdk ${sdk} --find clang)"
+    sdk_ar="$(/usr/bin/xcrun --sdk ${sdk} --find ar)"
 
-    # Use the selected iOS SDK's SQLite instead of Nix's macOS SQLite.
+    # Use the selected Apple SDK's SQLite instead of Nix's SQLite.
     # Target-specific tools leave host build scripts and proc macros on macOS.
     env \
-      CARGO_TARGET_${lib.toUpper (builtins.replaceStrings [ "-" ] [ "_" ] target)}_LINKER="$ios_clang" \
-      CC_${builtins.replaceStrings [ "-" ] [ "_" ] target}="$ios_clang" \
-      AR_${builtins.replaceStrings [ "-" ] [ "_" ] target}="$ios_ar" \
+      CARGO_TARGET_${lib.toUpper (builtins.replaceStrings [ "-" ] [ "_" ] target)}_LINKER="$sdk_clang" \
+      CC_${builtins.replaceStrings [ "-" ] [ "_" ] target}="$sdk_clang" \
+      AR_${builtins.replaceStrings [ "-" ] [ "_" ] target}="$sdk_ar" \
       SQLITE3_LIB_DIR="$SDKROOT/usr/lib" \
       cargo build --locked -p kreatyna-ffi --lib \
         --target ${target} "''${profile_args[@]}"
 
     echo "Built $CARGO_TARGET_DIR/${target}/$profile/libkreatyna_ffi.a"
+  '';
+
+  # The generator runs on macOS and reads metadata from a built library.
+  # Bindings are identical for every Apple target and profile, so the Xcode
+  # project uses one copy for all of them.
+  generateBindings = library: ''
+    export SDKROOT="$(/usr/bin/xcrun --sdk macosx --show-sdk-path)"
+    output="$CARGO_TARGET_DIR/generated/apple/swift"
+    cargo run --locked -p kreatyna-ffi --features bindgen --bin uniffi-bindgen -- \
+      generate "${library}" --language swift --out-dir "$output"
+    echo "Generated Swift bindings in $output"
   '';
 
   # Xcode needs nothing from the Nix shell. A minimal environment keeps Nix
@@ -92,30 +104,32 @@ in
 
   scripts.ios-build-device = {
     description = "Build the Rust library for iPhone/iPad: ios-build-device [debug|release]";
-    exec = iosBuild "aarch64-apple-ios" "iphoneos";
+    exec = appleBuild "aarch64-apple-ios" "iphoneos";
   };
 
   scripts.ios-build-simulator = {
     description = "Build the Rust library for Apple Silicon Simulator: ios-build-simulator [debug|release]";
-    exec = iosBuild "aarch64-apple-ios-sim" "iphonesimulator";
+    exec = appleBuild "aarch64-apple-ios-sim" "iphonesimulator";
   };
 
   scripts.ios-bindings = {
     description = "Build both iOS libraries and generate Swift bindings: ios-bindings [debug|release]";
-    exec = iosSetup + ''
+    exec = appleSetup + ''
       ios-build-device "$profile"
       ios-build-simulator "$profile"
+    '' + generateBindings "$CARGO_TARGET_DIR/aarch64-apple-ios-sim/$profile/libkreatyna_ffi.a";
+  };
 
-      # The generator runs on macOS and reads metadata from an iOS archive.
-      # Bindings are identical for every Apple target and profile, so the
-      # Xcode project uses one copy for all of them.
-      export SDKROOT="$(/usr/bin/xcrun --sdk macosx --show-sdk-path)"
-      output="$CARGO_TARGET_DIR/generated/apple/swift"
-      cargo run --locked -p kreatyna-ffi --features bindgen --bin uniffi-bindgen -- \
-        generate "$CARGO_TARGET_DIR/aarch64-apple-ios-sim/$profile/libkreatyna_ffi.a" \
-        --language swift --out-dir "$output"
-      echo "Generated Swift bindings in $output"
-    '';
+  scripts.mac-build = {
+    description = "Build the Rust library for Apple Silicon Macs: mac-build [debug|release]";
+    exec = appleBuild "aarch64-apple-darwin" "macosx";
+  };
+
+  scripts.mac-bindings = {
+    description = "Build the macOS library and generate Swift bindings: mac-bindings [debug|release]";
+    exec = appleSetup + ''
+      mac-build "$profile"
+    '' + generateBindings "$CARGO_TARGET_DIR/aarch64-apple-darwin/$profile/libkreatyna_ffi.a";
   };
 
   scripts.apple-generate = {

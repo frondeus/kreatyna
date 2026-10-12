@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAC-01 Design</title>
+<style>
+:root {
+  --bg: #f4f4f6; --surface: #ffffff; --window: #ffffff; --sidebar: #eceaee; --bar: #f6f6f8;
+  --text: #1c1c1e; --muted: #6e6e73; --line: #d8d8dc; --accent: #0a84ff; --sel: #dcdce1;
+  --warn: #d70015; --stub: #a15c00; --stub-bg: #fff3dc;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111113; --surface: #1c1c1e; --window: #1e1e20; --sidebar: #29282c; --bar: #2a2a2d;
+    --text: #f2f2f7; --muted: #98989f; --line: #3a3a3d; --accent: #0a84ff; --sel: #3a3a3e;
+    --warn: #ff6961; --stub: #ffb340; --stub-bg: #3a2a10;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111113; --surface: #1c1c1e; --window: #1e1e20; --sidebar: #29282c; --bar: #2a2a2d;
+  --text: #f2f2f7; --muted: #98989f; --line: #3a3a3d; --accent: #0a84ff; --sel: #3a3a3e;
+  --warn: #ff6961; --stub: #ffb340; --stub-bg: #3a2a10;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+.page { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+header { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+h1 { margin: 0 0 4px; font-size: 24px; }
+h2 { margin: 32px 0 6px; font-size: 18px; }
+p { margin: 0 0 12px; }
+.muted { color: var(--muted); }
+button.theme { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.scroll { overflow-x: auto; padding: 4px 0 8px; }
+.win { width: 860px; height: 420px; border: 1px solid var(--line); border-radius: 12px; background: var(--window);
+  overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 28px rgba(0,0,0,.12); }
+.titlebar { height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: var(--bar);
+  border-bottom: 1px solid var(--line); font-size: 13px; }
+.lights { display: flex; gap: 7px; width: 186px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; display: block; }
+.lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+.coltitle { font-weight: 600; width: 220px; }
+.spacer { flex: 1; }
+.tb { border: 1px solid var(--line); border-radius: 6px; padding: 1px 9px; font-size: 16px; }
+.tb.disabled { opacity: .35; }
+.grid { flex: 1; display: grid; grid-template-columns: 200px 280px 1fr; min-height: 0; }
+.sidebar { background: var(--sidebar); padding: 10px 8px; border-right: 1px solid var(--line); font-size: 13px; }
+.sidebar h4 { margin: 4px 8px 6px; font-size: 11px; color: var(--muted); font-weight: 600; }
+.item { padding: 4px 8px; border-radius: 6px; }
+.item.sel { background: var(--sel); }
+.list { border-right: 1px solid var(--line); font-size: 13px; position: relative; }
+.row { padding: 7px 14px; border-bottom: 1px solid var(--line); }
+.center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; padding: 16px; gap: 4px; }
+.center strong { font-size: 15px; }
+.center .btn { margin-top: 8px; background: var(--accent); color: #fff; border-radius: 6px; padding: 3px 12px; font-size: 13px; }
+.detail { position: relative; }
+.full { flex: 1; position: relative; }
+.stub { display: inline-block; color: var(--stub); background: var(--stub-bg); border-radius: 6px;
+  padding: 1px 6px; font-size: 12px; font-weight: 600; }
+.warn { color: var(--warn); }
+ul { padding-left: 20px; margin: 6px 0 0; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div>
+      <h1>MAC-01 — The Mac window shows the ingredient catalog</h1>
+      <p class="muted">Target state of the Mac window after MAC-01. Three columns: a static sidebar, the catalog
+        list that Rust renders, and an empty detail pane. Rows are not clickable yet.</p>
+    </div>
+    <button class="theme" id="themeBtn" type="button">Theme: auto</button>
+  </header>
+
+  <h2>1 · Catalog with rows</h2>
+  <p class="muted">Rust's <code>IngredientListStatus.ready</code> with three rows. Names come from Rust, sorted by Rust.</p>
+  <div class="scroll"><div class="win">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="spacer"></span><span class="tb disabled" title="Disabled until MAC-05">＋</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="row">Canned tomatoes</div><div class="row">Cucumber</div><div class="row">Garlic</div></div>
+      <div class="detail"><div class="center"><strong>Select an ingredient</strong></div></div>
+    </div>
+  </div></div>
+  <p><span class="stub">stub</span> The sidebar item is static (REC-01). <span class="stub">stub</span> <b>＋</b> is disabled
+    (MAC-05). <span class="stub">stub</span> “Select an ingredient” stays until MAC-04 makes rows selectable.</p>
+
+  <h2>2 · Empty catalog</h2>
+  <p class="muted"><code>.ready</code> with no rows and <code>totalCount</code> 0. A new Mac container starts here.</p>
+  <div class="scroll"><div class="win">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="spacer"></span><span class="tb disabled">＋</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="center"><strong>No ingredients yet</strong>
+        <span class="muted">Ingredients you add appear here.</span></div></div>
+      <div class="detail"><div class="center"><strong>Select an ingredient</strong></div></div>
+    </div>
+  </div></div>
+  <p class="muted">The iOS text “Tap + to add your first ingredient.” does not fit while <b>＋</b> is disabled. MAC-05 can
+    change the text when <b>＋</b> works.</p>
+
+  <h2>3 · List failed to load</h2>
+  <p class="muted"><code>.failed(error: .storage)</code>. <b>Retry</b> sends <code>IngredientListEvent.refresh</code>.</p>
+  <div class="scroll"><div class="win">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="spacer"></span><span class="tb disabled">＋</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="center"><strong>Ingredients unavailable</strong>
+        <span class="muted">Ingredients could not be read from storage.</span><span class="btn">Retry</span></div></div>
+      <div class="detail"><div class="center"><strong>Select an ingredient</strong></div></div>
+    </div>
+  </div></div>
+
+  <h2>4 · Startup failure</h2>
+  <p class="muted"><code>AppView.initializationFailed(error: .databaseOpen)</code>. The whole window shows the error.
+    <b>Retry</b> calls <code>retryInitialization()</code>. There are no columns until Rust is running.</p>
+  <div class="scroll"><div class="win">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Kreatyna</span>
+      <span class="spacer"></span></div>
+    <div class="full"><div class="center"><strong>Kreatyna could not start</strong>
+      <span class="muted">The database could not be opened.</span><span class="btn">Retry</span></div></div>
+  </div></div>
+
+  <h2>Not shown</h2>
+  <ul>
+    <li><b>Starting</b>: a centered “Starting…” spinner in the whole window, like iOS.</li>
+    <li><b>Loading the list</b>: a “Loading ingredients…” spinner in the list column.</li>
+    <li><b>Adapter error</b>: red footnote text at the bottom of the window, like iOS (for example “The app could not
+      accept this action.”).</li>
+  </ul>
+</div>
+<script>
+(function () {
+  const btn = document.getElementById("themeBtn");
+  const modes = ["auto", "light", "dark"];
+  let mode = "auto";
+  try { mode = localStorage.getItem("mac01-theme") || "auto"; } catch (e) {}
+  function apply() {
+    if (mode === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", mode);
+    btn.textContent = "Theme: " + mode;
+  }
+  btn.addEventListener("click", function () {
+    mode = modes[(modes.indexOf(mode) + 1) % modes.length];
+    try { localStorage.setItem("mac01-theme", mode); } catch (e) {}
+    apply();
+  });
+  apply();
+})();
+</script>
+</body>
+</html>

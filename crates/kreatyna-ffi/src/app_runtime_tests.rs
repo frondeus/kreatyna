@@ -19,7 +19,7 @@ fn app_ffi_initializes_before_exposing_the_running_app() {
 
     let initial = app.view().unwrap();
     assert_eq!(initial, AppView::Initializing);
-    assert!(!database.0.exists());
+    assert!(!std::path::Path::new(database.path()).exists());
 
     app.start().unwrap();
     assert!(matches!(app.start(), Err(AppFfiError::AlreadyStarted)));
@@ -77,7 +77,7 @@ fn failed_initialization_can_retry_with_fresh_database_setup() {
         )
     });
 
-    std::fs::create_dir(&database.0).unwrap();
+    database.create_parent();
     app.retry_initialization().unwrap();
     app.retry_initialization().unwrap();
     wait_until_ready(&app, &rendered);
@@ -128,49 +128,52 @@ impl RenderHandler for TestRender {
     }
 }
 
-struct TemporaryDatabase(PathBuf);
+/// A database file in its own temporary folder. The folder is deleted on drop.
+struct TemporaryDatabase {
+    _folder: tempfile::TempDir,
+    path: PathBuf,
+}
 
 impl TemporaryDatabase {
     fn new() -> Self {
-        Self(std::env::temp_dir().join(format!(
-            "app-ffi-{}.sqlite",
-            kreatyna::ingredients::IngredientId::new()
-        )))
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("app.sqlite");
+        Self {
+            _folder: folder,
+            path,
+        }
     }
 
     fn path(&self) -> &str {
-        self.0.to_str().unwrap()
+        self.path.to_str().unwrap()
     }
 }
 
-struct RecoverableDatabase(PathBuf);
+/// A database path whose parent folder exists only after `create_parent`.
+struct RecoverableDatabase {
+    _folder: tempfile::TempDir,
+    parent: PathBuf,
+}
 
 impl RecoverableDatabase {
     fn new() -> Self {
-        Self(std::env::temp_dir().join(format!(
-            "app-ffi-parent-{}",
-            kreatyna::ingredients::IngredientId::new()
-        )))
+        let folder = tempfile::tempdir().unwrap();
+        let parent = folder.path().join("parent");
+        Self {
+            _folder: folder,
+            parent,
+        }
     }
 
     fn path(&self) -> String {
-        self.0
+        self.parent
             .join("database.sqlite")
             .to_string_lossy()
             .into_owned()
     }
-}
 
-impl Drop for RecoverableDatabase {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(self.0.join("database.sqlite"));
-        let _ = std::fs::remove_dir(&self.0);
-    }
-}
-
-impl Drop for TemporaryDatabase {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
+    fn create_parent(&self) {
+        std::fs::create_dir(&self.parent).unwrap();
     }
 }
 

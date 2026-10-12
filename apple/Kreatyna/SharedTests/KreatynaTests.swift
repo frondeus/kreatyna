@@ -76,6 +76,22 @@ extension MainActorTests {
             #expect(reference == nil)
         }
 
+        @Test func seededIngredientAppearsInList() async throws {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: root) }
+            let path = root.appendingPathComponent("app.sqlite").path
+            try seedIngredients(databasePath: path, names: ["Garlic"])
+
+            let model = AppModel(databasePath: path)
+            defer { model.shutdown() }
+            try await waitUntil {
+                guard case .ready(let rows, _, _) = running(model)?.ingredients.list.status else { return false }
+                return rows.map(\.name) == ["Garlic"]
+            }
+            #expect(model.errorMessage == nil)
+        }
+
         @Test func rendererDeliversBackgroundCallbackBeforeReturning() async {
             let renderer = AppRenderer()
             var calls = 0
@@ -109,12 +125,26 @@ struct AppDatabaseLocationTests {
     @Test func createsStableDirectory() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let path = try AppDatabaseLocation.path(applicationSupportDirectory: root)
+        let path = try AppDatabaseLocation.path(applicationSupportDirectory: root, environment: [:])
         #expect(path == root.appendingPathComponent("Kreatyna/kreatyna.sqlite").path)
-        #expect(try AppDatabaseLocation.path(applicationSupportDirectory: root) == path)
+        #expect(try AppDatabaseLocation.path(applicationSupportDirectory: root, environment: [:]) == path)
         var isDirectory: ObjCBool = false
         #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent("Kreatyna").path, isDirectory: &isDirectory))
         #expect(isDirectory.boolValue)
+    }
+
+    @Test func unitTestHostUsesMemoryDatabase() throws {
+        let path = try AppDatabaseLocation.path(environment: ["XCTestConfigurationFilePath": "/test.xctestconfiguration"])
+        #expect(path == ":memory:")
+    }
+
+    @Test func uiTestDatabaseIsInTemporaryFolder() throws {
+        let id = UUID()
+        let path = try AppDatabaseLocation.path(environment: ["KREATYNA_TEST_DATABASE_ID": id.uuidString])
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("KreatynaUITests/\(id.uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        #expect(path == directory.appendingPathComponent("kreatyna.sqlite").path)
+        #expect(FileManager.default.fileExists(atPath: directory.path))
     }
 
     @Test func propagatesDirectoryFailure() throws {
@@ -122,7 +152,19 @@ struct AppDatabaseLocationTests {
         try Data().write(to: root)
         defer { try? FileManager.default.removeItem(at: root) }
         #expect(throws: (any Error).self) {
-            try AppDatabaseLocation.path(applicationSupportDirectory: root)
+            try AppDatabaseLocation.path(applicationSupportDirectory: root, environment: [:])
         }
+    }
+}
+
+struct TestSeedTests {
+
+    @Test func readsNamesForIsolatedDatabase() {
+        let environment = ["KREATYNA_TEST_DATABASE_ID": UUID().uuidString, "KREATYNA_TEST_SEED": "Garlic,Tomato"]
+        #expect(TestSeed.names(environment: environment) == ["Garlic", "Tomato"])
+    }
+
+    @Test func ignoresSeedWithoutIsolatedDatabase() {
+        #expect(TestSeed.names(environment: ["KREATYNA_TEST_SEED": "Garlic"]).isEmpty)
     }
 }

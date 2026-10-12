@@ -9,8 +9,10 @@ use crate::app_shell::{AppSetup, AppShell, AppShellEvent};
 mod app_shell;
 mod app_types;
 mod logging;
+mod seed;
 
 pub use app_types::*;
+pub use seed::*;
 
 uniffi::setup_scaffolding!();
 

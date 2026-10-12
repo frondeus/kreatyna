@@ -119,23 +119,23 @@ async fn start_worker(path: &str) -> (DatabaseWorker, IngredientStoreClient) {
     (worker, ingredients)
 }
 
-struct TemporaryDatabase(PathBuf);
+/// A database file in its own temporary folder. The folder is deleted on drop.
+struct TemporaryDatabase {
+    _folder: tempfile::TempDir,
+    path: PathBuf,
+}
 
 impl TemporaryDatabase {
     fn new() -> Self {
-        Self(std::env::temp_dir().join(format!(
-            "database-worker-{}.sqlite",
-            kreatyna::ingredients::IngredientId::new()
-        )))
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("app.sqlite");
+        Self {
+            _folder: folder,
+            path,
+        }
     }
 
     fn path(&self) -> &str {
-        self.0.to_str().expect("temporary path should be UTF-8")
-    }
-}
-
-impl Drop for TemporaryDatabase {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
+        self.path.to_str().unwrap()
     }
 }

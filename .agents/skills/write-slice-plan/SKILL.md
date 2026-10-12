@@ -24,7 +24,9 @@ later slices.
 
 1. `# <ID> — <title>`, then a status line: status, jj change ID,
    dependencies and their status.
-2. **Open questions.** Always first, so the reader sees them first.
+2. **Open questions.** Always first, so the reader sees them first. The
+   user answers them in the Inbox before the plan is sent (see Review), so
+   in a sent plan this section is usually "None.".
    Give each one an ID `<ID>/Qn` (for example `MAC-09/Q1`) and these parts:
    - *Today:* what exists now, with file paths, current values, and a short
      snippet.
@@ -93,13 +95,22 @@ later slices.
 
 ## Review
 
-1. Set the slice's `status` to `ready` and its `plan` to `tasks/<ID>.md` in
-   the epic data object.
-2. If the plan has open questions, stop. Ask the user to annotate it with
-   `/plannotator-annotate docs/epics/<epic>/tasks/<ID>.md`.
-3. Process each annotation. An answer moves the question into
-   **Decisions** (keep its ID) and updates the steps it affects. An answer
-   that changes the whole epic also becomes an `E-xx` entry on the epic page.
-   A **Looks good** label on a recommendation accepts it.
-4. Implement only after all open questions are answered. Then continue with
-   step 2 of "Deliver one slice at a time" in the epic skill.
+Talk to the user through the Plannotator Inbox, in a thread named after the
+slice (see [use-plannotator-inbox](../use-plannotator-inbox/SKILL.md)).
+
+1. Ground the plan, then send the open questions as Inbox question blocks.
+   Each block repeats the question's context, options, and recommendation.
+   Stop until the user answers.
+2. Record each answer: the question moves into **Decisions** (keep its ID),
+   and the steps it affects change. An answer that changes the whole epic
+   also becomes an `E-xx` entry on the epic page. An answer that takes your
+   recommendation, or a **Looks good** label, accepts it. A partial answer
+   gets a new, narrower question in the next round.
+3. Write the full plan. Set the slice's `status` to `ready` and its `plan` to
+   `tasks/<ID>.md` in the epic data object.
+4. Send an Inbox message with the plan attached. Stop until the user reviews
+   it.
+5. Process each annotation on the plan as in step 2. A new question goes
+   back to step 1 for that question only.
+6. Implement only after the user accepts the plan. Then continue with step 2
+   of "Deliver one slice at a time" in the epic skill.

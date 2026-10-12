@@ -25,7 +25,8 @@ When the user names an unfinished branch or earlier work as a reference, mine it
 for lessons. Plan against the current baseline, and do not merge, restore, or
 remove that work without the user's instruction.
 
-Ask the user about tensions the brief leaves open (for example a rule that
+Ask the user, through the Plannotator Inbox
+([use-plannotator-inbox](../use-plannotator-inbox/SKILL.md)), about tensions the brief leaves open (for example a rule that
 early slices cannot satisfy yet) before fixing slice boundaries. Record the
 answers as epic-level decisions.
 
@@ -105,9 +106,8 @@ works offline: inline CSS and JS, no external scripts, fonts, or images.
 
 Render the page in light and dark (for example with headless Chrome) and look
 at the screenshots before handing it over. Check that edges match `deps`,
-labels don't overlap, and every slice has a card. The user can annotate it with
-`/plannotator-annotate docs/epics/<epic>/epic.html`; process the annotations as
-in discovery and redraw. A **Looks good** label on a proposal means the user
+labels don't overlap, and every slice has a card. Send it to the user as an attachment of an
+Inbox message; process the annotations as in discovery and redraw. A **Looks good** label on a proposal means the user
 accepts it: move that open question into the decisions as an `E-xx` entry
 (noting the `Q-xx` it came from), and update the slices that cite it.
 
@@ -131,11 +131,14 @@ Pick the next slice whose dependencies are approved. In its own jj change:
 3. Run the relevant checks: Rust tests, formatting and Clippy, binding
    generation, and Swift Testing, snapshots, and UI tests for the platforms the
    slice touches. Capture demo evidence per
-   [document-ios-delivery](../document-ios-delivery/SKILL.md). Report any check
+   [document-apple-delivery](../document-apple-delivery/SKILL.md). Report any check
    that could not run.
 4. Set the slice's status in the epic page's data object to `awaiting-review`.
-5. Report the change ID, behavior, validation, and remaining stubs, then stop
-   for review, even when another slice is technically independent.
+5. Record the behavior, validation, and remaining stubs in the plan's
+   Validation section. If the slice has a demo, send `demo.md` and its
+   screenshots to the slice's Inbox thread for the functional review. Then
+   open the code review with Plannotator's review tool (`plannotator review`,
+   never the Inbox). Stop for both reviews, even when another slice is technically independent.
 
 Review fixes stay in the same slice's change. Do not combine slices or squash
 them into an epic-sized change. If implementation reveals a missing dependency

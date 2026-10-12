@@ -21,7 +21,7 @@ asked about.
 
 ## Ask in rounds
 
-Use the structured question tool, at most four questions per round. Order the
+Send each round as Inbox question blocks ([use-plannotator-inbox](../use-plannotator-inbox/SKILL.md)), at most about eight questions per round. Order the
 rounds by how much each answer reshapes the rest:
 
 1. **Shape**: when and why the feature is used, how data gets in, what the
@@ -54,8 +54,10 @@ MVP stays small.
 
 ## Review the mockups with the user
 
-After the first rounds, let the user annotate the mockups directly (for
-example with `/plannotator-annotate docs/tasks/<topic>/mockups.html`).
+Ask every round through the Plannotator Inbox
+([use-plannotator-inbox](../use-plannotator-inbox/SKILL.md)), with question
+blocks. After the first rounds, attach the mockups
+(`docs/tasks/<topic>/mockups.html`) so the user annotates them directly.
 Annotations answer questions in bulk and raise new ones. Process every
 annotation:
 
@@ -65,7 +67,7 @@ annotation:
   narrower `Q-xx`.
 - "What's this?" or "I don't understand" means the mockup failed. Relabel the
   element or rewrite the note in plain words with a concrete example, and
-  reply in chat with the explanation.
+  reply in the Inbox thread with the explanation.
 - An answer with a consequence the user may not have seen (for example "show
   total time" when steps run in parallel) becomes a new question with
   visualised options.

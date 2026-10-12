@@ -1,5 +1,14 @@
 # Project working agreement
 
+## Communication
+
+All communication with the user goes through the Plannotator Inbox: questions,
+plans, review requests, reports, and blockers. Follow
+[use-plannotator-inbox](.agents/skills/use-plannotator-inbox/SKILL.md). The
+chat is only for a short line that points to the Inbox message. One
+exception: a code review request opens Plannotator's code review
+(`plannotator review`), not an Inbox message.
+
 ## Architecture
 
 Build a native Apple application, macOS first and iOS second, with SwiftUI and

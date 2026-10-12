@@ -1,0 +1,101 @@
+---
+name: use-plannotator-inbox
+description: Talk to the user through the Plannotator Inbox. Use for every question, plan, review request, report, and blocker in this project, instead of chat.
+---
+
+# Use the Plannotator Inbox
+
+All communication with the user goes through the Plannotator Inbox. The user
+reads and answers there. Do not put questions, plans, or reports in the chat.
+A chat message is only for a short line that points to the Inbox message.
+
+## How to reach it
+
+1. If the session has the `plannotator_inbox` tool
+   (`mcp__plannotator__plannotator_inbox`, maybe through tool search), use it.
+   Its `action` is one of the tool names below. Replies wake the session.
+2. If not, run the helper from the repository root:
+
+   ```sh
+   python3 -I .agents/skills/use-plannotator-inbox/scripts/inbox.py send_message message.json
+   ```
+
+   `message.json` holds the tool arguments as a JSON object (`-` reads
+   stdin). Write it in the scratchpad. The helper runs
+   `plannotator inbox mcp` and prints the result. A reply may not wake the
+   session. After you send, end the turn. When the user returns, read the
+   reply with `read_thread`.
+
+`plannotator inbox --help` is the full guide. Read it when a tool refuses a
+call.
+
+| Tool | Use |
+|---|---|
+| `send_message` | `body` (Markdown), `subject`, `thread`, `reply_to`, `attachments` (paths). |
+| `read_thread` | Read a thread with the user's answers and annotations. |
+| `wait_for_reply` | Wait at most 50 seconds for a reply. Only for short waits. |
+| `resolve_message` | Close a thread when you have what you need. |
+| `record_decision`, `list_decisions` | Project decisions. Read them before you ask again. |
+
+## Threads
+
+Use one named thread for each unit of work, so work stays apart:
+`thread: "MAC-02"` for a slice, `thread: "mac-shell epic"` for epic planning.
+Answer a reply with `reply_to` set to its message id.
+
+## Questions
+
+Ask with question blocks. They render as answer cards. Each block needs
+enough context to answer without opening anything else: what the choice
+changes, what you know, and why you recommend an option.
+
+```markdown
+:::question
+MAC-02/Q2 — Which database does a run use?
+
+The **+** button stays disabled until MAC-05, so the real database is empty.
+A seed shows rows, but not your data.
+
+- [ ] Real database only — empty window until MAC-05
+- [ ] Real database, plus `--seed FILE` — your data by default, rows on request
+
+Recommended: Real database, plus `--seed FILE`
+:::
+```
+
+- Keep the question ID (`MAC-02/Q2`) at the start of the first line.
+- Add `Stopped: <why>` when work cannot go on without the answer.
+- Ask at most about 8 questions in one message.
+
+## Plans, documents, and mockups
+
+Attach the file (`attachments: ["docs/epics/mac-shell/tasks/MAC-02.md"]`) and
+link it from the body. The user annotates it in the Inbox. The annotations
+come back in the reply.
+
+## Code review: not in the Inbox
+
+A request to review code changes never goes to the Inbox. Open Plannotator's
+code review instead: the `plannotator` tool with `action: "review"` (the
+CLI equivalent is `plannotator review`). It shows the working-copy change
+(`@` against its parent in jj). The user's review comments come back as a
+message in the session. This applies when a slice is finished and after
+each round of review fixes.
+
+The functional demo is a separate review. Send `demo.md` and its screenshots
+to the slice's Inbox thread as attachments, before you open the code review.
+So the user reviews behavior in the Inbox and code in `plannotator review`.
+
+## Reports
+
+A report that is not a code review request (a blocker, a check run, a
+finding) is an Inbox message. Keep it short: what changed, the checks and
+their results, what stays open. Attach the plan or the demo when the user
+must read it.
+
+## Reply handling
+
+- An answer that takes your recommendation shows `(your recommendation)`.
+  Treat it like a **Looks good** label: the user accepts it.
+- `Skipped` keeps the question open.
+- A note or `Other:` text overrides the offered options.

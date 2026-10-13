@@ -73,24 +73,59 @@ Attach the file (`attachments: ["docs/epics/mac-shell/tasks/MAC-02.md"]`) and
 link it from the body. The user annotates it in the Inbox. The annotations
 come back in the reply.
 
-## Code review: not in the Inbox
+## Code review: count the Rust files first
 
-A request to review code changes never goes to the Inbox. Open Plannotator's
-code review instead: the `plannotator` tool with `action: "review"` (the
-CLI equivalent is `plannotator review`). It shows the working-copy change
-(`@` against its parent in jj). The user's review comments come back as a
-message in the session. This applies when a slice is finished and after
-each round of review fixes.
+The user reviews the Rust side and the demos. The user does not review Swift.
+Before you ask for any review (when a slice is finished, and after each round
+of review fixes), count the Rust files that the change edits:
 
-The functional demo is a separate review. Send `demo.md` and its screenshots
-to the slice's Inbox thread as attachments, before you open the code review.
-So the user reviews behavior in the Inbox and code in `plannotator review`.
+```sh
+jj diff -r @ --name-only 'glob:**/*.rs'
+```
+
+### No Rust files: no review
+
+Do not ask for a review. Do not open `plannotator review`, do not send a
+guided review, and do not ask "Does the app behave as the demo shows?".
+Send one short Inbox report: what changed, the checks and their results, and
+"No Rust files changed, so there is no review." Include the demo in that
+report when there is one, for information only. The change does not wait for a review; continue
+with the next work.
+
+### Rust files: a guided review in the Inbox
+
+Send a guided review to the slice's Inbox thread. Do not open the full code
+review (`plannotator review`) unless the user asks for it.
+
+1. Send the demo first, if the slice has one, as its own message: the text
+   in the body, each screenshot embedded with `![...](path)` and listed in
+   `attachments`, no `demo.md` file (see
+   [document-apple-delivery](../document-apple-delivery/SKILL.md)). End it
+   with the question "Does the app behave as the demo shows?".
+2. Call `get_guide_brief` and follow its method.
+3. Make the patch from the Rust side only:
+
+   ```sh
+   jj diff --git -r @ 'glob:"**/*.rs" | glob:"**/Cargo.toml" | glob:"**/migrations/**"'
+   ```
+
+   Add a Swift file only when it holds an important part that is more than
+   presentation: a platform adapter that executes an effect for Rust, the
+   event or effect bridge to the core, or business logic that Swift must not
+   own. Add it to the fileset by path (`... | "apple/Kreatyna/Shared/X.swift"`,
+   inside the same single quotes), and say in its section why it is in the
+   review. Never add views, view modifiers, snapshot baselines, UI
+   tests, or `project.yml` only for layout.
+4. Call `submit_guide` with the guide and that exact patch, in the same
+   thread. Every file in the patch goes in exactly one section.
+
+The user's comments come back as an Inbox reply.
 
 ## Reports
 
 A report that is not a code review request (a blocker, a check run, a
 finding) is an Inbox message. Keep it short: what changed, the checks and
-their results, what stays open. Attach the plan or the demo when the user
+their results, what stays open. Attach the plan when the user
 must read it.
 
 ## Reply handling

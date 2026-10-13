@@ -17,13 +17,16 @@ can understand and reproduce the result. When a failure state needs a
 fixture or injected response, label that setup and exercise the normal UI and
 event path. Do not present a static mockup as a running-app capture.
 
-Deliver a `demo.md` at the location agreed for the feature, with relative
-links to committed screenshots. For each scenario, state the starting
-condition, action, and visible result. Cover the main flows and each relevant
-user-visible edge state from the acceptance criteria, such as empty, loading,
-validation, failure/retry, pending, cancellation, and persistence when
-applicable. Use short videos when motion or a multi-step interaction is
-clearer than still images; videos supplement the screenshots.
+Do not write a `demo.md` file. The demo is the Inbox message itself: write
+everything you want to say in its `body`, and embed each screenshot there
+with `![what it shows](docs/epics/<epic>/tasks/<ID>-demo/01-catalog.png)`.
+Also list every embedded image in `attachments`, so the Inbox keeps it and
+the user can comment on it. For each scenario, state the starting condition,
+action, and visible result, then the image. Cover the main flows and each
+relevant user-visible edge state from the acceptance criteria, such as empty,
+loading, validation, failure/retry, pending, cancellation, and persistence
+when applicable. Use short videos when motion or a multi-step interaction is
+clearer than still images; attach them, as a supplement to the screenshots.
 
 A state that the running app cannot produce on demand (for example a storage
 failure) goes under "Not captured from the running app", with the snapshot
@@ -32,15 +35,16 @@ or test that covers it.
 Run the relevant Swift Testing, deterministic snapshot, and real-core XCTest
 UI checks required by the project. Inspect the captured images and any
 snapshot diffs before accepting them. Record the checks and any unavailable
-evidence in the demo or delivery report; never imply that an unrun check
-passed. Verify that the Markdown opens every committed image or video before
-presenting the change for review.
+evidence in the demo message; never imply that an unrun check passed. Check
+that every embedded image path exists before you send the message.
 
-Present the demo in the Plannotator Inbox, separate from the code review
-([use-plannotator-inbox](../use-plannotator-inbox/SKILL.md)). Send `demo.md`
-and its screenshots as attachments to the slice's thread, with one question:
-"Does the app behave as the demo shows?". The user annotates the demo there.
-The code goes to `plannotator review`.
+Send the demo message to the slice's Inbox thread. When the change edits Rust
+files, end it with one question: "Does the app behave as the demo shows?".
+The user annotates the demo there, and a guided review of the Rust side
+follows in the same thread. When it edits no Rust files, the demo is part of
+the report, for information only, without the question. See "Code review:
+count the Rust files first" in
+[use-plannotator-inbox](../use-plannotator-inbox/SKILL.md).
 
 ## Data
 

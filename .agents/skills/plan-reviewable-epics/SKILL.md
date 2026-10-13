@@ -135,10 +135,12 @@ Pick the next slice whose dependencies are approved. In its own jj change:
    that could not run.
 4. Set the slice's status in the epic page's data object to `awaiting-review`.
 5. Record the behavior, validation, and remaining stubs in the plan's
-   Validation section. If the slice has a demo, send `demo.md` and its
-   screenshots to the slice's Inbox thread for the functional review. Then
-   open the code review with Plannotator's review tool (`plannotator review`,
-   never the Inbox). Stop for both reviews, even when another slice is technically independent.
+   Validation section. Then follow "Code review: count the Rust files first"
+   in [use-plannotator-inbox](../use-plannotator-inbox/SKILL.md). When the
+   change edits Rust files, send the demo (if any) and a guided review of the
+   Rust side to the slice's Inbox thread, and stop for that review, even when
+   another slice is technically independent. When it edits no Rust files,
+   send only a short report; there is no review to wait for.
 
 Review fixes stay in the same slice's change. Do not combine slices or squash
 them into an epic-sized change. If implementation reveals a missing dependency

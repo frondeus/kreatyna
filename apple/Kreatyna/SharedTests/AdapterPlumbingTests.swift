@@ -23,6 +23,7 @@ struct EventCompositionTests {
             event: .list(scope: ScopeId(value: 3), event: .select(id: Fixtures.cucumberId))
         ))
         #expect(catalog.detail(.edit) == .detail(scope: ScopeId(value: 4), event: .edit))
+        #expect(catalog.form(.save) == .form(scope: ScopeId(value: 4), event: .save))
         #expect(catalog.clearSelection == .clearSelection(scope: ScopeId(value: 4)))
         #expect(app.ingredients.stack == nil)
     }

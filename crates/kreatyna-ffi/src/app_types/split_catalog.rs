@@ -2,8 +2,8 @@ use kreatyna::ingredients as core;
 use krucyfiks::Scoped;
 
 use super::{
-    AppTypeConversionError, IngredientDetailEvent, IngredientDetailView, IngredientListEvent,
-    IngredientListView, ScopeId,
+    AppTypeConversionError, IngredientDetailEvent, IngredientDetailView, IngredientFormEvent,
+    IngredientFormView, IngredientListEvent, IngredientListView, ScopeId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -15,6 +15,10 @@ pub enum IngredientSplitCatalogEvent {
     Detail {
         scope: ScopeId,
         event: IngredientDetailEvent,
+    },
+    Form {
+        scope: ScopeId,
+        event: IngredientFormEvent,
     },
     ClearSelection {
         scope: ScopeId,
@@ -32,6 +36,9 @@ impl TryFrom<IngredientSplitCatalogEvent> for core::IngredientSplitCatalogEvent 
             IngredientSplitCatalogEvent::Detail { scope, event } => {
                 Self::Detail(Scoped::new(scope.into(), event.into()))
             }
+            IngredientSplitCatalogEvent::Form { scope, event } => {
+                Self::Form(Scoped::new(scope.into(), event.try_into()?))
+            }
             IngredientSplitCatalogEvent::ClearSelection { scope } => Self::ClearSelection {
                 scope: scope.into(),
             },
@@ -46,16 +53,22 @@ impl TryFrom<IngredientSplitCatalogEvent> for core::IngredientSplitCatalogEvent 
 pub enum IngredientSplitPaneView {
     Empty,
     Detail { detail: IngredientDetailView },
+    Create { form: IngredientFormView },
 }
 
-impl From<core::IngredientSplitPaneView> for IngredientSplitPaneView {
-    fn from(value: core::IngredientSplitPaneView) -> Self {
-        match value {
+impl TryFrom<core::IngredientSplitPaneView> for IngredientSplitPaneView {
+    type Error = AppTypeConversionError;
+
+    fn try_from(value: core::IngredientSplitPaneView) -> Result<Self, Self::Error> {
+        Ok(match value {
             core::IngredientSplitPaneView::Empty => Self::Empty,
             core::IngredientSplitPaneView::Detail(detail) => Self::Detail {
                 detail: detail.into(),
             },
-        }
+            core::IngredientSplitPaneView::Create(form) => Self::Create {
+                form: form.try_into()?,
+            },
+        })
     }
 }
 
@@ -84,12 +97,14 @@ pub struct ScopedIngredientSplitPaneView {
     pub value: IngredientSplitPaneView,
 }
 
-impl From<Scoped<core::IngredientSplitPaneView>> for ScopedIngredientSplitPaneView {
-    fn from(value: Scoped<core::IngredientSplitPaneView>) -> Self {
-        Self {
+impl TryFrom<Scoped<core::IngredientSplitPaneView>> for ScopedIngredientSplitPaneView {
+    type Error = AppTypeConversionError;
+
+    fn try_from(value: Scoped<core::IngredientSplitPaneView>) -> Result<Self, Self::Error> {
+        Ok(Self {
             scope: value.scope.into(),
-            value: value.value.into(),
-        }
+            value: value.value.try_into()?,
+        })
     }
 }
 
@@ -99,6 +114,11 @@ pub struct IngredientSplitCatalogView {
     /// The highlighted row's ingredient ID.
     pub selected: Option<String>,
     pub pane: ScopedIngredientSplitPaneView,
+    /// Whether **＋** opens the create form now.
+    pub can_create: bool,
+    /// The draft row's text while the create form is open: the typed name,
+    /// trimmed. Empty until a name is typed.
+    pub draft_row: Option<String>,
 }
 
 impl TryFrom<core::IngredientSplitCatalogView> for IngredientSplitCatalogView {
@@ -108,7 +128,9 @@ impl TryFrom<core::IngredientSplitCatalogView> for IngredientSplitCatalogView {
         Ok(Self {
             list: value.list.try_into()?,
             selected: value.selected.map(|id| id.to_string()),
-            pane: value.pane.into(),
+            pane: value.pane.try_into()?,
+            can_create: value.can_create,
+            draft_row: value.draft_row,
         })
     }
 }

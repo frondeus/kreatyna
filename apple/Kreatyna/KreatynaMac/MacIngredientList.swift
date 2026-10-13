@@ -4,11 +4,18 @@ import SwiftUI
 ///
 /// Swift keeps no selection: the highlight is Rust's `selected`, and a click,
 /// an arrow key, or a ⌘-click only reports the new choice through `select`.
+/// While the create form is open, Rust's draft row is first and highlighted.
 struct MacIngredientList: View {
     let view: IngredientListView
     let selected: String?
+    /// The typed name of the ingredient being created; empty before a name.
+    var draftRow: String? = nil
+    var canCreate = true
     let select: (String?) -> Void
     let send: (IngredientListEvent) -> Void
+
+    /// The draft row's tag in the list selection. It is never an ingredient ID.
+    private static let draftTag = "draft"
 
     /// Presentation only: keyboard focus, so the arrow keys move the selection.
     @FocusState private var focused: Bool
@@ -23,11 +30,17 @@ struct MacIngredientList: View {
         .navigationTitle("Ingredients")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Add Ingredient", systemImage: "plus") {}
-                    .disabled(true) // MAC-05
+                Button("Add Ingredient", systemImage: "plus") { send(.createRequested) }
+                    .keyboardShortcut("n", modifiers: .command)
+                    .disabled(!canCreate)
                     .accessibilityIdentifier("addIngredient")
             }
         }
+    }
+
+    /// A click on the draft row changes nothing; Rust keeps it highlighted.
+    private func choose(_ id: String?) {
+        if id != Self.draftTag { select(id) }
     }
 
     @ViewBuilder
@@ -49,7 +62,7 @@ struct MacIngredientList: View {
             }
             .accessibilityIdentifier("ingredientListFailed")
         case .ready(let rows, let totalCount, let refresh):
-            List(selection: Binding(get: { selected }, set: select)) {
+            List(selection: Binding(get: { draftRow == nil ? selected : Self.draftTag }, set: choose)) {
                 if case .failed(let error) = refresh {
                     Section {
                         Text(error.message)
@@ -57,6 +70,12 @@ struct MacIngredientList: View {
                         Button("Retry") { send(.refresh) }
                             .accessibilityIdentifier("retryIngredientRefresh")
                     }
+                }
+                if let draftRow {
+                    Text(draftRow.isEmpty ? "New Ingredient" : draftRow)
+                        .italic()
+                        .tag(Self.draftTag)
+                        .accessibilityIdentifier("ingredientDraftRow")
                 }
                 ForEach(rows, id: \.id) { row in
                     Text(row.name)
@@ -68,21 +87,23 @@ struct MacIngredientList: View {
             .focused($focused)
             // A click selects through the binding but does not focus the list.
             // Focusing it on each selection lets ↑ and ↓ work after a click.
-            .onChange(of: selected) { focused = true }
+            // Not when the form opens (`selected` becomes nil): Name has the focus then.
+            .onChange(of: selected) { if selected != nil { focused = true } }
             .overlay {
                 if rows.isEmpty {
-                    if totalCount == 0 {
+                    if totalCount > 0 {
+                        ContentUnavailableView {
+                            Text("No matches for “\(view.search)”")
+                        }
+                        .accessibilityIdentifier("ingredientListNoMatches")
+                    } else if draftRow == nil {
+                        // A draft row covers the empty state: something is being added.
                         ContentUnavailableView {
                             Text("No ingredients yet")
                         } description: {
                             Text("Ingredients you add appear here.")
                         }
                         .accessibilityIdentifier("ingredientListEmpty")
-                    } else {
-                        ContentUnavailableView {
-                            Text("No matches for “\(view.search)”")
-                        }
-                        .accessibilityIdentifier("ingredientListNoMatches")
                     }
                 }
             }

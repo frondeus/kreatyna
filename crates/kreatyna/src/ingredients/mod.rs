@@ -42,7 +42,7 @@ pub use form::{
 
 pub use split_catalog::{
     IngredientSplitCatalog, IngredientSplitCatalogEvent, IngredientSplitCatalogOutcome,
-    IngredientSplitCatalogView, IngredientSplitPaneView,
+    IngredientSplitCatalogView, IngredientSplitPaneOutcome, IngredientSplitPaneView,
 };
 
 pub use navigation::{

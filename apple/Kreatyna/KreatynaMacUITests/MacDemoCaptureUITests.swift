@@ -81,6 +81,73 @@ final class MacDemoCaptureUITests: XCTestCase {
         app.terminate()
     }
 
+    /// `docs/epics/mac-shell/tasks/MAC-05-demo/`: create from the toolbar.
+    @MainActor
+    func testCaptureMAC05Demo() throws {
+        let fixture = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/demo-ingredients.json")
+        let app = XCUIApplication()
+        app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
+        app.launchEnvironment["KREATYNA_TEST_SEED"] = try String(contentsOf: fixture, encoding: .utf8)
+        app.launch()
+
+        let rows = app.staticTexts.matching(identifier: "ingredientRow")
+        let draftRow = app.staticTexts.matching(identifier: "ingredientDraftRow").firstMatch
+        XCTAssertTrue(rows["Garlic"].waitForExistence(timeout: 5))
+        rows["Garlic"].click()
+        XCTAssertTrue(app.staticTexts["clove"].waitForExistence(timeout: 5))
+
+        app.buttons["addIngredient"].click()
+        XCTAssertTrue(draftRow.waitForExistence(timeout: 5))
+        capture("01-new-form", app)
+
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(app.staticTexts["Required."].waitForExistence(timeout: 5))
+        capture("02-validation", app)
+
+        app.typeText("garlic")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientSaveError"].waitForExistence(timeout: 5))
+        capture("03-duplicate-name", app)
+
+        // Saving disables the form, which takes the focus away from Name.
+        app.textFields["ingredientNameField"].click()
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText("Paprika")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(rows["Paprika"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientDetail"].waitForExistence(timeout: 5))
+        capture("04-saved", app)
+
+        app.buttons["addIngredient"].click()
+        XCTAssertTrue(draftRow.waitForExistence(timeout: 5))
+        app.typeText("Pap")
+        rows["Tomato"].click()
+        XCTAssertTrue(app.buttons["confirmDiscard"].waitForExistence(timeout: 5))
+        capture("05-discard-question", app)
+        app.buttons["confirmDiscard"].click()
+        XCTAssertTrue(app.staticTexts["medium tomato"].waitForExistence(timeout: 5))
+
+        app.searchFields.firstMatch.click()
+        app.typeText("tom")
+        XCTAssertTrue(waitForNonExistence(rows["Garlic"]))
+        app.buttons["addIngredient"].click()
+        XCTAssertTrue(draftRow.waitForExistence(timeout: 5))
+        app.typeText("Cumin")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitForNonExistence(draftRow))
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientDetail"].waitForExistence(timeout: 5))
+        XCTAssertFalse(rows["Cumin"].exists)
+        capture("06-saved-hidden-by-search", app)
+        app.terminate()
+    }
+
+    private func waitForNonExistence(_ element: XCUIElement) -> Bool {
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
+        return XCTWaiter().wait(for: [gone], timeout: 5) == .completed
+    }
+
     @MainActor
     private func launch(seed: [String]) throws -> XCUIApplication {
         let app = XCUIApplication()

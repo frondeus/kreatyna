@@ -1,9 +1,10 @@
 use kreatyna::{
     capabilities::ResolveRender,
-    confirmation::ConfirmationEvent,
+    confirmation::{ConfirmationEvent, ConfirmationView},
     ingredients::{
         capabilities::{
-            IngredientDeleteError, IngredientEffect, IngredientEffectStream, ResolveIngredientStore,
+            IngredientDeleteError, IngredientEffect, IngredientEffectStream, IngredientSaveError,
+            ResolveIngredientStore,
         },
         *,
     },
@@ -181,9 +182,9 @@ async fn deleting_the_selected_ingredient_removes_its_row_and_empties_the_pane()
     let deleted = fixture.finish_delete().await?;
     assert_eq!(
         deleted,
-        IngredientSplitCatalogOutcome::Detail(Scoped::new(
+        IngredientSplitCatalogOutcome::Pane(Scoped::new(
             scope,
-            IngredientDetailOutcome::Deleted { id: garlic.id }
+            IngredientSplitPaneOutcome::Detail(IngredientDetailOutcome::Deleted { id: garlic.id })
         ))
     );
 
@@ -329,16 +330,17 @@ async fn the_selection_is_kept_while_a_delete_is_being_confirmed() -> anyhow::Re
     Ok(())
 }
 
-#[test_case(IngredientListEvent::CreateRequested; "create")]
-#[test_case(IngredientListEvent::Edit(id(1)); "edit from the list")]
 #[tokio::test]
-async fn create_and_edit_from_the_list_are_not_routed_yet(
-    event: IngredientListEvent,
-) -> anyhow::Result<()> {
+async fn edit_from_the_list_is_not_routed_yet() -> anyhow::Result<()> {
     let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
     let before = fixture.catalog.view();
 
-    let outcome = fixture.choose(list_event(before.list.scope, event)).await?;
+    let outcome = fixture
+        .choose(list_event(
+            before.list.scope,
+            IngredientListEvent::Edit(id(1)),
+        ))
+        .await?;
     let mut command = fixture
         .catalog
         .update(Message::Outcome(outcome))
@@ -379,7 +381,331 @@ async fn a_failed_delete_keeps_the_selection() -> anyhow::Result<()> {
     Ok(())
 }
 
+// Create (MAC-05)
+
+#[tokio::test]
+async fn create_opens_the_form_in_a_new_pane_scope() -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    fixture.select(id(1)).await?;
+    let before = fixture.catalog.view();
+    assert!(before.can_create);
+
+    fixture.create().await?;
+
+    let view = fixture.catalog.view();
+    assert_ne!(view.pane.scope, before.pane.scope);
+    assert_eq!(view.list.scope, before.list.scope);
+    let form = fixture.form();
+    assert_eq!(form.draft.name, "");
+    assert_eq!(form.draft.basis, NutritionBasis::Per100Grams);
+    assert_eq!(form.status, IngredientFormStatus::Editing);
+    assert_eq!(view.selected, None);
+    assert_eq!(view.draft_row.as_deref(), Some(""));
+    assert!(!view.can_create);
+    assert_eq!(row_names(&view.list.value), ["Garlic"]);
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_draft_row_shows_the_typed_name() -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    fixture.create().await?;
+
+    fixture.type_name("  Paprika ").await?;
+    assert_eq!(fixture.catalog.view().draft_row.as_deref(), Some("Paprika"));
+
+    let saved = fixture.finish_save(ingredient(2, "Paprika")).await?;
+    fixture.apply_outcome(saved).await?;
+    assert_eq!(fixture.catalog.view().draft_row, None);
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_draft_row_ignores_the_search() -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(
+        vec![ingredient(1, "Tomato"), ingredient(2, "Garlic")],
+        "tom",
+    )
+    .await?;
+    fixture.create().await?;
+    fixture.type_name("Paprika").await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(row_names(&view.list.value), ["Tomato"]);
+    assert_eq!(view.draft_row.as_deref(), Some("Paprika"));
+    Ok(())
+}
+
+#[tokio::test]
+async fn saving_adds_the_row_and_shows_its_detail() -> anyhow::Result<()> {
+    let paprika = ingredient(3, "Paprika");
+    let mut fixture =
+        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
+    fixture.create().await?;
+    fixture.type_name("Paprika").await?;
+    let form_scope = fixture.catalog.view().pane.scope;
+
+    let saved = fixture.finish_save(paprika.clone()).await?;
+    fixture.apply_outcome(saved).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(row_names(&view.list.value), ["Garlic", "Paprika", "Tomato"]);
+    assert_eq!(view.selected, Some(paprika.id));
+    assert_ne!(view.pane.scope, form_scope);
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&paprika))
+    );
+    assert!(view.can_create);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_saved_ingredient_hidden_by_the_search_still_opens() -> anyhow::Result<()> {
+    let paprika = ingredient(3, "Paprika");
+    let mut fixture = SplitFixture::ready(
+        vec![ingredient(1, "Tomato"), ingredient(2, "Garlic")],
+        "tom",
+    )
+    .await?;
+    fixture.create().await?;
+    fixture.type_name("Paprika").await?;
+
+    let saved = fixture.finish_save(paprika.clone()).await?;
+    fixture.apply_outcome(saved).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.list.value.search, "tom");
+    assert_eq!(row_names(&view.list.value), ["Tomato"]);
+    assert_eq!(view.selected, Some(paprika.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&paprika))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_duplicate_name_keeps_the_form_with_the_error() -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    fixture.create().await?;
+    fixture.type_name("garlic").await?;
+    let form_scope = fixture.catalog.view().pane.scope;
+
+    let failed = fixture
+        .save(Err(IngredientSaveError::DuplicateName))
+        .await?;
+    fixture.apply_outcome(failed).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.pane.scope, form_scope);
+    let form = fixture.form();
+    assert_eq!(form.status, IngredientFormStatus::Editing);
+    assert_eq!(form.save_error, Some(IngredientSaveError::DuplicateName));
+    assert_eq!(view.draft_row.as_deref(), Some("garlic"));
+    assert_eq!(row_names(&view.list.value), ["Garlic"]);
+    Ok(())
+}
+
+#[tokio::test]
+async fn cancel_on_a_clean_form_returns_to_the_previous_detail() -> anyhow::Result<()> {
+    let garlic = ingredient(1, "Garlic");
+    let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
+    fixture.select(garlic.id).await?;
+    fixture.create().await?;
+
+    let discarded = fixture.close_clean_form().await?;
+    fixture.apply_outcome(discarded).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(garlic.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&garlic))
+    );
+    assert_eq!(view.draft_row, None);
+    assert!(view.can_create);
+    Ok(())
+}
+
+#[tokio::test]
+async fn cancel_on_a_clean_form_with_nothing_before_empties_the_pane() -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    fixture.create().await?;
+
+    let discarded = fixture.close_clean_form().await?;
+    fixture.apply_outcome(discarded).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, None);
+    assert_eq!(view.pane.value, IngredientSplitPaneView::Empty);
+    assert_eq!(view.draft_row, None);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_row_click_on_a_clean_form_opens_the_row() -> anyhow::Result<()> {
+    let tomato = ingredient(2, "Tomato");
+    let mut fixture =
+        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
+    fixture.create().await?;
+
+    fixture.select(tomato.id).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(tomato.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&tomato))
+    );
+    assert_eq!(view.draft_row, None);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_row_click_on_a_dirty_form_asks_and_discard_opens_the_row() -> anyhow::Result<()> {
+    let tomato = ingredient(2, "Tomato");
+    let mut fixture =
+        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
+    fixture.select(id(1)).await?;
+    fixture.create().await?;
+    fixture.type_name("Pap").await?;
+    let form_scope = fixture.catalog.view().pane.scope;
+
+    fixture.select(tomato.id).await?;
+    let view = fixture.catalog.view();
+    assert_eq!(view.pane.scope, form_scope);
+    assert_eq!(
+        fixture.form().status,
+        IngredientFormStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
+    );
+    assert_eq!(view.draft_row.as_deref(), Some("Pap"));
+
+    let discarded = fixture.discard_after_question().await?;
+    fixture.apply_outcome(discarded).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(tomato.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&tomato))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn keep_editing_forgets_the_clicked_row() -> anyhow::Result<()> {
+    let garlic = ingredient(1, "Garlic");
+    let mut fixture =
+        SplitFixture::ready(vec![garlic.clone(), ingredient(2, "Tomato")], "").await?;
+    fixture.select(garlic.id).await?;
+    fixture.create().await?;
+    fixture.type_name("Pap").await?;
+    fixture.select(id(2)).await?;
+
+    let scope = fixture.catalog.view().pane.scope;
+    let kept = fixture
+        .choose(form_event(
+            scope,
+            IngredientFormEvent::Confirmation(ConfirmationEvent::Cancel),
+        ))
+        .await?;
+    fixture.apply_outcome(kept).await?;
+    assert_eq!(fixture.form().status, IngredientFormStatus::Editing);
+    assert_eq!(fixture.form().draft.name, "Pap");
+
+    // A later Cancel goes back to Garlic, not to the clicked Tomato.
+    fixture
+        .apply(form_event(scope, IngredientFormEvent::RequestClose))
+        .await?;
+    let discarded = fixture.discard_after_question().await?;
+    fixture.apply_outcome(discarded).await?;
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(garlic.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&garlic))
+    );
+    Ok(())
+}
+
+#[test_case(Busy::FormOpen; "a form is open")]
+#[test_case(Busy::DeleteRuns; "a delete is being confirmed")]
+#[tokio::test]
+async fn create_is_ignored_while_a_form_is_open_or_a_delete_runs(busy: Busy) -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    fixture.select(id(1)).await?;
+    match busy {
+        Busy::FormOpen => {
+            fixture.create().await?;
+            fixture.type_name("Pap").await?;
+        }
+        Busy::DeleteRuns => {
+            let scope = fixture.catalog.view().pane.scope;
+            fixture
+                .apply(detail_event(scope, IngredientDetailEvent::RequestDelete))
+                .await?;
+        }
+    }
+    let before = fixture.catalog.view();
+    assert!(!before.can_create);
+
+    let outcome = fixture
+        .choose(list_event(
+            before.list.scope,
+            IngredientListEvent::CreateRequested,
+        ))
+        .await?;
+    let mut command = fixture
+        .catalog
+        .update(Message::Outcome(outcome))
+        .driver(&mut fixture.effects);
+    command.step().await?.expect_done();
+    assert_eq!(fixture.catalog.view(), before);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_late_form_result_from_an_old_pane_scope_is_ignored() -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    fixture.create().await?;
+    fixture.type_name("Paprika").await?;
+    let saved = fixture.finish_save(ingredient(2, "Paprika")).await?;
+    fixture.apply_outcome(saved.clone()).await?;
+    let before = fixture.catalog.view();
+
+    let mut command = fixture
+        .catalog
+        .update(Message::Outcome(saved))
+        .driver(&mut fixture.effects);
+    command.step().await?.expect_done();
+    assert_eq!(fixture.catalog.view(), before);
+    Ok(())
+}
+
+#[tokio::test]
+async fn clearing_the_selection_is_ignored_while_a_form_is_open() -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    fixture.select(id(1)).await?;
+    fixture.create().await?;
+    let before = fixture.catalog.view();
+
+    let mut command = fixture
+        .catalog
+        .update(Message::Event(clear_selection(before.pane.scope)))
+        .driver(&mut fixture.effects);
+    command.step().await?.expect_done();
+    assert_eq!(fixture.catalog.view(), before);
+    Ok(())
+}
+
 // Support
+
+#[derive(Debug, Clone, Copy)]
+enum Busy {
+    FormOpen,
+    DeleteRuns,
+}
 
 struct SplitFixture {
     catalog: IngredientSplitCatalog,
@@ -465,6 +791,106 @@ impl SplitFixture {
         self.apply_outcome(outcome).await
     }
 
+    async fn create(&mut self) -> anyhow::Result<()> {
+        let scope = self.catalog.view().list.scope;
+        let outcome = self
+            .choose(list_event(scope, IngredientListEvent::CreateRequested))
+            .await?;
+        self.apply_outcome(outcome).await
+    }
+
+    async fn type_name(&mut self, name: &str) -> anyhow::Result<()> {
+        let scope = self.catalog.view().pane.scope;
+        self.apply(form_event(
+            scope,
+            IngredientFormEvent::SetField {
+                field: IngredientDraftField::Name,
+                value: name.into(),
+            },
+        ))
+        .await
+    }
+
+    fn form(&self) -> IngredientFormView {
+        match self.catalog.view().pane.value {
+            IngredientSplitPaneView::Create(form) => form,
+            pane => panic!("expected the create form, got {pane:?}"),
+        }
+    }
+
+    /// Setup only: save the form and return the store result without applying it.
+    async fn save(
+        &mut self,
+        result: Result<Ingredient, IngredientSaveError>,
+    ) -> anyhow::Result<IngredientSplitCatalogOutcome> {
+        let scope = self.catalog.view().pane.scope;
+        let mut command = self
+            .catalog
+            .update(Message::Event(form_event(scope, IngredientFormEvent::Save)))
+            .driver(&mut self.effects);
+        command
+            .step()
+            .await?
+            .expect_effect()
+            .expect_render()
+            .resolve_render(|| async {})
+            .await?;
+        command
+            .step()
+            .await?
+            .expect_effect()
+            .expect_store()
+            .resolve_save(|_| async { result })
+            .await?;
+        let outcome = command.step().await?.expect_outcome();
+        command.step().await?.expect_done();
+        Ok(outcome)
+    }
+
+    /// Setup only: save successfully and return the form's `Saved` outcome
+    /// without applying it.
+    async fn finish_save(
+        &mut self,
+        saved: Ingredient,
+    ) -> anyhow::Result<IngredientSplitCatalogOutcome> {
+        let finished = self.save(Ok(saved)).await?;
+        let mut command = self
+            .catalog
+            .update(Message::Outcome(finished))
+            .driver(&mut self.effects);
+        render_then_outcome(&mut command).await
+    }
+
+    /// Setup only: Cancel on a clean form; returns `Discarded` without applying it.
+    async fn close_clean_form(&mut self) -> anyhow::Result<IngredientSplitCatalogOutcome> {
+        let scope = self.catalog.view().pane.scope;
+        let mut command = self
+            .catalog
+            .update(Message::Event(form_event(
+                scope,
+                IngredientFormEvent::RequestClose,
+            )))
+            .driver(&mut self.effects);
+        render_then_outcome(&mut command).await
+    }
+
+    /// Setup only: answer "Discard changes?" with Discard; returns `Discarded`
+    /// without applying it.
+    async fn discard_after_question(&mut self) -> anyhow::Result<IngredientSplitCatalogOutcome> {
+        let scope = self.catalog.view().pane.scope;
+        let decided = self
+            .choose(form_event(
+                scope,
+                IngredientFormEvent::Confirmation(ConfirmationEvent::Confirm),
+            ))
+            .await?;
+        let mut command = self
+            .catalog
+            .update(Message::Outcome(decided))
+            .driver(&mut self.effects);
+        render_then_outcome(&mut command).await
+    }
+
     /// Setup only: request and confirm deletion, then return the store result
     /// without applying it.
     async fn delete(
@@ -539,6 +965,22 @@ async fn render_then_finish(
     Ok(())
 }
 
+/// Setup only: resolve one render, then return the one outcome.
+async fn render_then_outcome(
+    command: &mut CommandDriver<'_, IngredientEffect, IngredientSplitCatalogOutcome>,
+) -> anyhow::Result<IngredientSplitCatalogOutcome> {
+    command
+        .step()
+        .await?
+        .expect_effect()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    let outcome = command.step().await?.expect_outcome();
+    command.step().await?.expect_done();
+    Ok(outcome)
+}
+
 fn list_event(scope: CommandScopeId, event: IngredientListEvent) -> IngredientSplitCatalogEvent {
     IngredientSplitCatalogEvent::List(Scoped::new(scope, event))
 }
@@ -548,6 +990,10 @@ fn detail_event(
     event: IngredientDetailEvent,
 ) -> IngredientSplitCatalogEvent {
     IngredientSplitCatalogEvent::Detail(Scoped::new(scope, event))
+}
+
+fn form_event(scope: CommandScopeId, event: IngredientFormEvent) -> IngredientSplitCatalogEvent {
+    IngredientSplitCatalogEvent::Form(Scoped::new(scope, event))
 }
 
 fn clear_selection(scope: CommandScopeId) -> IngredientSplitCatalogEvent {

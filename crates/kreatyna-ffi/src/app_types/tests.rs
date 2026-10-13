@@ -139,6 +139,8 @@ fn split_view_conversion_keeps_the_selection_and_the_detail() {
                 deletion: ingredient::IngredientDetailDeletion::Idle,
             }),
         ),
+        can_create: true,
+        draft_row: None,
     });
 
     let IngredientsView::Split { catalog } = IngredientsView::try_from(view).unwrap() else {
@@ -151,6 +153,65 @@ fn split_view_conversion_keeps_the_selection_and_the_detail() {
         panic!("expected a detail pane")
     };
     assert_eq!(detail.ingredient.name, "Garlic");
+    assert!(catalog.can_create);
+    assert_eq!(catalog.draft_row, None);
+}
+
+#[test]
+fn split_form_event_conversion_keeps_the_pane_scope() {
+    let save = AppEvent::SplitIngredients {
+        event: IngredientSplitCatalogEvent::Form {
+            scope: ScopeId { value: 5 },
+            event: IngredientFormEvent::Save,
+        },
+    };
+    let core::AppEvent::SplitIngredients(ingredient::IngredientSplitCatalogEvent::Form(inner)) =
+        core::AppEvent::try_from(save).unwrap()
+    else {
+        panic!("expected a form event")
+    };
+    assert_eq!(u64::from(inner.scope), 5);
+    assert_eq!(inner.value, ingredient::IngredientFormEvent::Save);
+}
+
+#[test]
+fn split_view_conversion_carries_the_create_form_and_the_draft_row() {
+    let mut draft = ingredient::IngredientDraft::new(ingredient::NutritionBasis::Per100Grams);
+    draft.set_field(ingredient::IngredientDraftField::Name, "Paprika".into());
+    let view = core::IngredientsView::Split(ingredient::IngredientSplitCatalogView {
+        list: Scoped::new(
+            CommandScopeId::from(3),
+            ingredient::IngredientListView {
+                search: String::new(),
+                status: ingredient::IngredientListStatus::Loading,
+            },
+        ),
+        selected: None,
+        pane: Scoped::new(
+            CommandScopeId::from(6),
+            ingredient::IngredientSplitPaneView::Create(ingredient::IngredientFormView {
+                draft,
+                dirty: true,
+                issues: vec![],
+                save_error: None,
+                status: ingredient::IngredientFormStatus::Editing,
+            }),
+        ),
+        can_create: false,
+        draft_row: Some("Paprika".into()),
+    });
+
+    let IngredientsView::Split { catalog } = IngredientsView::try_from(view).unwrap() else {
+        panic!("expected the split layout")
+    };
+    assert_eq!(catalog.pane.scope, ScopeId { value: 6 });
+    assert!(!catalog.can_create);
+    assert_eq!(catalog.draft_row.as_deref(), Some("Paprika"));
+    let IngredientSplitPaneView::Create { form } = catalog.pane.value else {
+        panic!("expected the create form")
+    };
+    assert_eq!(form.draft.name, "Paprika");
+    assert!(form.dirty);
 }
 
 fn stack(view: RunningAppView) -> IngredientCatalogView {

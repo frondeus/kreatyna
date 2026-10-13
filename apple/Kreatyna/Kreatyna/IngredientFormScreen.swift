@@ -111,7 +111,7 @@ struct IngredientFormScreen: View {
         VStack(alignment: .leading, spacing: 4) {
             if axis == .vertical {
                 SyncedTextField(title, value: value, axis: axis) { send(.setField(field: field, value: $0)) }
-                    .accessibilityIdentifier(Self.identifier(for: field))
+                    .accessibilityIdentifier(field.accessibilityIdentifier)
             } else {
                 LabeledContent(title) {
                     SyncedTextField(numeric ? "Unknown" : "Required", value: value) {
@@ -119,24 +119,10 @@ struct IngredientFormScreen: View {
                     }
                     .multilineTextAlignment(.trailing)
                     .keyboardType(numeric ? .decimalPad : .default)
-                    .accessibilityIdentifier(Self.identifier(for: field))
+                    .accessibilityIdentifier(field.accessibilityIdentifier)
                 }
             }
             if let issue { issueText(for: issue) }
-        }
-    }
-
-    static func identifier(for field: IngredientDraftField) -> String {
-        switch field {
-        case .name: "ingredientNameField"
-        case .notes: "ingredientNotesField"
-        case .calories: "ingredientCaloriesField"
-        case .protein: "ingredientProteinField"
-        case .carbohydrates: "ingredientCarbohydratesField"
-        case .fat: "ingredientFatField"
-        case .unitName(let index): "ingredientUnitNameField.\(index)"
-        case .unitGrams(let index): "ingredientUnitGramsField.\(index)"
-        case .unitMillilitres(let index): "ingredientUnitMillilitresField.\(index)"
         }
     }
 

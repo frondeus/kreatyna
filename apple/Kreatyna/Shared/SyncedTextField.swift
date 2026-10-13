@@ -8,22 +8,31 @@ import SwiftUI
 struct SyncedTextField: View {
     let title: String
     let value: String
+    /// The placeholder. Without one, the title is the placeholder.
+    var prompt: String? = nil
     var axis: Axis = .horizontal
     let send: (String) -> Void
 
     @State private var text: String
     @State private var echo = TextEcho()
 
-    init(_ title: String, value: String, axis: Axis = .horizontal, send: @escaping (String) -> Void) {
+    init(
+        _ title: String,
+        value: String,
+        prompt: String? = nil,
+        axis: Axis = .horizontal,
+        send: @escaping (String) -> Void
+    ) {
         self.title = title
         self.value = value
+        self.prompt = prompt
         self.axis = axis
         self.send = send
         _text = State(initialValue: value)
     }
 
     var body: some View {
-        TextField(title, text: $text, axis: axis)
+        TextField(title, text: $text, prompt: prompt.map { Text($0) }, axis: axis)
             .onChange(of: text) { _, newText in
                 if let sent = echo.typed(newText, displayed: value) { send(sent) }
             }

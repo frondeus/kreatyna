@@ -40,10 +40,12 @@ struct MacIngredientDetail: View {
         .accessibilityIdentifier("ingredientDetail")
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                Button("Edit") {}
+                Button("Edit", systemImage: "pencil") {}
+                    .help("Edit")
                     .disabled(true) // MAC-06
                     .accessibilityIdentifier("editIngredient")
                 Button("Delete", systemImage: "trash") {}
+                    .help("Delete")
                     .disabled(true) // MAC-07
                     .accessibilityIdentifier("deleteIngredient")
             }

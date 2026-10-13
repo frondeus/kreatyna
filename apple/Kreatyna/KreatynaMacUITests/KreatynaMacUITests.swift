@@ -14,7 +14,7 @@ final class KreatynaMacUITests: XCTestCase {
 
         XCTAssertTrue(row(named: "Garlic", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(row(named: "Tomato", in: app).exists)
-        XCTAssertFalse(app.buttons["addIngredient"].isEnabled)
+        XCTAssertTrue(app.buttons["addIngredient"].isEnabled)
     }
 
     @MainActor
@@ -74,6 +74,108 @@ final class KreatynaMacUITests: XCTestCase {
     }
 
     @MainActor
+    func testCreatedIngredientSurvivesRelaunch() throws {
+        let database = UUID().uuidString
+        var app = try launch(json: #"["Garlic", "Tomato"]"#, database: database)
+        XCTAssertTrue(row(named: "Garlic", in: app).waitForExistence(timeout: 5))
+
+        app.buttons["addIngredient"].click()
+        XCTAssertTrue(draftRow(in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(waitFor(draftRow(in: app), value: "New Ingredient"))
+        XCTAssertFalse(app.buttons["addIngredient"].isEnabled)
+
+        // Name has the focus, so typing goes there; the draft row follows.
+        app.typeText("garlic")
+        XCTAssertTrue(waitFor(draftRow(in: app), value: "garlic"))
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientSaveError"].waitForExistence(timeout: 5))
+
+        // Typing after the error keeps the cursor in Name; the first key
+        // clears the error (it once moved the rows and dropped the cursor).
+        app.textFields["ingredientNameField"].click()
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText("Paprika")
+        XCTAssertTrue(waitFor(draftRow(in: app), value: "Paprika"))
+        XCTAssertFalse(app.descendants(matching: .any)["ingredientSaveError"].exists)
+        app.typeKey("s", modifierFlags: .command)
+
+        XCTAssertTrue(row(named: "Paprika", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForNonExistence(draftRow(in: app), timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientDetail"].exists)
+        XCTAssertTrue(app.buttons["addIngredient"].isEnabled)
+
+        app.terminate()
+        app = try launch(json: nil, database: database)
+        XCTAssertTrue(row(named: "Paprika", in: app).waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testDirtyFormAsksBeforeOpeningARow() throws {
+        let app = try launch(json: #"""
+            [{"name": "Garlic", "units": [{"name": "clove", "grams": 5}]},
+             {"name": "Tomato", "units": [{"name": "slice", "grams": 20}]}]
+            """#)
+        XCTAssertTrue(row(named: "Garlic", in: app).waitForExistence(timeout: 5))
+        row(named: "Garlic", in: app).click()
+        XCTAssertTrue(app.staticTexts["clove"].waitForExistence(timeout: 5))
+
+        // Esc on a clean form brings Garlic back.
+        app.buttons["addIngredient"].click()
+        XCTAssertTrue(draftRow(in: app).waitForExistence(timeout: 5))
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(app.staticTexts["clove"].waitForExistence(timeout: 5))
+        XCTAssertFalse(draftRow(in: app).exists)
+
+        // A row click on a dirty form asks first (E-10).
+        app.buttons["addIngredient"].click()
+        XCTAssertTrue(draftRow(in: app).waitForExistence(timeout: 5))
+        app.typeText("Pap")
+        XCTAssertTrue(waitFor(draftRow(in: app), value: "Pap"))
+        row(named: "Tomato", in: app).click()
+        XCTAssertTrue(app.buttons["cancelDiscard"].waitForExistence(timeout: 5))
+
+        app.buttons["cancelDiscard"].click()
+        XCTAssertTrue(waitForNonExistence(app.buttons["cancelDiscard"], timeout: 5))
+        XCTAssertEqual(app.textFields["ingredientNameField"].value as? String, "Pap")
+        XCTAssertFalse(app.staticTexts["slice"].exists)
+
+        row(named: "Tomato", in: app).click()
+        XCTAssertTrue(app.buttons["confirmDiscard"].waitForExistence(timeout: 5))
+        app.buttons["confirmDiscard"].click()
+        XCTAssertTrue(app.staticTexts["slice"].waitForExistence(timeout: 5))
+        XCTAssertFalse(draftRow(in: app).exists)
+    }
+
+    @MainActor
+    func testContextMenuReordersUnits() throws {
+        let app = try launch(seed: ["Garlic"])
+        XCTAssertTrue(row(named: "Garlic", in: app).waitForExistence(timeout: 5))
+        app.buttons["addIngredient"].click()
+        XCTAssertTrue(draftRow(in: app).waitForExistence(timeout: 5))
+
+        for (index, name) in ["clove", "bulb"].enumerated() {
+            app.buttons["addIngredientUnit"].click()
+            let field = app.textFields["ingredientUnitNameField.\(index)"]
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            field.click()
+            app.typeText(name)
+        }
+
+        // Drag does not reorder inside a grouped form on macOS (MAC-05/Q4 fallback).
+        app.descendants(matching: .any)["ingredientUnitRow.1"]
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.005, dy: 0.5))
+            .rightClick()
+        XCTAssertTrue(app.menuItems["Move Up"].waitForExistence(timeout: 5))
+        app.menuItems["Move Up"].click()
+        XCTAssertTrue(waitFor(app.textFields["ingredientUnitNameField.0"], value: "bulb"))
+        XCTAssertEqual(app.textFields["ingredientUnitNameField.1"].value as? String, "clove")
+
+        app.buttons["removeIngredientUnit.0"].click()
+        XCTAssertTrue(waitFor(app.textFields["ingredientUnitNameField.0"], value: "clove"))
+        XCTAssertFalse(app.textFields["ingredientUnitNameField.1"].exists)
+    }
+
+    @MainActor
     func testLaunchShowsEmptyCatalog() throws {
         let app = try launch(seed: [])
 
@@ -87,9 +189,9 @@ final class KreatynaMacUITests: XCTestCase {
     }
 
     @MainActor
-    private func launch(json: String?) throws -> XCUIApplication {
+    private func launch(json: String?, database: String = UUID().uuidString) throws -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
+        app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = database
         if let json {
             app.launchEnvironment["KREATYNA_TEST_SEED"] = json
         }
@@ -100,6 +202,16 @@ final class KreatynaMacUITests: XCTestCase {
     private func waitForNonExistence(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
         return XCTWaiter().wait(for: [gone], timeout: timeout) == .completed
+    }
+
+    private func waitFor(_ element: XCUIElement, value: String, timeout: TimeInterval = 5) -> Bool {
+        let match = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", value), object: element)
+        return XCTWaiter().wait(for: [match], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func draftRow(in app: XCUIApplication) -> XCUIElement {
+        app.staticTexts.matching(identifier: "ingredientDraftRow").firstMatch
     }
 
     @MainActor

@@ -1,3 +1,4 @@
+import Foundation
 @testable import Kreatyna
 
 /// Hand-built Rust view values. Tests and snapshots use them without the core.
@@ -81,17 +82,24 @@ enum Fixtures {
         units: []
     )
 
+    /// The Mac catalog. With a `form`, the pane is the create form and the
+    /// list shows the draft row, as Rust reports them (MAC-05).
     static func splitCatalog(
         list: IngredientListView = list(),
-        selected: Ingredient? = nil
+        selected: Ingredient? = nil,
+        form: IngredientFormView? = nil
     ) -> IngredientSplitCatalogView {
-        IngredientSplitCatalogView(
+        let pane: IngredientSplitPaneView = if let form {
+            .create(form: form)
+        } else {
+            selected.map { .detail(detail: IngredientDetailView(ingredient: $0, deletion: .idle)) } ?? .empty
+        }
+        return IngredientSplitCatalogView(
             list: ScopedIngredientListView(scope: ScopeId(value: 3), value: list),
-            selected: selected?.id,
-            pane: ScopedIngredientSplitPaneView(
-                scope: ScopeId(value: 4),
-                value: selected.map { .detail(detail: IngredientDetailView(ingredient: $0, deletion: .idle)) } ?? .empty
-            )
+            selected: form == nil ? selected?.id : nil,
+            pane: ScopedIngredientSplitPaneView(scope: ScopeId(value: 4), value: pane),
+            canCreate: form == nil,
+            draftRow: form.map { $0.draft.name.trimmingCharacters(in: .whitespaces) }
         )
     }
 }

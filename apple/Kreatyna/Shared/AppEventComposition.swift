@@ -36,6 +36,10 @@ extension IngredientSplitCatalogView {
         .detail(scope: pane.scope, event: event)
     }
 
+    func form(_ event: IngredientFormEvent) -> IngredientSplitCatalogEvent {
+        .form(scope: pane.scope, event: event)
+    }
+
     var clearSelection: IngredientSplitCatalogEvent {
         .clearSelection(scope: pane.scope)
     }

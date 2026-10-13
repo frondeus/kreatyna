@@ -56,6 +56,36 @@ extension MainActorTests {
         }
 
         @Test(arguments: Appearance.allCases)
+        func newIngredientForm(appearance: Appearance) {
+            var draft = Fixtures.blankDraft
+            draft.units = [ReferenceUnitDraft(name: "", grams: "", millilitres: "")]
+            snapshot(creating(Fixtures.form(draft, dirty: true)), appearance: appearance)
+        }
+
+        @Test(arguments: Appearance.allCases)
+        func formWithIssues(appearance: Appearance) {
+            var draft = Fixtures.blankDraft
+            draft.calories = "abc"
+            draft.units = [ReferenceUnitDraft(name: "clove", grams: "", millilitres: "")]
+            let issues = [
+                ValidationIssue(field: .name, reason: .required),
+                ValidationIssue(field: .calories, reason: .invalidNumber),
+                ValidationIssue(field: .unitMeasurements(index: 0), reason: .required),
+            ]
+            snapshot(creating(Fixtures.form(draft, dirty: true, issues: issues)), appearance: appearance)
+        }
+
+        @Test(arguments: Appearance.allCases)
+        func duplicateName(appearance: Appearance) {
+            var draft = Fixtures.blankDraft
+            draft.name = "garlic"
+            snapshot(
+                creating(Fixtures.form(draft, dirty: true, saveError: .duplicateName)),
+                appearance: appearance
+            )
+        }
+
+        @Test(arguments: Appearance.allCases)
         func startupFailure(appearance: Appearance) {
             snapshot(
                 MacRootView(
@@ -80,6 +110,15 @@ extension MainActorTests {
         private func running(_ list: IngredientListView, selected: Ingredient? = nil) -> some View {
             MacCatalogView(
                 view: Fixtures.splitCatalog(list: list, selected: selected),
+                columnVisibility: .doubleColumn,
+                send: { _ in }
+            )
+        }
+
+        /// The catalog with the create form open (MAC-05).
+        private func creating(_ form: IngredientFormView) -> some View {
+            MacCatalogView(
+                view: Fixtures.splitCatalog(form: form),
                 columnVisibility: .doubleColumn,
                 send: { _ in }
             )

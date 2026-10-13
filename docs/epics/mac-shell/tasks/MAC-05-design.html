@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAC-05 Design</title>
+<style>
+:root {
+  --bg: #f4f4f6; --surface: #ffffff; --window: #ffffff; --sidebar: #eceaee; --bar: #f6f6f8;
+  --text: #1c1c1e; --muted: #6e6e73; --line: #d8d8dc; --accent: #0a84ff; --sel: #dcdce1;
+  --warn: #d70015; --stub: #a15c00; --stub-bg: #fff3dc;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111113; --surface: #1c1c1e; --window: #1e1e20; --sidebar: #29282c; --bar: #2a2a2d;
+    --text: #f2f2f7; --muted: #98989f; --line: #3a3a3d; --accent: #0a84ff; --sel: #3a3a3e;
+    --warn: #ff6961; --stub: #ffb340; --stub-bg: #3a2a10;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111113; --surface: #1c1c1e; --window: #1e1e20; --sidebar: #29282c; --bar: #2a2a2d;
+  --text: #f2f2f7; --muted: #98989f; --line: #3a3a3d; --accent: #0a84ff; --sel: #3a3a3e;
+  --warn: #ff6961; --stub: #ffb340; --stub-bg: #3a2a10;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+.page { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+header { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+h1 { margin: 0 0 4px; font-size: 24px; }
+h2 { margin: 32px 0 6px; font-size: 18px; }
+p { margin: 0 0 12px; }
+.muted { color: var(--muted); }
+button.theme { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.scroll { overflow-x: auto; padding: 4px 0 8px; }
+.win { width: 860px; height: 480px; border: 1px solid var(--line); border-radius: 12px; background: var(--window);
+  overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 28px rgba(0,0,0,.12); }
+.titlebar { height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: var(--bar);
+  border-bottom: 1px solid var(--line); font-size: 13px; }
+.lights { display: flex; gap: 7px; width: 186px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; display: block; }
+.lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+.coltitle { font-weight: 600; width: 220px; }
+.spacer { flex: 1; }
+.tb { border: 1px solid var(--line); border-radius: 6px; padding: 1px 9px; font-size: 16px; }
+.tb.disabled { opacity: .35; }
+.grid { flex: 1; display: grid; grid-template-columns: 200px 280px 1fr; min-height: 0; }
+.sidebar { background: var(--sidebar); padding: 10px 8px; border-right: 1px solid var(--line); font-size: 13px; }
+.sidebar h4 { margin: 4px 8px 6px; font-size: 11px; color: var(--muted); font-weight: 600; }
+.item { padding: 4px 8px; border-radius: 6px; }
+.item.sel { background: var(--sel); }
+.list { border-right: 1px solid var(--line); font-size: 13px; position: relative; }
+.row { padding: 7px 14px; border-bottom: 1px solid var(--line); }
+.row.sel { background: var(--accent); color: #fff; border-radius: 6px; margin: 2px 6px; border-bottom: 0; }
+.pane { padding: 18px 22px; overflow: hidden; }
+.pane h3 { margin: 0 0 14px; font-size: 20px; }
+.group { border: 1px solid var(--line); border-radius: 8px; margin: 4px 0 14px; background: var(--surface); }
+.group .kv { display: flex; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.group .kv:last-child { border-bottom: 0; }
+.group .kv span:last-child { color: var(--muted); }
+.glabel { font-size: 11px; font-weight: 600; color: var(--muted); margin: 0 4px; }
+.note { padding: 8px 12px; font-size: 13px; }
+.center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; padding: 16px; gap: 4px; }
+.center strong { font-size: 15px; }
+.center .btn { margin-top: 8px; background: var(--accent); color: #fff; border-radius: 6px; padding: 3px 12px; font-size: 13px; }
+.detail { position: relative; }
+.full { flex: 1; position: relative; }
+.stub { display: inline-block; color: var(--stub); background: var(--stub-bg); border-radius: 6px;
+  padding: 1px 6px; font-size: 12px; font-weight: 600; }
+.warn { color: var(--warn); }
+ul { padding-left: 20px; margin: 6px 0 0; }
+</style>
+<style>
+.search { margin: 8px 10px; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; color: var(--muted); font-size: 12px; background: var(--surface); }
+.search.typed { color: var(--text); }
+.tb.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tb.text { font-size: 13px; padding: 2px 10px; }
+.field { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 5px 12px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.field:last-child { border-bottom: 0; }
+.input { min-width: 150px; text-align: right; color: var(--muted); }
+.input.val { color: var(--text); }
+.issue { color: var(--warn); font-size: 11px; padding: 0 12px 5px; text-align: right; }
+.banner { color: var(--warn); border: 1px solid var(--warn); border-radius: 8px; padding: 6px 10px; font-size: 13px; margin-bottom: 12px; }
+.unit { display: flex; align-items: center; gap: 8px; padding: 5px 12px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.unit .handle { color: var(--muted); cursor: grab; }
+.unit .rm { width: 16px; height: 16px; border-radius: 50%; background: var(--warn); color: #fff; font-size: 12px; line-height: 16px; text-align: center; }
+.unit .grow { flex: 1; }
+.add { padding: 5px 12px; font-size: 13px; color: var(--accent); }
+.row.ghost { background: var(--accent); color: #fff; border-radius: 6px; margin: 2px 6px; border-bottom: 0; font-style: italic; }
+.opt { display: inline-block; font-weight: 700; color: #fff; background: var(--accent); border-radius: 6px; padding: 0 8px; margin-right: 6px; }
+.cmp { border-left: 3px solid var(--line); padding-left: 12px; margin: 8px 0 12px; }
+.sheet { position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 300px; background: var(--surface); border: 1px solid var(--line);
+  border-top: 0; border-radius: 0 0 12px 12px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); text-align: center; font-size: 13px; z-index: 2; }
+.sheet strong { display: block; font-size: 14px; margin-bottom: 12px; }
+.sheet .btns { display: flex; gap: 8px; justify-content: center; }
+.sheet .b { border: 1px solid var(--line); border-radius: 6px; padding: 3px 12px; }
+.sheet .b.destr { color: var(--warn); }
+.dim { opacity: .5; }
+.rel { position: relative; }
+table.t { border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+table.t td, table.t th { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
+</style>
+<style>
+details.alt { border: 1px dashed var(--line); border-radius: 10px; padding: 8px 14px; margin: 10px 0 18px; background: var(--surface); }
+details.alt > summary { cursor: pointer; font-weight: 600; color: var(--muted); font-size: 14px; }
+details.alt[open] > summary { margin-bottom: 8px; }
+.dec { display: inline-block; font-size: 12px; font-weight: 700; color: #fff; background: #248a3d; border-radius: 6px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
+.optx { display: inline-block; font-weight: 700; color: var(--text); background: var(--sel); border-radius: 6px; padding: 0 8px; margin-right: 6px; }
+.menu { display: inline-block; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 6px 18px rgba(0,0,0,.18); font-size: 13px; padding: 4px; margin: 4px 0 0 40px; }
+.menu div { padding: 2px 14px; border-radius: 4px; }
+.menu div:first-child { background: var(--accent); color: #fff; }
+.snip { max-width: 520px; }
+</style>
+
+</head>
+<body>
+<div class="page">
+  <header>
+    <div>
+      <h1>MAC-05 — Create an ingredient from the toolbar</h1>
+      <p class="muted">Target state after MAC-05. <b>＋</b> replaces the detail pane with the Rust form widget (E-04). Swift renders
+        the form view and sends events; Rust validates, saves, and decides what the pane shows next.</p>
+      <p class="muted">Each section shows the <b>chosen</b> variant. The options that were not chosen are behind the
+        “Alternatives” toggles.</p>
+    </div>
+    <button class="theme" id="themeBtn" type="button">Theme: auto</button>
+  </header>
+
+  <h2>1 · Press ＋: the form and a draft row <span class="dec">MAC-05/Q2: C</span></h2>
+  <p class="muted">Start: Garlic is open. Action: press <b>＋</b> (or ⌘N). The pane becomes the empty form, and the cursor is in
+    Name. A highlighted draft row appears at the top of the list, as in macOS Contacts and Notes. It shows the typed name,
+    or “New Ingredient” while the name is empty. The search never hides it. Save puts the real row at its sorted place;
+    Cancel removes the draft row and brings back Garlic. A click on the draft row does nothing. <b>＋</b> is disabled while
+    a form is open. Esc is Cancel; ⌘S is Save.</p>
+  <div class="scroll"><div class="win rel">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="tb disabled">＋</span><span class="spacer"></span><span class="tb text">Cancel</span><span class="tb text primary">Save</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="search">🔍 Search ingredients</div><div class="row ghost">New Ingredient</div><div class="row">Basil</div><div class="row">Canned tomatoes</div><div class="row">Cucumber</div><div class="row">Garlic</div><div class="row">Olive oil</div><div class="row">Tomato</div></div>
+      <div class="detail pane"><h3>New Ingredient</h3>
+      <div class="group"><div class="field"><span>Name</span><span class="input">Required</span></div><div class="field"><span>Notes</span><span class="input">Notes</span></div></div>
+      <div class="glabel">Nutrition</div><div class="group">
+        <div class="field"><span>Basis</span><span class="input val">per 100 g ⌃</span></div>
+        <div class="field"><span>Calories (kcal)</span><span class="input">Unknown</span></div><div class="field"><span>Protein (g)</span><span class="input">Unknown</span></div></div><div class="glabel">Reference units</div><div class="group">
+        <div class="unit"><span class="handle">≡</span><span class="rm">−</span><span class="grow">clove</span><span class="input val">5 g</span><span class="input">— ml</span></div>
+        <div class="add">＋ Add Unit</div></div></div>
+    </div>
+  </div></div>
+  <table class="t"><tr><th>Effect</th><td>The highlight always matches the pane, and you see that something is being added.</td></tr><tr><th>Cost</th><td>Rust adds <code>draft_row</code> to the split catalog view; Swift draws it first, in italics.</td></tr></table>
+  <details class="alt"><summary>Alternatives not chosen: A (no highlight), B (Garlic stays highlighted)</summary><p><span class="optx">A</span><b>No highlight.</b> The highlight means “this row is in the pane”. While the form is open, no row is in the pane.</p><div class="scroll"><div class="win rel">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="tb disabled">＋</span><span class="spacer"></span><span class="tb text">Cancel</span><span class="tb text primary">Save</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="search">🔍 Search ingredients</div><div class="row">Basil</div><div class="row">Canned tomatoes</div><div class="row">Cucumber</div><div class="row">Garlic</div><div class="row">Olive oil</div><div class="row">Tomato</div></div>
+      <div class="detail pane"><h3>New Ingredient</h3>
+      <div class="group"><div class="field"><span>Name</span><span class="input">Required</span></div><div class="field"><span>Notes</span><span class="input">Notes</span></div></div>
+      <div class="glabel">Nutrition</div><div class="group">
+        <div class="field"><span>Basis</span><span class="input val">per 100 g ⌃</span></div>
+        <div class="field"><span>Calories (kcal)</span><span class="input">Unknown</span></div><div class="field"><span>Protein (g)</span><span class="input">Unknown</span></div></div></div>
+    </div>
+  </div></div><table class="t"><tr><th>Effect</th><td>The list looks the same as at launch. You see where Cancel returns only from memory.</td></tr><tr><th>Cost</th><td>Smallest. Rust's <code>selected</code> is empty while the form is open.</td></tr></table><p><span class="optx">B</span><b>Garlic stays highlighted.</b> The highlight means “Cancel returns here”.</p><div class="scroll"><div class="win rel">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="tb disabled">＋</span><span class="spacer"></span><span class="tb text">Cancel</span><span class="tb text primary">Save</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="search">🔍 Search ingredients</div><div class="row">Basil</div><div class="row">Canned tomatoes</div><div class="row">Cucumber</div><div class="row sel">Garlic</div><div class="row">Olive oil</div><div class="row">Tomato</div></div>
+      <div class="detail pane"><h3>New Ingredient</h3>
+      <div class="group"><div class="field"><span>Name</span><span class="input">Required</span></div><div class="field"><span>Notes</span><span class="input">Notes</span></div></div>
+      <div class="glabel">Nutrition</div><div class="group">
+        <div class="field"><span>Basis</span><span class="input val">per 100 g ⌃</span></div>
+        <div class="field"><span>Calories (kcal)</span><span class="input">Unknown</span></div><div class="field"><span>Protein (g)</span><span class="input">Unknown</span></div></div></div>
+    </div>
+  </div></div><table class="t"><tr><th>Effect</th><td>The list says Garlic, but the pane shows a new ingredient. A click on Garlic leaves the form (with “Discard changes?” if you typed) and shows Garlic.</td></tr><tr><th>Cost</th><td>Small. A click on the highlighted row must count as a click, which differs from the detail rule (“click the selected row: nothing happens”).</td></tr></table></details>
+
+  <h2>2 · Typing names the draft row</h2>
+  <p class="muted">Action: type “Paprika” in Name. The draft row follows the typed name.</p>
+  <div class="scroll"><div class="win rel">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="tb disabled">＋</span><span class="spacer"></span><span class="tb text">Cancel</span><span class="tb text primary">Save</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="search">🔍 Search ingredients</div><div class="row ghost">Paprika</div><div class="row">Basil</div><div class="row">Canned tomatoes</div><div class="row">Cucumber</div><div class="row">Garlic</div><div class="row">Olive oil</div><div class="row">Tomato</div></div>
+      <div class="detail pane"><h3>New Ingredient</h3>
+      <div class="group"><div class="field"><span>Name</span><span class="input val">Paprika</span></div><div class="field"><span>Notes</span><span class="input">Notes</span></div></div>
+      <div class="glabel">Nutrition</div><div class="group">
+        <div class="field"><span>Basis</span><span class="input val">per 100 g ⌃</span></div>
+        <div class="field"><span>Calories (kcal)</span><span class="input">Unknown</span></div><div class="field"><span>Protein (g)</span><span class="input">Unknown</span></div></div><div class="glabel">Reference units</div><div class="group">
+        <div class="unit"><span class="handle">≡</span><span class="rm">−</span><span class="grow">clove</span><span class="input val">5 g</span><span class="input">— ml</span></div>
+        <div class="add">＋ Add Unit</div></div></div>
+    </div>
+  </div></div>
+
+  <h2>3 · Reference units: remove and reorder <span class="dec">MAC-05/Q4: − button + drag</span></h2>
+  <p class="muted">Each unit has a remove button (−) and a drag handle (≡). You drag a unit by its handle to reorder it.
+    If drag does not work inside a grouped form on macOS, the plan falls back to the first alternative below, and the
+    delivery report says so.</p>
+  <div class="snip"><div class="glabel">Reference units</div><div class="group">
+        <div class="unit"><span class="handle">≡</span><span class="rm">−</span><span class="grow">clove</span><span class="input val">5 g</span><span class="input">— ml</span></div>
+        <div class="unit"><span class="handle">≡</span><span class="rm">−</span><span class="grow">bulb</span><span class="input val">50 g</span><span class="input">— ml</span></div><div class="add">＋ Add Unit</div></div></div>
+  <details class="alt"><summary>Alternatives not chosen: context menu, remove only</summary><p><span class="optx">1</span><b>Move Up / Move Down in the context menu</b> (right-click on a unit). The fallback if drag does not work.</p><div class="snip"><div class="group"><div class="unit"><span class="rm">−</span><span class="grow">clove</span><span class="input val">5 g</span></div><div class="unit"><span class="rm">−</span><span class="grow">bulb</span><span class="input val">50 g</span></div></div><div class="menu"><div>Move Up</div><div>Move Down</div><div>Remove</div></div></div><p><span class="optx">2</span><b>Remove only.</b> No reorder on the Mac until a later slice. Breaks parity with iOS (D-28).</p></details>
+
+  <h2>4 · Validation issues</h2>
+  <p class="muted">Action: Save with an empty name and “abc” in Calories. Rust's form widget returns typed issues; Swift shows the text
+    from <code>ErrorText.swift</code> under each field. After the first Save, issues update while you type, as on iOS.</p>
+  <div class="scroll"><div class="win rel">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="tb disabled">＋</span><span class="spacer"></span><span class="tb text">Cancel</span><span class="tb text primary">Save</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="search">🔍 Search ingredients</div><div class="row ghost">New Ingredient</div><div class="row">Basil</div><div class="row">Canned tomatoes</div><div class="row">Cucumber</div><div class="row">Garlic</div><div class="row">Olive oil</div><div class="row">Tomato</div></div>
+      <div class="detail pane"><h3>New Ingredient</h3>
+      <div class="group"><div class="field"><span>Name</span><span class="input">Required</span></div><div class="issue">Required.</div><div class="field"><span>Notes</span><span class="input">Notes</span></div></div>
+      <div class="glabel">Nutrition</div><div class="group">
+        <div class="field"><span>Basis</span><span class="input val">per 100 g ⌃</span></div>
+        <div class="field"><span>Calories (kcal)</span><span class="input val">abc</span></div><div class="issue">Enter a number.</div><div class="field"><span>Protein (g)</span><span class="input">Unknown</span></div></div></div>
+    </div>
+  </div></div>
+
+  <h2>5 · Duplicate name</h2>
+  <p class="muted">Action: type “garlic” and Save. The store refuses it; the form stays open with the save error at the top.</p>
+  <div class="scroll"><div class="win rel">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="tb disabled">＋</span><span class="spacer"></span><span class="tb text">Cancel</span><span class="tb text primary">Save</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="search">🔍 Search ingredients</div><div class="row ghost">garlic</div><div class="row">Basil</div><div class="row">Canned tomatoes</div><div class="row">Cucumber</div><div class="row">Garlic</div><div class="row">Olive oil</div><div class="row">Tomato</div></div>
+      <div class="detail pane"><h3>New Ingredient</h3><div class="banner">⚠︎ An ingredient with this name already exists.</div>
+      <div class="group"><div class="field"><span>Name</span><span class="input val">garlic</span></div><div class="field"><span>Notes</span><span class="input">Notes</span></div></div>
+      <div class="glabel">Nutrition</div><div class="group">
+        <div class="field"><span>Basis</span><span class="input val">per 100 g ⌃</span></div>
+        <div class="field"><span>Calories (kcal)</span><span class="input">Unknown</span></div><div class="field"><span>Protein (g)</span><span class="input">Unknown</span></div></div></div>
+    </div>
+  </div></div>
+
+  <h2>6 · Saved</h2>
+  <p class="muted">Action: type “Paprika” and Save. The draft row goes away. Rust adds Paprika at its sorted place, opens its
+    detail, and highlights its row.</p>
+  <div class="scroll"><div class="win rel">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="tb">＋</span><span class="spacer"></span><span class="tb text disabled">Edit</span><span class="tb text disabled">Delete</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="search">🔍 Search ingredients</div><div class="row">Basil</div><div class="row">Canned tomatoes</div><div class="row">Cucumber</div><div class="row">Garlic</div><div class="row">Olive oil</div><div class="row sel">Paprika</div><div class="row">Tomato</div></div>
+      <div class="detail pane"><h3>Paprika</h3><div class="glabel">Nutrition per 100 g</div><div class="group">
+      <div class="kv"><span>Calories</span><span>—</span></div><div class="kv"><span>Protein</span><span>—</span></div>
+      <div class="kv"><span>Carbohydrates</span><span>—</span></div><div class="kv"><span>Fat</span><span>—</span></div></div></div>
+    </div>
+  </div></div>
+  <p><span class="stub">stub</span> <b>Edit</b> stays disabled (MAC-06). <span class="stub">stub</span> <b>Delete</b> stays disabled (MAC-07).</p>
+
+  <h2>7 · Saved while the search hides the row <span class="dec">MAC-05/Q3: keep the search</span></h2>
+  <p class="muted">Start: the search is “tom”. Action: <b>＋</b>, type “Paprika”, Save. The search stays. Paprika's detail
+    opens, but its row is hidden, so no row is highlighted. When you clear the search, Paprika's row is there,
+    highlighted. This matches MAC-08/Q1: a search keeps the open detail.</p>
+  <div class="scroll"><div class="win rel">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="tb">＋</span><span class="spacer"></span><span class="tb text disabled">Edit</span><span class="tb text disabled">Delete</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="search typed">🔍 tom</div><div class="row">Canned tomatoes</div><div class="row">Tomato</div></div>
+      <div class="detail pane"><h3>Paprika</h3><div class="glabel">Nutrition per 100 g</div><div class="group">
+      <div class="kv"><span>Calories</span><span>—</span></div><div class="kv"><span>Protein</span><span>—</span></div>
+      <div class="kv"><span>Carbohydrates</span><span>—</span></div><div class="kv"><span>Fat</span><span>—</span></div></div></div>
+    </div>
+  </div></div>
+  <details class="alt"><summary>Alternative not chosen: clear the search</summary><p><span class="optx">B</span><b>Clear the search on Save.</b> Paprika’s row appears and is highlighted, but the search text changes without your action.</p><div class="scroll"><div class="win rel">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="tb">＋</span><span class="spacer"></span><span class="tb text disabled">Edit</span><span class="tb text disabled">Delete</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="search">🔍 Search ingredients</div><div class="row">Basil</div><div class="row">Canned tomatoes</div><div class="row">Cucumber</div><div class="row">Garlic</div><div class="row">Olive oil</div><div class="row sel">Paprika</div><div class="row">Tomato</div></div>
+      <div class="detail pane"><h3>Paprika</h3><div class="glabel">Nutrition per 100 g</div><div class="group">
+      <div class="kv"><span>Calories</span><span>—</span></div><div class="kv"><span>Protein</span><span>—</span></div>
+      <div class="kv"><span>Carbohydrates</span><span>—</span></div><div class="kv"><span>Fat</span><span>—</span></div></div></div>
+    </div>
+  </div></div></details>
+
+  <h2>8 · A row click on a dirty form <span class="dec">MAC-05/Q1: E-10 now</span></h2>
+  <p class="muted">Action: type “Pap”, then click Tomato. macOS shows the question as a sheet from the top of the window.
+    <b>Discard Changes</b> opens Tomato. <b>Keep Editing</b> closes the sheet; the form keeps “Pap”. A clean form opens
+    Tomato at once. Cancel on a dirty form asks the same question and then returns to the previous pane. MAC-06 reuses
+    the rule for the edit form.</p>
+  <div class="scroll"><div class="win rel">
+    <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><span class="coltitle">Ingredients</span>
+      <span class="tb disabled">＋</span><span class="spacer"></span><span class="tb text">Cancel</span><span class="tb text primary">Save</span></div>
+    <div class="grid">
+      <aside class="sidebar"><h4>Kreatyna</h4><div class="item sel">Ingredients</div></aside>
+      <div class="list"><div class="search">🔍 Search ingredients</div><div class="row ghost">Pap</div><div class="row">Basil</div><div class="row">Canned tomatoes</div><div class="row">Cucumber</div><div class="row">Garlic</div><div class="row">Olive oil</div><div class="row">Tomato</div></div>
+      <div class="detail pane"><div class="dim"><h3>New Ingredient</h3>
+      <div class="group"><div class="field"><span>Name</span><span class="input val">Pap</span></div><div class="field"><span>Notes</span><span class="input">Notes</span></div></div>
+      <div class="glabel">Nutrition</div><div class="group">
+        <div class="field"><span>Basis</span><span class="input val">per 100 g ⌃</span></div>
+        <div class="field"><span>Calories (kcal)</span><span class="input">Unknown</span></div><div class="field"><span>Protein (g)</span><span class="input">Unknown</span></div></div></div></div>
+    </div><div class="sheet"><strong>Discard changes?</strong><div class="btns"><span class="b destr">Discard Changes</span><span class="b">Keep Editing</span></div></div>
+  </div></div>
+  <details class="alt"><summary>Alternatives not chosen: ignore the click, discard silently</summary><p><span class="optx">2</span><b>Ignore the click while the form is dirty.</b> Nothing happens until MAC-06 adds the question. Looks broken.</p><p><span class="optx">3</span><b>Always discard silently.</b> Tomato opens at once, and the typed “Pap” is lost. Breaks E-10.</p></details>
+
+  <h2>Not shown</h2>
+  <ul>
+    <li><b>Saving</b>: Save becomes a spinner, and the fields are disabled, as on iOS. A save takes milliseconds.</li>
+    <li><b>Cancel on a clean form with nothing open before</b>: the draft row goes away, and the pane returns to “Select an ingredient”.</li>
+  </ul>
+</div>
+<script>
+(function () {
+  const btn = document.getElementById("themeBtn");
+  const modes = ["auto", "light", "dark"];
+  let mode = "auto";
+  try { mode = localStorage.getItem("mac05-theme") || "auto"; } catch (e) {}
+  function apply() {
+    if (mode === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", mode);
+    btn.textContent = "Theme: " + mode;
+  }
+  btn.addEventListener("click", function () {
+    mode = modes[(modes.indexOf(mode) + 1) % modes.length];
+    try { localStorage.setItem("mac05-theme", mode); } catch (e) {}
+    apply();
+  });
+  apply();
+})();
+</script>
+</body>
+</html>

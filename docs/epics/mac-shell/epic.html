@@ -446,7 +446,7 @@ const EPIC = {
       refs: ["D-28"],
     },
     {
-      id: "MAC-05", status: "planned", short: "Create",
+      id: "MAC-05", status: "approved", short: "Create", plan: "tasks/MAC-05.md",
       title: "Create an ingredient from the toolbar",
       outcome: "The **+** toolbar button opens the ingredient form in the detail pane. Save adds it to the list and shows its detail; validation messages and duplicate names appear inline, as on iOS.",
       layers: ["rust", "ffi", "swift"], deps: ["MAC-04"],
@@ -463,7 +463,7 @@ const EPIC = {
       outcome: "**Edit** in the detail pane turns it into the form for that ingredient. Save returns to the updated detail. Cancel with unsaved changes asks “Discard changes?”. So does clicking another row (E-10).",
       layers: ["rust", "ffi", "swift"], deps: ["MAC-05"],
       acceptance: [
-        "Rust implements E-10 (clicking another row while a form is open), with widget tests for clean and dirty forms.",
+        "Rust applies E-10 (clicking another row while a form is open) to the edit form, with widget tests for clean and dirty forms. MAC-05 did it for the create form (MAC-05/Q1).",
         "Snapshot: discard confirmation. UI smoke: edit a name and see it in the list.",
       ],
       refs: ["D-28", "D-18"],

@@ -8,3 +8,20 @@ extension ReferenceUnit {
             .joined(separator: " · ")
     }
 }
+
+extension IngredientDraftField {
+    /// The form field's identifier for UI tests, the same on both apps.
+    var accessibilityIdentifier: String {
+        switch self {
+        case .name: "ingredientNameField"
+        case .notes: "ingredientNotesField"
+        case .calories: "ingredientCaloriesField"
+        case .protein: "ingredientProteinField"
+        case .carbohydrates: "ingredientCarbohydratesField"
+        case .fat: "ingredientFatField"
+        case .unitName(let index): "ingredientUnitNameField.\(index)"
+        case .unitGrams(let index): "ingredientUnitGramsField.\(index)"
+        case .unitMillilitres(let index): "ingredientUnitMillilitresField.\(index)"
+        }
+    }
+}

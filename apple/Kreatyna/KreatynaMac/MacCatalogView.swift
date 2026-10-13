@@ -33,6 +33,8 @@ struct MacCatalogView: View {
             MacIngredientList(
                 view: view.list.value,
                 selected: view.selected,
+                draftRow: view.draftRow,
+                canCreate: view.canCreate,
                 select: { id in send(id.map { view.list(.select(id: $0)) } ?? view.clearSelection) },
                 send: { send(view.list($0)) }
             )
@@ -46,6 +48,10 @@ struct MacCatalogView: View {
                 .accessibilityIdentifier("ingredientDetailPlaceholder")
             case .detail(let detail):
                 MacIngredientDetail(view: detail)
+            case .create(let form):
+                // A new pane scope is new content, so its fields start fresh.
+                MacIngredientForm(view: form) { send(view.form($0)) }
+                    .id(view.pane.scope)
             }
         }
     }

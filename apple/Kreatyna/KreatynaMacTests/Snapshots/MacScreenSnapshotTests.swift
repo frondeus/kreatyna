@@ -85,6 +85,14 @@ extension MainActorTests {
             )
         }
 
+        /// A window that never becomes key or main, so every snapshot shows the
+        /// inactive look. Whether a normal window is key depends on what else
+        /// is active on the Mac, which changed the title color between runs.
+        private final class InactiveWindow: NSWindow {
+            override var canBecomeKey: Bool { false }
+            override var canBecomeMain: Bool { false }
+        }
+
         private func snapshot(
             _ view: some View,
             appearance: Appearance,
@@ -97,7 +105,7 @@ extension MainActorTests {
             // Split views and lists draw only inside a window, so the view is
             // hosted in an off-screen window. The window's frame view is
             // captured so the title bar and toolbar are included.
-            let window = NSWindow(
+            let window = InactiveWindow(
                 contentRect: CGRect(x: 0, y: 0, width: 960, height: 600),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                 backing: .buffered,
@@ -129,7 +137,9 @@ extension MainActorTests {
             let frameView = window.contentView!.superview!
             assertSnapshot(
                 of: frameView,
-                as: .image(precision: 0.995, perceptualPrecision: 0.98),
+                // Every pixel is compared; 0.99 allows only anti-aliasing noise.
+                // The old 0.995/0.98 let a whole toolbar search field pass (MAC-08).
+                as: .image(precision: 1, perceptualPrecision: 0.99),
                 named: appearance.rawValue,
                 fileID: fileID,
                 file: filePath,

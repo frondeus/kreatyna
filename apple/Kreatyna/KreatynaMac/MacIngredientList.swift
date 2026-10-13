@@ -14,15 +14,20 @@ struct MacIngredientList: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        content
-            .navigationTitle("Ingredients")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Add Ingredient", systemImage: "plus") {}
-                        .disabled(true) // MAC-05
-                        .accessibilityIdentifier("addIngredient")
-                }
+        VStack(spacing: 0) {
+            MacSearchField(search: view.search, send: send)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+            content
+        }
+        .navigationTitle("Ingredients")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Add Ingredient", systemImage: "plus") {}
+                    .disabled(true) // MAC-05
+                    .accessibilityIdentifier("addIngredient")
             }
+        }
     }
 
     @ViewBuilder

@@ -53,6 +53,34 @@ final class MacDemoCaptureUITests: XCTestCase {
         app.terminate()
     }
 
+    /// `docs/epics/mac-shell/tasks/MAC-08-demo/`: open Garlic, then search.
+    @MainActor
+    func testCaptureMAC08Demo() throws {
+        let fixture = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/demo-ingredients.json")
+        let app = XCUIApplication()
+        app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
+        app.launchEnvironment["KREATYNA_TEST_SEED"] = try String(contentsOf: fixture, encoding: .utf8)
+        app.launch()
+
+        let garlic = app.staticTexts.matching(identifier: "ingredientRow")["Garlic"]
+        XCTAssertTrue(garlic.waitForExistence(timeout: 5))
+        garlic.click()
+        XCTAssertTrue(app.staticTexts["clove"].waitForExistence(timeout: 5))
+
+        app.searchFields.firstMatch.click()
+        app.typeText("tom")
+        let hidden = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: garlic)
+        XCTAssertEqual(XCTWaiter().wait(for: [hidden], timeout: 5), .completed)
+        capture("01-search", app)
+
+        app.typeText("x")
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientListNoMatches"].waitForExistence(timeout: 5))
+        capture("02-no-matches", app)
+        app.terminate()
+    }
+
     @MainActor
     private func launch(seed: [String]) throws -> XCUIApplication {
         let app = XCUIApplication()

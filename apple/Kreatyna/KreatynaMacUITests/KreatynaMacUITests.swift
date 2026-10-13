@@ -47,6 +47,33 @@ final class KreatynaMacUITests: XCTestCase {
     }
 
     @MainActor
+    func testSearchNarrowsTheList() throws {
+        let app = try launch(json: #"""
+            ["Tomato", "Canned tomatoes", {"name": "Garlic", "units": [{"name": "clove", "grams": 5}]}]
+            """#)
+        XCTAssertTrue(row(named: "Garlic", in: app).waitForExistence(timeout: 5))
+        row(named: "Garlic", in: app).click()
+        XCTAssertTrue(app.staticTexts["clove"].waitForExistence(timeout: 5))
+
+        // The search field above the list has no ⌘F (MAC-08), so the test clicks it.
+        app.searchFields.firstMatch.click()
+        app.typeText("tom")
+        XCTAssertTrue(waitForNonExistence(row(named: "Garlic", in: app), timeout: 5))
+        XCTAssertTrue(row(named: "Tomato", in: app).exists)
+        XCTAssertTrue(row(named: "Canned tomatoes", in: app).exists)
+        // Garlic's detail stays open (MAC-08/Q1).
+        XCTAssertTrue(app.staticTexts["clove"].exists)
+
+        app.typeText("x")
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientListNoMatches"].waitForExistence(timeout: 5))
+
+        // Esc clears the field, and every row comes back.
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(row(named: "Garlic", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(row(named: "Tomato", in: app).exists)
+    }
+
+    @MainActor
     func testLaunchShowsEmptyCatalog() throws {
         let app = try launch(seed: [])
 

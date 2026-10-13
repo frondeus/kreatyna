@@ -4,27 +4,10 @@ struct IngredientListScreen: View {
     let view: IngredientListView
     let send: (IngredientListEvent) -> Void
 
-    @State private var searchText: String
-    @State private var searchEcho = TextEcho()
-
-    init(view: IngredientListView, send: @escaping (IngredientListEvent) -> Void) {
-        self.view = view
-        self.send = send
-        _searchText = State(initialValue: view.search)
-    }
-
     var body: some View {
         content
             .navigationTitle("Ingredients")
-            .searchable(text: $searchText, prompt: "Search ingredients")
-            .onChange(of: searchText) { _, text in
-                if let query = searchEcho.typed(text, displayed: view.search) {
-                    send(.search(query: query))
-                }
-            }
-            .onChange(of: view.search) { _, search in
-                if let text = searchEcho.received(search, showing: searchText) { searchText = text }
-            }
+            .rustSearchable(view.search, send: send)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Add Ingredient", systemImage: "plus") { send(.createRequested) }

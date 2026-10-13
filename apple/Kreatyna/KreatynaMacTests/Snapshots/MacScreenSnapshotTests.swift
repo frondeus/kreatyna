@@ -25,6 +25,23 @@ extension MainActorTests {
         }
 
         @Test(arguments: Appearance.allCases)
+        func filteredCatalog(appearance: Appearance) {
+            let rows = [IngredientListRow(id: Fixtures.tomatoesId, name: "Canned tomatoes")]
+            snapshot(
+                running(Fixtures.list(.ready(rows: rows, totalCount: 3, refresh: .idle), search: "tom")),
+                appearance: appearance
+            )
+        }
+
+        @Test(arguments: Appearance.allCases)
+        func noMatches(appearance: Appearance) {
+            snapshot(
+                running(Fixtures.list(.ready(rows: [], totalCount: 3, refresh: .idle), search: "tomx")),
+                appearance: appearance
+            )
+        }
+
+        @Test(arguments: Appearance.allCases)
         func detailWithFullData(appearance: Appearance) {
             snapshot(running(Fixtures.list(), selected: Fixtures.garlic), appearance: appearance)
         }
@@ -88,6 +105,11 @@ extension MainActorTests {
             )
             window.isReleasedWhenClosed = false
             window.appearance = NSAppearance(named: appearance.name)
+            // The search field's text follows the app's appearance, not the
+            // window's, so the app takes the snapshot's appearance too.
+            let appAppearance = NSApp.appearance
+            NSApp.appearance = window.appearance
+            defer { NSApp.appearance = appAppearance }
             // The fixed frame keeps SwiftUI from resizing the window to its content.
             window.contentViewController = NSHostingController(
                 rootView: view
@@ -100,6 +122,10 @@ extension MainActorTests {
             defer { window.close() }
             // Let SwiftUI lay out the columns and load the list rows.
             RunLoop.main.run(until: Date().addingTimeInterval(0.5))
+            // An off-screen window gives its first key view (the search
+            // field) focus; the launched app focuses nothing.
+            window.makeFirstResponder(nil)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.1))
             let frameView = window.contentView!.superview!
             assertSnapshot(
                 of: frameView,

@@ -30,8 +30,8 @@ extension MainActorTests {
             let model = AppModel(layout: .stack, databasePath: ":memory:")
             defer { model.shutdown() }
             let app = try await waitForRunning(model)
-            model.dispatch(app.ingredients(stack(app).list(.search(query: "gar"))))
-            try await waitUntil { running(model)?.ingredients.stack?.list.search == "gar" }
+            model.dispatch(.stack(event: stack(app).list(.search(query: "gar"))))
+            try await waitUntil { running(model)?.stack?.list.search == "gar" }
             #expect(model.errorMessage == nil)
         }
 
@@ -39,7 +39,7 @@ extension MainActorTests {
             let model = AppModel(layout: .stack, databasePath: ":memory:")
             defer { model.shutdown() }
             let app = try await waitForRunning(model)
-            model.dispatch(app.ingredients(stack(app).list(.select(id: "not-a-uuid"))))
+            model.dispatch(.stack(event: stack(app).list(.select(id: "not-a-uuid"))))
             #expect(model.errorMessage != nil)
         }
 
@@ -48,7 +48,7 @@ extension MainActorTests {
             let model = AppModel(layout: .stack, databasePath: ":memory:")
             let app = try await waitForRunning(model)
             model.shutdown()
-            model.dispatch(app.ingredients(stack(app).list(.search(query: "gar"))))
+            model.dispatch(.stack(event: stack(app).list(.search(query: "gar"))))
             #expect(model.errorMessage == nil)
         }
 
@@ -56,10 +56,10 @@ extension MainActorTests {
             let model = AppModel(layout: .stack, databasePath: ":memory:")
             defer { model.shutdown() }
             let app = try await waitForRunning(model)
-            model.dispatch(app.ingredients(stack(app).list(.select(id: "not-a-uuid"))))
+            model.dispatch(.stack(event: stack(app).list(.select(id: "not-a-uuid"))))
             #expect(model.errorMessage != nil)
 
-            model.dispatch(app.ingredients(stack(app).list(.search(query: "gar"))))
+            model.dispatch(.stack(event: stack(app).list(.search(query: "gar"))))
             #expect(model.errorMessage == nil)
         }
 
@@ -98,7 +98,7 @@ extension MainActorTests {
             let model = AppModel(layout: .stack, databasePath: path)
             defer { model.shutdown() }
             try await waitUntil {
-                guard case .ready(let rows, _, _) = running(model)?.ingredients.stack?.list.status else { return false }
+                guard case .ready(let rows, _, _) = running(model)?.stack?.list.status else { return false }
                 return rows.map(\.name) == ["Garlic"]
             }
             #expect(model.errorMessage == nil)
@@ -111,20 +111,20 @@ extension MainActorTests {
             let path = root.appendingPathComponent("app.sqlite").path
             let model = AppModel(layout: .stack, databasePath: path)
             let app = try await waitForRunning(model)
-            model.dispatch(app.ingredients(stack(app).list(.createRequested)))
+            model.dispatch(.stack(event: stack(app).list(.createRequested)))
             try await waitUntil {
-                if case .create = running(model)?.ingredients.stack?.screen { true } else { false }
+                if case .create = running(model)?.stack?.screen { true } else { false }
             }
-            let form = try #require(running(model)).ingredients.stack!
-            model.dispatch(app.ingredients(form.form(.setField(field: .name, value: "Garlic"))))
-            model.dispatch(app.ingredients(form.form(.save)))
+            let form = try #require(running(model)).stack!
+            model.dispatch(.stack(event: form.form(.setField(field: .name, value: "Garlic"))))
+            model.dispatch(.stack(event: form.form(.save)))
 
             #expect(await model.shutDownGracefully() == .completed)
 
             let reopened = AppModel(layout: .stack, databasePath: path)
             defer { reopened.shutdown() }
             try await waitUntil {
-                guard case .ready(let rows, _, _) = running(reopened)?.ingredients.stack?.list.status else { return false }
+                guard case .ready(let rows, _, _) = running(reopened)?.stack?.list.status else { return false }
                 return rows.map(\.name) == ["Garlic"]
             }
         }
@@ -141,14 +141,14 @@ extension MainActorTests {
             let model = AppModel(layout: .split, databasePath: ":memory:")
             defer { model.shutdown() }
             let app = try await waitForRunning(model)
-            let catalog = try #require(app.ingredients.split)
-            model.dispatch(app.splitIngredients(catalog.list(.search(query: "gar"))))
-            try await waitUntil { running(model)?.ingredients.split?.list.value.search == "gar" }
+            let split = try #require(app.split)
+            model.dispatch(split.ingredients(split.ingredients.list(.search(query: "gar"))))
+            try await waitUntil { running(model)?.split?.ingredients.list.value.search == "gar" }
             #expect(model.errorMessage == nil)
         }
 
         private func stack(_ app: RunningAppView) -> IngredientCatalogView {
-            app.ingredients.stack!
+            app.stack!
         }
 
         private func running(_ model: AppModel) -> RunningAppView? {

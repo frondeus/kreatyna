@@ -29,7 +29,7 @@ fn app_ffi_initializes_before_exposing_the_running_app() {
     wait_until_ready(&app, &rendered);
 
     assert!(matches!(
-        app.dispatch(AppEvent::Ingredients {
+        app.dispatch(AppEvent::Stack {
             event: IngredientCatalogEvent::List {
                 scope: stack_view(&app).scope,
                 event: IngredientListEvent::Select {
@@ -47,7 +47,7 @@ fn app_ffi_initializes_before_exposing_the_running_app() {
     app.shutdown();
     assert!(matches!(app.start(), Err(AppFfiError::Terminated)));
     assert!(matches!(
-        app.dispatch(AppEvent::Ingredients {
+        app.dispatch(AppEvent::Stack {
             event: IngredientCatalogEvent::List {
                 scope: stack_view(&app).scope,
                 event: IngredientListEvent::Search {
@@ -88,7 +88,7 @@ fn failed_initialization_can_retry_with_fresh_database_setup() {
 }
 
 #[test]
-fn the_split_layout_reaches_a_ready_split_catalog() {
+fn the_split_layout_starts_on_recipes_with_both_sections_ready() {
     let database = TemporaryDatabase::new();
     let (render, rendered) = TestRender::new();
     let app = app(
@@ -102,11 +102,17 @@ fn the_split_layout_reaches_a_ready_split_catalog() {
     app.start().unwrap();
     let running = wait_until_ready(&app, &rendered);
 
-    let IngredientsView::Split { catalog } = running.ingredients else {
+    let RunningAppView::Split { app: split } = running else {
         panic!("expected the split layout")
     };
-    assert_eq!(catalog.selected, None);
-    assert_eq!(catalog.pane.value, IngredientSplitPaneView::Empty);
+    // REC-01/Q1: the Mac app opens on Recipes. A new database has none.
+    assert_eq!(split.section, AppSection::Recipes);
+    assert_eq!(
+        split.recipes.status,
+        RecipeListStatus::Ready { rows: vec![] }
+    );
+    assert_eq!(split.ingredients.selected, None);
+    assert_eq!(split.ingredients.pane.value, IngredientSplitPaneView::Empty);
     app.shutdown();
 }
 
@@ -133,10 +139,7 @@ fn graceful_shutdown_before_initialization_is_polled_drains_prepared_children() 
     let AppView::Running { app } = runtime.view().unwrap() else {
         panic!("preparation should finish while the runtime drains")
     };
-    assert!(matches!(
-        list_status(&app),
-        IngredientListStatus::Ready { .. }
-    ));
+    assert!(sections_ready(&app));
 }
 
 #[test]
@@ -197,7 +200,7 @@ fn events_after_graceful_shutdown_are_refused() {
 
     assert_eq!(result, ShutdownResult::Completed);
     assert!(matches!(
-        app.dispatch(AppEvent::Ingredients {
+        app.dispatch(AppEvent::Stack {
             event: IngredientCatalogEvent::List {
                 scope,
                 event: IngredientListEvent::Refresh,
@@ -291,7 +294,7 @@ fn started_stack_app(database: &TemporaryDatabase) -> (Arc<AppFfi>, flume::Recei
 /// Opens the create form, types the name, and sends Save without waiting for
 /// the save result.
 fn save_new_ingredient(app: &AppFfi, rendered: &flume::Receiver<()>, name: &str) {
-    let catalog = |event| AppEvent::Ingredients { event };
+    let catalog = |event| AppEvent::Stack { event };
     app.dispatch(catalog(IngredientCatalogEvent::List {
         scope: stack_view(app).scope,
         event: IngredientListEvent::CreateRequested,
@@ -363,22 +366,31 @@ fn wait_until_ready(app: &AppFfi, rendered: &flume::Receiver<()>) -> RunningAppV
         let AppView::Running { app } = view else {
             return false;
         };
-        matches!(list_status(app), IngredientListStatus::Ready { .. })
+        sections_ready(app)
     });
     running_view(app)
 }
 
 fn stack_view(app: &AppFfi) -> IngredientCatalogView {
-    let IngredientsView::Stack { catalog } = running_view(app).ingredients else {
+    let RunningAppView::Stack { catalog } = running_view(app) else {
         panic!("expected the stack layout")
     };
     catalog
 }
 
-fn list_status(app: &RunningAppView) -> &IngredientListStatus {
-    match &app.ingredients {
-        IngredientsView::Stack { catalog } => &catalog.list.status,
-        IngredientsView::Split { catalog } => &catalog.list.value.status,
+/// The stack has one list; the split layout has the recipe and ingredient lists.
+fn sections_ready(app: &RunningAppView) -> bool {
+    match app {
+        RunningAppView::Stack { catalog } => {
+            matches!(catalog.list.status, IngredientListStatus::Ready { .. })
+        }
+        RunningAppView::Split { app } => {
+            matches!(app.recipes.status, RecipeListStatus::Ready { .. })
+                && matches!(
+                    app.ingredients.list.value.status,
+                    IngredientListStatus::Ready { .. }
+                )
+        }
     }
 }
 
@@ -449,7 +461,7 @@ fn a_runtime_panic_shows_the_crash_view() {
     render
         .armed
         .store(true, std::sync::atomic::Ordering::SeqCst);
-    app.dispatch(AppEvent::Ingredients {
+    app.dispatch(AppEvent::Stack {
         event: IngredientCatalogEvent::List {
             scope,
             event: IngredientListEvent::Search {
@@ -464,7 +476,7 @@ fn a_runtime_panic_shows_the_crash_view() {
         .expect("the facade renders after the crash");
     assert_eq!(app.view().unwrap(), AppView::Crashed);
     assert!(matches!(
-        app.dispatch(AppEvent::Ingredients {
+        app.dispatch(AppEvent::Stack {
             event: IngredientCatalogEvent::List {
                 scope,
                 event: IngredientListEvent::Refresh,

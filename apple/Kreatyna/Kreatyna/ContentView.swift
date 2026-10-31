@@ -47,8 +47,8 @@ struct RootView: View {
                 .accessibilityIdentifier("appCrashed")
             case .running(let app):
                 // iOS always starts with the stack layout (`AppLayout.platform`).
-                if let catalog = app.ingredients.stack {
-                    IngredientCatalogScreen(view: catalog) { send(app.ingredients($0)) }
+                if let catalog = app.stack {
+                    IngredientCatalogScreen(view: catalog) { send(.stack(event: $0)) }
                 }
             }
         }

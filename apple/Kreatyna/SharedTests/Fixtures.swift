@@ -70,7 +70,7 @@ enum Fixtures {
     }
 
     static func running(screen: IngredientCatalogScreenView) -> RunningAppView {
-        RunningAppView(ingredients: .stack(catalog: catalog(screen: screen)))
+        .stack(catalog: catalog(screen: screen))
     }
 
     /// An ingredient with a name only.

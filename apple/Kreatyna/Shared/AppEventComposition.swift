@@ -4,24 +4,29 @@ import Foundation
 // Rust checks these IDs; Swift never creates or reuses them.
 
 extension RunningAppView {
-    func ingredients(_ event: IngredientCatalogEvent) -> AppEvent {
-        .ingredients(event: event)
-    }
-
-    func splitIngredients(_ event: IngredientSplitCatalogEvent) -> AppEvent {
-        .splitIngredients(event: event)
-    }
-}
-
-extension IngredientsView {
     /// The catalog of the stack layout (iOS), or `nil` in the split layout.
     var stack: IngredientCatalogView? {
         if case .stack(let catalog) = self { catalog } else { nil }
     }
 
-    /// The catalog of the split layout (Mac), or `nil` in the stack layout.
-    var split: IngredientSplitCatalogView? {
-        if case .split(let catalog) = self { catalog } else { nil }
+    /// The sections of the split layout (Mac), or `nil` in the stack layout.
+    var split: SplitAppView? {
+        if case .split(let app) = self { app } else { nil }
+    }
+}
+
+// The split layout's events: the sidebar selection and each section's events.
+extension SplitAppView {
+    func selectSection(_ section: AppSection) -> AppEvent {
+        .split(event: .selectSection(section: section))
+    }
+
+    func recipes(_ event: RecipeListEvent) -> AppEvent {
+        .split(event: .recipes(event: event))
+    }
+
+    func ingredients(_ event: IngredientSplitCatalogEvent) -> AppEvent {
+        .split(event: .ingredients(event: event))
     }
 }
 

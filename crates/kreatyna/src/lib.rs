@@ -1,7 +1,7 @@
 pub mod app;
 pub use app::{
-    AppCapabilities, AppEffect, AppEffectStream, AppEvent, AppLayout, AppOutcome, AppView,
-    AppWidget, IngredientsOutcome, IngredientsView,
+    AppCapabilities, AppEffect, AppEffectStream, AppEvent, AppLayout, AppOutcome, AppSection,
+    AppView, AppWidget, SplitAppEvent, SplitAppView,
 };
 
 pub mod capabilities;

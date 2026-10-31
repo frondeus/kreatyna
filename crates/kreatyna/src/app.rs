@@ -3,6 +3,9 @@ use futures::{
     stream::{BoxStream, select},
 };
 use krucyfiks::{Command, CommandExt, Message, Scoped, Widget};
+use std::sync::Arc;
+
+use crate::capabilities::Render;
 
 use crate::ingredients::{
     IngredientCatalog, IngredientCatalogEvent, IngredientCatalogOutcome, IngredientCatalogView,
@@ -10,51 +13,69 @@ use crate::ingredients::{
     IngredientSplitCatalogView,
     capabilities::{IngredientCapabilities, IngredientEffect},
 };
-use crate::recipes::capabilities::{RecipeCapabilities, RecipeEffect};
+use crate::recipes::{
+    RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListView,
+    capabilities::{RecipeCapabilities, RecipeEffect},
+};
 use crate::scoped_child::ScopedChild;
 
-/// How the platform shows the catalog. Swift chooses it once, at startup (E-19).
+/// How the platform shows the app. Swift chooses it once, at startup (E-19).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppLayout {
     /// Screens on a stack, one at a time (iPhone).
     Stack,
-    /// The list and the detail side by side (Mac).
+    /// A sidebar with sections, and each section's list and detail (Mac).
     Split,
 }
 
+/// A sidebar section of the split layout. Swift writes the names, the icons,
+/// and the order: Recipes, then Ingredients.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AppSection {
+    Recipes,
+    Ingredients,
+}
+
+/// Each layout has its own events, so an event cannot reach the wrong one.
 #[derive(Debug)]
 pub enum AppEvent {
-    Ingredients(IngredientCatalogEvent),
-    SplitIngredients(IngredientSplitCatalogEvent),
+    Stack(IngredientCatalogEvent),
+    Split(SplitAppEvent),
+}
+
+#[derive(Debug)]
+pub enum SplitAppEvent {
+    SelectSection(AppSection),
+    Recipes(RecipeListEvent),
+    Ingredients(IngredientSplitCatalogEvent),
 }
 
 #[derive(Debug)]
 pub enum AppOutcome {
-    Ingredients(Scoped<IngredientsOutcome>),
-}
-
-/// An outcome of the catalog coordinator of the app's layout.
-#[derive(Debug)]
-pub enum IngredientsOutcome {
-    Stack(IngredientCatalogOutcome),
-    Split(IngredientSplitCatalogOutcome),
+    Stack(Scoped<IngredientCatalogOutcome>),
+    SplitRecipes(Scoped<RecipeListOutcome>),
+    SplitIngredients(Scoped<IngredientSplitCatalogOutcome>),
 }
 
 // An app has one layout, so one value of each exists at a time. Boxing would
 // only add an allocation per render.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IngredientsView {
+pub enum AppView {
+    /// iOS: the ingredient catalog on a stack. No sections (E-04).
     Stack(IngredientCatalogView),
-    Split(IngredientSplitCatalogView),
+    /// Mac: a sidebar with the Recipes and Ingredients sections.
+    Split(SplitAppView),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AppView {
-    pub ingredients: IngredientsView,
+pub struct SplitAppView {
+    /// The selected section. Both sections always exist.
+    pub section: AppSection,
+    pub recipes: RecipeListView,
+    pub ingredients: IngredientSplitCatalogView,
 }
 
-/// The recipe capabilities wait for the Recipes section (REC-01).
 #[derive(Clone)]
 pub struct AppCapabilities {
     pub ingredients: IngredientCapabilities,
@@ -87,81 +108,41 @@ impl AppCapabilities {
     }
 }
 
-/// The app's one child: the catalog coordinator of the chosen layout. The app
-/// has no other children, so app events go to it unchanged.
-#[allow(clippy::large_enum_variant)] // one per app, see `IngredientsView`
-enum Ingredients {
-    Stack(IngredientCatalog),
-    Split(IngredientSplitCatalog),
+/// The children of the chosen layout. Each variant holds exactly its own.
+#[allow(clippy::large_enum_variant)] // one per app, see `AppView`
+enum Layout {
+    Stack(ScopedChild<IngredientCatalog>),
+    Split(SplitLayout),
 }
 
-impl Widget for Ingredients {
-    type View = IngredientsView;
-    type Event = AppEvent;
-    type Outcome = IngredientsOutcome;
-
-    fn init(&mut self) -> Command<Self::Outcome> {
-        match self {
-            Self::Stack(catalog) => catalog.init().map(IngredientsOutcome::Stack),
-            Self::Split(catalog) => catalog.init().map(IngredientsOutcome::Split),
-        }
-    }
-
-    fn can_begin_shutdown(&self) -> bool {
-        match self {
-            Self::Stack(catalog) => catalog.can_begin_shutdown(),
-            Self::Split(catalog) => catalog.can_begin_shutdown(),
-        }
-    }
-
-    fn begin_shutdown(&mut self) -> Command<Self::Outcome> {
-        match self {
-            Self::Stack(catalog) => catalog.begin_shutdown().map(IngredientsOutcome::Stack),
-            Self::Split(catalog) => catalog.begin_shutdown().map(IngredientsOutcome::Split),
-        }
-    }
-
-    /// An event or outcome for the other layout is ignored.
-    fn update(&mut self, message: Message<Self>) -> Command<Self::Outcome> {
-        use IngredientsOutcome as Outcome;
-        match (message, self) {
-            (Message::Event(AppEvent::Ingredients(event)), Self::Stack(catalog)) => {
-                catalog.update(Message::Event(event)).map(Outcome::Stack)
-            }
-            (Message::Event(AppEvent::SplitIngredients(event)), Self::Split(catalog)) => {
-                catalog.update(Message::Event(event)).map(Outcome::Split)
-            }
-            (Message::Outcome(Outcome::Stack(outcome)), Self::Stack(catalog)) => catalog
-                .update(Message::Outcome(outcome))
-                .map(Outcome::Stack),
-            (Message::Outcome(Outcome::Split(outcome)), Self::Split(catalog)) => catalog
-                .update(Message::Outcome(outcome))
-                .map(Outcome::Split),
-            _ => Command::empty(),
-        }
-    }
-
-    fn view(&self) -> IngredientsView {
-        match self {
-            Self::Stack(catalog) => IngredientsView::Stack(catalog.view()),
-            Self::Split(catalog) => IngredientsView::Split(catalog.view()),
-        }
-    }
+struct SplitLayout {
+    section: AppSection,
+    render: Arc<dyn Render>,
+    recipes: ScopedChild<RecipeList>,
+    ingredients: ScopedChild<IngredientSplitCatalog>,
 }
 
 pub struct AppWidget {
-    ingredients: ScopedChild<Ingredients>,
+    layout: Layout,
     initialized: bool,
 }
 
 impl AppWidget {
     pub fn new(caps: AppCapabilities, layout: AppLayout) -> Self {
-        let ingredients = match layout {
-            AppLayout::Stack => Ingredients::Stack(IngredientCatalog::new(caps.ingredients)),
-            AppLayout::Split => Ingredients::Split(IngredientSplitCatalog::new(caps.ingredients)),
+        let layout = match layout {
+            AppLayout::Stack => {
+                Layout::Stack(ScopedChild::new(IngredientCatalog::new(caps.ingredients)))
+            }
+            AppLayout::Split => Layout::Split(SplitLayout {
+                // REC-01/Q1: the Mac app opens on Recipes.
+                section: AppSection::Recipes,
+                render: caps.recipes.render.clone(),
+                recipes: ScopedChild::new(RecipeList::new(caps.recipes)),
+                ingredients: ScopedChild::new(IngredientSplitCatalog::new(caps.ingredients)),
+            }),
         };
         Self {
-            ingredients: ScopedChild::new(ingredients),
+            layout,
             initialized: false,
         }
     }
@@ -174,13 +155,45 @@ impl AppWidget {
         let (caps, effects) = AppCapabilities::testing();
         (Self::new(caps, layout), effects)
     }
+}
 
-    /// The scope lives as long as the app, so dropping the app cancels the
-    /// catalog's commands.
-    fn ingredients_command(&mut self, command: Command<IngredientsOutcome>) -> Command<AppOutcome> {
+impl SplitLayout {
+    // The scopes live as long as the app, so dropping the app cancels the
+    // children's commands.
+    fn recipes(&mut self, command: Command<RecipeListOutcome>) -> Command<AppOutcome> {
+        self.recipes.command(command).map(AppOutcome::SplitRecipes)
+    }
+
+    fn ingredients(
+        &mut self,
+        command: Command<IngredientSplitCatalogOutcome>,
+    ) -> Command<AppOutcome> {
         self.ingredients
             .command(command)
-            .map(AppOutcome::Ingredients)
+            .map(AppOutcome::SplitIngredients)
+    }
+
+    fn update(&mut self, event: SplitAppEvent) -> Command<AppOutcome> {
+        match event {
+            SplitAppEvent::SelectSection(section) => {
+                self.section = section;
+                // Both sections keep their state; only the selection changes.
+                // The render runs in the recipe list's scope, so dropping the
+                // app cancels it.
+                let render = self.render.clone();
+                self.recipes(Command::without_outcome(
+                    async move { render.render().await },
+                ))
+            }
+            SplitAppEvent::Recipes(event) => {
+                let command = self.recipes.widget.update(Message::Event(event));
+                self.recipes(command)
+            }
+            SplitAppEvent::Ingredients(event) => {
+                let command = self.ingredients.widget.update(Message::Event(event));
+                self.ingredients(command)
+            }
+        }
     }
 }
 
@@ -194,35 +207,97 @@ impl Widget for AppWidget {
             return Command::empty();
         }
         self.initialized = true;
-        let command = self.ingredients.widget.init();
-        self.ingredients_command(command)
+        match &mut self.layout {
+            Layout::Stack(catalog) => {
+                let command = catalog.widget.init();
+                catalog.command(command).map(AppOutcome::Stack)
+            }
+            Layout::Split(split) => {
+                let recipes = split.recipes.widget.init();
+                let ingredients = split.ingredients.widget.init();
+                Command::select_all(vec![split.recipes(recipes), split.ingredients(ingredients)])
+            }
+        }
     }
 
+    /// Only the ingredient catalog can delay shutdown. A recipe load has
+    /// nothing to save.
     fn can_begin_shutdown(&self) -> bool {
-        self.ingredients.widget.can_begin_shutdown()
+        match &self.layout {
+            Layout::Stack(catalog) => catalog.widget.can_begin_shutdown(),
+            Layout::Split(split) => split.ingredients.widget.can_begin_shutdown(),
+        }
     }
 
     fn begin_shutdown(&mut self) -> Command<Self::Outcome> {
-        let command = self.ingredients.widget.begin_shutdown();
-        self.ingredients_command(command)
+        match &mut self.layout {
+            Layout::Stack(catalog) => {
+                let command = catalog.widget.begin_shutdown();
+                catalog.command(command).map(AppOutcome::Stack)
+            }
+            Layout::Split(split) => {
+                let command = split.ingredients.widget.begin_shutdown();
+                split.ingredients(command)
+            }
+        }
     }
 
+    /// An event or outcome for the other layout is ignored.
     fn update(&mut self, message: Message<Self>) -> Command<AppOutcome> {
-        let command = match message {
-            Message::Event(event) => self.ingredients.widget.update(Message::Event(event)),
-            Message::Outcome(AppOutcome::Ingredients(scoped)) => {
-                match self.ingredients.accept(scoped) {
-                    Some(outcome) => self.ingredients.widget.update(Message::Outcome(outcome)),
-                    None => return Command::empty(),
+        match (message, &mut self.layout) {
+            (Message::Event(AppEvent::Stack(event)), Layout::Stack(catalog)) => {
+                let command = catalog.widget.update(Message::Event(event));
+                catalog.command(command).map(AppOutcome::Stack)
+            }
+            (Message::Event(AppEvent::Split(event)), Layout::Split(split)) => split.update(event),
+            (Message::Outcome(AppOutcome::Stack(scoped)), Layout::Stack(catalog)) => {
+                match catalog.accept(scoped) {
+                    Some(outcome) => {
+                        let command = catalog.widget.update(Message::Outcome(outcome));
+                        catalog.command(command).map(AppOutcome::Stack)
+                    }
+                    None => Command::empty(),
                 }
             }
-        };
-        self.ingredients_command(command)
+            (Message::Outcome(AppOutcome::SplitRecipes(scoped)), Layout::Split(split)) => {
+                match split.recipes.accept(scoped) {
+                    Some(outcome) => {
+                        let command = split.recipes.widget.update(Message::Outcome(outcome));
+                        split.recipes(command)
+                    }
+                    None => Command::empty(),
+                }
+            }
+            (Message::Outcome(AppOutcome::SplitIngredients(scoped)), Layout::Split(split)) => {
+                match split.ingredients.accept(scoped) {
+                    Some(outcome) => {
+                        let command = split.ingredients.widget.update(Message::Outcome(outcome));
+                        split.ingredients(command)
+                    }
+                    None => Command::empty(),
+                }
+            }
+            // A value for the other layout: ignore it.
+            (
+                Message::Event(AppEvent::Split(_))
+                | Message::Outcome(AppOutcome::SplitRecipes(_) | AppOutcome::SplitIngredients(_)),
+                Layout::Stack(_),
+            )
+            | (
+                Message::Event(AppEvent::Stack(_)) | Message::Outcome(AppOutcome::Stack(_)),
+                Layout::Split(_),
+            ) => Command::empty(),
+        }
     }
 
     fn view(&self) -> AppView {
-        AppView {
-            ingredients: self.ingredients.widget.view(),
+        match &self.layout {
+            Layout::Stack(catalog) => AppView::Stack(catalog.widget.view()),
+            Layout::Split(split) => AppView::Split(SplitAppView {
+                section: split.section,
+                recipes: split.recipes.widget.view(),
+                ingredients: split.ingredients.widget.view(),
+            }),
         }
     }
 }

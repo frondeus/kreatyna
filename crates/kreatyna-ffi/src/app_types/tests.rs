@@ -8,14 +8,14 @@ use super::*;
 
 #[test]
 fn nested_event_conversion_preserves_the_catalog_scope() {
-    let event = AppEvent::Ingredients {
+    let event = AppEvent::Stack {
         event: IngredientCatalogEvent::Form {
             scope: ScopeId { value: 29 },
             event: IngredientFormEvent::Save,
         },
     };
 
-    let core::AppEvent::Ingredients(ingredient::IngredientCatalogEvent::Form(inner)) =
+    let core::AppEvent::Stack(ingredient::IngredientCatalogEvent::Form(inner)) =
         core::AppEvent::try_from(event).unwrap()
     else {
         panic!("expected form event")
@@ -30,7 +30,7 @@ fn converted_stale_event_is_rejected_by_existing_app_routing() {
         let (mut app, _effects) = core::AppWidget::test_fixture();
         let old = stack(RunningAppView::try_from(app.view()).unwrap());
 
-        let create = AppEvent::Ingredients {
+        let create = AppEvent::Stack {
             event: IngredientCatalogEvent::List {
                 scope: old.scope,
                 event: IngredientListEvent::CreateRequested,
@@ -45,14 +45,14 @@ fn converted_stale_event_is_rejected_by_existing_app_routing() {
         drop(app.update(Message::Outcome(outcome)));
         let current = app.view();
         assert!(matches!(
-            current.ingredients,
-            core::IngredientsView::Stack(ingredient::IngredientCatalogView {
+            current,
+            core::AppView::Stack(ingredient::IngredientCatalogView {
                 screen: ingredient::IngredientCatalogScreenView::Create(_),
                 ..
             })
         ));
 
-        let stale = AppEvent::Ingredients {
+        let stale = AppEvent::Stack {
             event: IngredientCatalogEvent::List {
                 scope: old.scope,
                 event: IngredientListEvent::Search {
@@ -70,27 +70,32 @@ fn converted_stale_event_is_rejected_by_existing_app_routing() {
 
 #[test]
 fn split_event_conversion_preserves_the_scopes() {
-    let clear = AppEvent::SplitIngredients {
-        event: IngredientSplitCatalogEvent::ClearSelection {
-            scope: ScopeId { value: 7 },
+    let clear = AppEvent::Split {
+        event: SplitAppEvent::Ingredients {
+            event: IngredientSplitCatalogEvent::ClearSelection {
+                scope: ScopeId { value: 7 },
+            },
         },
     };
-    let core::AppEvent::SplitIngredients(ingredient::IngredientSplitCatalogEvent::ClearSelection {
-        scope,
-    }) = core::AppEvent::try_from(clear).unwrap()
+    let core::AppEvent::Split(core::SplitAppEvent::Ingredients(
+        ingredient::IngredientSplitCatalogEvent::ClearSelection { scope },
+    )) = core::AppEvent::try_from(clear).unwrap()
     else {
         panic!("expected a clear-selection event")
     };
     assert_eq!(u64::from(scope), 7);
 
-    let detail = AppEvent::SplitIngredients {
-        event: IngredientSplitCatalogEvent::Detail {
-            scope: ScopeId { value: 8 },
-            event: IngredientDetailEvent::Edit,
+    let detail = AppEvent::Split {
+        event: SplitAppEvent::Ingredients {
+            event: IngredientSplitCatalogEvent::Detail {
+                scope: ScopeId { value: 8 },
+                event: IngredientDetailEvent::Edit,
+            },
         },
     };
-    let core::AppEvent::SplitIngredients(ingredient::IngredientSplitCatalogEvent::Detail(inner)) =
-        core::AppEvent::try_from(detail).unwrap()
+    let core::AppEvent::Split(core::SplitAppEvent::Ingredients(
+        ingredient::IngredientSplitCatalogEvent::Detail(inner),
+    )) = core::AppEvent::try_from(detail).unwrap()
     else {
         panic!("expected a detail event")
     };
@@ -123,7 +128,7 @@ fn split_view_conversion_keeps_the_selection_and_the_detail() {
         },
         units: vec![],
     };
-    let view = core::IngredientsView::Split(ingredient::IngredientSplitCatalogView {
+    let view = ingredient::IngredientSplitCatalogView {
         list: Scoped::new(
             CommandScopeId::from(3),
             ingredient::IngredientListView {
@@ -141,11 +146,9 @@ fn split_view_conversion_keeps_the_selection_and_the_detail() {
         ),
         can_create: true,
         draft_row: None,
-    });
-
-    let IngredientsView::Split { catalog } = IngredientsView::try_from(view).unwrap() else {
-        panic!("expected the split layout")
     };
+
+    let catalog = IngredientSplitCatalogView::try_from(view).unwrap();
     assert_eq!(catalog.selected.as_deref(), Some(id.to_string().as_str()));
     assert_eq!(catalog.list.scope, ScopeId { value: 3 });
     assert_eq!(catalog.pane.scope, ScopeId { value: 4 });
@@ -159,14 +162,17 @@ fn split_view_conversion_keeps_the_selection_and_the_detail() {
 
 #[test]
 fn split_form_event_conversion_keeps_the_pane_scope() {
-    let save = AppEvent::SplitIngredients {
-        event: IngredientSplitCatalogEvent::Form {
-            scope: ScopeId { value: 5 },
-            event: IngredientFormEvent::Save,
+    let save = AppEvent::Split {
+        event: SplitAppEvent::Ingredients {
+            event: IngredientSplitCatalogEvent::Form {
+                scope: ScopeId { value: 5 },
+                event: IngredientFormEvent::Save,
+            },
         },
     };
-    let core::AppEvent::SplitIngredients(ingredient::IngredientSplitCatalogEvent::Form(inner)) =
-        core::AppEvent::try_from(save).unwrap()
+    let core::AppEvent::Split(core::SplitAppEvent::Ingredients(
+        ingredient::IngredientSplitCatalogEvent::Form(inner),
+    )) = core::AppEvent::try_from(save).unwrap()
     else {
         panic!("expected a form event")
     };
@@ -178,7 +184,7 @@ fn split_form_event_conversion_keeps_the_pane_scope() {
 fn split_view_conversion_carries_the_create_form_and_the_draft_row() {
     let mut draft = ingredient::IngredientDraft::new(ingredient::NutritionBasis::Per100Grams);
     draft.set_field(ingredient::IngredientDraftField::Name, "Paprika".into());
-    let view = core::IngredientsView::Split(ingredient::IngredientSplitCatalogView {
+    let view = ingredient::IngredientSplitCatalogView {
         list: Scoped::new(
             CommandScopeId::from(3),
             ingredient::IngredientListView {
@@ -199,11 +205,9 @@ fn split_view_conversion_carries_the_create_form_and_the_draft_row() {
         ),
         can_create: false,
         draft_row: Some("Paprika".into()),
-    });
-
-    let IngredientsView::Split { catalog } = IngredientsView::try_from(view).unwrap() else {
-        panic!("expected the split layout")
     };
+
+    let catalog = IngredientSplitCatalogView::try_from(view).unwrap();
     assert_eq!(catalog.pane.scope, ScopeId { value: 6 });
     assert!(!catalog.can_create);
     assert_eq!(catalog.draft_row.as_deref(), Some("Paprika"));
@@ -222,7 +226,7 @@ fn split_view_conversion_carries_the_edit_form_and_its_saved_name() {
         ingredient::IngredientDraftField::Name,
         "Black Garlic".into(),
     );
-    let view = core::IngredientsView::Split(ingredient::IngredientSplitCatalogView {
+    let view = ingredient::IngredientSplitCatalogView {
         list: Scoped::new(
             CommandScopeId::from(3),
             ingredient::IngredientListView {
@@ -246,11 +250,9 @@ fn split_view_conversion_carries_the_edit_form_and_its_saved_name() {
         ),
         can_create: false,
         draft_row: None,
-    });
-
-    let IngredientsView::Split { catalog } = IngredientsView::try_from(view).unwrap() else {
-        panic!("expected the split layout")
     };
+
+    let catalog = IngredientSplitCatalogView::try_from(view).unwrap();
     assert_eq!(catalog.selected.as_deref(), Some(id.to_string().as_str()));
     assert_eq!(catalog.pane.scope, ScopeId { value: 7 });
     let IngredientSplitPaneView::Edit { saved_name, form } = catalog.pane.value else {
@@ -260,8 +262,79 @@ fn split_view_conversion_carries_the_edit_form_and_its_saved_name() {
     assert_eq!(form.draft.name, "Black Garlic");
 }
 
+#[test]
+fn split_app_event_conversion_reaches_the_sections() {
+    let select = AppEvent::Split {
+        event: SplitAppEvent::SelectSection {
+            section: AppSection::Ingredients,
+        },
+    };
+    assert!(matches!(
+        core::AppEvent::try_from(select),
+        Ok(core::AppEvent::Split(core::SplitAppEvent::SelectSection(
+            core::AppSection::Ingredients
+        )))
+    ));
+
+    let refresh = AppEvent::Split {
+        event: SplitAppEvent::Recipes {
+            event: RecipeListEvent::Refresh,
+        },
+    };
+    assert!(matches!(
+        core::AppEvent::try_from(refresh),
+        Ok(core::AppEvent::Split(core::SplitAppEvent::Recipes(
+            kreatyna::recipes::RecipeListEvent::Refresh
+        )))
+    ));
+}
+
+#[test]
+fn split_app_view_conversion_keeps_the_section_and_the_recipe_rows() {
+    let (mut app, _effects) = core::AppWidget::test_fixture_with(core::AppLayout::Split);
+    drop(app.init());
+    let core::AppView::Split(mut view) = app.view() else {
+        panic!("expected the split layout")
+    };
+    let id = kreatyna::recipes::RecipeId::new();
+    view.recipes.status = kreatyna::recipes::RecipeListStatus::Ready {
+        rows: vec![kreatyna::recipes::RecipeListRow {
+            id,
+            title: "Shakshuka".into(),
+        }],
+    };
+
+    let RunningAppView::Split { app } =
+        RunningAppView::try_from(core::AppView::Split(view)).unwrap()
+    else {
+        panic!("expected the split layout")
+    };
+    assert_eq!(app.section, AppSection::Recipes);
+    assert_eq!(
+        app.recipes.status,
+        RecipeListStatus::Ready {
+            rows: vec![RecipeListRow {
+                id: id.to_string(),
+                title: "Shakshuka".into()
+            }]
+        }
+    );
+}
+
+#[test_case(kreatyna::recipes::capabilities::RecipeLoadError::Storage, RecipeLoadError::Storage; "storage")]
+#[test_case(kreatyna::recipes::capabilities::RecipeLoadError::Transport, RecipeLoadError::Transport; "transport")]
+fn recipe_load_errors_keep_their_kind(
+    error: kreatyna::recipes::capabilities::RecipeLoadError,
+    expected: RecipeLoadError,
+) {
+    assert_eq!(
+        RecipeListStatus::from(kreatyna::recipes::RecipeListStatus::Failed(error)),
+        RecipeListStatus::Failed { error: expected }
+    );
+}
+
 fn stack(view: RunningAppView) -> IngredientCatalogView {
-    let IngredientsView::Stack { catalog } = view.ingredients else {
+    let RunningAppView::Stack { catalog } = view else {
         panic!("expected the stack layout")
     };
     catalog

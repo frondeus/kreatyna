@@ -1,13 +1,22 @@
 use futures::StreamExt;
 use kreatyna::{
     capabilities::ResolveRender,
-    ingredients::{capabilities::ResolveIngredientStore, *},
+    ingredients::{
+        capabilities::{IngredientEffect, ResolveIngredientStore},
+        *,
+    },
+    recipes::{
+        Recipe, RecipeId, RecipeListEvent, RecipeListRow, RecipeListStatus,
+        capabilities::{RecipeEffect, RecipeLoadError, ResolveRecipeStore},
+    },
     *,
 };
 use krucyfiks::{
     Command, Effect, Message, Scoped, Widget,
     effects::{CommandEffect, CommandTestExt},
 };
+
+// Green path
 
 #[tokio::test]
 async fn initialization_loads_the_catalog_once() -> anyhow::Result<()> {
@@ -66,7 +75,7 @@ async fn shutdown_hook_preserves_an_accepted_ingredient_save_and_follow_up() -> 
         .expect_effect()
         .expect_ingredients()
         .expect_store()
-        .resolve_save(|_| async { Ok(record()) })
+        .resolve_save(|_| async { Ok(garlic()) })
         .await?;
     let saved = save.step().await?.expect_outcome();
     save.step().await?.expect_done();
@@ -97,38 +106,81 @@ async fn shutdown_hook_preserves_an_accepted_ingredient_save_and_follow_up() -> 
 }
 
 #[tokio::test]
-async fn the_split_layout_runs_the_split_catalog() -> anyhow::Result<()> {
+async fn the_split_layout_starts_on_recipes_and_loads_both_sections() -> anyhow::Result<()> {
     let mut f = Fixture::with(AppLayout::Split);
     f.initialize().await?;
-    let catalog = f.split();
+    let app = f.split();
+    assert_eq!(app.section, AppSection::Recipes);
+    assert_eq!(
+        app.recipes.status,
+        RecipeListStatus::Ready {
+            rows: vec![RecipeListRow {
+                id: shakshuka().id,
+                title: "Shakshuka".into()
+            }]
+        }
+    );
     assert!(matches!(
-        catalog.list.value.status,
+        app.ingredients.list.value.status,
         IngredientListStatus::Ready { ref rows, .. }
             if rows.iter().map(|row| row.name.as_str()).eq(["Garlic"])
     ));
-    assert_eq!(catalog.selected, None);
+    assert_eq!(app.ingredients.selected, None);
+    Ok(())
+}
 
-    let row = record_id(&catalog.list.value);
-    let command = f.app.update(Message::Event(AppEvent::SplitIngredients(
+#[tokio::test]
+async fn selecting_a_section_renders_and_keeps_both_sections() -> anyhow::Result<()> {
+    let mut f = Fixture::with(AppLayout::Split);
+    f.initialize().await?;
+    let before = f.split();
+
+    let command = f.split_event(SplitAppEvent::SelectSection(AppSection::Ingredients));
+    assert_eq!(
+        f.split(),
+        SplitAppView {
+            section: AppSection::Ingredients,
+            ..before.clone()
+        }
+    );
+    f.render(command).await?;
+
+    let command = f.split_event(SplitAppEvent::SelectSection(AppSection::Recipes));
+    assert_eq!(f.split(), before);
+    f.render(command).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_split_layout_routes_ingredient_events_to_its_catalog() -> anyhow::Result<()> {
+    let mut f = Fixture::with(AppLayout::Split);
+    f.initialize().await?;
+    let catalog = f.split().ingredients;
+    let row = first_ingredient(&catalog.list.value);
+
+    let command = f.split_event(SplitAppEvent::Ingredients(
         IngredientSplitCatalogEvent::List(Scoped::new(
             catalog.list.scope,
             IngredientListEvent::Select(row),
         )),
-    )));
+    ));
     let outcome = command.into_stream().next().await.unwrap();
     f.apply_render(outcome).await?;
-    assert_eq!(f.split().selected, Some(row));
+    assert_eq!(f.split().ingredients.selected, Some(row));
+    // Opening an ingredient does not change the selected section.
+    assert_eq!(f.split().section, AppSection::Recipes);
     Ok(())
 }
+
+// Validation
 
 #[tokio::test]
 async fn an_event_for_the_other_layout_is_ignored() -> anyhow::Result<()> {
     let mut stack = Fixture::new();
     stack.initialize().await?;
     let before = stack.app.view();
-    let scope = stack.stack().scope;
-    empty(stack.app.update(Message::Event(AppEvent::SplitIngredients(
-        IngredientSplitCatalogEvent::ClearSelection { scope },
+    empty(stack.app.update(Message::Event(AppEvent::Split(
+        SplitAppEvent::SelectSection(AppSection::Ingredients),
     ))))
     .await;
     assert_eq!(stack.app.view(), before);
@@ -136,8 +188,8 @@ async fn an_event_for_the_other_layout_is_ignored() -> anyhow::Result<()> {
     let mut split = Fixture::with(AppLayout::Split);
     split.initialize().await?;
     let before = split.app.view();
-    let scope = split.split().list.scope;
-    empty(split.app.update(Message::Event(AppEvent::Ingredients(
+    let scope = split.split().ingredients.list.scope;
+    empty(split.app.update(Message::Event(AppEvent::Stack(
         IngredientCatalogEvent::List(Scoped::new(scope, IngredientListEvent::CreateRequested)),
     ))))
     .await;
@@ -153,7 +205,32 @@ async fn app_drop_cancels_unpolled_initialization() {
     empty(command).await;
 }
 
-fn record() -> Ingredient {
+// Red cases
+
+#[tokio::test]
+async fn a_failed_recipe_load_can_be_retried_through_the_app() -> anyhow::Result<()> {
+    let mut f = Fixture::with(AppLayout::Split);
+    f.recipes = Err(RecipeLoadError::Storage);
+    f.initialize().await?;
+    assert_eq!(
+        f.split().recipes.status,
+        RecipeListStatus::Failed(RecipeLoadError::Storage)
+    );
+
+    f.recipes = Ok(vec![shakshuka()]);
+    let command = f.split_event(SplitAppEvent::Recipes(RecipeListEvent::Refresh));
+    assert_eq!(f.split().recipes.status, RecipeListStatus::Loading);
+    f.drive_initialization(command).await?;
+    assert!(matches!(
+        f.split().recipes.status,
+        RecipeListStatus::Ready { ref rows } if rows.len() == 1
+    ));
+    Ok(())
+}
+
+// Test support
+
+fn garlic() -> Ingredient {
     Ingredient {
         id: IngredientId::new(),
         name: "Garlic".into(),
@@ -168,55 +245,78 @@ fn record() -> Ingredient {
         units: vec![],
     }
 }
-fn record_id(list: &IngredientListView) -> IngredientId {
+
+fn shakshuka() -> Recipe {
+    Recipe {
+        id: RecipeId::from(uuid::Uuid::from_u128(1)),
+        title: "Shakshuka".into(),
+    }
+}
+
+fn first_ingredient(list: &IngredientListView) -> IngredientId {
     let IngredientListStatus::Ready { rows, .. } = &list.status else {
         panic!("expected a ready list");
     };
     rows[0].id
 }
+
 async fn empty(command: Command<AppOutcome>) {
     assert!(command.into_stream().next().await.is_none());
 }
+
 struct Fixture {
     app: AppWidget,
     effects: AppEffectStream,
+    /// What the recipe store returns to the next list request.
+    recipes: Result<Vec<Recipe>, RecipeLoadError>,
 }
+
 impl Fixture {
     fn new() -> Self {
         Self::with(AppLayout::Stack)
     }
+
     fn with(layout: AppLayout) -> Self {
         let (app, effects) = AppWidget::test_fixture_with(layout);
-        Self { app, effects }
+        Self {
+            app,
+            effects,
+            recipes: Ok(vec![shakshuka()]),
+        }
     }
+
     fn stack(&self) -> IngredientCatalogView {
-        let IngredientsView::Stack(catalog) = self.app.view().ingredients else {
+        let AppView::Stack(catalog) = self.app.view() else {
             panic!("expected the stack layout");
         };
         catalog
     }
-    fn split(&self) -> IngredientSplitCatalogView {
-        let IngredientsView::Split(catalog) = self.app.view().ingredients else {
+
+    fn split(&self) -> SplitAppView {
+        let AppView::Split(app) = self.app.view() else {
             panic!("expected the split layout");
         };
-        catalog
+        app
     }
-    fn ingredients(&mut self, event: IngredientCatalogEvent) -> Command<AppOutcome> {
-        self.app
-            .update(Message::Event(AppEvent::Ingredients(event)))
+
+    fn split_event(&mut self, event: SplitAppEvent) -> Command<AppOutcome> {
+        self.app.update(Message::Event(AppEvent::Split(event)))
     }
+
+    fn stack_event(&mut self, event: IngredientCatalogEvent) -> Command<AppOutcome> {
+        self.app.update(Message::Event(AppEvent::Stack(event)))
+    }
+
     fn list(&mut self, event: IngredientListEvent) -> Command<AppOutcome> {
-        self.ingredients(IngredientCatalogEvent::List(Scoped::new(
-            self.stack().scope,
-            event,
-        )))
+        let scope = self.stack().scope;
+        self.stack_event(IngredientCatalogEvent::List(Scoped::new(scope, event)))
     }
+
     fn form(&mut self, event: IngredientFormEvent) -> Command<AppOutcome> {
-        self.ingredients(IngredientCatalogEvent::Form(Scoped::new(
-            self.stack().scope,
-            event,
-        )))
+        let scope = self.stack().scope;
+        self.stack_event(IngredientCatalogEvent::Form(Scoped::new(scope, event)))
     }
+
     async fn render(&mut self, command: Command<AppOutcome>) -> anyhow::Result<()> {
         let mut driver = command.driver(&mut self.effects);
         driver
@@ -229,41 +329,45 @@ impl Fixture {
         driver.step().await?.expect_done();
         Ok(())
     }
+
     async fn apply_render(&mut self, outcome: AppOutcome) -> anyhow::Result<()> {
         let command = self.app.update(Message::Outcome(outcome));
         self.render(command).await
     }
+
     async fn create(&mut self) -> anyhow::Result<()> {
         let command = self.list(IngredientListEvent::CreateRequested);
         let outcome = command.into_stream().next().await.unwrap();
         self.apply_render(outcome).await
     }
+
     async fn initialize(&mut self) -> anyhow::Result<()> {
         let command = self.app.init();
         self.drive_initialization(command).await
     }
+
+    /// Runs the loads of a command in any order: each list renders its
+    /// loading state, then reads its store. Then it applies every outcome.
     async fn drive_initialization(&mut self, command: Command<AppOutcome>) -> anyhow::Result<()> {
         let mut driver = command.driver(&mut self.effects);
-        // The catalog renders its loading state and loads the list in either order.
         let mut outcomes = vec![];
-        for _ in 0..3 {
+        loop {
             match driver.step().await? {
-                CommandEffect::Effect(AppEffect::Ingredients(effect)) => match effect {
-                    ingredients::capabilities::IngredientEffect::Render(e) => {
-                        e.resolve_render(|| async {}).await?;
-                    }
-                    effect => {
-                        effect
-                            .expect_store()
-                            .resolve_list(|| async { Ok(vec![record()]) })
-                            .await?;
-                    }
-                },
+                CommandEffect::Effect(AppEffect::Ingredients(IngredientEffect::Render(e)))
+                | CommandEffect::Effect(AppEffect::Recipes(RecipeEffect::Render(e))) => {
+                    e.resolve_render(|| async {}).await?;
+                }
+                CommandEffect::Effect(AppEffect::Ingredients(IngredientEffect::Store(e))) => {
+                    e.resolve_list(|| async { Ok(vec![garlic()]) }).await?;
+                }
+                CommandEffect::Effect(AppEffect::Recipes(RecipeEffect::Store(e))) => {
+                    let recipes = self.recipes.clone();
+                    e.resolve_list(|| async { recipes }).await?;
+                }
                 CommandEffect::Outcome(outcome) => outcomes.push(outcome),
-                _ => panic!("unexpected initialization step"),
+                CommandEffect::Done => break,
             }
         }
-        driver.step().await?.expect_done();
         drop(driver);
         for outcome in outcomes {
             self.apply_render(outcome).await?;

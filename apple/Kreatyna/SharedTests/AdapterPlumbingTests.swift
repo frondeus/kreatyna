@@ -5,27 +5,34 @@ struct EventCompositionTests {
 
     @Test func parentsWrapChildEventsWithDisplayedScopes() throws {
         let app = Fixtures.running(screen: .list)
-        let catalog = try #require(app.ingredients.stack)
+        let catalog = try #require(app.stack)
 
-        let event = app.ingredients(catalog.list(.createRequested))
+        let event = AppEvent.stack(event: catalog.list(.createRequested))
 
-        #expect(event == .ingredients(
+        #expect(event == .stack(
             event: .list(scope: ScopeId(value: 2), event: .createRequested)
         ))
         #expect(catalog.back == .back(scope: ScopeId(value: 2)))
     }
 
     @Test func splitEventsUseTheListAndPaneScopes() throws {
-        let app = RunningAppView(ingredients: .split(catalog: Fixtures.splitCatalog(selected: Fixtures.garlic)))
-        let catalog = try #require(app.ingredients.split)
-
-        #expect(app.splitIngredients(catalog.list(.select(id: Fixtures.cucumberId))) == .splitIngredients(
-            event: .list(scope: ScopeId(value: 3), event: .select(id: Fixtures.cucumberId))
+        let app = RunningAppView.split(app: SplitAppView(
+            section: .ingredients,
+            recipes: RecipeListView(status: .ready(rows: [])),
+            ingredients: Fixtures.splitCatalog(selected: Fixtures.garlic)
         ))
+        let split = try #require(app.split)
+        let catalog = split.ingredients
+
+        #expect(split.ingredients(catalog.list(.select(id: Fixtures.cucumberId))) == .split(
+            event: .ingredients(event: .list(scope: ScopeId(value: 3), event: .select(id: Fixtures.cucumberId)))
+        ))
+        #expect(split.selectSection(.recipes) == .split(event: .selectSection(section: .recipes)))
+        #expect(split.recipes(.refresh) == .split(event: .recipes(event: .refresh)))
         #expect(catalog.detail(.edit) == .detail(scope: ScopeId(value: 4), event: .edit))
         #expect(catalog.form(.save) == .form(scope: ScopeId(value: 4), event: .save))
         #expect(catalog.clearSelection == .clearSelection(scope: ScopeId(value: 4)))
-        #expect(app.ingredients.stack == nil)
+        #expect(app.stack == nil)
     }
 
     @Test func platformLayoutMatchesTheTestHost() {

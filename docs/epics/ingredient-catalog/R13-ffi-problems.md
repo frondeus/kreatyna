@@ -6,7 +6,8 @@ in `pmuzortp` and its documented caller contract in `xkkqlrky`. P03 and P05 were
 solved by `AppFfi::shut_down_gracefully()` in change `nsmprulk`. P08 was
 solved by its documented handler contract. P11 was solved in krucyfiks change
 `ptpyolln`: runtime spans record payloads only at `trace`. P06 was solved in change
-`mzvlyzwo`: a stopped database task shows the failure screen.
+`mzvlyzwo`: a stopped database task shows the failure screen. P04 was solved in
+change `xuwqmllk`: shutdown closes the database task.
 
 This document examines the Counter-like R13 baseline in change `uqmquulk`.
 It describes problems and their causes. Solved items record their implemented
@@ -47,7 +48,7 @@ and actual workload are known.
 | P03 — Shutdown completion (solved) | P3 | Callers cannot establish when app work and callbacks have stopped. |
 | P08 — Callback reference cycle (solved) | P3 | A strong reference cycle prevents destruction and retains app resources. |
 | P11 — Payload logging (solved) | P3 | Enabled tracing can disclose user-entered content to the configured logger. |
-| P04 — Retained connection | P4 | Retained stopped facades keep idle workers and connections alive. |
+| P04 — Retained connection (solved) | P4 | Retained stopped facades keep idle workers and connections alive. |
 | P05 — Write completion at shutdown (solved) | P2 | A save can be lost before enqueueing or commit without its result reaching the view. |
 | P06 — Task failure status (solved) | P3 | A failed worker can leave a partially working app with no coherent failure signal. |
 | P10 — Pending-work limits | P4 | Sustained excess input can increase memory use without a fixed bound. |
@@ -68,7 +69,7 @@ make a disposable example a production blocker.
 | P03 | Shared runtime and callbacks | Solved by `shut_down_gracefully()` (P05). |
 | P08 | Shared callback ownership, conditional on a strong back-reference | Solved by the documented handler contract and a Swift test. |
 | P11 | Shared runtime tracing; ingredient payloads specifically | Solved: payloads are recorded only at `trace`. |
-| P04 | Shared app database lifetime | Keep open; recheck worker ownership after P01. |
+| P04 | Shared app database lifetime | Solved: shutdown closes the database task. |
 | P05 | Shared shutdown contract, including ingredient saves | Solved by `shut_down_gracefully()`. |
 | P06 | Shared runtime/database worker supervision | Solved for the database task; a runtime panic is `vibetyna-dm7`. |
 | P10 | Shared event and command backlog | Keep open as a load-dependent concern. |
@@ -316,6 +317,16 @@ payloads. It increases log volume and makes user-entered content part of the
 logging contract without an explicit decision. It is independent of shutdown.
 
 ## P04 — Runtime shutdown does not release the database connection
+
+**Status: solved** (Cooldown 1). `AppFfi` and the app shell share a
+`DatabaseHandle` with the running database task. `shutdown()` closes its
+request admission: the task finishes the requests it has, ends, and drops the
+SQLite connection. `shut_down_gracefully()` does the same after the runtime has
+drained, and returns only when the task has ended; after a cancelled drain it
+closes without waiting, because the task may be stuck behind a lock. A new
+start (Retry) replaces the previous task, which closes on drop. Tests:
+`graceful_shutdown_returns_after_the_database_closes` and
+`shutdown_lets_the_database_close`.
 
 **Severity: P4.** The known effect is retention of resources while a stopped
 facade remains referenced. An idle SQLite connection does not by itself prove

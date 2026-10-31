@@ -116,6 +116,7 @@ fn graceful_shutdown_before_initialization_is_polled_drains_prepared_children() 
     let (render, _rendered) = TestRender::new();
     let setup = crate::app_shell::AppSetup {
         database_path: database.path().into(),
+        database: Default::default(),
         render: Arc::new(RenderHandlerShim {
             handler: Arc::new(render),
         }),
@@ -391,5 +392,35 @@ fn wait_until(app: &AppFfi, rendered: &flume::Receiver<()>, predicate: impl Fn(&
         rendered
             .recv_deadline(deadline)
             .expect("app initialization should render a ready view");
+    }
+}
+
+#[test]
+fn graceful_shutdown_returns_after_the_database_closes() {
+    let database = TemporaryDatabase::new();
+    let (app, _rendered) = started_stack_app(&database);
+    assert!(!app.database.is_finished());
+
+    let result = RUNTIME.block_on(app.shut_down_within(Duration::from_secs(5)));
+
+    assert_eq!(result, ShutdownResult::Completed);
+    assert!(app.database.is_finished());
+}
+
+#[test]
+fn shutdown_lets_the_database_close() {
+    let database = TemporaryDatabase::new();
+    let (app, _rendered) = started_stack_app(&database);
+
+    app.shutdown();
+
+    // Cancel mode does not wait; the task finishes its admitted requests and ends.
+    let deadline = std::time::Instant::now() + Duration::from_secs(2);
+    while !app.database.is_finished() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the database task should end after shutdown"
+        );
+        std::thread::sleep(Duration::from_millis(10));
     }
 }

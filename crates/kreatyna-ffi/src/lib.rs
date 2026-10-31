@@ -7,7 +7,7 @@ use krucyfiks_runtime::{Runtime, RuntimeError, ShutdownMode};
 use parking_lot::Mutex;
 use tokio::task::JoinHandle;
 
-use crate::app_shell::{AppSetup, AppShell, AppShellEvent};
+use crate::app_shell::{AppSetup, AppShell, AppShellEvent, DatabaseHandle};
 
 mod app_shell;
 mod app_types;
@@ -42,6 +42,8 @@ pub enum ShutdownResult {
 pub struct AppFfi {
     runtime: Arc<Runtime<AppShell>>,
     handle: Mutex<Option<JoinHandle<()>>>,
+    /// The database task. Shutdown closes it, so the connection closes (P04).
+    database: DatabaseHandle,
 }
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -108,13 +110,16 @@ impl AppFfi {
         Ok(())
     }
 
-    /// Stops at once and drops pending work, including accepted saves.
+    /// Stops at once and drops pending work, including accepted saves. The
+    /// database finishes the requests it already has, then closes.
     pub fn shutdown(&self) {
         self.runtime.shutdown();
+        self.database.close();
     }
 
     /// Stops accepting events, finishes accepted work, and returns when the
-    /// runtime has stopped. Work that outlasts the grace period is cancelled.
+    /// runtime has stopped and the database is closed. Work that outlasts the
+    /// grace period is cancelled; the database then closes without a wait.
     /// Call it once, when the app quits; a later call returns `Completed` at
     /// once without waiting for the first.
     pub async fn shut_down_gracefully(&self) -> ShutdownResult {
@@ -124,6 +129,17 @@ impl AppFfi {
 
 impl AppFfi {
     async fn shut_down_within(&self, grace: Duration) -> ShutdownResult {
+        let result = self.drain_within(grace).await;
+        match result {
+            // Nothing waits for the database any more, so its close is quick.
+            ShutdownResult::Completed => self.database.close_and_wait().await,
+            // The database may be stuck, for example behind a lock.
+            ShutdownResult::Cancelled => self.database.close(),
+        }
+        result
+    }
+
+    async fn drain_within(&self, grace: Duration) -> ShutdownResult {
         self.runtime.request_shutdown(ShutdownMode::Graceful);
         // Not started: the runtime accepted no work.
         let Some(mut runner) = self.handle.lock().take() else {
@@ -187,8 +203,10 @@ pub fn app(caps: AppCapabilities, database_path: String, layout: AppLayout) -> A
         handler: caps.render,
     });
 
+    let database = DatabaseHandle::default();
     let widget = AppShell::new(AppSetup {
         database_path,
+        database: database.clone(),
         render,
         layout: layout.into(),
     });
@@ -197,6 +215,7 @@ pub fn app(caps: AppCapabilities, database_path: String, layout: AppLayout) -> A
     Arc::new(AppFfi {
         runtime,
         handle: Mutex::new(None),
+        database,
     })
 }
 

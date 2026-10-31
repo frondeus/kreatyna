@@ -8,6 +8,7 @@ use kreatyna::{
 use krucyfiks::{
     Command, CommandExt, CommandId, LatestCommandSlot, Message, Widget, effects::RequestCloseHandle,
 };
+use parking_lot::Mutex;
 use tokio::{sync::oneshot, task::JoinHandle};
 
 use crate::{AppInitializationError, AppTypeConversionError, AppView, RUNTIME, RunningAppView};
@@ -16,6 +17,8 @@ use kreatyna_db::sqlite::{DatabaseEffect, SqliteDatabase};
 #[derive(Clone)]
 pub(crate) struct AppSetup {
     pub(crate) database_path: String,
+    /// Shared with the facade, so shutdown can close the database (P04).
+    pub(crate) database: DatabaseHandle,
     pub(crate) render: Arc<dyn Render>,
     pub(crate) layout: kreatyna::AppLayout,
 }
@@ -205,19 +208,56 @@ impl Widget for AppShell {
 
 pub(crate) struct PreparedApp {
     app: AppWidget,
-    _database_worker: DatabaseWorker,
     /// Resolves when the database task ends. The shell takes it at start.
     database_stopped: Option<oneshot::Receiver<()>>,
 }
 
-#[allow(dead_code)]
+/// The running app's database task. The app shell starts it, and the facade
+/// closes it after the runtime stops, so the SQLite connection closes (P04).
+/// A new start replaces the previous task, which closes on drop.
+#[derive(Clone, Default)]
+pub(crate) struct DatabaseHandle(Arc<Mutex<Option<DatabaseWorker>>>);
+
+impl DatabaseHandle {
+    fn replace(&self, worker: DatabaseWorker) {
+        let previous = self.0.lock().replace(worker);
+        drop(previous);
+    }
+
+    /// Closes request admission. The task finishes admitted requests, then
+    /// ends and closes the connection.
+    pub(crate) fn close(&self) {
+        if let Some(worker) = &*self.0.lock() {
+            worker.request_close();
+        }
+    }
+
+    /// Closes request admission and waits until the connection is closed.
+    pub(crate) async fn close_and_wait(&self) {
+        let worker = self.0.lock().take();
+        if let Some(mut worker) = worker {
+            worker.request_close();
+            if let Err(error) = worker.wait().await {
+                tracing::error!(?error, "Database task failed while closing");
+            }
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn is_finished(&self) -> bool {
+        self.0
+            .lock()
+            .as_ref()
+            .is_none_or(|worker| worker.task.is_finished())
+    }
+}
+
 struct DatabaseWorker {
     task: JoinHandle<()>,
 
     close_handles: Vec<RequestCloseHandle>,
 }
 
-#[allow(dead_code)]
 impl DatabaseWorker {
     /// Closes request admission for every capability served by this worker.
     /// Already admitted requests remain available for the worker to drain.
@@ -267,9 +307,9 @@ async fn prepare_app(setup: AppSetup) -> Result<Box<PreparedApp>, AppInitializat
         setup.layout,
     );
 
+    setup.database.replace(worker);
     Ok(Box::new(PreparedApp {
         app,
-        _database_worker: worker,
         database_stopped: Some(stopped_rx),
     }))
 }

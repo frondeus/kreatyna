@@ -13,7 +13,7 @@ use futures::stream::BoxStream;
 use krucyfiks::{Message, Widget};
 
 use super::{
-    AppSetup, AppShell, AppShellEvent, AppShellOutcome, AppShellState, DatabaseEffect,
+    AppSetup, AppShell, AppShellEvent, AppShellOutcome, DatabaseEffect, DatabaseHandle,
     DatabaseWorker, RUNTIME, SqliteDatabase,
 };
 use crate::{AppInitializationError, AppView};
@@ -22,18 +22,17 @@ use crate::{AppInitializationError, AppView};
 fn a_stopped_database_shows_the_failure_and_retry_starts_it_again() {
     RUNTIME.block_on(async {
         let database = TemporaryDatabase::new();
+        let handle = DatabaseHandle::default();
         let mut shell = AppShell::new(AppSetup {
             database_path: database.path().into(),
+            database: handle.clone(),
             render: Arc::new(NoRender),
             layout: kreatyna::AppLayout::Split,
         });
         let mut running = start(&mut shell).await;
         assert!(matches!(shell.view(), Ok(AppView::Running { .. })));
 
-        let AppShellState::Running(prepared) = &shell.state else {
-            panic!("expected a running app")
-        };
-        prepared._database_worker.request_close();
+        handle.close();
         let stopped = loop {
             let outcome = running.next().await.expect("the watch reports the stop");
             if let AppShellOutcome::DatabaseStopped(_) = outcome {
@@ -60,18 +59,17 @@ fn a_stopped_database_shows_the_failure_and_retry_starts_it_again() {
 fn a_database_stop_after_shutdown_begins_is_ignored() {
     RUNTIME.block_on(async {
         let database = TemporaryDatabase::new();
+        let handle = DatabaseHandle::default();
         let mut shell = AppShell::new(AppSetup {
             database_path: database.path().into(),
+            database: handle.clone(),
             render: Arc::new(NoRender),
             layout: kreatyna::AppLayout::Split,
         });
         let mut running = start(&mut shell).await;
         drop(shell.begin_shutdown());
 
-        let AppShellState::Running(prepared) = &shell.state else {
-            panic!("expected a running app")
-        };
-        prepared._database_worker.request_close();
+        handle.close();
         // The watch was stopped: its stream ends without a report.
         while let Some(outcome) = running.next().await {
             assert!(!matches!(outcome, AppShellOutcome::DatabaseStopped(_)));

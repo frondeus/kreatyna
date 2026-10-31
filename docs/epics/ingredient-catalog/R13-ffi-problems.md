@@ -4,7 +4,8 @@ Tracked in beads: label `ffi-problems` (`bd list --label ffi-problems`). Analysi
 changes `ytturtsz` and `pmuzortp`. P02 was solved by the explicit start boundary
 in `pmuzortp` and its documented caller contract in `xkkqlrky`. P03 and P05 were
 solved by `AppFfi::shut_down_gracefully()` in change `nsmprulk`. P08 was
-solved by its documented handler contract.
+solved by its documented handler contract. P11 was solved in krucyfiks change
+`ptpyolln`: runtime spans record payloads only at `trace`.
 
 This document examines the Counter-like R13 baseline in change `uqmquulk`.
 It describes problems and their causes. Solved items record their implemented
@@ -44,7 +45,7 @@ and actual workload are known.
 | P02 — Early callbacks (solved) | P3 | A callback can run before its owner has the app reference. |
 | P03 — Shutdown completion (solved) | P3 | Callers cannot establish when app work and callbacks have stopped. |
 | P08 — Callback reference cycle (solved) | P3 | A strong reference cycle prevents destruction and retains app resources. |
-| P11 — Payload logging | P3 | Enabled tracing can disclose user-entered content to the configured logger. |
+| P11 — Payload logging (solved) | P3 | Enabled tracing can disclose user-entered content to the configured logger. |
 | P04 — Retained connection | P4 | Retained stopped facades keep idle workers and connections alive. |
 | P05 — Write completion at shutdown (solved) | P2 | A save can be lost before enqueueing or commit without its result reaching the view. |
 | P06 — Task failure status | P3 | A failed worker can leave a partially working app with no coherent failure signal. |
@@ -65,7 +66,7 @@ make a disposable example a production blocker.
 | P02 | Shared facade/callback publication | Solved by explicit start and its documented caller contract. |
 | P03 | Shared runtime and callbacks | Solved by `shut_down_gracefully()` (P05). |
 | P08 | Shared callback ownership, conditional on a strong back-reference | Solved by the documented handler contract and a Swift test. |
-| P11 | Shared runtime tracing; ingredient payloads specifically | Keep open. |
+| P11 | Shared runtime tracing; ingredient payloads specifically | Solved: payloads are recorded only at `trace`. |
 | P04 | Shared app database lifetime | Keep open; recheck worker ownership after P01. |
 | P05 | Shared shutdown contract, including ingredient saves | Solved by `shut_down_gracefully()`. |
 | P06 | Shared runtime/database worker supervision | Keep open; recheck startup-race details after P01. |
@@ -282,6 +283,14 @@ fixture has a cycle. It matters because a render handler needs some way to read
 the app view, and the FFI contract does not describe callback ownership.
 
 ## P11 — Runtime tracing can expose complete ingredient data
+
+**Status: solved** in krucyfiks change `ptpyolln` (Cooldown 1, P11/Q1). The
+runner's `Event` and `Command` spans keep their names at `info`, and record the
+`message` field only when `trace` is enabled, so no other level formats a
+payload. `Runtime::dispatch` uses `#[instrument(skip_all)]`. The app's logger
+runs at `debug` (Debug builds) and `info` (Release), so app logs carry no
+payloads; a developer turns on `trace` to see them. Test:
+`spans_record_message_payloads_only_at_trace` in `krucyfiks-runtime`.
 
 **Severity: P3.** Payload logging occurs when the relevant tracing is enabled.
 The consequence depends on who can access the configured logs and how long

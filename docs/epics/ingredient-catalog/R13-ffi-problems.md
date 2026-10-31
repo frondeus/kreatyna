@@ -3,7 +3,8 @@
 Tracked in beads: label `ffi-problems` (`bd list --label ffi-problems`). Analysis change: `rrvynuoq`. P01 was solved in
 changes `ytturtsz` and `pmuzortp`. P02 was solved by the explicit start boundary
 in `pmuzortp` and its documented caller contract in `xkkqlrky`. P03 and P05 were
-solved by `AppFfi::shut_down_gracefully()` in change `nsmprulk`.
+solved by `AppFfi::shut_down_gracefully()` in change `nsmprulk`. P08 was
+solved by its documented handler contract.
 
 This document examines the Counter-like R13 baseline in change `uqmquulk`.
 It describes problems and their causes. Solved items record their implemented
@@ -42,7 +43,7 @@ and actual workload are known.
 | P07 — Counter write order (resolved by removal) | P2 | A later database write can restore an older value without reporting an error. |
 | P02 — Early callbacks (solved) | P3 | A callback can run before its owner has the app reference. |
 | P03 — Shutdown completion (solved) | P3 | Callers cannot establish when app work and callbacks have stopped. |
-| P08 — Callback reference cycle | P3 | A strong reference cycle prevents destruction and retains app resources. |
+| P08 — Callback reference cycle (solved) | P3 | A strong reference cycle prevents destruction and retains app resources. |
 | P11 — Payload logging | P3 | Enabled tracing can disclose user-entered content to the configured logger. |
 | P04 — Retained connection | P4 | Retained stopped facades keep idle workers and connections alive. |
 | P05 — Write completion at shutdown (solved) | P2 | A save can be lost before enqueueing or commit without its result reaching the view. |
@@ -63,7 +64,7 @@ make a disposable example a production blocker.
 | P07 | Counter's overlapping snapshot writes | Resolved by removal: MAC-03 removed Counter from the app. |
 | P02 | Shared facade/callback publication | Solved by explicit start and its documented caller contract. |
 | P03 | Shared runtime and callbacks | Solved by `shut_down_gracefully()` (P05). |
-| P08 | Shared callback ownership, conditional on a strong back-reference | Keep open. |
+| P08 | Shared callback ownership, conditional on a strong back-reference | Solved by the documented handler contract and a Swift test. |
 | P11 | Shared runtime tracing; ingredient payloads specifically | Keep open. |
 | P04 | Shared app database lifetime | Keep open; recheck worker ownership after P01. |
 | P05 | Shared shutdown contract, including ingredient saves | Solved by `shut_down_gracefully()`. |
@@ -247,6 +248,14 @@ This affects disposal of callback state and reopening the same database. It
 also prevents a test from observing complete shutdown through the public API.
 
 ## P08 — Callback ownership can prevent facade destruction
+
+**Status: solved by contract.** The `RenderHandler` doc states the rule: a
+handler must not hold the facade strongly; it holds the facade's owner weakly,
+or only records a dirty flag. The Swift `AppRenderer` holds the model weakly
+(`[weak self]`), and the Swift test `rustCallbackDoesNotRetainModel` fails if
+that changes. A Rust release slot was tried and dropped: with one integration
+that already follows the rule, it was a second mechanism for the same thing
+(Cooldown 1, P08/Q1).
 
 **Severity: P3.** The failure requires a strong callback-to-facade reference.
 That is a plausible integration choice and can retain the entire app, but the

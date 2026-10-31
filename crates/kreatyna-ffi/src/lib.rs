@@ -152,6 +152,13 @@ impl AppFfi {
     }
 }
 
+/// Rust calls `render` after each state change. The handler then reads
+/// `AppFfi::view()`.
+///
+/// Rust keeps the handler as long as the facade lives. A handler must not
+/// hold the facade strongly: that forms a cycle (facade, runtime, widget,
+/// handler, facade) that nothing breaks (P08). Hold the facade's owner
+/// weakly, or only record a dirty flag.
 #[uniffi::export(foreign)]
 #[async_trait::async_trait]
 pub trait RenderHandler: Send + Sync {

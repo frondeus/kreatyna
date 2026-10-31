@@ -72,6 +72,14 @@ final class AppModel {
         core?.shutdown()
     }
 
+    /// Waits until Rust has finished accepted work, such as a save, or has
+    /// cancelled it after its grace period (P05).
+    @discardableResult
+    func shutDownGracefully() async -> ShutdownResult {
+        guard let core else { return .completed }
+        return await core.shutDownGracefully()
+    }
+
     private func refresh() {
         guard let core else { return }
         do {

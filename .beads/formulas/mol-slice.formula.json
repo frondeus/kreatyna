@@ -38,7 +38,7 @@
       "title": "{{slice}}: close the slice",
       "needs": ["report"],
       "gate": {"type": "human"},
-      "description": "Waits for the human gate: close it when the user approves the slice. Then resolve the \"{{slice}}\" Inbox thread and close the slice bead. Start the next slice only when the user asks."
+      "description": "Waits for the human gate: close it when the user approves the slice. Then resolve the \"{{slice}}\" Inbox thread, close this step, close the workflow root (\"{{slice}} workflow\", the slice bead's child), and close the slice bead: beads refuses to close a parent with an open child. Start the next slice only when the user asks."
     }
   ]
 }

@@ -4,6 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use diesel::{Connection, RunQueryDsl, connection::SimpleConnection};
+
 use super::*;
 
 #[test]
@@ -136,6 +138,74 @@ fn graceful_shutdown_before_initialization_is_polled_drains_prepared_children() 
     ));
 }
 
+#[test]
+fn graceful_shutdown_keeps_a_save_accepted_just_before_it() {
+    let database = TemporaryDatabase::new();
+    let (app, rendered) = started_stack_app(&database);
+    // The lock delays the save, so a shutdown that does not wait returns
+    // before the commit. The worker would commit later, but a quitting
+    // process does not live that long.
+    let lock = DatabaseLock::hold(&database, Duration::from_millis(200));
+    save_new_ingredient(&app, &rendered, "Garlic");
+
+    let result = RUNTIME.block_on(app.shut_down_within(Duration::from_secs(5)));
+
+    assert_eq!(result, ShutdownResult::Completed);
+    assert_eq!(committed_names(&database), ["Garlic"]);
+    lock.release();
+}
+
+#[test]
+fn graceful_shutdown_cancels_work_that_outlasts_the_grace_period() {
+    let database = TemporaryDatabase::new();
+    let (app, rendered) = started_stack_app(&database);
+    let lock = DatabaseLock::hold(&database, Duration::from_secs(1));
+    save_new_ingredient(&app, &rendered, "Garlic");
+
+    let result = RUNTIME.block_on(app.shut_down_within(Duration::from_millis(50)));
+
+    assert_eq!(result, ShutdownResult::Cancelled);
+    lock.release();
+}
+
+#[test]
+fn graceful_shutdown_before_start_completes_at_once() {
+    let database = TemporaryDatabase::new();
+    let (render, _rendered) = TestRender::new();
+    let app = app(
+        AppCapabilities {
+            render: Arc::new(render),
+        },
+        database.path().into(),
+        AppLayout::Stack,
+    );
+
+    let result = RUNTIME.block_on(app.shut_down_within(Duration::from_secs(5)));
+
+    assert_eq!(result, ShutdownResult::Completed);
+    assert!(matches!(app.start(), Err(AppFfiError::Terminated)));
+}
+
+#[test]
+fn events_after_graceful_shutdown_are_refused() {
+    let database = TemporaryDatabase::new();
+    let (app, _rendered) = started_stack_app(&database);
+    let scope = stack_view(&app).scope;
+
+    let result = RUNTIME.block_on(app.shut_down_within(Duration::from_secs(5)));
+
+    assert_eq!(result, ShutdownResult::Completed);
+    assert!(matches!(
+        app.dispatch(AppEvent::Ingredients {
+            event: IngredientCatalogEvent::List {
+                scope,
+                event: IngredientListEvent::Refresh,
+            },
+        }),
+        Err(AppFfiError::Terminated)
+    ));
+}
+
 struct TestRender {
     rendered: flume::Sender<()>,
 }
@@ -201,6 +271,83 @@ impl RecoverableDatabase {
     fn create_parent(&self) {
         std::fs::create_dir(&self.parent).unwrap();
     }
+}
+
+fn started_stack_app(database: &TemporaryDatabase) -> (Arc<AppFfi>, flume::Receiver<()>) {
+    let (render, rendered) = TestRender::new();
+    let app = app(
+        AppCapabilities {
+            render: Arc::new(render),
+        },
+        database.path().into(),
+        AppLayout::Stack,
+    );
+    app.start().unwrap();
+    wait_until_ready(&app, &rendered);
+    (app, rendered)
+}
+
+/// Opens the create form, types the name, and sends Save without waiting for
+/// the save result.
+fn save_new_ingredient(app: &AppFfi, rendered: &flume::Receiver<()>, name: &str) {
+    let catalog = |event| AppEvent::Ingredients { event };
+    app.dispatch(catalog(IngredientCatalogEvent::List {
+        scope: stack_view(app).scope,
+        event: IngredientListEvent::CreateRequested,
+    }))
+    .unwrap();
+    wait_until(app, rendered, |_| {
+        matches!(
+            stack_view(app).screen,
+            IngredientCatalogScreenView::Create { .. }
+        )
+    });
+    let scope = stack_view(app).scope;
+    let form = |event| catalog(IngredientCatalogEvent::Form { scope, event });
+    app.dispatch(form(IngredientFormEvent::SetField {
+        field: IngredientDraftField::Name,
+        value: name.into(),
+    }))
+    .unwrap();
+    app.dispatch(form(IngredientFormEvent::Save)).unwrap();
+}
+
+/// A second connection that holds the database's write lock, then releases it
+/// after `duration`, so the app's writes wait for it.
+struct DatabaseLock {
+    thread: std::thread::JoinHandle<()>,
+}
+
+impl DatabaseLock {
+    fn hold(database: &TemporaryDatabase, duration: Duration) -> Self {
+        let mut connection = diesel::SqliteConnection::establish(database.path()).unwrap();
+        connection.batch_execute("BEGIN EXCLUSIVE").unwrap();
+        let thread = std::thread::spawn(move || {
+            std::thread::sleep(duration);
+            connection.batch_execute("ROLLBACK").unwrap();
+        });
+        Self { thread }
+    }
+
+    fn release(self) {
+        self.thread.join().unwrap();
+    }
+}
+
+/// Names that SQLite has committed, read through a new connection.
+fn committed_names(database: &TemporaryDatabase) -> Vec<String> {
+    #[derive(diesel::QueryableByName)]
+    struct Row {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        name: String,
+    }
+    let mut connection = diesel::SqliteConnection::establish(database.path()).unwrap();
+    diesel::sql_query("SELECT name FROM ingredients ORDER BY name")
+        .load::<Row>(&mut connection)
+        .unwrap()
+        .into_iter()
+        .map(|row| row.name)
+        .collect()
 }
 
 fn running_view(app: &AppFfi) -> RunningAppView {

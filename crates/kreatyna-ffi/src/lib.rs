@@ -1,6 +1,9 @@
-use std::sync::{Arc, LazyLock};
+use std::{
+    sync::{Arc, LazyLock},
+    time::Duration,
+};
 
-use krucyfiks_runtime::{Runtime, RuntimeError};
+use krucyfiks_runtime::{Runtime, RuntimeError, ShutdownMode};
 use parking_lot::Mutex;
 use tokio::task::JoinHandle;
 
@@ -18,9 +21,22 @@ uniffi::setup_scaffolding!();
 
 static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
     tokio::runtime::Builder::new_multi_thread()
+        .enable_time()
         .build()
         .expect("Tokio runtime")
 });
+
+/// How long graceful shutdown waits for accepted work (P05/Q2).
+const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ShutdownResult {
+    /// All accepted work finished: every accepted save committed or failed
+    /// visibly before the runtime stopped.
+    Completed,
+    /// Accepted work outlasted the grace period and was cancelled.
+    Cancelled,
+}
 
 #[derive(uniffi::Object)]
 pub struct AppFfi {
@@ -92,8 +108,47 @@ impl AppFfi {
         Ok(())
     }
 
+    /// Stops at once and drops pending work, including accepted saves.
     pub fn shutdown(&self) {
         self.runtime.shutdown();
+    }
+
+    /// Stops accepting events, finishes accepted work, and returns when the
+    /// runtime has stopped. Work that outlasts the grace period is cancelled.
+    /// Call it once, when the app quits; a later call returns `Completed` at
+    /// once without waiting for the first.
+    pub async fn shut_down_gracefully(&self) -> ShutdownResult {
+        self.shut_down_within(SHUTDOWN_GRACE).await
+    }
+}
+
+impl AppFfi {
+    async fn shut_down_within(&self, grace: Duration) -> ShutdownResult {
+        self.runtime.request_shutdown(ShutdownMode::Graceful);
+        // Not started: the runtime accepted no work.
+        let Some(mut runner) = self.handle.lock().take() else {
+            return ShutdownResult::Completed;
+        };
+        let runtime = self.runtime.clone();
+        // The timer needs the app's Tokio runtime; the caller's executor only
+        // polls the join handle.
+        RUNTIME
+            .spawn(async move {
+                match tokio::time::timeout(grace, &mut runner).await {
+                    Ok(_) => ShutdownResult::Completed,
+                    Err(_) => {
+                        tracing::warn!(
+                            ?grace,
+                            "Graceful shutdown timed out; cancelling pending work"
+                        );
+                        runtime.request_shutdown(ShutdownMode::Cancel);
+                        let _ = runner.await;
+                        ShutdownResult::Cancelled
+                    }
+                }
+            })
+            .await
+            .unwrap_or(ShutdownResult::Cancelled)
     }
 }
 

@@ -2,7 +2,8 @@
 
 Tracked in beads: label `ffi-problems` (`bd list --label ffi-problems`). Analysis change: `rrvynuoq`. P01 was solved in
 changes `ytturtsz` and `pmuzortp`. P02 was solved by the explicit start boundary
-in `pmuzortp` and its documented caller contract in `xkkqlrky`.
+in `pmuzortp` and its documented caller contract in `xkkqlrky`. P03 and P05 were
+solved by `AppFfi::shut_down_gracefully()` in change `nsmprulk`.
 
 This document examines the Counter-like R13 baseline in change `uqmquulk`.
 It describes problems and their causes. Solved items record their implemented
@@ -40,11 +41,11 @@ and actual workload are known.
 | P01 — Database startup (solved) | P2 | Expected setup failures leave an app with no usable store and no startup error result. |
 | P07 — Counter write order (resolved by removal) | P2 | A later database write can restore an older value without reporting an error. |
 | P02 — Early callbacks (solved) | P3 | A callback can run before its owner has the app reference. |
-| P03 — Shutdown completion | P3 | Callers cannot establish when app work and callbacks have stopped. |
+| P03 — Shutdown completion (solved) | P3 | Callers cannot establish when app work and callbacks have stopped. |
 | P08 — Callback reference cycle | P3 | A strong reference cycle prevents destruction and retains app resources. |
 | P11 — Payload logging | P3 | Enabled tracing can disclose user-entered content to the configured logger. |
 | P04 — Retained connection | P4 | Retained stopped facades keep idle workers and connections alive. |
-| P05 — Write completion at shutdown | P2 | A save can be lost before enqueueing or commit without its result reaching the view. |
+| P05 — Write completion at shutdown (solved) | P2 | A save can be lost before enqueueing or commit without its result reaching the view. |
 | P06 — Task failure status | P3 | A failed worker can leave a partially working app with no coherent failure signal. |
 | P10 — Pending-work limits | P4 | Sustained excess input can increase memory use without a fixed bound. |
 | P09 — Callback progress | P5 | Awaited callbacks require a clear rule about what they may wait for. |
@@ -61,11 +62,11 @@ make a disposable example a production blocker.
 | P01 | Shared app initialization, including ingredients | Solved. |
 | P07 | Counter's overlapping snapshot writes | Resolved by removal: MAC-03 removed Counter from the app. |
 | P02 | Shared facade/callback publication | Solved by explicit start and its documented caller contract. |
-| P03 | Shared runtime and callbacks | Keep open. |
+| P03 | Shared runtime and callbacks | Solved by `shut_down_gracefully()` (P05). |
 | P08 | Shared callback ownership, conditional on a strong back-reference | Keep open. |
 | P11 | Shared runtime tracing; ingredient payloads specifically | Keep open. |
 | P04 | Shared app database lifetime | Keep open; recheck worker ownership after P01. |
-| P05 | Shared shutdown contract, including ingredient saves | Keep open. |
+| P05 | Shared shutdown contract, including ingredient saves | Solved by `shut_down_gracefully()`. |
 | P06 | Shared runtime/database worker supervision | Keep open; recheck startup-race details after P01. |
 | P10 | Shared event and command backlog | Keep open as a load-dependent concern. |
 | P09 | Shared render callback progress, including ingredient commands | Retain as a callback-contract discussion. |
@@ -214,6 +215,11 @@ the present API does not define the order between facade delivery and callbacks.
 
 ## P03 — Shutdown has no observable completion
 
+**Status: solved (P05).** `AppFfi::shut_down_gracefully()` is async. It returns
+when the runtime runner has ended, and its `ShutdownResult` says whether all
+accepted work finished (`Completed`) or was cancelled after the 5-second grace
+period (`Cancelled`). The Mac app awaits it before it quits.
+
 **Severity: P3.** Resource disposal and app replacement cannot rely on shutdown
 returning. This matters when the caller needs complete shutdown. It is not, by
 itself, evidence of memory corruption or a failed database transaction.
@@ -318,6 +324,16 @@ completion point for that cleanup. Repeated construction and shutdown can retain
 multiple database workers if old facades remain referenced.
 
 ## P05 — Accepted work has different meanings during shutdown
+
+**Status: solved.** `AppFfi::shut_down_gracefully()` uses the runtime's graceful
+mode: it closes event admission, finishes every accepted event and command, and
+then stops. A save command finishes only after the database worker commits and
+responds, so `Completed` means every accepted save committed or failed visibly.
+After 5 seconds, the call cancels pending work, logs a warning, and returns
+`Cancelled`. The Mac app delegate answers a quit request with `.terminateLater`
+and quits after the call returns. iOS is a follow-up (`vibetyna-w8q`).
+`shutdown()` keeps cancel mode for tests and previews. Plan:
+[P05](tasks/P05.md).
 
 **Severity: P2.** Closing the app during a save is a realistic sequence. The
 caller cannot establish whether the requested write happened. This is a data

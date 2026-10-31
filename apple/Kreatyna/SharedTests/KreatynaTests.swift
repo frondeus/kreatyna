@@ -92,6 +92,31 @@ extension MainActorTests {
             #expect(model.errorMessage == nil)
         }
 
+        @Test func gracefulShutdownKeepsASaveSentJustBeforeIt() async throws {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: root) }
+            let path = root.appendingPathComponent("app.sqlite").path
+            let model = AppModel(layout: .stack, databasePath: path)
+            let app = try await waitForRunning(model)
+            model.dispatch(app.ingredients(stack(app).list(.createRequested)))
+            try await waitUntil {
+                if case .create = running(model)?.ingredients.stack?.screen { true } else { false }
+            }
+            let form = try #require(running(model)).ingredients.stack!
+            model.dispatch(app.ingredients(form.form(.setField(field: .name, value: "Garlic"))))
+            model.dispatch(app.ingredients(form.form(.save)))
+
+            #expect(await model.shutDownGracefully() == .completed)
+
+            let reopened = AppModel(layout: .stack, databasePath: path)
+            defer { reopened.shutdown() }
+            try await waitUntil {
+                guard case .ready(let rows, _, _) = running(reopened)?.ingredients.stack?.list.status else { return false }
+                return rows.map(\.name) == ["Garlic"]
+            }
+        }
+
         @Test func rendererDeliversBackgroundCallbackBeforeReturning() async {
             let renderer = AppRenderer()
             var calls = 0

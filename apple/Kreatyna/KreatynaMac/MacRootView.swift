@@ -39,7 +39,7 @@ struct MacRootView: View {
             case .running(let app):
                 // The Mac always starts with the split layout (`AppLayout.platform`).
                 if let split = app.split {
-                    MacCatalogView(view: split.ingredients) { send(split.ingredients($0)) }
+                    MacMainView(app: split, send: send)
                 }
             }
         }

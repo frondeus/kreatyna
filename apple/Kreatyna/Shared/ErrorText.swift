@@ -36,6 +36,15 @@ extension IngredientLoadError {
     }
 }
 
+extension RecipeLoadError {
+    var message: String {
+        switch self {
+        case .storage: "Recipes could not be read from storage."
+        case .transport: "Recipes are temporarily unavailable."
+        }
+    }
+}
+
 extension IngredientSaveError {
     var message: String {
         switch self {

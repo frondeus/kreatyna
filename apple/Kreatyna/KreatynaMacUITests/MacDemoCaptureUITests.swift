@@ -39,6 +39,7 @@ final class MacDemoCaptureUITests: XCTestCase {
         app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
         app.launchEnvironment["KREATYNA_TEST_SEED"] = try String(contentsOf: fixture, encoding: .utf8)
         app.launch()
+        openIngredients(app)
 
         let garlic = app.staticTexts.matching(identifier: "ingredientRow")["Garlic"]
         XCTAssertTrue(garlic.waitForExistence(timeout: 5))
@@ -63,6 +64,7 @@ final class MacDemoCaptureUITests: XCTestCase {
         app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
         app.launchEnvironment["KREATYNA_TEST_SEED"] = try String(contentsOf: fixture, encoding: .utf8)
         app.launch()
+        openIngredients(app)
 
         let garlic = app.staticTexts.matching(identifier: "ingredientRow")["Garlic"]
         XCTAssertTrue(garlic.waitForExistence(timeout: 5))
@@ -91,6 +93,7 @@ final class MacDemoCaptureUITests: XCTestCase {
         app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
         app.launchEnvironment["KREATYNA_TEST_SEED"] = try String(contentsOf: fixture, encoding: .utf8)
         app.launch()
+        openIngredients(app)
 
         let rows = app.staticTexts.matching(identifier: "ingredientRow")
         let draftRow = app.staticTexts.matching(identifier: "ingredientDraftRow").firstMatch
@@ -153,6 +156,7 @@ final class MacDemoCaptureUITests: XCTestCase {
         app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
         app.launchEnvironment["KREATYNA_TEST_SEED"] = try String(contentsOf: fixture, encoding: .utf8)
         app.launch()
+        openIngredients(app)
 
         let rows = app.staticTexts.matching(identifier: "ingredientRow")
         XCTAssertTrue(rows["Garlic"].waitForExistence(timeout: 5))
@@ -191,6 +195,7 @@ final class MacDemoCaptureUITests: XCTestCase {
         app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
         app.launchEnvironment["KREATYNA_TEST_SEED"] = try String(contentsOf: fixture, encoding: .utf8)
         app.launch()
+        openIngredients(app)
 
         let rows = app.staticTexts.matching(identifier: "ingredientRow")
         XCTAssertTrue(rows["Garlic"].waitForExistence(timeout: 5))
@@ -205,6 +210,26 @@ final class MacDemoCaptureUITests: XCTestCase {
         XCTAssertTrue(waitForNonExistence(rows["Garlic"]))
         XCTAssertTrue(app.descendants(matching: .any)["ingredientDetailPlaceholder"].waitForExistence(timeout: 5))
         capture("02-after-delete", app)
+        app.terminate()
+    }
+
+    /// `docs/epics/recipes/tasks/REC-01-demo/`: the app opens on Recipes, then Ingredients.
+    @MainActor
+    func testCaptureREC01Demo() throws {
+        let fixture = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/demo-ingredients.json")
+        let app = XCUIApplication()
+        app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
+        app.launchEnvironment["KREATYNA_TEST_SEED"] = try String(contentsOf: fixture, encoding: .utf8)
+        app.launch()
+
+        XCTAssertTrue(app.descendants(matching: .any)["recipeListEmpty"].waitForExistence(timeout: 5))
+        capture("01-recipes-empty", app)
+
+        app.descendants(matching: .any).matching(identifier: "sidebarIngredients").firstMatch.click()
+        XCTAssertTrue(app.staticTexts.matching(identifier: "ingredientRow")["Garlic"].waitForExistence(timeout: 5))
+        capture("02-ingredients", app)
         app.terminate()
     }
 
@@ -223,7 +248,16 @@ final class MacDemoCaptureUITests: XCTestCase {
             app.launchEnvironment["KREATYNA_TEST_SEED"] = String(decoding: json, as: UTF8.self)
         }
         app.launch()
+        openIngredients(app)
         return app
+    }
+
+    /// The app opens on Recipes (REC-01/Q1); the ingredient demos start on Ingredients.
+    @MainActor
+    private func openIngredients(_ app: XCUIApplication) {
+        let item = app.descendants(matching: .any).matching(identifier: "sidebarIngredients").firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        item.click()
     }
 
     @MainActor

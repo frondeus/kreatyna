@@ -102,6 +102,22 @@ extension MainActorTests {
             snapshot(editing(Fixtures.form(draft, dirty: true)), appearance: appearance)
         }
 
+        /// The Mac app opens on Recipes; a new database has none (REC-01).
+        @Test(arguments: Appearance.allCases)
+        func emptyRecipeList(appearance: Appearance) {
+            snapshot(
+                MacMainView(app: Fixtures.splitApp(section: .recipes), columnVisibility: .doubleColumn, send: { _ in }),
+                appearance: appearance
+            )
+        }
+
+        /// The sidebar alone, with Recipes selected (REC-01). Inside the split
+        /// view, the off-screen capture draws the sidebar blank.
+        @Test(arguments: Appearance.allCases)
+        func sidebar(appearance: Appearance) {
+            snapshot(MacSidebar(section: .recipes, select: { _ in }), appearance: appearance)
+        }
+
         @Test(arguments: Appearance.allCases)
         func startupFailure(appearance: Appearance) {
             snapshot(
@@ -142,34 +158,30 @@ extension MainActorTests {
             var name: NSAppearance.Name { self == .light ? .aqua : .darkAqua }
         }
 
-        /// The catalog without its sidebar. The sidebar material draws only
-        /// through the window server, so an off-screen capture shows it blank
-        /// (white in dark mode). The sidebar has one static item (REC-01).
+        /// The Ingredients section without the sidebar. The sidebar material
+        /// draws only through the window server, so an off-screen capture shows
+        /// it blank (white in dark mode). `sidebar` renders it alone.
         private func running(
             _ list: IngredientListView,
             selected: Ingredient? = nil,
             deletion: IngredientDetailDeletion = .idle
         ) -> some View {
-            MacCatalogView(
-                view: Fixtures.splitCatalog(list: list, selected: selected, deletion: deletion),
-                columnVisibility: .doubleColumn,
-                send: { _ in }
-            )
+            ingredients(Fixtures.splitCatalog(list: list, selected: selected, deletion: deletion))
         }
 
         /// The catalog with the create form open (MAC-05).
         private func creating(_ form: IngredientFormView) -> some View {
-            MacCatalogView(
-                view: Fixtures.splitCatalog(form: form),
-                columnVisibility: .doubleColumn,
-                send: { _ in }
-            )
+            ingredients(Fixtures.splitCatalog(form: form))
         }
 
         /// The catalog with Garlic's edit form open (MAC-06).
         private func editing(_ form: IngredientFormView) -> some View {
-            MacCatalogView(
-                view: Fixtures.splitCatalog(editing: Fixtures.garlic, form: form),
+            ingredients(Fixtures.splitCatalog(editing: Fixtures.garlic, form: form))
+        }
+
+        private func ingredients(_ catalog: IngredientSplitCatalogView) -> some View {
+            MacMainView(
+                app: Fixtures.splitApp(section: .ingredients, ingredients: catalog),
                 columnVisibility: .doubleColumn,
                 send: { _ in }
             )

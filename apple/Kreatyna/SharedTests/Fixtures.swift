@@ -106,6 +106,19 @@ enum Fixtures {
         )
     }
 
+    /// The Mac app: the selected section, the recipe list, and the ingredient catalog (REC-01).
+    static func splitApp(
+        section: AppSection = .recipes,
+        recipes: RecipeListView = recipeList(.ready(rows: [])),
+        ingredients: IngredientSplitCatalogView = splitCatalog()
+    ) -> SplitAppView {
+        SplitAppView(section: section, recipes: recipes, ingredients: ingredients)
+    }
+
+    static func recipeList(_ status: RecipeListStatus) -> RecipeListView {
+        RecipeListView(status: status)
+    }
+
     /// The Mac catalog with the edit form open: the saved row stays
     /// highlighted, and there is no draft row (MAC-06/Q1).
     static func splitCatalog(editing saved: Ingredient, form: IngredientFormView) -> IngredientSplitCatalogView {

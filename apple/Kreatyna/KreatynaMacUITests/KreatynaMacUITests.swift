@@ -236,6 +236,29 @@ final class KreatynaMacUITests: XCTestCase {
         XCTAssertFalse(row(named: "Garlic", in: app).exists)
     }
 
+    /// The app opens on Recipes. Switching sections keeps each section's state (REC-01).
+    @MainActor
+    func testSidebarSwitchesSections() throws {
+        let app = try launch(seed: ["Garlic", "Tomato"], openIngredients: false)
+
+        XCTAssertTrue(app.descendants(matching: .any)["recipeListEmpty"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["newRecipe"].isEnabled)
+
+        sidebar("sidebarIngredients", in: app).click()
+        let garlic = row(named: "Garlic", in: app)
+        XCTAssertTrue(garlic.waitForExistence(timeout: 5))
+        garlic.click()
+        XCTAssertTrue(app.buttons["editIngredient"].waitForExistence(timeout: 5))
+
+        sidebar("sidebarRecipes", in: app).click()
+        XCTAssertTrue(app.descendants(matching: .any)["recipeDetailPlaceholder"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["editIngredient"].exists)
+
+        sidebar("sidebarIngredients", in: app).click()
+        // Rust kept Garlic open while Recipes showed.
+        XCTAssertTrue(app.buttons["editIngredient"].waitForExistence(timeout: 5))
+    }
+
     @MainActor
     func testLaunchShowsEmptyCatalog() throws {
         let app = try launch(seed: [])
@@ -244,20 +267,39 @@ final class KreatynaMacUITests: XCTestCase {
     }
 
     @MainActor
-    private func launch(seed: [String]) throws -> XCUIApplication {
+    private func launch(seed: [String], openIngredients: Bool = true) throws -> XCUIApplication {
         // The seed is a JSON array of names (E-17).
-        try launch(json: seed.isEmpty ? nil : String(decoding: JSONEncoder().encode(seed), as: UTF8.self))
+        try launch(
+            json: seed.isEmpty ? nil : String(decoding: JSONEncoder().encode(seed), as: UTF8.self),
+            openIngredients: openIngredients
+        )
     }
 
+    /// The app opens on Recipes (REC-01/Q1). The ingredient tests click
+    /// Ingredients first, unless `openIngredients` is false.
     @MainActor
-    private func launch(json: String?, database: String = UUID().uuidString) throws -> XCUIApplication {
+    private func launch(
+        json: String?,
+        database: String = UUID().uuidString,
+        openIngredients: Bool = true
+    ) throws -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = database
         if let json {
             app.launchEnvironment["KREATYNA_TEST_SEED"] = json
         }
         app.launch()
+        if openIngredients {
+            let item = sidebar("sidebarIngredients", in: app)
+            XCTAssertTrue(item.waitForExistence(timeout: 5))
+            item.click()
+        }
         return app
+    }
+
+    @MainActor
+    private func sidebar(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
     private func waitForNonExistence(_ element: XCUIElement, timeout: TimeInterval) -> Bool {

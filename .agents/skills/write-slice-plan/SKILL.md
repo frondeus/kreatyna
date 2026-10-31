@@ -71,6 +71,9 @@ later slices.
 - Prefer Rust. Show the real types and signatures the slice adds or changes:
   enums, events, view structs, store traits, and a sketch of one widget test.
   Do not write the full implementation.
+- Check every type you show against
+  [designing-types](../designing-types/SKILL.md): no `Option` or `bool` that
+  stands for a mode, and no fields that can disagree.
 
   ```rust
   // sketch

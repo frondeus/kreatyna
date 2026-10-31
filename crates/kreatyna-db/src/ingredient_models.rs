@@ -1,4 +1,6 @@
-//! Typed SQLite mapping for ingredient rows. The store uses these in R05.
+//! Typed SQLite rows for ingredients and their reference units, and their
+//! conversion to and from the domain types. `ingredient_store` reads and writes
+//! them.
 use diesel::{
     AsExpression, FromSqlRow, Insertable, Queryable, Selectable,
     deserialize::FromSql,

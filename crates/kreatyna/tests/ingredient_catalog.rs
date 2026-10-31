@@ -422,9 +422,10 @@ async fn back_during_delete_confirmation_cancels_it_and_stays_on_the_detail() ->
 }
 
 #[tokio::test]
-async fn saving_a_new_ingredient_adds_it_to_the_cached_list_and_returns_to_the_list()
+async fn saving_a_new_ingredient_adds_it_to_the_cached_list_in_order_and_returns_to_the_list()
 -> anyhow::Result<()> {
-    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Basil")], "").await?;
+    let mut fixture =
+        CatalogFixture::ready(vec![ingredient(1, "Basil"), ingredient(3, "Tomato")], "").await?;
     fixture.open_create().await?;
     let scope = fixture.scope();
     fixture
@@ -443,7 +444,7 @@ async fn saving_a_new_ingredient_adds_it_to_the_cached_list_and_returns_to_the_l
     assert_eq!(view.navigation, IngredientNavigation::List);
     assert_eq!(view.screen, IngredientCatalogScreenView::List);
     assert_ne!(view.scope, scope);
-    assert_eq!(row_names(&view.list), ["Basil", "Garlic"]);
+    assert_eq!(row_names(&view.list), ["Basil", "Garlic", "Tomato"]);
 
     // Only a render follows. The cache is updated without a reload.
     command
@@ -458,11 +459,18 @@ async fn saving_a_new_ingredient_adds_it_to_the_cached_list_and_returns_to_the_l
 }
 
 #[tokio::test]
-async fn saving_an_edit_from_the_list_replaces_the_cached_record_and_returns_to_the_list()
+async fn saving_an_edit_from_the_list_replaces_the_cached_record_in_order_and_returns_to_the_list()
 -> anyhow::Result<()> {
     let garlic = ingredient(1, "Garlic");
-    let mut fixture =
-        CatalogFixture::ready(vec![garlic.clone(), ingredient(2, "Basil")], "").await?;
+    let mut fixture = CatalogFixture::ready(
+        vec![
+            garlic.clone(),
+            ingredient(2, "Basil"),
+            ingredient(3, "Tomato"),
+        ],
+        "",
+    )
+    .await?;
     fixture.open_edit_from_list(garlic.id).await?;
     let scope = fixture.scope();
     fixture
@@ -480,7 +488,7 @@ async fn saving_an_edit_from_the_list_replaces_the_cached_record_and_returns_to_
     let view = fixture.catalog.view();
     assert_eq!(view.navigation, IngredientNavigation::List);
     assert_eq!(view.screen, IngredientCatalogScreenView::List);
-    assert_eq!(row_names(&view.list), ["Basil", "Roasted garlic"]);
+    assert_eq!(row_names(&view.list), ["Basil", "Roasted garlic", "Tomato"]);
 
     command
         .step()

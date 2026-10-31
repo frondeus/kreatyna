@@ -51,7 +51,7 @@ and actual workload are known.
 | P04 — Retained connection (solved) | P4 | Retained stopped facades keep idle workers and connections alive. |
 | P05 — Write completion at shutdown (solved) | P2 | A save can be lost before enqueueing or commit without its result reaching the view. |
 | P06 — Task failure status (solved) | P3 | A failed worker can leave a partially working app with no coherent failure signal. |
-| P10 — Pending-work limits | P4 | Sustained excess input can increase memory use without a fixed bound. |
+| P10 — Pending-work limits (accepted) | P4 | Sustained excess input can increase memory use without a fixed bound. |
 | P09 — Callback progress | P5 | Awaited callbacks require a clear rule about what they may wait for. |
 
 ## Product scope and disposition
@@ -72,7 +72,7 @@ make a disposable example a production blocker.
 | P04 | Shared app database lifetime | Solved: shutdown closes the database task. |
 | P05 | Shared shutdown contract, including ingredient saves | Solved by `shut_down_gracefully()`. |
 | P06 | Shared runtime/database worker supervision | Solved for the database task; a runtime panic is `vibetyna-dm7`. |
-| P10 | Shared event and command backlog | Keep open as a load-dependent concern. |
+| P10 | Shared event and command backlog | Accepted (P10/Q1 A); local-network sync must revisit it. |
 | P09 | Shared render callback progress, including ingredient commands | Retain as a callback-contract discussion. |
 
 Only P07 is established as Counter-only. Removing Counter does not remove the
@@ -441,6 +441,14 @@ FFI task's `expect("Runtime to run correctly")` turns that return into a panic.
 An early shutdown is therefore treated as an unexpected failure in that task.
 
 ## P10 — Bounded database inboxes do not bound total pending work
+
+**Status: accepted** (Cooldown 1, P10/Q1 A). Every event comes from one person's
+input, and one save takes milliseconds, so input cannot outpace SQLite for long.
+Nothing in the app produces events by itself. A bounded event channel would make
+`dispatch()` refuse events when full, which can lose a user's action, and it
+would still not bound the commands each event starts. **Revisit this before
+local-network sync:** sync can deliver many events at once, and then it needs a
+limit or back-pressure.
 
 **Severity: P4.** The risk needs input to exceed processing capacity for long
 enough to matter. The current source permits that growth, but no normal-use

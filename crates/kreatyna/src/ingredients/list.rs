@@ -64,9 +64,61 @@ enum ListState {
     InitialLoading,
     InitialFailed(IngredientLoadError),
     Ready {
-        ingredients: Vec<Ingredient>,
+        catalog: Catalog,
         refresh: IngredientListRefresh,
     },
+}
+
+/// The loaded ingredients, kept in list order: by name key, then by id.
+/// Each entry keeps its name key, so a render or a lookup sorts nothing.
+struct Catalog(Vec<CatalogEntry>);
+
+struct CatalogEntry {
+    key: String,
+    ingredient: Ingredient,
+}
+
+impl CatalogEntry {
+    fn new(ingredient: Ingredient) -> Self {
+        Self {
+            key: name_key(&ingredient.name),
+            ingredient,
+        }
+    }
+
+    fn order(&self) -> (&str, IngredientId) {
+        (&self.key, self.ingredient.id)
+    }
+}
+
+impl Catalog {
+    fn new(ingredients: Vec<Ingredient>) -> Self {
+        let mut entries: Vec<_> = ingredients.into_iter().map(CatalogEntry::new).collect();
+        entries.sort_by(|left, right| left.order().cmp(&right.order()));
+        Self(entries)
+    }
+
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn get(&self, id: IngredientId) -> Option<&CatalogEntry> {
+        self.0.iter().find(|entry| entry.ingredient.id == id)
+    }
+
+    fn remove(&mut self, id: IngredientId) {
+        self.0.retain(|entry| entry.ingredient.id != id);
+    }
+
+    /// Adds the ingredient, or replaces the one with its id, in list order.
+    fn upsert(&mut self, ingredient: Ingredient) {
+        self.remove(ingredient.id);
+        let entry = CatalogEntry::new(ingredient);
+        let index = self
+            .0
+            .partition_point(|existing| existing.order() < entry.order());
+        self.0.insert(index, entry);
+    }
 }
 
 pub struct IngredientList {
@@ -94,27 +146,27 @@ impl IngredientList {
     }
 
     fn visible(&self) -> Vec<&Ingredient> {
-        let ListState::Ready { ingredients, .. } = &self.state else {
+        let ListState::Ready { catalog, .. } = &self.state else {
             return Vec::new();
         };
         let query = name_key(&self.search);
-        let mut result: Vec<_> = ingredients
+        catalog
+            .0
             .iter()
-            .filter(|ingredient| name_key(&ingredient.name).contains(&query))
-            .collect();
-        result.sort_by(|left, right| {
-            name_key(&left.name)
-                .cmp(&name_key(&right.name))
-                .then_with(|| left.id.cmp(&right.id))
-        });
-        result
+            .filter(|entry| entry.key.contains(&query))
+            .map(|entry| &entry.ingredient)
+            .collect()
     }
 
+    /// The ingredient with this id, if the search shows it.
     fn selected(&self, id: IngredientId) -> Option<Ingredient> {
-        self.visible()
-            .into_iter()
-            .find(|ingredient| ingredient.id == id)
-            .cloned()
+        let ListState::Ready { catalog, .. } = &self.state else {
+            return None;
+        };
+        catalog
+            .get(id)
+            .filter(|entry| entry.key.contains(&name_key(&self.search)))
+            .map(|entry| entry.ingredient.clone())
     }
 
     pub(crate) fn contains_visible(&self, ingredient: &Ingredient) -> bool {
@@ -168,38 +220,23 @@ impl IngredientList {
     /// Update a complete cached catalog. Returns false while the initial catalog
     /// is unavailable, so the coordinator can reload instead of showing a partial list.
     pub(crate) fn apply_saved(&mut self, ingredient: Ingredient) -> bool {
-        let ListState::Ready {
-            ingredients,
-            refresh,
-        } = &mut self.state
-        else {
+        let ListState::Ready { catalog, refresh } = &mut self.state else {
             return false;
         };
         self.load.stop();
         self.interrupted_load = false;
-        if let Some(existing) = ingredients
-            .iter_mut()
-            .find(|existing| existing.id == ingredient.id)
-        {
-            *existing = ingredient;
-        } else {
-            ingredients.push(ingredient);
-        }
+        catalog.upsert(ingredient);
         *refresh = IngredientListRefresh::Idle;
         true
     }
 
     pub(crate) fn apply_deleted(&mut self, id: IngredientId) -> bool {
-        let ListState::Ready {
-            ingredients,
-            refresh,
-        } = &mut self.state
-        else {
+        let ListState::Ready { catalog, refresh } = &mut self.state else {
             return false;
         };
         self.load.stop();
         self.interrupted_load = false;
-        ingredients.retain(|ingredient| ingredient.id != id);
+        catalog.remove(id);
         *refresh = IngredientListRefresh::Idle;
         true
     }
@@ -247,7 +284,7 @@ impl Widget for IngredientList {
                 match result {
                     Ok(ingredients) => {
                         self.state = ListState::Ready {
-                            ingredients,
+                            catalog: Catalog::new(ingredients),
                             refresh: IngredientListRefresh::Idle,
                         };
                     }
@@ -273,10 +310,7 @@ impl Widget for IngredientList {
         let status = match &self.state {
             ListState::InitialLoading => IngredientListStatus::Loading,
             ListState::InitialFailed(error) => IngredientListStatus::Failed(error.clone()),
-            ListState::Ready {
-                ingredients,
-                refresh,
-            } => IngredientListStatus::Ready {
+            ListState::Ready { catalog, refresh } => IngredientListStatus::Ready {
                 rows: self
                     .visible()
                     .into_iter()
@@ -285,7 +319,7 @@ impl Widget for IngredientList {
                         name: ingredient.name.clone(),
                     })
                     .collect(),
-                total_count: ingredients.len(),
+                total_count: catalog.len(),
                 refresh: refresh.clone(),
             },
         };

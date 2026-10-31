@@ -1,6 +1,6 @@
 ---
 name: write-widget-tests
-description: Write, refactor, or review Rust widget tests in kreatyna using krucyfiks test drivers, readable behavioral scenarios, and parameterized cases.
+description: Write, refactor, or review Rust widget tests in kreatyna using krucyfiks test drivers and readable behavioral scenarios. Use together with write-rust-tests, which sets the module order and parameterization.
 ---
 
 # Write readable widget tests
@@ -9,39 +9,20 @@ Tests explain the widget's behavior. Keep them linear and readable like plain
 English: starting condition, interaction, visible state, then command behavior.
 Respect the requested working mode; coaching or review does not authorize edits.
 
-## Module order
+## Module order and parameterization
 
-Keep imports first, then these sections in order, marked with comments. Omit empty
-sections rather than inventing tests to fill them.
+Follow [write-rust-tests](../write-rust-tests/SKILL.md): green path,
+validation, red cases, then test support at the bottom, with `test_case`,
+`test_matrix`, and `insta` snapshots. For widgets:
 
-1. **Ordinary behavior:** ordinary success, valid boundaries, and validation
-   feedback. An empty catalog or a required-field error belongs here.
-2. **Edge cases and guards:** cancellation, repeated actions, stale results,
-   invalid event sequences, invalid indices, and relevant lifecycle boundaries.
-3. **Failures and recovery:** rejected service operations, storage and transport
-   failures, dropped responders, and retries. A successful retry stays here.
-4. **Test support:** all fixtures, builders, helper functions, test-only types,
-   and their trait implementations. No support boilerplate above the tests.
-
-Classify by intent. Choosing Cancel is ordinary behavior for a confirmation
-widget; cancelling pending work is an edge case.
-
-## Scenarios and parameterization
-
-- Give each test one behavioral claim and a name that states the expected result.
-- Prefer `test_case` for examples of one rule and `test_matrix` for independent
-  dimensions where every combination is meaningful. Use descriptive case names
-  where supported and start each case with fresh state.
-- Avoid loops or boolean switches that combine independent stories. Keep ordered
-  interactions together when their history is the behavior under test.
-- Separate ordinary behavior from failures instead of mixing them in one table.
-- Use short, direct comments to explain invariants or surprising behavior, in the
-  spirit of ASD-STE100. Do not narrate obvious syntax.
-- Test reachable application behavior and meaningful guards. An API permitting a
-  call does not justify an impossible scenario. Establish relevance before adding
-  speculative edge cases.
-- Let other tests own their claims. Do not repeat assertions for unrelated setup
-  behavior merely to make each test exhaustive.
+- An ignored event, a repeated action, a cancelled command, or a stale result
+  is validation.
+- A rejected service operation, a storage or transport failure, a dropped
+  responder, and a retry are red cases.
+- Classify by intent. Choosing Cancel is the green path for a confirmation
+  widget; cancelling pending work is validation.
+- Keep ordered interactions in one test when their history is the behavior
+  under test.
 
 ## State before command behavior
 

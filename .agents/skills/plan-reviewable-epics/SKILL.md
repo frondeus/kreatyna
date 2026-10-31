@@ -34,7 +34,8 @@ answers as epic-level decisions.
 
 A slice is one user-visible behavior delivered through every layer it needs in
 one change: migration and Diesel models, Rust domain and widget, UniFFI types,
-SwiftUI, and tests at each layer (Rust widget tests per
+SwiftUI, and tests at each layer (Rust tests per
+[write-rust-tests](../write-rust-tests/SKILL.md) and
 [write-widget-tests](../write-widget-tests/SKILL.md), Swift tests per
 [build-swift-presentation](../build-swift-presentation/SKILL.md), and demo
 evidence of the running app). After each slice the app builds, runs, and shows

@@ -24,7 +24,7 @@ later slices.
 ## Structure (fixed order)
 
 1. `# <ID> — <title>`, then a tracking line: `Tracked in beads: `<slice-bead>`.`,
-   the jj change ID, and the dependencies. Status lives only in beads.
+   the jj change IDs (or "listed in Steps" for a series), and the dependencies. Status lives only in beads.
 2. **Open questions.** Always first, so the reader sees them first. The
    user answers them in the Inbox before the plan is sent (see Review), so
    in a sent plan this section is usually "None.".
@@ -54,7 +54,12 @@ later slices.
    has no UI change, say so.
 7. **Changes by layer.** db, rust, ffi, swift, tooling, docs. For each:
    files, types, contracts, state transitions. Show examples (see below).
-8. **Steps.** Numbered. One action per step.
+8. **Steps.** Numbered. One action per step. Estimate the diff size of the
+   slice (compare a similar earlier slice with `jj diff -r <change> --stat`).
+   If it is 1,000 lines or more, group the steps under one heading per jj
+   change, each with its estimated size and whether it gets a review. Each
+   change must build and pass every check alone (see "Size limit" in
+   [use-of-jj-vcs](../use-of-jj-vcs/SKILL.md)).
 9. **Checks.** Exact commands and the expected result of each.
 10. **Stubs and exclusions.** Every stub, and the slice that replaces it.
     Everything this slice does not do.

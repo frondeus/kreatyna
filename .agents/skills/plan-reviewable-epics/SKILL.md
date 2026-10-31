@@ -1,6 +1,6 @@
 ---
 name: plan-reviewable-epics
-description: Plan a larger feature in this repository as an epic of small vertical slices (SQLite → Rust → UniFFI → SwiftUI in one change), tracked as beads with dependencies and explained on a self-contained HTML page, then deliver one slice per jj change. Use when work spans several behaviors or screens; ordinary small fixes need no epic.
+description: Plan a larger feature in this repository as an epic of small vertical slices (SQLite → Rust → UniFFI → SwiftUI in one change), tracked as beads with dependencies and explained on a self-contained HTML page, then deliver each slice as one jj change, or a short series of changes under 1,000 lines each. Use when work spans several behaviors or screens; ordinary small fixes need no epic.
 ---
 
 # Plan reviewable epics
@@ -136,7 +136,8 @@ direction; it does not remove the review boundary between slices.
 attaches the `mol-slice` workflow (`.beads/formulas/mol-slice.formula.json`).
 From then on `bd ready` shows the slice's next step, and `bd gate list` shows
 what waits for the user. Close each step when it is done. In the slice's own
-jj change:
+jj change, or its series of changes when the slice is 1,000 lines or more
+(see "Size limit" in [use-of-jj-vcs](../use-of-jj-vcs/SKILL.md)):
 
 1. Write its implementation plan at `docs/epics/<epic>/tasks/<ID>.md`, following
    [write-slice-plan](../write-slice-plan/SKILL.md). If the plan has open
@@ -164,7 +165,9 @@ jj change:
    slice bead. Run `bd export -o .beads/issues.jsonl` before the change is
    finished.
 
-Review fixes stay in the same slice's change. Do not combine slices or squash
+A series of changes inside one slice may follow layers; the slice as a whole
+stays vertical, and its last change shows the behavior. Review fixes stay in
+the change they fix. Do not combine slices or squash
 them into an epic-sized change. If implementation reveals a missing dependency
 or larger scope, revise the beads and the page and discuss the new boundary before absorbing
 more work into the current slice.

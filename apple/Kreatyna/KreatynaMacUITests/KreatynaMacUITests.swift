@@ -147,6 +147,38 @@ final class KreatynaMacUITests: XCTestCase {
     }
 
     @MainActor
+    func testEditedNameAppearsInTheList() throws {
+        let app = try launch(seed: ["Garlic", "Tomato"])
+        XCTAssertTrue(row(named: "Garlic", in: app).waitForExistence(timeout: 5))
+        row(named: "Garlic", in: app).click()
+        XCTAssertTrue(app.buttons["editIngredient"].waitForExistence(timeout: 5))
+
+        app.buttons["editIngredient"].click()
+        let name = app.textFields["ingredientNameField"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        XCTAssertEqual(name.value as? String, "Garlic")
+        XCTAssertFalse(app.buttons["addIngredient"].isEnabled)
+
+        // The row keeps the saved name until Save (MAC-06/Q1).
+        name.click()
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText("Black Garlic")
+        XCTAssertTrue(row(named: "Garlic", in: app).exists)
+        app.typeKey("s", modifierFlags: .command)
+
+        XCTAssertTrue(row(named: "Black Garlic", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForNonExistence(row(named: "Garlic", in: app), timeout: 5))
+        // The detail's title, apart from the row.
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientDetail"].waitForExistence(timeout: 5))
+        let title = app.staticTexts
+            .matching(NSPredicate(format: "identifier != %@ AND (value == %@ OR label == %@)",
+                                  "ingredientRow", "Black Garlic", "Black Garlic"))
+            .firstMatch
+        XCTAssertTrue(title.exists)
+        XCTAssertTrue(app.buttons["addIngredient"].isEnabled)
+    }
+
+    @MainActor
     func testContextMenuReordersUnits() throws {
         let app = try launch(seed: ["Garlic"])
         XCTAssertTrue(row(named: "Garlic", in: app).waitForExistence(timeout: 5))

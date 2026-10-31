@@ -3,6 +3,7 @@ import SwiftUI
 /// The detail pane for one ingredient. It shows Rust's detail view as a grouped form.
 struct MacIngredientDetail: View {
     let view: IngredientDetailView
+    let send: (IngredientDetailEvent) -> Void
 
     var body: some View {
         let ingredient = view.ingredient
@@ -40,9 +41,8 @@ struct MacIngredientDetail: View {
         .accessibilityIdentifier("ingredientDetail")
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                Button("Edit", systemImage: "pencil") {}
+                Button("Edit", systemImage: "pencil") { send(.edit) }
                     .help("Edit")
-                    .disabled(true) // MAC-06
                     .accessibilityIdentifier("editIngredient")
                 Button("Delete", systemImage: "trash") {}
                     .help("Delete")

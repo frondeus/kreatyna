@@ -214,6 +214,52 @@ fn split_view_conversion_carries_the_create_form_and_the_draft_row() {
     assert!(form.dirty);
 }
 
+#[test]
+fn split_view_conversion_carries_the_edit_form_and_its_saved_name() {
+    let id = ingredient::IngredientId::new();
+    let mut draft = ingredient::IngredientDraft::new(ingredient::NutritionBasis::Per100Grams);
+    draft.set_field(
+        ingredient::IngredientDraftField::Name,
+        "Black Garlic".into(),
+    );
+    let view = core::IngredientsView::Split(ingredient::IngredientSplitCatalogView {
+        list: Scoped::new(
+            CommandScopeId::from(3),
+            ingredient::IngredientListView {
+                search: String::new(),
+                status: ingredient::IngredientListStatus::Loading,
+            },
+        ),
+        selected: Some(id),
+        pane: Scoped::new(
+            CommandScopeId::from(7),
+            ingredient::IngredientSplitPaneView::Edit {
+                saved_name: "Garlic".into(),
+                form: ingredient::IngredientFormView {
+                    draft,
+                    dirty: true,
+                    issues: vec![],
+                    save_error: None,
+                    status: ingredient::IngredientFormStatus::Editing,
+                },
+            },
+        ),
+        can_create: false,
+        draft_row: None,
+    });
+
+    let IngredientsView::Split { catalog } = IngredientsView::try_from(view).unwrap() else {
+        panic!("expected the split layout")
+    };
+    assert_eq!(catalog.selected.as_deref(), Some(id.to_string().as_str()));
+    assert_eq!(catalog.pane.scope, ScopeId { value: 7 });
+    let IngredientSplitPaneView::Edit { saved_name, form } = catalog.pane.value else {
+        panic!("expected the edit form")
+    };
+    assert_eq!(saved_name, "Garlic");
+    assert_eq!(form.draft.name, "Black Garlic");
+}
+
 fn stack(view: RunningAppView) -> IngredientCatalogView {
     let IngredientsView::Stack { catalog } = view.ingredients else {
         panic!("expected the stack layout")

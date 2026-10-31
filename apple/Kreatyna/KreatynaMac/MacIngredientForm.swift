@@ -1,10 +1,12 @@
 import SwiftUI
 
-/// The create form in the detail pane. It shows Rust's form view and sends
-/// every edit, Save, and Cancel to Rust; Rust validates and decides what the
-/// pane shows next.
+/// The create or edit form in the detail pane. It shows Rust's form view and
+/// sends every edit, Save, and Cancel to Rust; Rust validates and decides what
+/// the pane shows next.
 struct MacIngredientForm: View {
     let view: IngredientFormView
+    /// "New Ingredient", or the saved name while editing (MAC-06/Q1).
+    let title: String
     let send: (IngredientFormEvent) -> Void
 
     /// Presentation only: the field with the cursor. It starts in Name.
@@ -49,7 +51,7 @@ struct MacIngredientForm: View {
             // The save error stays outside the form. As a form row, it moved
             // the rows below it when it went away, and Name lost the cursor.
             VStack(alignment: .leading, spacing: 8) {
-                Text("New Ingredient")
+                Text(title)
                     .font(.title2.bold())
                     .accessibilityIdentifier("ingredientFormTitle")
                 if let error = view.saveError {

@@ -52,8 +52,18 @@ impl TryFrom<IngredientSplitCatalogEvent> for core::IngredientSplitCatalogEvent 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum IngredientSplitPaneView {
     Empty,
-    Detail { detail: IngredientDetailView },
-    Create { form: IngredientFormView },
+    Detail {
+        detail: IngredientDetailView,
+    },
+    Create {
+        form: IngredientFormView,
+    },
+    /// The edit form. The pane title shows `saved_name`, the name as stored,
+    /// until Save.
+    Edit {
+        saved_name: String,
+        form: IngredientFormView,
+    },
 }
 
 impl TryFrom<core::IngredientSplitPaneView> for IngredientSplitPaneView {
@@ -66,6 +76,10 @@ impl TryFrom<core::IngredientSplitPaneView> for IngredientSplitPaneView {
                 detail: detail.into(),
             },
             core::IngredientSplitPaneView::Create(form) => Self::Create {
+                form: form.try_into()?,
+            },
+            core::IngredientSplitPaneView::Edit { saved_name, form } => Self::Edit {
+                saved_name,
                 form: form.try_into()?,
             },
         })

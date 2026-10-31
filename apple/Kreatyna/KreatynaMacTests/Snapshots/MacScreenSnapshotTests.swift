@@ -85,6 +85,14 @@ extension MainActorTests {
             )
         }
 
+        /// The title and the highlighted row keep the saved name (MAC-06/Q1).
+        @Test(arguments: Appearance.allCases)
+        func editIngredientForm(appearance: Appearance) {
+            var draft = Fixtures.garlicDraft
+            draft.name = "Black Garlic"
+            snapshot(editing(Fixtures.form(draft, dirty: true)), appearance: appearance)
+        }
+
         @Test(arguments: Appearance.allCases)
         func startupFailure(appearance: Appearance) {
             snapshot(
@@ -119,6 +127,15 @@ extension MainActorTests {
         private func creating(_ form: IngredientFormView) -> some View {
             MacCatalogView(
                 view: Fixtures.splitCatalog(form: form),
+                columnVisibility: .doubleColumn,
+                send: { _ in }
+            )
+        }
+
+        /// The catalog with Garlic's edit form open (MAC-06).
+        private func editing(_ form: IngredientFormView) -> some View {
+            MacCatalogView(
+                view: Fixtures.splitCatalog(editing: Fixtures.garlic, form: form),
                 columnVisibility: .doubleColumn,
                 send: { _ in }
             )

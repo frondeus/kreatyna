@@ -102,4 +102,18 @@ enum Fixtures {
             draftRow: form.map { $0.draft.name.trimmingCharacters(in: .whitespaces) }
         )
     }
+
+    /// The Mac catalog with the edit form open: the saved row stays
+    /// highlighted, and there is no draft row (MAC-06/Q1).
+    static func splitCatalog(editing saved: Ingredient, form: IngredientFormView) -> IngredientSplitCatalogView {
+        IngredientSplitCatalogView(
+            list: ScopedIngredientListView(scope: ScopeId(value: 3), value: list()),
+            selected: saved.id,
+            pane: ScopedIngredientSplitPaneView(
+                scope: ScopeId(value: 5), value: .edit(savedName: saved.name, form: form)
+            ),
+            canCreate: false,
+            draftRow: nil
+        )
+    }
 }

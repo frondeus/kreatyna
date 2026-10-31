@@ -47,10 +47,13 @@ struct MacCatalogView: View {
                 }
                 .accessibilityIdentifier("ingredientDetailPlaceholder")
             case .detail(let detail):
-                MacIngredientDetail(view: detail)
+                MacIngredientDetail(view: detail) { send(view.detail($0)) }
             case .create(let form):
                 // A new pane scope is new content, so its fields start fresh.
-                MacIngredientForm(view: form) { send(view.form($0)) }
+                MacIngredientForm(view: form, title: "New Ingredient") { send(view.form($0)) }
+                    .id(view.pane.scope)
+            case .edit(let savedName, let form):
+                MacIngredientForm(view: form, title: savedName) { send(view.form($0)) }
                     .id(view.pane.scope)
             }
         }

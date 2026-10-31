@@ -143,6 +143,45 @@ final class MacDemoCaptureUITests: XCTestCase {
         app.terminate()
     }
 
+    /// `docs/epics/mac-shell/tasks/MAC-06-demo/`: edit from the detail.
+    @MainActor
+    func testCaptureMAC06Demo() throws {
+        let fixture = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/demo-ingredients.json")
+        let app = XCUIApplication()
+        app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
+        app.launchEnvironment["KREATYNA_TEST_SEED"] = try String(contentsOf: fixture, encoding: .utf8)
+        app.launch()
+
+        let rows = app.staticTexts.matching(identifier: "ingredientRow")
+        XCTAssertTrue(rows["Garlic"].waitForExistence(timeout: 5))
+        rows["Garlic"].click()
+        XCTAssertTrue(app.staticTexts["clove"].waitForExistence(timeout: 5))
+
+        app.buttons["editIngredient"].click()
+        let name = app.textFields["ingredientNameField"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        capture("01-edit-form", app)
+
+        name.click()
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText("Black Garlic")
+        capture("02-typed-row-keeps-saved-name", app)
+
+        rows["Tomato"].click()
+        XCTAssertTrue(app.buttons["confirmDiscard"].waitForExistence(timeout: 5))
+        capture("03-discard-question", app)
+        app.buttons["cancelDiscard"].click()
+        XCTAssertTrue(waitForNonExistence(app.buttons["cancelDiscard"]))
+
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(rows["Black Garlic"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientDetail"].waitForExistence(timeout: 5))
+        capture("04-saved", app)
+        app.terminate()
+    }
+
     private func waitForNonExistence(_ element: XCUIElement) -> Bool {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
         return XCTWaiter().wait(for: [gone], timeout: 5) == .completed

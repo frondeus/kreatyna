@@ -3,7 +3,8 @@
 //! The list never leaves the window, so it keeps one scope for its whole life
 //! and never pauses. The pane gets a new scope each time its content changes,
 //! so late events and results for the previous content are ignored (E-19).
-//! The pane shows nothing, an ingredient's detail, or the create form.
+//! The pane shows nothing, an ingredient's detail, the create form, or the
+//! edit form.
 use krucyfiks::{Command, CommandExt, CommandScopeId, Message, Scoped, Widget};
 
 use crate::scoped_child::ScopedChild;
@@ -34,7 +35,7 @@ pub enum IngredientSplitCatalogOutcome {
     Pane(Scoped<IngredientSplitPaneOutcome>),
 }
 
-/// An outcome of the detail pane's content: a detail or the create form.
+/// An outcome of the detail pane's content: a detail or a form.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IngredientSplitPaneOutcome {
     Detail(IngredientDetailOutcome),
@@ -48,13 +49,20 @@ pub enum IngredientSplitPaneView {
     Empty,
     Detail(IngredientDetailView),
     Create(IngredientFormView),
+    /// The edit form. `saved_name` is the name as stored: the pane title
+    /// shows it until Save (MAC-06/Q1).
+    Edit {
+        saved_name: String,
+        form: IngredientFormView,
+    },
 }
 
 /// Each part carries the scope that its events must be sent with.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IngredientSplitCatalogView {
     pub list: Scoped<IngredientListView>,
-    /// The highlighted row. `None` while the create form is open.
+    /// The highlighted row: the open detail or the edited ingredient. `None`
+    /// while the create form is open.
     pub selected: Option<IngredientId>,
     pub pane: Scoped<IngredientSplitPaneView>,
     /// Whether **＋** opens the create form now. False while a form is open
@@ -66,7 +74,7 @@ pub struct IngredientSplitCatalogView {
     pub draft_row: Option<String>,
 }
 
-/// The create form, and where the pane goes when the form is discarded.
+/// A form, and where the pane goes when the form is discarded.
 ///
 /// Two fields, because the two destinations are set at different moments and
 /// Keep Editing must clear only one of them:
@@ -77,16 +85,19 @@ pub struct IngredientSplitCatalogView {
 /// | Garlic open, ＋, type "Pap", click Tomato → Discard | Garlic | Tomato | Tomato |
 /// | Same click on Tomato, Keep Editing, then Cancel → Discard | Garlic | cleared at Keep Editing | Garlic |
 /// | Nothing open, ＋, Cancel | none | none | empty pane |
-struct CreatePane {
+///
+/// For the edit form, `return_to` is the edited ingredient as stored.
+struct FormPane {
     form: IngredientForm,
-    /// The ingredient that was open when ＋ was pressed. Cancel goes back to it.
+    /// The ingredient that was open when ＋ was pressed, or the edited
+    /// ingredient as stored. Cancel goes back to it.
     return_to: Option<Ingredient>,
     /// The row clicked while "Discard changes?" is open (E-10). Keep Editing
     /// clears it.
     clicked_row: Option<Ingredient>,
 }
 
-impl CreatePane {
+impl FormPane {
     /// Where Discard goes: the clicked row wins, then `return_to`, then nothing.
     fn discard_destination(&mut self) -> Option<Ingredient> {
         self.clicked_row.take().or_else(|| self.return_to.take())
@@ -103,7 +114,22 @@ enum PaneEvent {
 enum Pane {
     Empty,
     Detail(IngredientDetail),
-    Create(CreatePane),
+    Create(FormPane),
+    /// `saved` is the edited ingredient as stored. The row and the title show
+    /// it until Save (MAC-06/Q1).
+    Edit {
+        saved: Ingredient,
+        form: FormPane,
+    },
+}
+
+impl Pane {
+    fn form_pane(&mut self) -> Option<&mut FormPane> {
+        match self {
+            Self::Create(form) | Self::Edit { form, .. } => Some(form),
+            Self::Empty | Self::Detail(_) => None,
+        }
+    }
 }
 
 /// The detail column. A message for another kind of content is ignored.
@@ -116,7 +142,9 @@ impl Widget for Pane {
         match self {
             Self::Empty => Command::empty(),
             Self::Detail(detail) => detail.init().map(IngredientSplitPaneOutcome::Detail),
-            Self::Create(create) => create.form.init().map(IngredientSplitPaneOutcome::Form),
+            Self::Create(pane) | Self::Edit { form: pane, .. } => {
+                pane.form.init().map(IngredientSplitPaneOutcome::Form)
+            }
         }
     }
 
@@ -124,7 +152,7 @@ impl Widget for Pane {
         match self {
             Self::Empty => true,
             Self::Detail(detail) => detail.can_begin_shutdown(),
-            Self::Create(create) => create.form.can_begin_shutdown(),
+            Self::Create(pane) | Self::Edit { form: pane, .. } => pane.form.can_begin_shutdown(),
         }
     }
 
@@ -134,7 +162,7 @@ impl Widget for Pane {
             Self::Detail(detail) => detail
                 .begin_shutdown()
                 .map(IngredientSplitPaneOutcome::Detail),
-            Self::Create(create) => create
+            Self::Create(pane) | Self::Edit { form: pane, .. } => pane
                 .form
                 .begin_shutdown()
                 .map(IngredientSplitPaneOutcome::Form),
@@ -152,15 +180,21 @@ impl Widget for Pane {
             ) => detail
                 .update(Message::Outcome(outcome))
                 .map(IngredientSplitPaneOutcome::Detail),
-            (Self::Create(create), Message::Event(PaneEvent::Form(event))) => create
-                .form
-                .update(Message::Event(event))
-                .map(IngredientSplitPaneOutcome::Form),
-            (Self::Create(create), Message::Outcome(IngredientSplitPaneOutcome::Form(outcome))) => {
-                create
+            (pane, Message::Event(PaneEvent::Form(event))) => match pane.form_pane() {
+                Some(pane) => pane
                     .form
-                    .update(Message::Outcome(outcome))
-                    .map(IngredientSplitPaneOutcome::Form)
+                    .update(Message::Event(event))
+                    .map(IngredientSplitPaneOutcome::Form),
+                None => Command::empty(),
+            },
+            (pane, Message::Outcome(IngredientSplitPaneOutcome::Form(outcome))) => {
+                match pane.form_pane() {
+                    Some(pane) => pane
+                        .form
+                        .update(Message::Outcome(outcome))
+                        .map(IngredientSplitPaneOutcome::Form),
+                    None => Command::empty(),
+                }
             }
             _ => Command::empty(),
         }
@@ -170,7 +204,11 @@ impl Widget for Pane {
         match self {
             Self::Empty => IngredientSplitPaneView::Empty,
             Self::Detail(detail) => IngredientSplitPaneView::Detail(detail.view()),
-            Self::Create(create) => IngredientSplitPaneView::Create(create.form.view()),
+            Self::Create(pane) => IngredientSplitPaneView::Create(pane.form.view()),
+            Self::Edit { saved, form } => IngredientSplitPaneView::Edit {
+                saved_name: saved.name.clone(),
+                form: form.form.view(),
+            },
         }
     }
 }
@@ -198,14 +236,15 @@ impl IngredientSplitCatalog {
     fn selected(&self) -> Option<IngredientId> {
         match &self.pane.widget {
             Pane::Detail(detail) => Some(detail.view().ingredient.id),
+            Pane::Edit { saved, .. } => Some(saved.id),
             Pane::Empty | Pane::Create(_) => None,
         }
     }
 
     fn draft_row(&self) -> Option<String> {
         match &self.pane.widget {
-            Pane::Create(create) => Some(create.form.view().draft.name.trim().to_owned()),
-            Pane::Empty | Pane::Detail(_) => None,
+            Pane::Create(pane) => Some(pane.form.view().draft.name.trim().to_owned()),
+            Pane::Empty | Pane::Detail(_) | Pane::Edit { .. } => None,
         }
     }
 
@@ -218,7 +257,7 @@ impl IngredientSplitCatalog {
         match &self.pane.widget {
             Pane::Empty => true,
             Pane::Detail(detail) => !Self::detail_is_locked(detail),
-            Pane::Create(_) => false,
+            Pane::Create(_) | Pane::Edit { .. } => false,
         }
     }
 
@@ -287,20 +326,40 @@ impl IngredientSplitCatalog {
             Pane::Detail(detail) if !Self::detail_is_locked(detail) => {
                 Some(detail.view().ingredient)
             }
-            Pane::Detail(_) | Pane::Create(_) => return Command::empty(),
+            Pane::Detail(_) | Pane::Create(_) | Pane::Edit { .. } => return Command::empty(),
         };
         let form = IngredientForm::new(
             self.caps.clone(),
             IngredientDraft::new(NutritionBasis::Per100Grams),
         );
-        self.show(Pane::Create(CreatePane {
+        self.show(Pane::Create(FormPane {
             form,
             return_to,
             clicked_row: None,
         }))
     }
 
-    /// A row click. A dirty create form asks "Discard changes?" first (E-10).
+    /// Edit in the detail. The detail must still show that ingredient, with
+    /// no delete running.
+    fn open_edit(&mut self, ingredient: Ingredient) -> Command<IngredientSplitCatalogOutcome> {
+        let Pane::Detail(detail) = &self.pane.widget else {
+            return Command::empty();
+        };
+        if detail.view().ingredient.id != ingredient.id || Self::detail_is_locked(detail) {
+            return Command::empty();
+        }
+        let form = IngredientForm::new(self.caps.clone(), IngredientDraft::from(&ingredient));
+        self.show(Pane::Edit {
+            saved: ingredient.clone(),
+            form: FormPane {
+                form,
+                return_to: Some(ingredient),
+                clicked_row: None,
+            },
+        })
+    }
+
+    /// A row click. A dirty form asks "Discard changes?" first (E-10).
     fn select(&mut self, ingredient: Ingredient) -> Command<IngredientSplitCatalogOutcome> {
         if !self.list.widget.contains_visible(&ingredient) {
             return Command::empty();
@@ -312,14 +371,17 @@ impl IngredientSplitCatalog {
                     return Command::empty();
                 }
             }
-            Pane::Create(create) => {
-                let form = create.form.view();
+            Pane::Edit { saved, .. } if saved.id == ingredient.id => {
+                return Command::empty();
+            }
+            Pane::Create(pane) | Pane::Edit { form: pane, .. } => {
+                let form = pane.form.view();
                 if form.status != IngredientFormStatus::Editing {
                     return Command::empty();
                 }
                 if form.dirty {
-                    create.clicked_row = Some(ingredient);
-                    let command = create
+                    pane.clicked_row = Some(ingredient);
+                    let command = pane
                         .form
                         .update(Message::Event(IngredientFormEvent::RequestClose))
                         .map(IngredientSplitPaneOutcome::Form);
@@ -337,7 +399,7 @@ impl IngredientSplitCatalog {
         match outcome {
             IngredientListOutcome::OpenDetail { ingredient } => self.select(ingredient),
             IngredientListOutcome::CreateRequested => self.open_create(),
-            // Edit arrives with MAC-06.
+            // No Mac list action sends it: Edit is in the detail.
             IngredientListOutcome::OpenEdit { .. } => Command::empty(),
             outcome @ IngredientListOutcome::LoadFinished { .. } => {
                 let command = self.list.widget.update(Message::Outcome(outcome));
@@ -354,8 +416,7 @@ impl IngredientSplitCatalog {
             return Command::empty();
         };
         match outcome {
-            // Edit arrives with MAC-06.
-            IngredientDetailOutcome::OpenEdit { .. } => Command::empty(),
+            IngredientDetailOutcome::OpenEdit { ingredient } => self.open_edit(ingredient),
             IngredientDetailOutcome::Deleted { id } => {
                 if detail.view().deletion != IngredientDetailDeletion::Deleted
                     || detail.view().ingredient.id != id
@@ -378,32 +439,32 @@ impl IngredientSplitCatalog {
         &mut self,
         outcome: IngredientFormOutcome,
     ) -> Command<IngredientSplitCatalogOutcome> {
-        let Pane::Create(create) = &mut self.pane.widget else {
+        let Some(pane) = self.pane.widget.form_pane() else {
             return Command::empty();
         };
         match outcome {
             IngredientFormOutcome::Saved { ingredient } => {
-                if create.form.view().status != IngredientFormStatus::Finished {
+                if pane.form.view().status != IngredientFormStatus::Finished {
                     return Command::empty();
                 }
                 let complete = self.list.widget.apply_saved(ingredient.clone());
                 self.refresh_list_and_show(complete, Some(ingredient))
             }
             IngredientFormOutcome::Discarded => {
-                if create.form.view().status != IngredientFormStatus::Finished {
+                if pane.form.view().status != IngredientFormStatus::Finished {
                     return Command::empty();
                 }
-                let next = create.discard_destination();
+                let next = pane.discard_destination();
                 self.show_detail(next)
             }
             outcome => {
-                let command = create
+                let command = pane
                     .form
                     .update(Message::Outcome(outcome))
                     .map(IngredientSplitPaneOutcome::Form);
                 // Keep Editing (or a failed save) forgets the clicked row.
-                if create.form.view().status == IngredientFormStatus::Editing {
-                    create.clicked_row = None;
+                if pane.form.view().status == IngredientFormStatus::Editing {
+                    pane.clicked_row = None;
                 }
                 self.pane_command(command)
             }

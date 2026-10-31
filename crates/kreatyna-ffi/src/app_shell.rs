@@ -1,9 +1,9 @@
 use std::{fmt, sync::Arc};
 
-use futures::StreamExt;
+use futures::{StreamExt, stream::select};
 use kreatyna::{
     AppWidget, CLIENT_CAPABILITY, capabilities::Render,
-    ingredients::capabilities::IngredientStoreClient,
+    ingredients::capabilities::IngredientStoreClient, recipes::capabilities::RecipeStoreClient,
 };
 use krucyfiks::{
     Command, CommandExt, CommandId, LatestCommandSlot, Message, Widget, effects::RequestCloseHandle,
@@ -286,13 +286,19 @@ impl Drop for DatabaseWorker {
 async fn prepare_app(setup: AppSetup) -> Result<Box<PreparedApp>, AppInitializationError> {
     let mut database = SqliteDatabase::new(&setup.database_path).await?;
     let (ingredient_store, ingredient_rx) = IngredientStoreClient::new(CLIENT_CAPABILITY);
+    let (recipe_store, recipe_rx) = RecipeStoreClient::new(CLIENT_CAPABILITY);
     let (stopped_tx, stopped_rx) = oneshot::channel::<()>();
     let worker = DatabaseWorker {
-        close_handles: vec![ingredient_rx.close_handle()],
+        close_handles: vec![ingredient_rx.close_handle(), recipe_rx.close_handle()],
         task: RUNTIME.spawn(async move {
             // Dropped when the task ends, also by a panic.
             let _stopped = stopped_tx;
-            let inbox = ingredient_rx.into_stream().map(DatabaseEffect::Ingredient);
+            // One connection serves both stores, one request at a time. The
+            // stream ends when both inboxes are closed and drained.
+            let inbox = select(
+                ingredient_rx.into_stream().map(DatabaseEffect::Ingredient),
+                recipe_rx.into_stream().map(DatabaseEffect::Recipe),
+            );
             database.worker(inbox).await;
         }),
     };
@@ -300,8 +306,12 @@ async fn prepare_app(setup: AppSetup) -> Result<Box<PreparedApp>, AppInitializat
     let app = AppWidget::new(
         kreatyna::AppCapabilities {
             ingredients: kreatyna::ingredients::capabilities::IngredientCapabilities {
-                render: setup.render,
+                render: setup.render.clone(),
                 store: Arc::new(ingredient_store),
+            },
+            recipes: kreatyna::recipes::capabilities::RecipeCapabilities {
+                render: setup.render,
+                store: Arc::new(recipe_store),
             },
         },
         setup.layout,

@@ -5,6 +5,7 @@ mod draft;
 mod form;
 mod ingredient;
 mod list;
+mod recipes;
 mod split_catalog;
 mod support;
 
@@ -15,6 +16,7 @@ pub use draft::*;
 pub use form::*;
 pub use ingredient::*;
 pub use list::*;
+pub use recipes::*;
 pub use split_catalog::*;
 pub use support::{AppTypeConversionError, ScopeId};
 

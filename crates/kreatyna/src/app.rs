@@ -1,4 +1,7 @@
-use futures::{StreamExt, stream::BoxStream};
+use futures::{
+    StreamExt,
+    stream::{BoxStream, select},
+};
 use krucyfiks::{Command, CommandExt, Message, Scoped, Widget};
 
 use crate::ingredients::{
@@ -7,6 +10,7 @@ use crate::ingredients::{
     IngredientSplitCatalogView,
     capabilities::{IngredientCapabilities, IngredientEffect},
 };
+use crate::recipes::capabilities::{RecipeCapabilities, RecipeEffect};
 use crate::scoped_child::ScopedChild;
 
 /// How the platform shows the catalog. Swift chooses it once, at startup (E-19).
@@ -50,24 +54,35 @@ pub struct AppView {
     pub ingredients: IngredientsView,
 }
 
+/// The recipe capabilities wait for the Recipes section (REC-01).
 #[derive(Clone)]
 pub struct AppCapabilities {
     pub ingredients: IngredientCapabilities,
+    pub recipes: RecipeCapabilities,
 }
 
 #[derive(Debug, krucyfiks::Effect)]
 pub enum AppEffect {
     Ingredients(IngredientEffect),
+    Recipes(RecipeEffect),
 }
 
 pub type AppEffectStream = BoxStream<'static, AppEffect>;
 
 impl AppCapabilities {
     pub fn testing() -> (Self, AppEffectStream) {
-        let (ingredients, effects) = IngredientCapabilities::testing();
+        let (ingredients, ingredient_effects) = IngredientCapabilities::testing();
+        let (recipes, recipe_effects) = RecipeCapabilities::testing();
         (
-            Self { ingredients },
-            effects.map(AppEffect::Ingredients).boxed(),
+            Self {
+                ingredients,
+                recipes,
+            },
+            select(
+                ingredient_effects.map(AppEffect::Ingredients),
+                recipe_effects.map(AppEffect::Recipes),
+            )
+            .boxed(),
         )
     }
 }

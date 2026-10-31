@@ -5,7 +5,8 @@ changes `ytturtsz` and `pmuzortp`. P02 was solved by the explicit start boundary
 in `pmuzortp` and its documented caller contract in `xkkqlrky`. P03 and P05 were
 solved by `AppFfi::shut_down_gracefully()` in change `nsmprulk`. P08 was
 solved by its documented handler contract. P11 was solved in krucyfiks change
-`ptpyolln`: runtime spans record payloads only at `trace`.
+`ptpyolln`: runtime spans record payloads only at `trace`. P06 was solved in change
+`mzvlyzwo`: a stopped database task shows the failure screen.
 
 This document examines the Counter-like R13 baseline in change `uqmquulk`.
 It describes problems and their causes. Solved items record their implemented
@@ -48,7 +49,7 @@ and actual workload are known.
 | P11 — Payload logging (solved) | P3 | Enabled tracing can disclose user-entered content to the configured logger. |
 | P04 — Retained connection | P4 | Retained stopped facades keep idle workers and connections alive. |
 | P05 — Write completion at shutdown (solved) | P2 | A save can be lost before enqueueing or commit without its result reaching the view. |
-| P06 — Task failure status | P3 | A failed worker can leave a partially working app with no coherent failure signal. |
+| P06 — Task failure status (solved) | P3 | A failed worker can leave a partially working app with no coherent failure signal. |
 | P10 — Pending-work limits | P4 | Sustained excess input can increase memory use without a fixed bound. |
 | P09 — Callback progress | P5 | Awaited callbacks require a clear rule about what they may wait for. |
 
@@ -69,7 +70,7 @@ make a disposable example a production blocker.
 | P11 | Shared runtime tracing; ingredient payloads specifically | Solved: payloads are recorded only at `trace`. |
 | P04 | Shared app database lifetime | Keep open; recheck worker ownership after P01. |
 | P05 | Shared shutdown contract, including ingredient saves | Solved by `shut_down_gracefully()`. |
-| P06 | Shared runtime/database worker supervision | Keep open; recheck startup-race details after P01. |
+| P06 | Shared runtime/database worker supervision | Solved for the database task; a runtime panic is `vibetyna-dm7`. |
 | P10 | Shared event and command backlog | Keep open as a load-dependent concern. |
 | P09 | Shared render callback progress, including ingredient commands | Retain as a callback-contract discussion. |
 
@@ -388,6 +389,20 @@ their responders have been dropped. This fact does not establish completion
 for the facade, and does not cover a worker failure.
 
 ## P06 — Task failure does not produce one coherent app status
+
+**Status: solved for the database task** (Cooldown 1, P06/Q1 and Q2). The
+database task drops a `oneshot` sender when it ends, also by a panic.
+`AppShell` watches it with a command in a `LatestCommandSlot`. When it fires,
+the shell drops the running app and shows `InitializationFailed {
+DatabaseStopped }`: the failure screen, titled "Kreatyna stopped working",
+whose Retry starts the database again. `begin_shutdown` stops the watch, so a
+graceful drain does not wait for the database. In Swift, the red error line is
+only for Swift's own errors and for events Rust could not read; `Terminated`
+adds no line, and the next accepted event clears it.
+
+The start race below no longer exists: `start()` spawns the runner without an
+`expect` since P02. A panic in the widget runtime itself still shows no
+failure screen: `vibetyna-dm7`.
 
 **Severity: P3.** A worker must first stop or startup must race with shutdown.
 The resulting partial failure can prevent recovery and confuse the caller.

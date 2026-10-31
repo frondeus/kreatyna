@@ -43,12 +43,24 @@ extension MainActorTests {
             #expect(model.errorMessage != nil)
         }
 
-        @Test func dispatchAfterShutdownIsVisible() async throws {
+        /// After shutdown, Rust refuses events by design; no error line (P06).
+        @Test func dispatchAfterShutdownShowsNoError() async throws {
             let model = AppModel(layout: .stack, databasePath: ":memory:")
             let app = try await waitForRunning(model)
             model.shutdown()
             model.dispatch(app.ingredients(stack(app).list(.search(query: "gar"))))
+            #expect(model.errorMessage == nil)
+        }
+
+        @Test func anAcceptedEventClearsTheErrorLine() async throws {
+            let model = AppModel(layout: .stack, databasePath: ":memory:")
+            defer { model.shutdown() }
+            let app = try await waitForRunning(model)
+            model.dispatch(app.ingredients(stack(app).list(.select(id: "not-a-uuid"))))
             #expect(model.errorMessage != nil)
+
+            model.dispatch(app.ingredients(stack(app).list(.search(query: "gar"))))
+            #expect(model.errorMessage == nil)
         }
 
         @Test func startupFailureRendersAndRetryIsForwarded() async throws {

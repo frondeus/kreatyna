@@ -44,6 +44,9 @@ pub enum AppInitializationError {
     DatabaseOpen,
     DatabaseConfiguration,
     DatabaseMigration,
+    /// The database task ended while the app was running. Retry starts the
+    /// database again (P06).
+    DatabaseStopped,
 }
 
 impl From<SqliteStartupError> for AppInitializationError {

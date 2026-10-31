@@ -17,8 +17,7 @@ struct MacAppDelegateTests {
         }
 
         #expect(replies == [true])
-        // Rust has stopped, so it refuses new events.
-        model.retryInitialization()
-        #expect(model.errorMessage != nil)
+        // Rust has stopped: a second graceful shutdown has nothing to wait for.
+        #expect(await model.shutDownGracefully() == .completed)
     }
 }

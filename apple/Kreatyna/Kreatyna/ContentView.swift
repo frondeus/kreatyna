@@ -28,7 +28,7 @@ struct RootView: View {
                     .accessibilityIdentifier("appInitializing")
             case .initializationFailed(let error):
                 ContentUnavailableView {
-                    Label("Kreatyna could not start", systemImage: "exclamationmark.triangle")
+                    Label(error.title, systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error.message)
                 } actions: {

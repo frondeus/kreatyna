@@ -7,6 +7,8 @@ import OSLog
 @Observable
 final class AppModel {
     private(set) var view: AppView = .initializing
+    /// Swift's own errors, and events Rust could not read. Rust's own failures
+    /// are part of `view` (P06). The next event Rust accepts clears it.
     private(set) var errorMessage: String?
     @ObservationIgnored private let core: AppFfi?
 
@@ -54,8 +56,9 @@ final class AppModel {
         guard let core else { return }
         do {
             try core.dispatch(event: event)
+            errorMessage = nil
         } catch {
-            errorMessage = "The app could not accept this action."
+            report(error)
         }
     }
 
@@ -63,9 +66,16 @@ final class AppModel {
         guard let core else { return }
         do {
             try core.retryInitialization()
+            errorMessage = nil
         } catch {
-            errorMessage = "The app could not accept this action."
+            report(error)
         }
+    }
+
+    /// A stopped Rust runtime refuses events by design: the app is quitting.
+    private func report(_ error: Error) {
+        if case AppFfiError.Terminated = error { return }
+        errorMessage = "The app could not accept this action."
     }
 
     func shutdown() {

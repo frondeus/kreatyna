@@ -3,11 +3,20 @@ import Foundation
 // Rust reports typed errors; Swift owns only their user-facing text.
 
 extension AppInitializationError {
+    /// The failure screen's title: a stop while running is not a failed start.
+    var title: String {
+        switch self {
+        case .databaseStopped: "Kreatyna stopped working"
+        case .databaseOpen, .databaseConfiguration, .databaseMigration: "Kreatyna could not start"
+        }
+    }
+
     var message: String {
         switch self {
         case .databaseOpen: "The database could not be opened."
         case .databaseConfiguration: "The database could not be configured."
         case .databaseMigration: "The database could not be updated."
+        case .databaseStopped: "The database stopped. Retry starts it again; unsaved changes are lost."
         }
     }
 }

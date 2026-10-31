@@ -7,7 +7,102 @@ use kreatyna::{
 };
 use tokio::sync::oneshot;
 
-use super::{DatabaseEffect, DatabaseWorker, RUNTIME, SqliteDatabase};
+use std::sync::Arc;
+
+use futures::stream::BoxStream;
+use krucyfiks::{Message, Widget};
+
+use super::{
+    AppSetup, AppShell, AppShellEvent, AppShellOutcome, AppShellState, DatabaseEffect,
+    DatabaseWorker, RUNTIME, SqliteDatabase,
+};
+use crate::{AppInitializationError, AppView};
+
+#[test]
+fn a_stopped_database_shows_the_failure_and_retry_starts_it_again() {
+    RUNTIME.block_on(async {
+        let database = TemporaryDatabase::new();
+        let mut shell = AppShell::new(AppSetup {
+            database_path: database.path().into(),
+            render: Arc::new(NoRender),
+            layout: kreatyna::AppLayout::Split,
+        });
+        let mut running = start(&mut shell).await;
+        assert!(matches!(shell.view(), Ok(AppView::Running { .. })));
+
+        let AppShellState::Running(prepared) = &shell.state else {
+            panic!("expected a running app")
+        };
+        prepared._database_worker.request_close();
+        let stopped = loop {
+            let outcome = running.next().await.expect("the watch reports the stop");
+            if let AppShellOutcome::DatabaseStopped(_) = outcome {
+                break outcome;
+            }
+        };
+        drop(shell.update(Message::Outcome(stopped)));
+
+        assert!(matches!(
+            shell.view(),
+            Ok(AppView::InitializationFailed {
+                error: AppInitializationError::DatabaseStopped
+            })
+        ));
+
+        let retry = shell.update(Message::Event(AppShellEvent::RetryInitialization));
+        let finished = first_initialization(retry.into_stream()).await;
+        drop(shell.update(Message::Outcome(finished)));
+        assert!(matches!(shell.view(), Ok(AppView::Running { .. })));
+    });
+}
+
+#[test]
+fn a_database_stop_after_shutdown_begins_is_ignored() {
+    RUNTIME.block_on(async {
+        let database = TemporaryDatabase::new();
+        let mut shell = AppShell::new(AppSetup {
+            database_path: database.path().into(),
+            render: Arc::new(NoRender),
+            layout: kreatyna::AppLayout::Split,
+        });
+        let mut running = start(&mut shell).await;
+        drop(shell.begin_shutdown());
+
+        let AppShellState::Running(prepared) = &shell.state else {
+            panic!("expected a running app")
+        };
+        prepared._database_worker.request_close();
+        // The watch was stopped: its stream ends without a report.
+        while let Some(outcome) = running.next().await {
+            assert!(!matches!(outcome, AppShellOutcome::DatabaseStopped(_)));
+        }
+        assert!(matches!(shell.view(), Ok(AppView::Running { .. })));
+    });
+}
+
+/// Initializes the shell and returns the running app's command, unapplied.
+async fn start(shell: &mut AppShell) -> BoxStream<'static, AppShellOutcome> {
+    let finished = first_initialization(shell.init().into_stream()).await;
+    shell.update(Message::Outcome(finished)).into_stream()
+}
+
+async fn first_initialization(
+    mut outcomes: BoxStream<'static, AppShellOutcome>,
+) -> AppShellOutcome {
+    loop {
+        let outcome = outcomes.next().await.expect("initialization finishes");
+        if let AppShellOutcome::InitializationFinished(_) = outcome {
+            return outcome;
+        }
+    }
+}
+
+struct NoRender;
+
+#[async_trait::async_trait]
+impl kreatyna::capabilities::Render for NoRender {
+    async fn render(&self) {}
+}
 
 #[test]
 fn close_and_wait_finishes_while_clients_are_retained() {

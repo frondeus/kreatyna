@@ -104,6 +104,18 @@ extension MainActorTests {
             )
         }
 
+        /// The database stopped while the app ran (P06).
+        @Test(arguments: Appearance.allCases)
+        func databaseStopped(appearance: Appearance) {
+            snapshot(
+                MacRootView(
+                    view: .initializationFailed(error: .databaseStopped),
+                    errorMessage: nil, send: { _ in }, retryInitialization: {}
+                ),
+                appearance: appearance
+            )
+        }
+
         // MARK: Support
 
         enum Appearance: String, CaseIterable {

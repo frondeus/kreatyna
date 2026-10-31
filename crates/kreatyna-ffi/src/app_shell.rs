@@ -5,8 +5,10 @@ use kreatyna::{
     AppWidget, CLIENT_CAPABILITY, capabilities::Render,
     ingredients::capabilities::IngredientStoreClient,
 };
-use krucyfiks::{Command, CommandExt, Message, Widget, effects::RequestCloseHandle};
-use tokio::task::JoinHandle;
+use krucyfiks::{
+    Command, CommandExt, CommandId, LatestCommandSlot, Message, Widget, effects::RequestCloseHandle,
+};
+use tokio::{sync::oneshot, task::JoinHandle};
 
 use crate::{AppInitializationError, AppTypeConversionError, AppView, RUNTIME, RunningAppView};
 use kreatyna_db::sqlite::{DatabaseEffect, SqliteDatabase};
@@ -34,6 +36,8 @@ impl fmt::Debug for AppShellEvent {
 
 pub(crate) enum AppShellOutcome {
     InitializationFinished(Result<Box<PreparedApp>, AppInitializationError>),
+    /// The database task ended while the app was running (P06).
+    DatabaseStopped(CommandId),
     App(kreatyna::AppOutcome),
 }
 
@@ -47,6 +51,9 @@ impl fmt::Debug for AppShellOutcome {
                 .debug_tuple("InitializationFinished")
                 .field(error)
                 .finish(),
+            Self::DatabaseStopped(id) => {
+                formatter.debug_tuple("DatabaseStopped").field(id).finish()
+            }
             Self::App(outcome) => formatter.debug_tuple("App").field(outcome).finish(),
         }
     }
@@ -61,6 +68,9 @@ enum AppShellState {
 pub(crate) struct AppShell {
     state: AppShellState,
     setup: AppSetup,
+    /// Waits for the running app's database task to end. Shutdown stops it,
+    /// so a graceful drain does not wait for the database.
+    database_watch: LatestCommandSlot,
 }
 
 impl AppShell {
@@ -68,7 +78,18 @@ impl AppShell {
         Self {
             state: AppShellState::Initializing,
             setup,
+            database_watch: LatestCommandSlot::new(),
         }
+    }
+
+    /// Reports when the database task ends, normally or by a panic.
+    fn watch_database(&mut self, stopped: oneshot::Receiver<()>) -> Command<AppShellOutcome> {
+        Command::single(async move {
+            // The task never sends: it ends by dropping the sender.
+            let _ = stopped.await;
+        })
+        .latest(&mut self.database_watch)
+        .map(|(id, ())| AppShellOutcome::DatabaseStopped(id))
     }
 
     fn render(&self) -> Command<AppShellOutcome> {
@@ -98,6 +119,7 @@ impl Widget for AppShell {
     }
 
     fn begin_shutdown(&mut self) -> Command<Self::Outcome> {
+        self.database_watch.stop();
         let AppShellState::Running(prepared) = &mut self.state else {
             return Command::empty();
         };
@@ -119,14 +141,29 @@ impl Widget for AppShell {
                 match result {
                     Ok(mut prepared) => {
                         let init = prepared.app.init().map(AppShellOutcome::App);
+                        let watch = match prepared.database_stopped.take() {
+                            Some(stopped) => self.watch_database(stopped),
+                            None => Command::empty(),
+                        };
                         self.state = AppShellState::Running(prepared);
-                        Command::select_all(vec![self.render(), init])
+                        Command::select_all(vec![self.render(), init, watch])
                     }
                     Err(error) => {
                         self.state = AppShellState::InitializationFailed(error);
                         self.render()
                     }
                 }
+            }
+            Message::Outcome(AppShellOutcome::DatabaseStopped(id))
+                if self.database_watch.accepts(id)
+                    && matches!(self.state, AppShellState::Running(_)) =>
+            {
+                tracing::error!("Database task stopped; the app needs a restart");
+                self.database_watch.stop();
+                // Dropping the app releases its clients of the stopped task.
+                self.state =
+                    AppShellState::InitializationFailed(AppInitializationError::DatabaseStopped);
+                self.render()
             }
             Message::Event(AppShellEvent::App(event)) => {
                 let AppShellState::Running(prepared) = &mut self.state else {
@@ -147,7 +184,9 @@ impl Widget for AppShell {
                     .map(AppShellOutcome::App)
             }
             Message::Event(AppShellEvent::RetryInitialization)
-            | Message::Outcome(AppShellOutcome::InitializationFinished(_)) => Command::empty(),
+            | Message::Outcome(
+                AppShellOutcome::InitializationFinished(_) | AppShellOutcome::DatabaseStopped(_),
+            ) => Command::empty(),
         }
     }
 
@@ -167,6 +206,8 @@ impl Widget for AppShell {
 pub(crate) struct PreparedApp {
     app: AppWidget,
     _database_worker: DatabaseWorker,
+    /// Resolves when the database task ends. The shell takes it at start.
+    database_stopped: Option<oneshot::Receiver<()>>,
 }
 
 #[allow(dead_code)]
@@ -205,9 +246,12 @@ impl Drop for DatabaseWorker {
 async fn prepare_app(setup: AppSetup) -> Result<Box<PreparedApp>, AppInitializationError> {
     let mut database = SqliteDatabase::new(&setup.database_path).await?;
     let (ingredient_store, ingredient_rx) = IngredientStoreClient::new(CLIENT_CAPABILITY);
+    let (stopped_tx, stopped_rx) = oneshot::channel::<()>();
     let worker = DatabaseWorker {
         close_handles: vec![ingredient_rx.close_handle()],
         task: RUNTIME.spawn(async move {
+            // Dropped when the task ends, also by a panic.
+            let _stopped = stopped_tx;
             let inbox = ingredient_rx.into_stream().map(DatabaseEffect::Ingredient);
             database.worker(inbox).await;
         }),
@@ -226,6 +270,7 @@ async fn prepare_app(setup: AppSetup) -> Result<Box<PreparedApp>, AppInitializat
     Ok(Box::new(PreparedApp {
         app,
         _database_worker: worker,
+        database_stopped: Some(stopped_rx),
     }))
 }
 

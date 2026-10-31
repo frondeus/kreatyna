@@ -16,7 +16,7 @@ struct MacRootView: View {
                     .accessibilityIdentifier("appInitializing")
             case .initializationFailed(let error):
                 ContentUnavailableView {
-                    Text("Kreatyna could not start")
+                    Text(error.title)
                 } description: {
                     Text(error.message)
                 } actions: {

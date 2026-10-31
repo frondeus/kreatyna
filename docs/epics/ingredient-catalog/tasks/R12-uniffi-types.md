@@ -1,6 +1,6 @@
 # R12 — UniFFI app events and views
 
-Status: approved. Change: `mtrtrxrk`. Companion krucyfiks change:
+Tracked in beads: `vibetyna-flx.14`. Change: `mtrtrxrk`. Companion krucyfiks change:
 `qpmqyrzn`. R11 is approved.
 
 ## Contract

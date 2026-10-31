@@ -1,6 +1,6 @@
 # MAC-01 — The Mac window shows the ingredient catalog
 
-Status: approved. Change: `wsstwmoz`. Dependencies: MAC-00 (approved).
+Tracked in beads: `vibetyna-4rn.5`. Change: `wsstwmoz`. Dependencies: MAC-00 (approved).
 
 ## Open questions
 

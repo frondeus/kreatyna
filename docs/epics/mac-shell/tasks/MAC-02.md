@@ -1,6 +1,6 @@
 # MAC-02 — Run and demo the Mac app from the terminal
 
-Status: approved. Change: `yvxqwqyy`. Dependencies: MAC-01 (approved).
+Tracked in beads: `vibetyna-4rn.6`. Change: `yvxqwqyy`. Dependencies: MAC-01 (approved).
 
 ## Open questions
 

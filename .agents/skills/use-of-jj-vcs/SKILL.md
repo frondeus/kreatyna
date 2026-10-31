@@ -15,6 +15,6 @@ Before editing any repository files for a new task:
 4. Run `jj describe -m "<concise description>"` to describe it.
 5. Only then edit files.
 
-When the change is ready, inspect the log again, remove any empty change you created, and report the change identifier, the work done, and the checks run for human review. Stop there. Run another `jj new` only after the human approves the current change.
+When the change is ready, run `bd export -o .beads/issues.jsonl` so the change records the current beads. Inspect the log again, remove any empty change you created, and report the change identifier, the work done, and the checks run for human review. Stop there. Run another `jj new` only after the human approves the current change.
 
 Exception: a change that edits no Rust (`.rs`) files gets no review (see "Code review: count the Rust files first" in [use-plannotator-inbox](../use-plannotator-inbox/SKILL.md)). Send the report, and you may start the next change without waiting for approval.

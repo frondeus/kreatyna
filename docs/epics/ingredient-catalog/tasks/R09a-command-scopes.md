@@ -1,6 +1,6 @@
 # R09a — Command scopes for child lifetimes
 
-Status: approved. Framework change: `oxtsnomz`; documentation change: `txlxmntq`.
+Tracked in beads: `vibetyna-flx.11`. Framework change: `oxtsnomz`; documentation change: `txlxmntq`.
 R09 is approved. R10 depends on R09a.
 
 ## Contract and implementation

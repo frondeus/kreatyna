@@ -11,6 +11,16 @@ a guided review of the Rust side and the demos goes to the Inbox (see
 "Code review: count the Rust files first" in that skill). The user does not
 review Swift.
 
+## Work tracking
+
+Beads (`bd`) owns status and dependencies for epics, slices, and bugs. Epic
+pages and plans in `docs/epics/` are design documents: context, decisions,
+mockups, and the implementation plan of each slice. They do not record status.
+A slice runs through the `mol-slice` formula: start it with
+[start-slice.sh](.agents/skills/plan-reviewable-epics/scripts/start-slice.sh),
+and `bd ready` shows its next step. Before a jj change is finished, run
+`bd export -o .beads/issues.jsonl`, so jj records the beads with the code.
+
 ## Architecture
 
 Build a native Apple application, macOS first and iOS second, with SwiftUI and

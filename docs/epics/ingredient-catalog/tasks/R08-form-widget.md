@@ -1,6 +1,6 @@
 # R08 — Ingredient create/edit form widget
 
-Status: approved. Change: `uwkxwylq`. R07 is approved.
+Tracked in beads: `vibetyna-flx.9`. Change: `uwkxwylq`. R07 is approved.
 
 ## Contract
 

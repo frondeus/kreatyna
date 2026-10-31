@@ -1,6 +1,6 @@
 # S01 — Swift integration and presentation
 
-Status: awaiting review. Change: `nqouwrvs`. The user handed over the Swift
+Tracked in beads: `vibetyna-flx.16`. Change: `nqouwrvs`. The user handed over the Swift
 side for this task.
 
 ## Contract

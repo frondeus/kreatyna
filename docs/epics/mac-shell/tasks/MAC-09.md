@@ -1,6 +1,6 @@
 # MAC-09 — Rename the `ios/` folder to `apple/`
 
-Status: approved. Change: `qttlvxyx`. Dependencies: none.
+Tracked in beads: `vibetyna-4rn.1`. Change: `qttlvxyx`. Dependencies: none.
 
 ## Open questions
 

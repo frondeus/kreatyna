@@ -12,18 +12,19 @@ later slices.
 
 ## Ground the plan
 
-1. Read the slice card in `docs/epics/<epic>/epic.html`: outcome, stubs,
-   acceptance, refs. Read the epic decisions (`E-xx`) and brief decisions
+1. Read the slice bead (`bd show <slice-bead>`) and its card in
+   `docs/epics/<epic>/epic.html`: outcome, stubs, acceptance, refs. Read the epic decisions (`E-xx`) and brief decisions
    (`D-xx`) it cites.
 2. Read the code the slice touches. Search for every reference you must
    change (`rg`), and record the result. A plan that says "update all paths"
    without the list is incomplete.
-3. Check the slice dependencies. Each one must be approved.
+3. Check the slice dependencies in `bd show <slice-bead>`. Each one must be
+   closed.
 
 ## Structure (fixed order)
 
-1. `# <ID> — <title>`, then a status line: status, jj change ID,
-   dependencies and their status.
+1. `# <ID> — <title>`, then a tracking line: `Tracked in beads: `<slice-bead>`.`,
+   the jj change ID, and the dependencies. Status lives only in beads.
 2. **Open questions.** Always first, so the reader sees them first. The
    user answers them in the Inbox before the plan is sent (see Review), so
    in a sent plan this section is usually "None.".
@@ -106,11 +107,13 @@ slice (see [use-plannotator-inbox](../use-plannotator-inbox/SKILL.md)).
    also becomes an `E-xx` entry on the epic page. An answer that takes your
    recommendation, or a **Looks good** label, accepts it. A partial answer
    gets a new, narrower question in the next round.
-3. Write the full plan. Set the slice's `status` to `ready` and its `plan` to
-   `tasks/<ID>.md` in the epic data object.
+3. Write the full plan. Set the slice's `plan` to `tasks/<ID>.md` in the epic
+   data object, and its bead's spec: `bd update <slice-bead> --spec-id
+   docs/epics/<epic>/tasks/<ID>.md`.
 4. Send an Inbox message with the plan attached. Stop until the user reviews
    it.
 5. Process each annotation on the plan as in step 2. A new question goes
    back to step 1 for that question only.
-6. Implement only after the user accepts the plan. Then continue with step 2
+6. Implement only after the user accepts the plan: close the "the user
+   accepts the plan" gate, and the slice's implement step becomes ready. Then continue with step 2
    of "Deliver one slice at a time" in the epic skill.

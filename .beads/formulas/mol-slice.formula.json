@@ -1,0 +1,44 @@
+{
+  "formula": "mol-slice",
+  "description": "Deliver one epic slice as one jj change: questions, plan, plan review, implementation, report, approval. Start it with .agents/skills/plan-reviewable-epics/scripts/start-slice.sh <slice-bead> <ID> <epic-folder>.",
+  "version": 1,
+  "type": "workflow",
+  "pour": true,
+  "vars": {
+    "slice": {"description": "Slice ID, such as MAC-06.", "required": true},
+    "epic": {"description": "Epic folder under docs/epics, such as mac-shell.", "required": true}
+  },
+  "steps": [
+    {
+      "id": "questions",
+      "title": "{{slice}}: ask the open questions",
+      "description": "Claim the slice bead. Start the jj change with `jj new` and `jj describe -m \"{{slice}}: <outcome>\"`. Read the slice bead, docs/epics/{{epic}}/epic.html and the code it touches. Ask every open question in one Inbox thread named \"{{slice}}\", as :::question blocks with a recommendation. If there are no open questions, say so in the plan and close this step."
+    },
+    {
+      "id": "plan",
+      "title": "{{slice}}: write and send the plan",
+      "needs": ["questions"],
+      "description": "Write docs/epics/{{epic}}/tasks/{{slice}}.md with the write-slice-plan skill. Record the answers as decisions in it. Set the slice bead's spec-id to that path. Send the plan in the \"{{slice}}\" thread as an attachment."
+    },
+    {
+      "id": "implement",
+      "title": "{{slice}}: implement",
+      "needs": ["plan"],
+      "gate": {"type": "human"},
+      "description": "Waits for the human gate: close it when the user accepts the plan (\"Looks good\", \"LGTM\" or all recommendations chosen). Then implement the plan in the slice's jj change: Rust, FFI, Swift and their tests. Run the checks the plan names: cargo test, cargo clippy, mac-test, ios-test, snapshots."
+    },
+    {
+      "id": "report",
+      "title": "{{slice}}: report",
+      "needs": ["implement"],
+      "description": "Count Rust files: jj diff -r @ --name-only 'glob:**/*.rs'. Zero: send a short report in the \"{{slice}}\" thread. Some: send the demo as an Inbox message first (screenshots in the body and in attachments), then a guided review of the Rust side (use-plannotator-inbox skill). Discuss review findings in the Inbox before changing code."
+    },
+    {
+      "id": "finish",
+      "title": "{{slice}}: close the slice",
+      "needs": ["report"],
+      "gate": {"type": "human"},
+      "description": "Waits for the human gate: close it when the user approves the slice. Then resolve the \"{{slice}}\" Inbox thread and close the slice bead. Start the next slice only when the user asks."
+    }
+  ]
+}

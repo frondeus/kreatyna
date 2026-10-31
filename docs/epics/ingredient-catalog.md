@@ -1,10 +1,7 @@
 # Ingredient catalog epic
 
-Status: architecture and task graph approved. R01–R11, including R07a and R09a,
-are approved. R12 is awaiting review; its
-[implementation plan](ingredient-catalog/tasks/R12-uniffi-types.md) is part of
-that change. S01, the Swift integration, is awaiting review; see its
-[demo](ingredient-catalog/demo.md). Other later tasks remain planned.
+Tracked in beads: epic `vibetyna-flx`. The architecture and task graph
+were approved, and every task shipped.
 
 ## Goal and scope
 
@@ -152,9 +149,7 @@ handover.
 Every row below is a separate implementation task and `jj` change, including its
 relevant tests. Dependencies mean the preceding contracts must be approved. They
 do not mean all nodes on one layer will be implemented before pausing for review.
-R01–R12, including R07a and R09a, are **approved**; the initial R13 runtime
-baseline is **awaiting review**. Later work is **planned**; its detailed design is
-deferred until the runtime problems are identified and discussed individually.
+Status lives in beads, epic `vibetyna-flx`.
 
 ### Rust tasks
 

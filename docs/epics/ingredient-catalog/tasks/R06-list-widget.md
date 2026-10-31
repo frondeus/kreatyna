@@ -1,6 +1,6 @@
 # R06 — Ingredient list widget
 
-Status: approved. Change: `llyullvx`. R05 is approved.
+Tracked in beads: `vibetyna-flx.6`. Change: `llyullvx`. R05 is approved.
 
 Add a Rust `IngredientList` with its own event, outcome, and view types. It loads
 complete records through the ingredient store capability, keeps them private,

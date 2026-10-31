@@ -1,6 +1,6 @@
 # S02 — Application shutdown hook propagation
 
-Status: awaiting review. Change: `mtqllwxk`. Depends on approved krucyfiks change
+Tracked in beads: `vibetyna-flx.17`. Change: `mtqllwxk`. Depends on approved krucyfiks change
 `mxxtlnuy`.
 
 ## Contract

@@ -1,6 +1,6 @@
 # MAC-05 — Create an ingredient from the toolbar
 
-Status: approved. Change: `kvmxpqvv`. Dependencies: MAC-04
+Tracked in beads: `vibetyna-4rn.9`. Change: `kvmxpqvv`. Dependencies: MAC-04
 (approved).
 
 ## Open questions

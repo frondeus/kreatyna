@@ -1,6 +1,6 @@
 # R09 — Typed ingredient navigation
 
-Status: approved. Change: `skqrovro`. R08 is approved.
+Tracked in beads: `vibetyna-flx.10`. Change: `skqrovro`. R08 is approved.
 
 ## Model
 

@@ -1,6 +1,6 @@
 # R01 implementation plan: ingredient domain
 
-Status: approved. Change: `tskssmvt`.
+Tracked in beads: `vibetyna-flx.1`. Change: `tskssmvt`.
 
 Introduce `kreatyna::ingredients` with definitions in `ingredients/model.rs` and
 public re-exports in `ingredients/mod.rs`. Add `uuid` (v4), `rust_decimal`, and

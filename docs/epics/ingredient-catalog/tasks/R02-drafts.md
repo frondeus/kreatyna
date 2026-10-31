@@ -1,6 +1,6 @@
 # R02 — Ingredient drafts and typed validation
 
-Status: approved. Change: `pwkoosll`. Dependency R01 is approved.
+Tracked in beads: `vibetyna-flx.2`. Change: `pwkoosll`. Dependency R01 is approved.
 
 Implement editable ingredient and reference-unit drafts in `ingredients/draft.rs`
 and re-export them from `ingredients`. Drafts contain text fields, explicit

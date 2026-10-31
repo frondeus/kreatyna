@@ -1,6 +1,6 @@
 # R13 — App runtime baseline
 
-Status: awaiting review. Change: `uqmquulk`. R12 and its companion krucyfiks
+Tracked in beads: `vibetyna-flx.15`. Change: `uqmquulk`. R12 and its companion krucyfiks
 change are approved.
 
 ## Baseline

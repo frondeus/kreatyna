@@ -1,6 +1,6 @@
 # MAC-03 — Counter leaves the app
 
-Status: approved. Change: `vwrumwyu`.
+Tracked in beads: `vibetyna-4rn.7`. Change: `vwrumwyu`.
 Dependencies: MAC-11 (approved).
 
 ## Open questions

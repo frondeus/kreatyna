@@ -1,6 +1,6 @@
 # R10 — Ingredient catalog coordinator
 
-Status: approved. Change: `rllwnqlk`. R09a is approved.
+Tracked in beads: `vibetyna-flx.12`. Change: `rllwnqlk`. R09a is approved.
 
 ## Composition contract
 

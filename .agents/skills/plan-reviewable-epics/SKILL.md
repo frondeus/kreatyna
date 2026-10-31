@@ -1,6 +1,6 @@
 ---
 name: plan-reviewable-epics
-description: Plan a larger feature in this repository as an epic of small vertical slices (SQLite → Rust → UniFFI → SwiftUI in one change), drawn as a dependency graph on a self-contained HTML page, then deliver one slice per jj change. Use when work spans several behaviors or screens; ordinary small fixes need no epic.
+description: Plan a larger feature in this repository as an epic of small vertical slices (SQLite → Rust → UniFFI → SwiftUI in one change), tracked as beads with dependencies and explained on a self-contained HTML page, then deliver one slice per jj change. Use when work spans several behaviors or screens; ordinary small fixes need no epic.
 ---
 
 # Plan reviewable epics
@@ -79,45 +79,64 @@ it gets its own jj change and review there. Show one suggested order, and mark t
 ordering choices that are the user's preference rather than dependencies.
 Name the critical path.
 
+Beads holds the graph, and it is the only place for status and dependencies:
+
+- One `epic` bead: `bd create "<Epic title>" --type epic --labels <epic>
+  --external-ref <epic> --spec-id docs/epics/<epic>/epic.html`.
+- One child bead per slice: `--parent <epic-bead>`, title `<ID>: <title>`,
+  `--description` the outcome, `--acceptance` the acceptance list, `--design`
+  the stubs, `--notes` the brief decisions it cites, `--labels` its layers
+  (`db`, `rust`, `ffi`, `swift`) and `tooling` for tooling slices,
+  `--external-ref <ID>`.
+- One `bd dep add <later> <earlier>` per edge. An edge to another epic links
+  to that slice's bead, or to the other epic bead when the whole epic must
+  finish first.
+
+`bd graph <epic-bead>` draws the graph in the terminal, and
+`scripts/epic-graph.sh <epic-bead> graph.png` draws it as an image to attach to
+an Inbox message (`bd graph --html` draws nothing there).
+
 ## Write the epic as an HTML page
 
-Write the epic to `docs/epics/<epic>/epic.html`, because graphs and status read
-better visually than in Markdown. Keep it one self-contained static page that
-works offline: inline CSS and JS, no external scripts, fonts, or images.
+Write the epic's design to `docs/epics/<epic>/epic.html`, because cards,
+mockups and decisions read better visually than in Markdown. Keep it one
+self-contained static page that works offline: inline CSS and JS, no external
+scripts, fonts, or images. Start from an existing epic page. The page records
+no status and no dependencies; beads does.
 
-- **One inline data object** holds the epic: slices with `id`, `title`,
-  `kind` (`slice`, `gate`, `tooling`), `status`, `deps`, `outcome`, `layers`
-  (db, rust, ffi, swift), `stubs`, `acceptance`, `refs` (brief `D-xx`), and an
-  optional `plan` link. Everything visual is rendered from it, so the graph,
-  cards, and tables cannot disagree.
-- **DAG**: inline SVG laid out by dependency depth (column = longest path from
-  a root), with arrows for edges and nodes colored by status. Clicking a node
-  scrolls to its card. Edges to slices in another epic appear as a labelled
-  external node.
-- **Status legend**: `planned`, `ready`, `in-progress`, `awaiting-review`,
-  `approved`. Implemented is not approved; only the user approves.
+- **One inline data object** holds the epic: slices with `id`, `bead`,
+  `title`, `kind` (`slice`, `gate`, `tooling`), `outcome`, `layers` (db, rust,
+  ffi, swift), `stubs`, `acceptance`, `refs` (brief `D-xx`), and an optional
+  `plan` link. The cards and the suggested order are rendered from it.
 - **Sections**: context and goal (link the brief and mockups), architecture,
-  epic-level decisions, the graph, slice cards in the suggested order, open
-  questions, and out of scope (cite parked `F-xx` items).
+  epic-level decisions, tracking (the epic bead and the graph commands),
+  the suggested order, slice cards in that order, open questions, and out of
+  scope (cite parked `F-xx` items).
 - **Themes**: light and dark through CSS tokens on `:root`, following
   `prefers-color-scheme`, plus a toggle.
 - Write cards for a reader who knows the app but not the plan. Prefer concrete
   examples ("400 g Mutti tomatoes → tomato") over shorthand.
 
 Render the page in light and dark (for example with headless Chrome) and look
-at the screenshots before handing it over. Check that edges match `deps`,
-labels don't overlap, and every slice has a card. Send it to the user as an attachment of an
+at the screenshots before handing it over. Check that `bd graph <epic-bead>`
+shows the intended edges, labels don't overlap, and every slice has a card with
+its bead. Send it to the user as an attachment of an
 Inbox message; process the annotations as in discovery and redraw. A **Looks good** label on a proposal means the user
 accepts it: move that open question into the decisions as an `E-xx` entry
 (noting the `Q-xx` it came from), and update the slices that cite it.
 
-Keep the epic page and any brief updates in their own jj change, following
+Keep the epic page, the beads export, and any brief updates in their own jj change, following
 [use-of-jj-vcs](../use-of-jj-vcs/SKILL.md). Approval of the epic establishes
 direction; it does not remove the review boundary between slices.
 
 ## Deliver one slice at a time
 
-Pick the next slice whose dependencies are approved. In its own jj change:
+`bd ready` lists the slices whose dependencies are closed. Start one with
+`scripts/start-slice.sh <slice-bead> <ID> <epic>`: it claims the bead and
+attaches the `mol-slice` workflow (`.beads/formulas/mol-slice.formula.json`).
+From then on `bd ready` shows the slice's next step, and `bd gate list` shows
+what waits for the user. Close each step when it is done. In the slice's own
+jj change:
 
 1. Write its implementation plan at `docs/epics/<epic>/tasks/<ID>.md`, following
    [write-slice-plan](../write-slice-plan/SKILL.md). If the plan has open
@@ -133,16 +152,19 @@ Pick the next slice whose dependencies are approved. In its own jj change:
    slice touches. Capture demo evidence per
    [document-apple-delivery](../document-apple-delivery/SKILL.md). Report any check
    that could not run.
-4. Set the slice's status in the epic page's data object to `awaiting-review`.
-5. Record the behavior, validation, and remaining stubs in the plan's
+4. Record the behavior, validation, and remaining stubs in the plan's
    Validation section. Then follow "Code review: count the Rust files first"
    in [use-plannotator-inbox](../use-plannotator-inbox/SKILL.md). When the
    change edits Rust files, send the demo (if any) and a guided review of the
    Rust side to the slice's Inbox thread, and stop for that review, even when
    another slice is technically independent. When it edits no Rust files,
    send only a short report; there is no review to wait for.
+5. When the user approves the slice, close the "the user approves the slice"
+   gate and the slice's last step, resolve its Inbox thread, and close the
+   slice bead. Run `bd export -o .beads/issues.jsonl` before the change is
+   finished.
 
 Review fixes stay in the same slice's change. Do not combine slices or squash
 them into an epic-sized change. If implementation reveals a missing dependency
-or larger scope, revise the graph and discuss the new boundary before absorbing
+or larger scope, revise the beads and the page and discuss the new boundary before absorbing
 more work into the current slice.

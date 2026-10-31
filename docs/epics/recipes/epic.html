@@ -6,19 +6,13 @@
 <title>Recipe MVP Epic</title>
 <!--
   Epic page, per .agents/skills/plan-reviewable-epics/SKILL.md.
-  Edit the EPIC data object near the end of this file; the graph, cards,
-  order and status summary are rendered from it. Prose sections are plain HTML.
+  Edit the EPIC data object near the end of this file; the cards and the
+  order are rendered from it. Status and dependencies live in beads. Prose sections are plain HTML.
 -->
 <style>
   :root {
     --bg: #f5f5f7; --surface: #ffffff; --surface-2: #f0f0f3; --border: #d8d8de;
     --text: #1d1d1f; --muted: #6e6e73; --accent: #0a74e6; --accent-soft: rgba(10,116,230,.12);
-    --edge: #a0a0a8; --edge-hot: #0a74e6;
-    --st-planned: #8e8e96;   --st-planned-bg: #f4f4f6;
-    --st-ready: #0a74e6;     --st-ready-bg: #e8f1fd;
-    --st-progress: #b35c00;  --st-progress-bg: #fdf1e3;
-    --st-review: #7048e8;    --st-review-bg: #efeafd;
-    --st-approved: #2b8a3e;  --st-approved-bg: #e6f4ea;
     --gate: #c2255c; --gate-soft: rgba(194,37,92,.10);
     --tool: #5c7cfa; --tool-soft: rgba(92,124,250,.12);
     --shadow: 0 1px 3px rgba(0,0,0,.08), 0 6px 18px rgba(0,0,0,.06);
@@ -27,12 +21,6 @@
     :root:not([data-theme="light"]) {
       --bg: #111113; --surface: #1e1e21; --surface-2: #26262a; --border: #38383e;
       --text: #f2f2f4; --muted: #9a9aa2; --accent: #4aa3ff; --accent-soft: rgba(74,163,255,.16);
-      --edge: #5f5f68; --edge-hot: #4aa3ff;
-      --st-planned: #9a9aa2;   --st-planned-bg: #26262a;
-      --st-ready: #4aa3ff;     --st-ready-bg: #182a40;
-      --st-progress: #ffa94d;  --st-progress-bg: #3a2914;
-      --st-review: #b197fc;    --st-review-bg: #2a2342;
-      --st-approved: #69db7c;  --st-approved-bg: #19331f;
       --gate: #f06595; --gate-soft: rgba(240,101,149,.14);
       --tool: #91a7ff; --tool-soft: rgba(145,167,255,.14);
       --shadow: 0 1px 3px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
@@ -41,12 +29,6 @@
   :root[data-theme="dark"] {
     --bg: #111113; --surface: #1e1e21; --surface-2: #26262a; --border: #38383e;
     --text: #f2f2f4; --muted: #9a9aa2; --accent: #4aa3ff; --accent-soft: rgba(74,163,255,.16);
-    --edge: #5f5f68; --edge-hot: #4aa3ff;
-    --st-planned: #9a9aa2;   --st-planned-bg: #26262a;
-    --st-ready: #4aa3ff;     --st-ready-bg: #182a40;
-    --st-progress: #ffa94d;  --st-progress-bg: #3a2914;
-    --st-review: #b197fc;    --st-review-bg: #2a2342;
-    --st-approved: #69db7c;  --st-approved-bg: #19331f;
     --gate: #f06595; --gate-soft: rgba(240,101,149,.14);
     --tool: #91a7ff; --tool-soft: rgba(145,167,255,.14);
     --shadow: 0 1px 3px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
@@ -80,47 +62,10 @@
   th { color: var(--muted); font-weight: 600; font-size: 13px; }
   .table-wrap { overflow-x: auto; }
 
-  /* summary */
-  .summary { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-  .bar { flex: 1 1 260px; display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: var(--surface-2); }
-  .bar span { display: block; height: 100%; }
-  .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 13px; color: var(--muted); margin: 8px 0 12px; }
-  .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; border: 2px solid; }
 
-  /* status pills */
-  .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
-  .st-planned { color: var(--st-planned); background: var(--st-planned-bg); border-color: var(--st-planned); }
-  .st-ready { color: var(--st-ready); background: var(--st-ready-bg); border-color: var(--st-ready); }
-  .st-in-progress { color: var(--st-progress); background: var(--st-progress-bg); border-color: var(--st-progress); }
-  .st-awaiting-review { color: var(--st-review); background: var(--st-review-bg); border-color: var(--st-review); }
-  .st-approved { color: var(--st-approved); background: var(--st-approved-bg); border-color: var(--st-approved); }
   .kind { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 5px; }
   .kind-gate { color: var(--gate); background: var(--gate-soft); }
   .kind-tooling { color: var(--tool); background: var(--tool-soft); }
-
-  /* graph */
-  .dag-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; box-shadow: var(--shadow); }
-  #dag { display: block; margin: 0 auto; }
-  #dag .edge { fill: none; stroke: var(--edge); stroke-width: 1.4; }
-  #dag .edge.critical { stroke: var(--edge-hot); stroke-width: 2.4; }
-  #dag .edge.dim { opacity: .15; }
-  #dag .edge.hot { stroke: var(--edge-hot); stroke-width: 2.4; opacity: 1; }
-  #dag .node { cursor: pointer; }
-  #dag .node rect { stroke-width: 2; }
-  #dag .node.dim { opacity: .35; }
-  #dag .node text { font: 600 12px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; fill: var(--text); }
-  #dag .node text.sub { font-weight: 400; font-size: 11px; fill: var(--muted); }
-  #dag .n-planned rect { fill: var(--st-planned-bg); stroke: var(--st-planned); }
-  #dag .n-ready rect { fill: var(--st-ready-bg); stroke: var(--st-ready); }
-  #dag .n-in-progress rect { fill: var(--st-progress-bg); stroke: var(--st-progress); }
-  #dag .n-awaiting-review rect { fill: var(--st-review-bg); stroke: var(--st-review); }
-  #dag .n-approved rect { fill: var(--st-approved-bg); stroke: var(--st-approved); }
-  #dag .k-gate rect { stroke-dasharray: 6 4; stroke: var(--gate); }
-  #dag .k-tooling rect { stroke-dasharray: 2 3; }
-  #dag .k-external rect { fill: var(--surface-2); stroke: var(--edge); stroke-dasharray: 4 3; }
-  #dag marker path { fill: var(--edge); }
-  #dag marker#arrow-hot path { fill: var(--edge-hot); }
-  .graph-note { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
 
   /* order */
   ol.order { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 0; counter-reset: o; }
@@ -172,17 +117,16 @@
     <button class="theme-btn" id="theme-btn" type="button">Theme: auto</button>
   </header>
   <nav class="toc">
-    <a href="#status">Status</a><a href="#context">Context</a><a href="#architecture">Architecture</a>
-    <a href="#decisions">Decisions</a><a href="#graph">Graph</a><a href="#order">Order</a>
+    <a href="#tracking">Tracking</a><a href="#context">Context</a><a href="#architecture">Architecture</a>
+    <a href="#decisions">Decisions</a><a href="#order">Order</a>
     <a href="#slices">Slices</a><a href="#open">Open questions</a><a href="#scope">Out of scope</a>
   </nav>
 
-  <section id="status">
-    <h2>Status</h2>
-    <div class="panel">
-      <div class="summary"><div class="bar" id="bar"></div><span id="counts" class="muted"></span></div>
-      <div class="legend" id="legend"></div>
-    </div>
+  <section id="tracking">
+    <h2>Tracking</h2>
+    <p class="prose">Status and dependencies live in beads, epic <code>vibetyna-hrx</code>. Each card names its bead.
+      <code>bd graph vibetyna-hrx</code> draws the slice graph in the terminal;
+      <code>.agents/skills/plan-reviewable-epics/scripts/epic-graph.sh vibetyna-hrx graph.png</code> draws it as an image.</p>
   </section>
 
   <section id="context">
@@ -252,21 +196,6 @@
     </div>
   </section>
 
-  <section id="graph">
-    <h2>Slice graph</h2>
-    <p class="prose">An arrow means “needs”: the lower slice builds on the upper one. Rows are dependency depth, not a schedule.
-      Hover a slice to see what it needs and what needs it; click it to jump to its card.
-      The thick blue chain is the one named under the graph.</p>
-    <div class="legend" id="kind-legend">
-      <span><span class="sw" style="border-color:var(--st-planned);border-style:solid"></span>vertical slice</span>
-      <span data-kind="gate"><span class="sw" style="border-color:var(--gate);border-style:dashed"></span>human gate (only you can do it)</span>
-      <span data-kind="tooling"><span class="sw" style="border-color:var(--st-planned);border-style:dotted"></span>tooling</span>
-      <span data-kind="external"><span class="sw" style="border-color:var(--edge);border-style:dashed;background:var(--surface-2)"></span>another epic</span>
-    </div>
-    <div class="dag-wrap"><svg id="dag" role="img" aria-label="Slice dependency graph"></svg></div>
-    <p class="graph-note" id="critical"></p>
-  </section>
-
   <section id="order">
     <h2>Suggested order</h2>
     <p class="prose" id="order-note"></p>
@@ -319,12 +248,6 @@ const EPIC = {
   eyebrow: "Epic · recipes · planned 2026-10-11",
   title: "Recipe MVP Epic",
   lede: "The hand-made DAG recipe on the Mac (D-06): a recipe list with one-cook total time, a read view in stages, ingredient lines with an optional catalog link, and steps on an editable canvas. It's built in 22 thin vertical slices.",
-  external: [
-    { id: "mac-shell", label: "Mac shell epic", href: "../mac-shell/epic.html" },
-  ],
-  critical: ["REC-01", "REC-02", "REC-03", "REC-04", "REC-14", "REC-17", "REC-21"],
-  criticalLabel: "Highlighted: the chain to the one-cook total time",
-  criticalNote: "Many chains are seven slices long, so none is uniquely critical; stages (REC-19) and the full save rule (REC-22) are just as deep.",
   orderNote: "One valid order; it is a preference, not extra dependencies. Get a recipe you can create and open, then build the step graph early, because it's the reason the feature exists and the riskiest UI. Ingredient details follow. Housekeeping and the full save rule come last.",
   order: [
     { phase: "Skeleton: a recipe you can create, open and rename" }, "REC-01", "REC-02", "REC-03", "REC-04",
@@ -334,10 +257,10 @@ const EPIC = {
   ],
   slices: [
     {
-      id: "REC-01", status: "planned", short: "Recipes section",
+      id: "REC-01", bead: "vibetyna-hrx.1", short: "Recipes section",
       title: "An empty Recipes section in the sidebar",
       outcome: "The Mac sidebar shows **Recipes** above **Ingredients**. Selecting it shows an empty list: “No recipes yet”.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["mac-shell"],
+      layers: ["db", "rust", "ffi", "swift"],
       stubs: ["**+ New recipe** in the toolbar is visible but does nothing (REC-02).", "The detail pane says “Select a recipe” (REC-03)."],
       acceptance: [
         "Migration adds a `recipes` table (UUID, title, title key). The store can list recipes.",
@@ -348,10 +271,10 @@ const EPIC = {
       refs: ["D-03", "D-17", "D-18"],
     },
     {
-      id: "REC-02", status: "planned", short: "Create by title",
+      id: "REC-02", bead: "vibetyna-hrx.2", short: "Create by title",
       title: "Create a recipe with just a title",
       outcome: "**+ New recipe** turns the detail pane into the editor with a title field, Cancel and Save. Saving “Shakshuka” adds a row to the list. A second “shakshuka” is refused with “A recipe with this title already exists”.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-01"],
+      layers: ["db", "rust", "ffi", "swift"],
       stubs: [
         "The editor shows empty **Ingredients** and canvas areas with “coming soon” (REC-07, REC-14).",
         "List rows show the title only; time and step count come in REC-14 and REC-21.",
@@ -364,10 +287,10 @@ const EPIC = {
       refs: ["D-39", "D-40", "D-18"],
     },
     {
-      id: "REC-03", status: "planned", short: "Read view",
+      id: "REC-03", bead: "vibetyna-hrx.3", short: "Read view",
       title: "Open a recipe to read it",
       outcome: "Clicking “Shakshuka” shows its read view in the detail pane: the title, with **Ingredients** and **Steps** headings that are still empty.",
-      layers: ["rust", "ffi", "swift"], deps: ["REC-02"],
+      layers: ["rust", "ffi", "swift"],
       stubs: ["**Edit** in the toolbar is visible but does nothing (REC-04).", "Empty Ingredients and Steps sections say “None yet”."],
       acceptance: [
         "Recipe navigation: list → read view. The list selection comes from the Rust route; clicking only sends an event. Opening another recipe replaces the read view.",
@@ -377,10 +300,10 @@ const EPIC = {
       refs: ["D-16", "D-18"],
     },
     {
-      id: "REC-04", status: "planned", short: "Edit title",
+      id: "REC-04", bead: "vibetyna-hrx.4", short: "Edit title",
       title: "Edit a recipe's title",
       outcome: "**Edit** in the read view opens the editor for that recipe. Save returns to the updated read view. Cancel with changes asks “Discard changes?”, and so does clicking another recipe.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-03"],
+      layers: ["db", "rust", "ffi", "swift"],
       acceptance: [
         "Store update by UUID; a missing recipe is an error, never a silent insert. Uniqueness still holds when renaming.",
         "Navigation: read view → editor → back to the same read view; dirty discard decided in Rust.",
@@ -389,10 +312,10 @@ const EPIC = {
       refs: ["D-18", "D-39"],
     },
     {
-      id: "REC-05", status: "planned", short: "Delete recipe",
+      id: "REC-05", bead: "vibetyna-hrx.5", short: "Delete recipe",
       title: "Delete a recipe",
       outcome: "**Delete** in the read view asks “Delete Shakshuka?”. Confirming removes it and empties the detail pane.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-03"],
+      layers: ["db", "rust", "ffi", "swift"],
       acceptance: [
         "Deletion cascades to everything the recipe owns at that point (lines, steps, edges as they exist).",
         "Uses the shared confirmation widget. Snapshot: confirmation. UI smoke: delete, relaunch, gone.",
@@ -400,18 +323,18 @@ const EPIC = {
       refs: ["D-44"],
     },
     {
-      id: "REC-06", status: "planned", short: "Search recipes",
+      id: "REC-06", bead: "vibetyna-hrx.6", short: "Search recipes",
       title: "Search recipes",
       outcome: "Typing “sha” in the search field narrows the list to “Shakshuka”, with a “No matches” state.",
-      layers: ["rust", "ffi", "swift"], deps: ["REC-02"],
+      layers: ["rust", "ffi", "swift"],
       acceptance: ["Rust filters by the title key, like the catalog. Snapshots: filtered list, no matches."],
       refs: [],
     },
     {
-      id: "REC-07", status: "planned", short: "Lines: name only",
+      id: "REC-07", bead: "vibetyna-hrx.7", short: "Lines: name only",
       title: "Ingredient lines with a name",
       outcome: "The editor's Ingredients column gets **+ Line**. You add “penne pasta” and “olive oil”, remove one, and save. The read view lists them.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-04"],
+      layers: ["db", "rust", "ffi", "swift"],
       stubs: ["Each line shows only its name; amount, unit and note come in REC-08."],
       acceptance: [
         "Migration adds ingredient lines (UUID, recipe, position, name). Lines are saved with the recipe in one transaction.",
@@ -421,10 +344,10 @@ const EPIC = {
       refs: ["D-10"],
     },
     {
-      id: "REC-08", status: "planned", short: "Amount, unit, note",
+      id: "REC-08", bead: "vibetyna-hrx.8", short: "Amount, unit, note",
       title: "Amount, known unit and note on a line",
       outcome: "A line becomes “300 g penne pasta” or “1 tbsp olive oil, extra virgin”. The unit picker offers g, kg, ml, l, tsp, tbsp, cup and piece. Amount and unit are optional, so “salt, to taste” works.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-07"],
+      layers: ["db", "rust", "ffi", "swift"],
       acceptance: [
         "Exact decimal amounts (catalog rules). Unit present without amount, or a non-positive amount, is a typed issue.",
         "Snapshots: line editor popover, lines in the read view.",
@@ -432,18 +355,18 @@ const EPIC = {
       refs: ["D-12", "D-25"],
     },
     {
-      id: "REC-09", status: "planned", short: "Custom units",
+      id: "REC-09", bead: "vibetyna-hrx.9", short: "Custom units",
       title: "Custom units",
       outcome: "**Custom unit…** in the picker lets a line say “1 knob ginger”, kept exactly as written.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-08"],
+      layers: ["db", "rust", "ffi", "swift"],
       acceptance: ["Custom unit text is stored as written and never converted. Snapshot: custom unit line."],
       refs: ["D-25"],
     },
     {
-      id: "REC-10", status: "planned", short: "Catalog link",
+      id: "REC-10", bead: "vibetyna-hrx.10", short: "Catalog link",
       title: "Link a line to a catalog ingredient",
       outcome: "In the line editor you pick a catalog ingredient, so the line reads “400 g Mutti tomatoes → tomato”. **Unlink** removes the link. Unlinked lines show a quiet “no link”.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-07"],
+      layers: ["db", "rust", "ffi", "swift"],
       stubs: ["The picker is a plain searchable list for now; suggestions while typing come in REC-11."],
       acceptance: [
         "Nullable link from line to ingredient. The line keeps its own name (D-11).",
@@ -452,18 +375,18 @@ const EPIC = {
       refs: ["D-11", "D-24"],
     },
     {
-      id: "REC-11", status: "planned", short: "Suggestions + nudge",
+      id: "REC-11", bead: "vibetyna-hrx.11", short: "Suggestions + nudge",
       title: "Catalog suggestions while typing",
       outcome: "Typing “Mutti tom” offers “tomato” and “canned tomatoes”; one click links it. A saved unlinked line with a likely match shows a suggestion chip “→ tomato?” (Q-R6).",
-      layers: ["rust", "ffi", "swift"], deps: ["REC-10"],
+      layers: ["rust", "ffi", "swift"],
       acceptance: ["Matching runs in Rust against catalog name keys. Rust tests for ranking and the likely-match rule. Snapshots: suggestion list, chip."],
       refs: ["D-23", "D-24"],
     },
     {
-      id: "REC-12", status: "planned", short: "Reference units",
+      id: "REC-12", bead: "vibetyna-hrx.12", short: "Reference units",
       title: "The linked ingredient's units in the picker",
       outcome: "When a line links to “garlic”, the unit picker also offers “clove ≈ 5 g”, taken from the catalog.",
-      layers: ["rust", "ffi", "swift"], deps: ["REC-08", "REC-10"],
+      layers: ["rust", "ffi", "swift"],
       acceptance: [
         "Choosing a reference unit stores it by name; if the link is removed later, the line keeps the unit as custom text.",
         "Snapshot: picker with reference units.",
@@ -471,10 +394,10 @@ const EPIC = {
       refs: ["D-25"],
     },
     {
-      id: "REC-13", status: "planned", short: "Catalog delete keeps lines",
+      id: "REC-13", bead: "vibetyna-hrx.13", short: "Catalog delete keeps lines",
       title: "Deleting a catalog ingredient that recipes use",
       outcome: "Deleting “tomato” from the catalog says “It's linked from 3 recipes. Their lines keep their text and lose the link.” After deleting, those lines read “400 g Mutti tomatoes”, unlinked.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-10"],
+      layers: ["db", "rust", "ffi", "swift"],
       acceptance: [
         "Deleting an ingredient clears links in the same transaction. The count comes from the store.",
         "Catalog detail widget shows the count. Snapshot: catalog delete confirmation with count.",
@@ -482,10 +405,10 @@ const EPIC = {
       refs: ["D-36"],
     },
     {
-      id: "REC-14", status: "planned", short: "Canvas: add steps",
+      id: "REC-14", bead: "vibetyna-hrx.14", short: "Canvas: add steps",
       title: "Add steps on a canvas",
       outcome: "The editor shows a canvas. Right-click on empty space ▸ **Add step** places a node where you clicked. Selecting a node opens the inspector, where you type its title (“Dice onion”). The read view lists the steps, and the list row shows “3 steps”.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-04"],
+      layers: ["db", "rust", "ffi", "swift"],
       stubs: [
         "Nodes can't be moved yet (REC-15) or deleted (REC-16).",
         "The inspector shows Duration, Instructions and After as disabled placeholders (REC-17, REC-18).",
@@ -499,26 +422,26 @@ const EPIC = {
       refs: ["D-08", "D-19", "D-20", "D-15"],
     },
     {
-      id: "REC-15", status: "planned", short: "Drag nodes",
+      id: "REC-15", bead: "vibetyna-hrx.15", short: "Drag nodes",
       title: "Move steps on the canvas",
       outcome: "You drag “Dice onion” to a new place; after saving and reopening, it's still there.",
-      layers: ["rust", "ffi", "swift"], deps: ["REC-14"],
+      layers: ["rust", "ffi", "swift"],
       acceptance: ["Swift owns only the drag in progress and sends one move event on drop. Rust test for moves; UI smoke: drag, save, reopen."],
       refs: ["D-19"],
     },
     {
-      id: "REC-16", status: "planned", short: "Delete step",
+      id: "REC-16", bead: "vibetyna-hrx.16", short: "Delete step",
       title: "Delete a step",
       outcome: "Select a node and press [[⌫]], or right-click it ▸ **Delete step**. It disappears, along with its connections once those exist.",
-      layers: ["rust", "ffi", "swift"], deps: ["REC-14"],
+      layers: ["rust", "ffi", "swift"],
       acceptance: ["Rust removes the step and anything that refers to it. Rust tests; snapshot of the context menu."],
       refs: [],
     },
     {
-      id: "REC-17", status: "planned", short: "Step details",
+      id: "REC-17", bead: "vibetyna-hrx.17", short: "Step details",
       title: "Duration, active/waiting and instructions",
       outcome: "The inspector sets “6 min”, **Active** or **Waiting**, and optional instructions (“Medium heat, stir often”). Active nodes are solid, waiting nodes dashed. The read view shows each step's duration.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-14"],
+      layers: ["db", "rust", "ffi", "swift"],
       acceptance: [
         "A duration is one positive value (D-21); a new step has none until set (Q-R5).",
         "Rust tests for parsing and validation. Snapshots: active and waiting nodes, inspector filled in.",
@@ -526,10 +449,10 @@ const EPIC = {
       refs: ["D-09", "D-21", "D-30"],
     },
     {
-      id: "REC-18", status: "planned", short: "Connect steps",
+      id: "REC-18", bead: "vibetyna-hrx.18", short: "Connect steps",
       title: "Connect steps into a graph",
       outcome: "Drag from the ● on “Dice onion” to the ○ on “Fry onion & garlic”: an arrow appears, and the inspector's **After** lists “Dice onion”. A connection that would make a loop snaps back. Click an arrow and press [[⌫]] to remove it.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-14"],
+      layers: ["db", "rust", "ffi", "swift"],
       acceptance: [
         "Migration adds step edges. Rust rejects cycles, self-loops and duplicates, with property-style tests for the cycle check.",
         "Several loose ends are fine (D-22). Snapshots: connected graph, port-drag preview.",
@@ -537,26 +460,26 @@ const EPIC = {
       refs: ["D-20", "D-22"],
     },
     {
-      id: "REC-19", status: "planned", short: "Stages",
+      id: "REC-19", bead: "vibetyna-hrx.19", short: "Stages",
       title: "The read view shows stages",
       outcome: "The read view groups steps by what can start together: “1 · Dice onion, Mince garlic, Boil water”, then “2 · Fry onion & garlic”…",
-      layers: ["rust", "ffi", "swift"], deps: ["REC-18"],
+      layers: ["rust", "ffi", "swift"],
       acceptance: ["Pure Rust stage function with tests (diamonds, loose ends, single step). Order within a stage per Q-R3. Snapshot: staged read view."],
       refs: ["D-16"],
     },
     {
-      id: "REC-20", status: "planned", short: "Steps use lines",
+      id: "REC-20", bead: "vibetyna-hrx.20", short: "Steps use lines",
       title: "Steps use ingredient lines",
       outcome: "The inspector's **Uses** adds “2 tbsp olive oil” to “Fry onion & garlic”. The read view shows each step's ingredients under it.",
-      layers: ["db", "rust", "ffi", "swift"], deps: ["REC-07", "REC-14"],
+      layers: ["db", "rust", "ffi", "swift"],
       acceptance: ["Migration adds step-uses-line links. Removing a line or step removes its uses (Q-R2). Snapshots: inspector Uses, read view."],
       refs: ["D-10"],
     },
     {
-      id: "REC-21", status: "planned", short: "Total time",
+      id: "REC-21", bead: "vibetyna-hrx.21", short: "Total time",
       title: "One-cook total time",
       outcome: "The list row reads “Roasted tomato pasta · 38 min · 8 steps”, and so does the read view. 38 min is one pair of hands: active steps never overlap, while waiting steps run in the background. That compares to 35 min for the longest chain and 59 min for the plain sum.",
-      layers: ["rust", "ffi", "swift"], deps: ["REC-17", "REC-18"],
+      layers: ["rust", "ffi", "swift"],
       acceptance: [
         "Pure Rust one-cook scheduler, tested on the mockup's example (38 min) and edge cases. Prep counts (D-33).",
         "While any step has no duration (possible before REC-22), the total shows “—”.",
@@ -565,10 +488,10 @@ const EPIC = {
       refs: ["D-15", "D-29", "D-33"],
     },
     {
-      id: "REC-22", status: "planned", short: "Full save rule",
+      id: "REC-22", bead: "vibetyna-hrx.22", short: "Full save rule",
       title: "Save only complete recipes",
       outcome: "Save stays disabled until the recipe has a title, at least one ingredient, at least one step, and a duration on every step. The toolbar says what's missing: “Step I has no duration”.",
-      layers: ["rust", "ffi", "swift"], deps: ["REC-07", "REC-14", "REC-17"],
+      layers: ["rust", "ffi", "swift"],
       acceptance: [
         "Rust computes the missing-items list and the first message. Table-driven Rust tests over the D-37 rules.",
         "Old incomplete recipes still open; they must be completed before their next save (E-02).",
@@ -581,14 +504,6 @@ const EPIC = {
 </script>
 <script>
 (function () {
-  const STATUS = [
-    ["planned", "Planned", "--st-planned"],
-    ["ready", "Ready", "--st-ready"],
-    ["in-progress", "In progress", "--st-progress"],
-    ["awaiting-review", "Awaiting review", "--st-review"],
-    ["approved", "Approved", "--st-approved"],
-  ];
-  const STATUS_LABEL = Object.fromEntries(STATUS.map(([k, l]) => [k, l]));
   const LAYERS = ["db", "rust", "ffi", "swift"];
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -600,11 +515,6 @@ const EPIC = {
 
   const slices = EPIC.slices;
   const byId = new Map(slices.map((s) => [s.id, s]));
-  const external = new Map((EPIC.external || []).map((e) => [e.id, e]));
-  for (const s of slices) for (const d of s.deps) {
-    if (!byId.has(d) && !external.has(d)) console.error(`${s.id} depends on unknown ${d}`);
-  }
-
   // Header
   document.title = EPIC.title;
   $("eyebrow").textContent = EPIC.eyebrow;
@@ -627,147 +537,6 @@ const EPIC = {
   });
   applyTheme();
 
-  // Status summary
-  const counts = Object.fromEntries(STATUS.map(([k]) => [k, 0]));
-  for (const s of slices) counts[s.status] = (counts[s.status] || 0) + 1;
-  $("bar").innerHTML = STATUS.filter(([k]) => counts[k]).map(([k, l, v]) =>
-    `<span title="${l}: ${counts[k]}" style="width:${(100 * counts[k]) / slices.length}%;background:var(${v})"></span>`).join("");
-  $("counts").textContent = `${slices.length} slices · ` + STATUS.filter(([k]) => counts[k]).map(([k, l]) => `${counts[k]} ${l.toLowerCase()}`).join(" · ");
-  $("legend").innerHTML = STATUS.map(([k, l, v]) =>
-    `<span><span class="sw" style="border-color:var(${v});background:var(${v}-bg, transparent)"></span>${l}</span>`).join("")
-    + `<span>Only the user moves a slice to Approved.</span>`;
-
-  // Show only the node kinds this epic uses in the graph legend.
-  for (const el of document.querySelectorAll("#kind-legend [data-kind]")) {
-    const k = el.dataset.kind;
-    const used = k === "external" ? external.size > 0 : slices.some((s) => s.kind === k);
-    if (!used) el.remove();
-  }
-
-  // Graph layout: rows by depth (longest path from a root).
-  const nodes = [...[...external.keys()].filter((id) => slices.some((s) => s.deps.includes(id))), ...slices.map((s) => s.id)];
-  const depsOf = (id) => (byId.get(id) ? byId.get(id).deps : []);
-  const depth = {};
-  const depthOf = (id) => {
-    if (id in depth) return depth[id];
-    const ds = depsOf(id);
-    return (depth[id] = ds.length ? 1 + Math.max(...ds.map(depthOf)) : 0);
-  };
-  nodes.forEach(depthOf);
-  const orderIndex = Object.fromEntries((EPIC.order || []).filter((x) => typeof x === "string").map((id, i) => [id, i]));
-  const rank = (id) => (id in orderIndex ? orderIndex[id] : external.has(id) ? -1 : 999);
-  const rows = [];
-  for (const id of nodes) (rows[depth[id]] = rows[depth[id]] || []).push(id);
-  rows.forEach((r) => r.sort((a, b) => rank(a) - rank(b)));
-  // Barycenter passes to reduce crossings.
-  for (let pass = 0; pass < 3; pass++) {
-    for (let r = 1; r < rows.length; r++) {
-      const pos = {};
-      for (let q = 0; q < r; q++) rows[q].forEach((id, i) => (pos[id] = (i + 0.5) / rows[q].length));
-      const bary = (id) => { const ds = depsOf(id).filter((d) => d in pos); return ds.length ? ds.reduce((a, d) => a + pos[d], 0) / ds.length : 0.5; };
-      rows[r].sort((a, b) => bary(a) - bary(b) || rank(a) - rank(b));
-    }
-  }
-  const W = 124, H = 46, GX = 14, GY = 52, PAD = 12;
-  const maxRow = Math.max(...rows.map((r) => r.length));
-  const width = maxRow * (W + GX) - GX + 2 * PAD;
-  const height = rows.length * (H + GY) - GY + 2 * PAD;
-  const xy = {};
-  rows.forEach((r, ri) => {
-    const rowW = r.length * (W + GX) - GX;
-    const x0 = (width - rowW) / 2;
-    r.forEach((id, i) => (xy[id] = { x: x0 + i * (W + GX), y: PAD + ri * (H + GY) }));
-  });
-
-  // Highlighted chain: EPIC.critical when given (ties make "the" longest chain ambiguous),
-  // otherwise the first longest chain of slices (externals excluded).
-  const chain = {};
-  const chainOf = (id) => {
-    if (id in chain) return chain[id];
-    const ds = depsOf(id).filter((d) => byId.has(d));
-    let best = null;
-    for (const d of ds) if (!best || chainOf(d).length > chainOf(best).length) best = d;
-    return (chain[id] = best ? [...chainOf(best), id] : [id]);
-  };
-  let critical = EPIC.critical || [];
-  if (!critical.length) for (const s of slices) if (chainOf(s.id).length > critical.length) critical = chainOf(s.id);
-  const critEdges = new Set(critical.slice(1).map((id, i) => critical[i] + ">" + id));
-  $("critical").innerHTML = `${esc(EPIC.criticalLabel || "Critical path")} (${critical.length} slices): ` + critical.map((id) => `<a href="#${id}">${id}</a>`).join(" → ")
-    + (EPIC.criticalNote ? ". " + md(EPIC.criticalNote) : "");
-
-  const svgNS = "http://www.w3.org/2000/svg";
-  const svg = $("dag");
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  svg.setAttribute("width", width);
-  svg.setAttribute("height", height);
-  svg.innerHTML = `<defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>
-    <marker id="arrow-hot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>
-  </defs>`;
-  const edgeEls = [];
-  for (const s of slices) for (const d of s.deps) {
-    if (!xy[d]) continue;
-    const a = xy[d], b = xy[s.id];
-    // Points: source bottom, then a gap in every skipped row, then target top.
-    const pts = [[a.x + W / 2, a.y + H]];
-    for (let r = depth[d] + 1; r < depth[s.id]; r++) {
-      const t = (r - depth[d]) / (depth[s.id] - depth[d]);
-      const want = a.x + (b.x - a.x) * t + W / 2;
-      const xs = rows[r].map((id) => xy[id].x);
-      const gaps = [xs[0] - GX / 2, ...xs.map((x) => x + W + GX / 2)];
-      const gx = gaps.reduce((best, g) => (Math.abs(g - want) < Math.abs(best - want) ? g : best), gaps[0]);
-      const top = PAD + r * (H + GY);
-      pts.push([gx, top - 6], [gx, top + H + 6]);
-    }
-    pts.push([b.x + W / 2, b.y - 1]);
-    let dPath = `M${pts[0][0]},${pts[0][1]}`;
-    for (let i = 1; i < pts.length; i++) {
-      const [x1, y1] = pts[i - 1], [x2, y2] = pts[i];
-      if (i % 2 === 0 && x1 === x2) { dPath += ` L${x2},${y2}`; continue; }
-      const dy = Math.max(16, (y2 - y1) * 0.45);
-      dPath += ` C${x1},${y1 + dy} ${x2},${y2 - dy} ${x2},${y2}`;
-    }
-    const p = document.createElementNS(svgNS, "path");
-    p.setAttribute("d", dPath);
-    const isCrit = critEdges.has(d + ">" + s.id);
-    p.setAttribute("class", "edge" + (isCrit ? " critical" : ""));
-    p.setAttribute("marker-end", isCrit ? "url(#arrow-hot)" : "url(#arrow)");
-    p.dataset.from = d; p.dataset.to = s.id;
-    svg.appendChild(p); edgeEls.push(p);
-  }
-  const nodeEls = {};
-  for (const id of nodes) {
-    const s = byId.get(id), e = external.get(id);
-    const g = document.createElementNS(svgNS, "g");
-    const cls = s ? `node n-${s.status} k-${s.kind || "slice"}` : "node k-external";
-    g.setAttribute("class", cls);
-    g.setAttribute("transform", `translate(${xy[id].x},${xy[id].y})`);
-    const label = s ? s.short || s.title : e.label;
-    const sub = s ? (s.kind === "gate" ? "gate" : s.kind === "tooling" ? "tooling" : STATUS_LABEL[s.status]) : "other epic";
-    g.innerHTML = `<title>${esc(s ? `${s.id} — ${s.title} (${STATUS_LABEL[s.status]})` : e.label)}</title>
-      <rect width="${W}" height="${H}" rx="9"/>
-      <text x="9" y="18">${esc(s ? id : "↗")}<tspan class="sub" dx="6" font-weight="400">${esc(sub)}</tspan></text>
-      <text x="9" y="35" class="sub">${esc(label.length > 19 ? label.slice(0, 18) + "…" : label)}</text>`;
-    g.addEventListener("click", () => {
-      if (s) location.hash = id; else if (e.href) location.href = e.href;
-    });
-    g.addEventListener("mouseenter", () => highlight(id));
-    g.addEventListener("mouseleave", () => highlight(null));
-    svg.appendChild(g); nodeEls[id] = g;
-  }
-  function highlight(id) {
-    const near = new Set(id ? [id] : []);
-    for (const p of edgeEls) {
-      const on = id && (p.dataset.from === id || p.dataset.to === id);
-      if (on) { near.add(p.dataset.from); near.add(p.dataset.to); }
-      p.classList.toggle("hot", !!on);
-      p.classList.toggle("dim", !!id && !on);
-      if (on) p.setAttribute("marker-end", "url(#arrow-hot)");
-      else p.setAttribute("marker-end", p.classList.contains("critical") ? "url(#arrow-hot)" : "url(#arrow)");
-    }
-    for (const [nid, g] of Object.entries(nodeEls)) g.classList.toggle("dim", !!id && !near.has(nid));
-  }
-
   // Suggested order (strings are slice IDs; {phase} objects are headings).
   $("order-note").innerHTML = md(EPIC.orderNote || "");
   $("order-list").innerHTML = (EPIC.order || []).map((x) => typeof x === "string"
@@ -777,18 +546,14 @@ const EPIC = {
   // Cards, in suggested order.
   const ordered = [...(EPIC.order || []).filter((x) => typeof x === "string"), ...slices.map((s) => s.id)]
     .filter((id, i, a) => a.indexOf(id) === i);
-  const depLink = (d) => byId.has(d) ? `<a href="#${d}">${d}</a>`
-    : `<a href="${esc(external.get(d).href || "#")}">${esc(external.get(d).label)}</a>`;
   const list = (xs) => `<ul>${xs.map((x) => `<li>${md(x)}</li>`).join("")}</ul>`;
   $("cards").innerHTML = ordered.map((id) => {
     const s = byId.get(id);
     const kind = s.kind && s.kind !== "slice" ? `<span class="kind kind-${s.kind}">${s.kind === "gate" ? "Human gate" : "Tooling"}</span>` : "";
     const layers = `<div class="layers">${LAYERS.map((l) => `<span class="layer${(s.layers || []).includes(l) ? " on" : ""}">${l}</span>`).join("")}</div>`;
-    const dependents = slices.filter((x) => x.deps.includes(id)).map((x) => x.id);
     const rows = [
       ["Layers", layers],
-      ["Needs", s.deps.length ? s.deps.map(depLink).join(", ") : `<span class="muted">nothing</span>`],
-      ["Unblocks", dependents.length ? dependents.map(depLink).join(", ") : `<span class="muted">nothing in this epic</span>`],
+      ["Bead", `<code>${esc(s.bead)}</code>`],
       s.stubs && s.stubs.length ? ["Stubs", list(s.stubs)] : null,
       ["Done when", list(s.acceptance)],
       s.refs && s.refs.length ? ["Brief", esc(s.refs.join(", "))] : null,
@@ -796,7 +561,7 @@ const EPIC = {
     ].filter(Boolean);
     const guide = s.guide ? `<div class="guide"><strong>Step by step</strong><ol>${s.guide.map((g) => `<li>${md(g)}</li>`).join("")}</ol></div>` : "";
     return `<article class="card" id="${id}">
-      <header><span class="id">${id}</span>${kind}<span class="pill st-${s.status}">${STATUS_LABEL[s.status]}</span></header>
+      <header><span class="id">${id}</span>${kind}</header>
       <h3>${md(s.title)}</h3>
       <p>${md(s.outcome)}</p>
       <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>

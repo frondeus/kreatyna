@@ -1,6 +1,6 @@
 # R07a — Reusable confirmation widget
 
-Status: approved. Change: `pyzppluw`. R06 is approved.
+Tracked in beads: `vibetyna-flx.7`. Change: `pyzppluw`. R06 is approved.
 
 ## Contract
 

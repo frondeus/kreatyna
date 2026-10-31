@@ -1,6 +1,6 @@
 # R11 — App widget and Rust-owned tabs
 
-Status: approved. Change: `yrxqlxol`. R10 and R09a are approved.
+Tracked in beads: `vibetyna-flx.13`. Change: `yrxqlxol`. R10 and R09a are approved.
 
 ## Composition contract
 

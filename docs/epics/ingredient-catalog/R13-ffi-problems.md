@@ -1,6 +1,6 @@
 # App FFI: problem inventory
 
-Status: active inventory. Analysis change: `rrvynuoq`. P01 was solved in
+Tracked in beads: label `ffi-problems` (`bd list --label ffi-problems`). Analysis change: `rrvynuoq`. P01 was solved in
 changes `ytturtsz` and `pmuzortp`. P02 was solved by the explicit start boundary
 in `pmuzortp` and its documented caller contract in `xkkqlrky`.
 

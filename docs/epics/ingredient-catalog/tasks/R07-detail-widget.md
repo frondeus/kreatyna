@@ -1,6 +1,6 @@
 # R07 — Ingredient detail widget
 
-Status: approved. Change: `vmstsssk`. R07a is approved. Dependencies: R03 and R07a.
+Tracked in beads: `vibetyna-flx.8`. Change: `vmstsssk`. R07a is approved. Dependencies: R03 and R07a.
 
 ## Contract
 

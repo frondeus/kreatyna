@@ -1,6 +1,6 @@
 # MAC-04 — Select an ingredient to see its details
 
-Status: approved. Change: `nuolursx`. Dependencies: MAC-01 (approved), MAC-02
+Tracked in beads: `vibetyna-4rn.8`. Change: `nuolursx`. Dependencies: MAC-01 (approved), MAC-02
 (approved).
 
 ## Open questions

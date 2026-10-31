@@ -1,6 +1,6 @@
 # R04 — Ingredient migration and typed Diesel models
 
-Status: approved. Change: `zltwqxro`. R03 is approved.
+Tracked in beads: `vibetyna-flx.4`. Change: `zltwqxro`. R03 is approved.
 
 Add a forward-only ingredient migration after the counter migration. Leave its
 `down.sql` empty, following the existing counter migration. Parent rows

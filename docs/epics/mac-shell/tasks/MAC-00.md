@@ -1,6 +1,6 @@
 # MAC-00 — Add the macOS app target
 
-Status: approved. Change: `qqkvvsly`. Dependencies: MAC-10 (approved).
+Tracked in beads: `vibetyna-4rn.4`. Change: `qqkvvsly`. Dependencies: MAC-10 (approved).
 
 ## Open questions
 

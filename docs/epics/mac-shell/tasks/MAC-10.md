@@ -1,6 +1,6 @@
 # MAC-10 — Generate the Xcode project with XcodeGen
 
-Status: approved. Change: `ompwommq`. Dependencies: MAC-09 (approved).
+Tracked in beads: `vibetyna-4rn.2`. Change: `ompwommq`. Dependencies: MAC-09 (approved).
 
 ## Open questions
 

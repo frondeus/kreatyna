@@ -6,7 +6,7 @@ import Testing
 
 // Rendering conditions are fixed: a 960 × 600 point window, US English, and
 // light and dark appearance. The window is never key, so controls show their
-// inactive look. Tests run serially (`MainActorTests`). Baselines
+// inactive look, and its title text is transparent (MAC-12). Tests run serially (`MainActorTests`). Baselines
 // were recorded on macOS 27.0.1; other versions can render slightly
 // differently. Review every diff before re-recording.
 extension MainActorTests {
@@ -132,6 +132,20 @@ extension MainActorTests {
             override var canBecomeMain: Bool { false }
         }
 
+        /// MAC-12: after a long UI test run on an idle Mac, macOS draws the
+        /// toolbar title darker, and no window property shows why. The title's
+        /// text becomes transparent but keeps its space, so the toolbar items
+        /// stay where the app shows them.
+        private func hideTitleText(in view: NSView, title: String) {
+            // An empty title would match the empty search field.
+            if !title.isEmpty, let field = view as? NSTextField, field.stringValue == title {
+                field.alphaValue = 0
+            }
+            for subview in view.subviews {
+                hideTitleText(in: subview, title: title)
+            }
+        }
+
         private func snapshot(
             _ view: some View,
             appearance: Appearance,
@@ -174,6 +188,7 @@ extension MainActorTests {
             window.makeFirstResponder(nil)
             RunLoop.main.run(until: Date().addingTimeInterval(0.1))
             let frameView = window.contentView!.superview!
+            hideTitleText(in: frameView, title: window.title)
             assertSnapshot(
                 of: frameView,
                 // Every pixel is compared; 0.99 allows only anti-aliasing noise.

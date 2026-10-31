@@ -334,7 +334,7 @@ const EPIC = {
   order: [
     { phase: "Groundwork: folder, project generation, Counter" }, "MAC-09", "MAC-10", "MAC-11", "MAC-03",
     { phase: "A Mac window" }, "MAC-00", "MAC-01", "MAC-02",
-    { phase: "Catalog parity (D-28)" }, "MAC-04", "MAC-08", "MAC-05", "MAC-06", "MAC-07",
+    { phase: "Catalog parity (D-28)" }, "MAC-04", "MAC-08", "MAC-05", "MAC-12", "MAC-06", "MAC-07",
   ],
   slices: [
     {
@@ -456,6 +456,18 @@ const EPIC = {
         "Snapshots: empty form, validation issues, duplicate name. UI smoke: create, relaunch, still there.",
       ],
       refs: ["D-28", "D-18"],
+    },
+    {
+      id: "MAC-12", kind: "tooling", status: "approved", short: "Stable snapshots",
+      title: "Stable Mac list snapshots",
+      outcome: "The Mac snapshot tests give the same result on every run. Today the 4 list snapshots with an empty detail pane (`catalogWithRows`, `emptyCatalog`, `filteredCatalog`, `noMatches`) sometimes render the “Ingredients” title darker than their baselines, so `mac-test` fails without a code change.",
+      layers: ["swift"], deps: ["MAC-05"],
+      acceptance: [
+        "The cause of the title colour change is found and stated, with the experiment that proves it.",
+        "The snapshot rendering conditions control that cause; the strict tolerance (`precision: 1`, `perceptualPrecision: 0.99`) stays.",
+        "`mac-test` passes several runs in a row, including runs where the flake appeared before. No baseline changes except where the cause requires one, and each such change is checked by eye.",
+      ],
+      refs: [],
     },
     {
       id: "MAC-06", status: "planned", short: "Edit",

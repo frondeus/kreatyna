@@ -65,7 +65,7 @@ fn counter_table_exists(db: &mut SqliteConnection) -> bool {
 fn empty_database_migrates_and_rerun_is_harmless() {
     let mut db = SqliteConnection::establish(":memory:").unwrap();
     db.batch_execute("PRAGMA foreign_keys = ON;").unwrap();
-    assert_eq!(db.run_pending_migrations(MIGRATIONS).unwrap().len(), 3);
+    assert_eq!(db.run_pending_migrations(MIGRATIONS).unwrap().len(), 4);
     assert!(db.run_pending_migrations(MIGRATIONS).unwrap().is_empty());
     assert_eq!(i::table.count().get_result::<i64>(&mut db).unwrap(), 0);
     assert_eq!(u::table.count().get_result::<i64>(&mut db).unwrap(), 0);
@@ -96,7 +96,8 @@ fn counter_database_upgrades_and_keeps_ingredients() {
             .execute(&mut db)
             .unwrap();
 
-        assert_eq!(db.run_pending_migrations(MIGRATIONS).unwrap().len(), 1);
+        // MAC-03 drops the counter; REC-01 adds recipes.
+        assert_eq!(db.run_pending_migrations(MIGRATIONS).unwrap().len(), 2);
         assert!(!counter_table_exists(&mut db));
     }
     {

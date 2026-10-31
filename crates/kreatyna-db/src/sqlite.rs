@@ -4,7 +4,10 @@ use diesel_async::{
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use futures::{Stream, StreamExt, pin_mut};
-use kreatyna::ingredients::capabilities::{IngredientStoreRequest, ResolveIngredientStore};
+use kreatyna::{
+    ingredients::capabilities::{IngredientStoreRequest, ResolveIngredientStore},
+    recipes::capabilities::{RecipeStoreRequest, ResolveRecipeStore},
+};
 use krucyfiks::effects::Envelope;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
@@ -25,6 +28,7 @@ pub enum SqliteStartupError {
 
 pub enum DatabaseEffect {
     Ingredient(Envelope<IngredientStoreRequest>),
+    Recipe(Envelope<RecipeStoreRequest>),
 }
 
 impl SqliteDatabase {
@@ -72,6 +76,11 @@ impl SqliteDatabase {
                 DatabaseEffect::Ingredient(envelope) => {
                     if let Err(error) = envelope.resolve_mut(self).await {
                         tracing::error!(?error, "Sending ingredient database response");
+                    }
+                }
+                DatabaseEffect::Recipe(envelope) => {
+                    if let Err(error) = envelope.resolve_mut(self).await {
+                        tracing::error!(?error, "Sending recipe database response");
                     }
                 }
             }

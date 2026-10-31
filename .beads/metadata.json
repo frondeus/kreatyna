@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "vibetyna",
+  "project_id": "d3b641ac-7674-47fd-8db9-b0ff1aff7aff"
+}

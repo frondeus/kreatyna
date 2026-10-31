@@ -27,3 +27,10 @@ xcuserdata/
 !/apple/Kreatyna/Kreatyna.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
 /apple/Kreatyna/Kreatyna.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
 !/apple/Kreatyna/Kreatyna.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
+*.gate.lock*

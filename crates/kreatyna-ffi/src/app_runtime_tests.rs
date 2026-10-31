@@ -424,3 +424,68 @@ fn shutdown_lets_the_database_close() {
         std::thread::sleep(Duration::from_millis(10));
     }
 }
+
+#[test]
+fn a_runtime_panic_shows_the_crash_view() {
+    let database = TemporaryDatabase::new();
+    let (render, rendered) = TestRender::new();
+    let render = Arc::new(PanicOnceRender {
+        armed: std::sync::atomic::AtomicBool::new(false),
+        inner: render,
+    });
+    let app = app(
+        AppCapabilities {
+            render: render.clone(),
+        },
+        database.path().into(),
+        AppLayout::Stack,
+    );
+    app.start().unwrap();
+    wait_until_ready(&app, &rendered);
+    while rendered.try_recv().is_ok() {}
+
+    // The search's render command panics inside the runtime.
+    let scope = stack_view(&app).scope;
+    render
+        .armed
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    app.dispatch(AppEvent::Ingredients {
+        event: IngredientCatalogEvent::List {
+            scope,
+            event: IngredientListEvent::Search {
+                query: "gar".into(),
+            },
+        },
+    })
+    .unwrap();
+
+    rendered
+        .recv_timeout(Duration::from_secs(5))
+        .expect("the facade renders after the crash");
+    assert_eq!(app.view().unwrap(), AppView::Crashed);
+    assert!(matches!(
+        app.dispatch(AppEvent::Ingredients {
+            event: IngredientCatalogEvent::List {
+                scope,
+                event: IngredientListEvent::Refresh,
+            },
+        }),
+        Err(AppFfiError::Terminated)
+    ));
+}
+
+/// Panics on the first render after `armed` is set, then forwards renders.
+struct PanicOnceRender {
+    armed: std::sync::atomic::AtomicBool,
+    inner: TestRender,
+}
+
+#[async_trait::async_trait]
+impl RenderHandler for PanicOnceRender {
+    async fn render(&self) {
+        if self.armed.swap(false, std::sync::atomic::Ordering::SeqCst) {
+            panic!("test panic in a render command");
+        }
+        self.inner.render().await;
+    }
+}

@@ -21,6 +21,12 @@ extension AppInitializationError {
     }
 }
 
+/// The screen after a bug stopped the Rust core (`AppView.crashed`).
+enum CrashText {
+    static let title = "Kreatyna stopped working"
+    static let message = "Something went wrong inside Kreatyna. Quit and open it again."
+}
+
 extension IngredientLoadError {
     var message: String {
         switch self {

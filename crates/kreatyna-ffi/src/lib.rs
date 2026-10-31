@@ -1,7 +1,13 @@
 use std::{
-    sync::{Arc, LazyLock},
+    panic::AssertUnwindSafe,
+    sync::{
+        Arc, LazyLock,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
+
+use futures::FutureExt;
 
 use krucyfiks_runtime::{Runtime, RuntimeError, ShutdownMode};
 use parking_lot::Mutex;
@@ -44,6 +50,10 @@ pub struct AppFfi {
     handle: Mutex<Option<JoinHandle<()>>>,
     /// The database task. Shutdown closes it, so the connection closes (P04).
     database: DatabaseHandle,
+    /// Set when the runtime ends with a panic. `view()` then reports `Crashed`.
+    crashed: Arc<AtomicBool>,
+    /// Tells Swift to read the view after a crash: the runtime cannot.
+    render: Arc<dyn kreatyna::capabilities::Render>,
 }
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -74,6 +84,9 @@ impl From<RuntimeError> for AppFfiError {
 #[uniffi::export]
 impl AppFfi {
     pub fn view(&self) -> Result<AppView, AppTypeConversionError> {
+        if self.crashed.load(Ordering::Acquire) {
+            return Ok(AppView::Crashed);
+        }
         self.runtime.view()
     }
 
@@ -92,7 +105,20 @@ impl AppFfi {
     /// shutdown returns `Terminated`.
     pub fn start(&self) -> Result<(), AppFfiError> {
         let runner = self.runtime.start()?;
-        *self.handle.lock() = Some(RUNTIME.spawn(runner));
+        let crashed = self.crashed.clone();
+        let render = self.render.clone();
+        *self.handle.lock() = Some(RUNTIME.spawn(async move {
+            // A panic in a widget or a command unwinds the runner. The runtime
+            // is then terminated, so Rust shows the crash screen instead.
+            if let Err(panic) = AssertUnwindSafe(runner).catch_unwind().await {
+                tracing::error!(
+                    message = panic_message(panic.as_ref()),
+                    "The app runtime panicked"
+                );
+                crashed.store(true, Ordering::Release);
+                render.render().await;
+            }
+        }));
         Ok(())
     }
 
@@ -207,7 +233,7 @@ pub fn app(caps: AppCapabilities, database_path: String, layout: AppLayout) -> A
     let widget = AppShell::new(AppSetup {
         database_path,
         database: database.clone(),
-        render,
+        render: render.clone(),
         layout: layout.into(),
     });
     let runtime = Arc::new(Runtime::new(widget));
@@ -216,7 +242,19 @@ pub fn app(caps: AppCapabilities, database_path: String, layout: AppLayout) -> A
         runtime,
         handle: Mutex::new(None),
         database,
+        crashed: Arc::default(),
+        render,
     })
+}
+
+fn panic_message(panic: &(dyn std::any::Any + Send)) -> &str {
+    if let Some(message) = panic.downcast_ref::<&str>() {
+        message
+    } else if let Some(message) = panic.downcast_ref::<String>() {
+        message
+    } else {
+        "non-text panic payload"
+    }
 }
 
 impl Drop for AppFfi {

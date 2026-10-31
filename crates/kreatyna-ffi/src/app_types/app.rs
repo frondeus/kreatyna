@@ -63,8 +63,15 @@ impl From<SqliteStartupError> for AppInitializationError {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum AppView {
     Initializing,
-    InitializationFailed { error: AppInitializationError },
-    Running { app: RunningAppView },
+    InitializationFailed {
+        error: AppInitializationError,
+    },
+    Running {
+        app: RunningAppView,
+    },
+    /// The Rust core stopped on a bug (a panic) and refuses every event.
+    /// Only quitting helps (`vibetyna-dm7`).
+    Crashed,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]

@@ -37,6 +37,14 @@ struct RootView: View {
                         .accessibilityIdentifier("retryInitialization")
                 }
                 .accessibilityIdentifier("appInitializationFailed")
+            case .crashed:
+                // iOS apps do not quit themselves; the user closes the app.
+                ContentUnavailableView {
+                    Label(CrashText.title, systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(CrashText.message)
+                }
+                .accessibilityIdentifier("appCrashed")
             case .running(let app):
                 // iOS always starts with the stack layout (`AppLayout.platform`).
                 if let catalog = app.ingredients.stack {

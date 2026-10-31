@@ -71,7 +71,7 @@ make a disposable example a production blocker.
 | P11 | Shared runtime tracing; ingredient payloads specifically | Solved: payloads are recorded only at `trace`. |
 | P04 | Shared app database lifetime | Solved: shutdown closes the database task. |
 | P05 | Shared shutdown contract, including ingredient saves | Solved by `shut_down_gracefully()`. |
-| P06 | Shared runtime/database worker supervision | Solved for the database task; a runtime panic is `vibetyna-dm7`. |
+| P06 | Shared runtime/database worker supervision | Solved: a stopped database offers Retry; a runtime panic shows a Quit screen (`vibetyna-dm7`). |
 | P10 | Shared event and command backlog | Accepted (P10/Q1 A); local-network sync must revisit it. |
 | P09 | Shared render callback progress, including ingredient commands | Retain as a callback-contract discussion. |
 
@@ -412,8 +412,11 @@ only for Swift's own errors and for events Rust could not read; `Terminated`
 adds no line, and the next accepted event clears it.
 
 The start race below no longer exists: `start()` spawns the runner without an
-`expect` since P02. A panic in the widget runtime itself still shows no
-failure screen: `vibetyna-dm7`.
+`expect` since P02. A panic in the widget runtime itself (`vibetyna-dm7`,
+Cooldown 1) now shows `AppView::Crashed`: `start()` wraps the runner in
+`catch_unwind`, logs the panic, and renders. The screen says "Kreatyna stopped
+working" and offers only Quit (dm7/Q1 B), because recovery would need a new
+runtime.
 
 **Severity: P3.** A worker must first stop or startup must race with shutdown.
 The resulting partial failure can prevent recovery and confuse the caller.

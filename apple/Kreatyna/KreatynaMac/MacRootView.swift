@@ -25,6 +25,17 @@ struct MacRootView: View {
                         .accessibilityIdentifier("retryInitialization")
                 }
                 .accessibilityIdentifier("appInitializationFailed")
+            case .crashed:
+                ContentUnavailableView {
+                    Text(CrashText.title)
+                } description: {
+                    Text(CrashText.message)
+                } actions: {
+                    Button("Quit Kreatyna") { NSApplication.shared.terminate(nil) }
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier("quitAfterCrash")
+                }
+                .accessibilityIdentifier("appCrashed")
             case .running(let app):
                 // The Mac always starts with the split layout (`AppLayout.platform`).
                 if let catalog = app.ingredients.split {

@@ -116,6 +116,15 @@ extension MainActorTests {
             )
         }
 
+        /// A bug stopped the Rust core (vibetyna-dm7).
+        @Test(arguments: Appearance.allCases)
+        func crashed(appearance: Appearance) {
+            snapshot(
+                MacRootView(view: .crashed, errorMessage: nil, send: { _ in }, retryInitialization: {}),
+                appearance: appearance
+            )
+        }
+
         // MARK: Support
 
         enum Appearance: String, CaseIterable {

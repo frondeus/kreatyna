@@ -192,6 +192,7 @@
         <tr><td>E-04</td><td>Recipe screens are Mac-only. iOS ignores the Recipes section.</td><td>iPhone recipes are a non-goal (D-02).</td></tr>
         <tr><td>E-05</td><td>The <b>▶ Cook</b> button from the mockups is not shown in the MVP.</td><td>Cooking mode needs timing (D-31) and is not in the MVP (D-06). A dead button would only confuse.</td></tr>
         <tr><td>E-06</td><td>Every slice is vertical; agents own the Swift side.</td><td>Swift handover is permanent (<code>AGENTS.md</code>, 2026-10-11).</td></tr>
+        <tr><td>E-07</td><td>The Mac app opens on the <b>Recipes</b> section. Until REC-02 that is an empty list.</td><td>The user's answer to REC-01/Q1: the mockup and the sidebar order put Recipes first.</td></tr>
       </table>
     </div>
   </section>
@@ -269,6 +270,7 @@ const EPIC = {
         "Snapshots: empty recipe list, sidebar with both sections. UI smoke: switch sections.",
       ],
       refs: ["D-03", "D-17", "D-18"],
+      plan: "tasks/REC-01.md",
     },
     {
       id: "REC-02", bead: "vibetyna-hrx.2", short: "Create by title",

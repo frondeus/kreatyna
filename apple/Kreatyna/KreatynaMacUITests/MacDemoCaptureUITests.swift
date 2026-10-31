@@ -182,6 +182,32 @@ final class MacDemoCaptureUITests: XCTestCase {
         app.terminate()
     }
 
+    @MainActor
+    func testCaptureMAC07Demo() throws {
+        let fixture = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/demo-ingredients.json")
+        let app = XCUIApplication()
+        app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
+        app.launchEnvironment["KREATYNA_TEST_SEED"] = try String(contentsOf: fixture, encoding: .utf8)
+        app.launch()
+
+        let rows = app.staticTexts.matching(identifier: "ingredientRow")
+        XCTAssertTrue(rows["Garlic"].waitForExistence(timeout: 5))
+        rows["Garlic"].click()
+        XCTAssertTrue(app.staticTexts["clove"].waitForExistence(timeout: 5))
+
+        app.buttons["deleteIngredient"].click()
+        XCTAssertTrue(app.buttons["confirmDelete"].waitForExistence(timeout: 5))
+        capture("01-delete-question", app)
+
+        app.buttons["confirmDelete"].click()
+        XCTAssertTrue(waitForNonExistence(rows["Garlic"]))
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientDetailPlaceholder"].waitForExistence(timeout: 5))
+        capture("02-after-delete", app)
+        app.terminate()
+    }
+
     private func waitForNonExistence(_ element: XCUIElement) -> Bool {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
         return XCTWaiter().wait(for: [gone], timeout: 5) == .completed

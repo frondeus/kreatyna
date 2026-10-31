@@ -409,13 +409,13 @@ const EPIC = {
       refs: ["D-28", "D-18"],
     },
     {
-      id: "MAC-07", bead: "vibetyna-4rn.12", short: "Delete",
+      id: "MAC-07", bead: "vibetyna-4rn.12", short: "Delete", plan: "tasks/MAC-07.md",
       title: "Delete an ingredient with confirmation",
       outcome: "**Delete** in the detail toolbar asks “Delete Garlic?”. Confirming removes it from the list and empties the detail pane.",
-      layers: ["rust", "ffi", "swift"],
+      layers: ["swift"],
       acceptance: [
-        "The confirmation dialog shows whatever the Rust confirmation widget says; its buttons only send events.",
-        "Snapshot: delete confirmation. UI smoke: delete and it stays gone after relaunch.",
+        "Rust decides when the dialog shows, what its buttons do and which error it shows; Swift writes only the words (MAC-07/Q1). The buttons only send events. MAC-04 already built the delete in Rust.",
+        "Snapshot: the “Deleting…” pane (macOS draws the dialog in a separate sheet window, so the demo shows it). UI smoke: delete and it stays gone after relaunch.",
       ],
       refs: ["D-28"],
     },

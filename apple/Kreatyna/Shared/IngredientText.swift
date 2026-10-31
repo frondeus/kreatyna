@@ -25,3 +25,13 @@ extension IngredientDraftField {
         }
     }
 }
+
+/// The delete dialog's words, the same on both apps. Rust decides when the
+/// dialog shows and which error it shows (MAC-07/Q1).
+enum DeleteText {
+    static func title(_ name: String) -> String { "Delete \(name)?" }
+
+    static func message(_ error: IngredientDeleteError?) -> String {
+        error?.message ?? "This cannot be undone."
+    }
+}

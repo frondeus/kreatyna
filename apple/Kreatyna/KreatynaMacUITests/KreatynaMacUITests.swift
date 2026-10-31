@@ -208,6 +208,35 @@ final class KreatynaMacUITests: XCTestCase {
     }
 
     @MainActor
+    func testDeletedIngredientStaysGoneAfterRelaunch() throws {
+        let database = UUID().uuidString
+        var app = try launch(json: #"["Garlic", "Tomato"]"#, database: database)
+        XCTAssertTrue(row(named: "Garlic", in: app).waitForExistence(timeout: 5))
+        row(named: "Garlic", in: app).click()
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientDetail"].waitForExistence(timeout: 5))
+
+        // Cancel keeps Garlic open.
+        app.buttons["deleteIngredient"].click()
+        XCTAssertTrue(app.buttons["cancelDelete"].waitForExistence(timeout: 5))
+        app.buttons["cancelDelete"].click()
+        XCTAssertTrue(waitForNonExistence(app.buttons["cancelDelete"], timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientDetail"].exists)
+        XCTAssertTrue(row(named: "Garlic", in: app).exists)
+
+        app.buttons["deleteIngredient"].click()
+        XCTAssertTrue(app.buttons["confirmDelete"].waitForExistence(timeout: 5))
+        app.buttons["confirmDelete"].click()
+        XCTAssertTrue(waitForNonExistence(row(named: "Garlic", in: app), timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["ingredientDetailPlaceholder"].waitForExistence(timeout: 5))
+        XCTAssertTrue(row(named: "Tomato", in: app).exists)
+
+        app.terminate()
+        app = try launch(json: nil, database: database)
+        XCTAssertTrue(row(named: "Tomato", in: app).waitForExistence(timeout: 5))
+        XCTAssertFalse(row(named: "Garlic", in: app).exists)
+    }
+
+    @MainActor
     func testLaunchShowsEmptyCatalog() throws {
         let app = try launch(seed: [])
 

@@ -87,18 +87,21 @@ enum Fixtures {
     static func splitCatalog(
         list: IngredientListView = list(),
         selected: Ingredient? = nil,
+        deletion: IngredientDetailDeletion = .idle,
         form: IngredientFormView? = nil
     ) -> IngredientSplitCatalogView {
+        // Rust locks ＋ while a delete is confirmed or running.
+        let deleteRuns = if case .idle = deletion { false } else { true }
         let pane: IngredientSplitPaneView = if let form {
             .create(form: form)
         } else {
-            selected.map { .detail(detail: IngredientDetailView(ingredient: $0, deletion: .idle)) } ?? .empty
+            selected.map { .detail(detail: IngredientDetailView(ingredient: $0, deletion: deletion)) } ?? .empty
         }
         return IngredientSplitCatalogView(
             list: ScopedIngredientListView(scope: ScopeId(value: 3), value: list),
             selected: form == nil ? selected?.id : nil,
             pane: ScopedIngredientSplitPaneView(scope: ScopeId(value: 4), value: pane),
-            canCreate: form == nil,
+            canCreate: form == nil && !deleteRuns,
             draftRow: form.map { $0.draft.name.trimmingCharacters(in: .whitespaces) }
         )
     }

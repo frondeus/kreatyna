@@ -55,6 +55,15 @@ extension MainActorTests {
             )
         }
 
+        /// Rust is deleting Garlic: the overlay shows, and Edit and Delete are off (MAC-07).
+        @Test(arguments: Appearance.allCases)
+        func deletingIngredient(appearance: Appearance) {
+            snapshot(
+                running(Fixtures.list(), selected: Fixtures.garlic, deletion: .deleting),
+                appearance: appearance
+            )
+        }
+
         @Test(arguments: Appearance.allCases)
         func newIngredientForm(appearance: Appearance) {
             var draft = Fixtures.blankDraft
@@ -136,9 +145,13 @@ extension MainActorTests {
         /// The catalog without its sidebar. The sidebar material draws only
         /// through the window server, so an off-screen capture shows it blank
         /// (white in dark mode). The sidebar has one static item (REC-01).
-        private func running(_ list: IngredientListView, selected: Ingredient? = nil) -> some View {
+        private func running(
+            _ list: IngredientListView,
+            selected: Ingredient? = nil,
+            deletion: IngredientDetailDeletion = .idle
+        ) -> some View {
             MacCatalogView(
-                view: Fixtures.splitCatalog(list: list, selected: selected),
+                view: Fixtures.splitCatalog(list: list, selected: selected, deletion: deletion),
                 columnVisibility: .doubleColumn,
                 send: { _ in }
             )

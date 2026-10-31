@@ -39,17 +39,53 @@ struct MacIngredientDetail: View {
                 .accessibilityIdentifier("ingredientName")
         }
         .accessibilityIdentifier("ingredientDetail")
+        .overlay {
+            if case .deleting = view.deletion {
+                ProgressView("Deleting…")
+                    .padding()
+                    .background(.regularMaterial, in: .rect(cornerRadius: 12))
+                    .accessibilityIdentifier("ingredientDeleting")
+            }
+        }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("Edit", systemImage: "pencil") { send(.edit) }
                     .help("Edit")
+                    .disabled(!isIdle)
                     .accessibilityIdentifier("editIngredient")
-                Button("Delete", systemImage: "trash") {}
+                Button("Delete", systemImage: "trash", role: .destructive) { send(.requestDelete) }
                     .help("Delete")
-                    .disabled(true) // MAC-07
+                    .disabled(!isIdle)
                     .accessibilityIdentifier("deleteIngredient")
             }
         }
+        // The setter does nothing: Rust's view opens and closes the dialog.
+        // Esc runs the Cancel button.
+        .confirmationDialog(
+            DeleteText.title(ingredient.name),
+            isPresented: Binding(get: { awaitingDeleteDecision }, set: { _ in }),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) { send(.confirmation(event: .confirm)) }
+                .accessibilityIdentifier("confirmDelete")
+            Button("Cancel", role: .cancel) { send(.confirmation(event: .cancel)) }
+                .accessibilityIdentifier("cancelDelete")
+        } message: {
+            Text(DeleteText.message(deleteError))
+        }
+    }
+
+    /// Rust ignores Edit and Delete during a delete; the disabled buttons show it.
+    private var isIdle: Bool {
+        if case .idle = view.deletion { true } else { false }
+    }
+
+    private var awaitingDeleteDecision: Bool {
+        if case .confirming(.awaitingDecision, _) = view.deletion { true } else { false }
+    }
+
+    private var deleteError: IngredientDeleteError? {
+        if case .confirming(_, let error) = view.deletion { error } else { nil }
     }
 
     private func nutritionRow(_ title: String, _ value: String?, unit: String) -> some View {

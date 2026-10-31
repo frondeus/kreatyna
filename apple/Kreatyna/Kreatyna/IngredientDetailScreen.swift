@@ -53,7 +53,7 @@ struct IngredientDetailScreen: View {
             }
         }
         .confirmationDialog(
-            "Delete \(ingredient.name)?",
+            DeleteText.title(ingredient.name),
             isPresented: Binding(get: { awaitingDeleteDecision }, set: { _ in }),
             titleVisibility: .visible
         ) {
@@ -62,7 +62,7 @@ struct IngredientDetailScreen: View {
             Button("Cancel", role: .cancel) { send(.confirmation(event: .cancel)) }
                 .accessibilityIdentifier("cancelDelete")
         } message: {
-            Text(deleteError?.message ?? "This cannot be undone.")
+            Text(DeleteText.message(deleteError))
         }
     }
 

@@ -45,6 +45,33 @@ extension RecipeLoadError {
     }
 }
 
+extension RecipeSaveError {
+    var message: String {
+        switch self {
+        case .duplicateTitle: "A recipe with this title already exists."
+        case .storage: "The recipe could not be saved."
+        case .transport: "Recipes are temporarily unavailable."
+        }
+    }
+}
+
+extension RecipeTitleError {
+    var message: String {
+        switch self {
+        case .notEmptyViolated: "Enter a title."
+        }
+    }
+}
+
+extension RecipeEditorProblem {
+    var message: String {
+        switch self {
+        case .invalid(let error): error.message
+        case .saveFailed(let error): error.message
+        }
+    }
+}
+
 extension IngredientSaveError {
     var message: String {
         switch self {

@@ -64,6 +64,11 @@ extension RecipeSectionView {
     func editor(_ event: RecipeEditorEvent) -> RecipeSectionEvent {
         .editor(scope: pane.scope, event: event)
     }
+
+    /// The typed title for the list's draft row, or nil when no editor is open.
+    var draftRow: String? {
+        if case .create(_, let draftRow) = pane.value { draftRow } else { nil }
+    }
 }
 
 extension IngredientCatalogView {

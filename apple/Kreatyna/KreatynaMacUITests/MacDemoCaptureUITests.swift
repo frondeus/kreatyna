@@ -233,6 +233,34 @@ final class MacDemoCaptureUITests: XCTestCase {
         app.terminate()
     }
 
+    /// `docs/epics/recipes/tasks/REC-02-demo/`: New Recipe, a saved recipe, a refused title.
+    @MainActor
+    func testCaptureREC02Demo() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
+        app.launch()
+        let draftRow = app.staticTexts.matching(identifier: "recipeDraftRow").firstMatch
+
+        XCTAssertTrue(app.descendants(matching: .any)["recipeListEmpty"].waitForExistence(timeout: 5))
+        app.buttons["newRecipe"].click()
+        XCTAssertTrue(app.textFields["recipeTitleField"].waitForExistence(timeout: 5))
+        capture("01-empty-editor", app)
+
+        app.typeText("Shakshuka")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(app.staticTexts.matching(identifier: "recipeRow")["Shakshuka"].waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForNonExistence(draftRow))
+        capture("02-saved", app)
+
+        app.buttons["newRecipe"].click()
+        XCTAssertTrue(draftRow.waitForExistence(timeout: 5))
+        app.typeText("shakshuka")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(app.staticTexts["recipeTitleProblem"].waitForExistence(timeout: 5))
+        capture("03-duplicate-title", app)
+        app.terminate()
+    }
+
     private func waitForNonExistence(_ element: XCUIElement) -> Bool {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
         return XCTWaiter().wait(for: [gone], timeout: 5) == .completed

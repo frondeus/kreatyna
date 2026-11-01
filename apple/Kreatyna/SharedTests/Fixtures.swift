@@ -115,6 +115,11 @@ enum Fixtures {
         SplitAppView(section: section, recipes: recipes, ingredients: ingredients)
     }
 
+    /// A saved recipe's row. The ID only has to be unique in the list.
+    static func recipeRow(_ title: String) -> RecipeListRow {
+        RecipeListRow(id: "recipe-\(title)", title: title)
+    }
+
     static func recipeList(_ status: RecipeListStatus) -> RecipeListView {
         RecipeListView(status: status)
     }

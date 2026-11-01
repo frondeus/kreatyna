@@ -477,4 +477,30 @@ If a change is over 1,000 lines, it becomes two changes at a file boundary.
 
 ## Validation
 
-Not run yet.
+Run on 2026-11-01, on the last change of the slice.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `cargo test --workspace` | 539 passed, 0 failed. |
+| 2 | `cargo clippy --workspace --all-targets -- -D warnings` | No warnings. |
+| 3 | `cargo fmt --check` | No diff. |
+| 4 | `devenv shell -- mac-test` | The 4 new images were recorded and checked by eye. `emptyRecipeList` changed on purpose: **New Recipe** is enabled now, so its icon is darker. That image was recorded again and compared with the old one; nothing else changed. `testContextMenuReordersUnits` (an ingredient test) failed once to find **Add Unit**, then passed alone; it is flaky and not touched by this slice. Then `KreatynaMacTests` passed in full (73 cases), and every other UI test passed in the full run, including `testCreatedRecipeSurvivesRelaunch` and `testDuplicateRecipeTitleIsRefused`. |
+| 5 | iOS `xcodebuild build-for-testing` | Builds. |
+| 6 | `capture-demo.sh … testCaptureREC02Demo` | `REC-02-demo/01-empty-editor.png`, `02-saved.png`, `03-duplicate-title.png`. |
+| 7 | Change sizes (insertions + deletions) | Store 414, adapt 29, editor 620, section 729, app and FFI 586, Mac 346. All under 1,000. |
+
+### Differences from the plan
+
+- **Seven changes, not six.** krucyfiks got `Latest<T>` (REC-02/Q3), so
+  "Adapt to krucyfiks Latest<T>" updates the 6 existing ingredient call sites
+  in its own change. A skills change (no unwrap in tests, nutype, the
+  krucyfiks-tag-command-outcomes skill) also sits in the stack.
+- **The title tests are in `tests/recipe_domain.rs`**, not in `model.rs`.
+- **The error text ends with a period**, like the ingredient messages:
+  "A recipe with this title already exists." and "Enter a title.".
+- **The title field shows every problem**, the save errors too, as
+  `recipeTitleProblem`. The editor has one problem slot, so there is no
+  separate save-error banner.
+- **New tech-debt beads** for the next cooldown: `vibetyna-7m7` (test module
+  order), `vibetyna-yzm` (unwraps in old tests), `vibetyna-nci` (old newtypes
+  to nutype), `vibetyna-bwu` (old outcomes to `Latest<T>`).

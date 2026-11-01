@@ -30,8 +30,14 @@ struct MacMainView: View {
             switch app.section {
             case .recipes:
                 let section = app.recipes
-                MacRecipeList(view: section.list) { send(app.recipes(section.list($0))) }
-                    .navigationSplitViewColumnWidth(min: 220, ideal: 280)
+                MacRecipeList(
+                    view: section.list,
+                    draftRow: section.draftRow,
+                    canCreate: section.canCreate,
+                    newRecipe: { send(app.recipes(section.newRecipe)) },
+                    send: { send(app.recipes(section.list($0))) }
+                )
+                .navigationSplitViewColumnWidth(min: 220, ideal: 280)
             case .ingredients:
                 let catalog = app.ingredients
                 MacIngredientList(
@@ -49,11 +55,7 @@ struct MacMainView: View {
         } detail: {
             switch app.section {
             case .recipes:
-                // A recipe opens here from REC-03.
-                ContentUnavailableView {
-                    Text("Select a recipe")
-                }
-                .accessibilityIdentifier("recipeDetailPlaceholder")
+                MacRecipePane(section: app.recipes) { send(app.recipes($0)) }
             case .ingredients:
                 MacIngredientPane(catalog: app.ingredients) { send(app.ingredients($0)) }
             }

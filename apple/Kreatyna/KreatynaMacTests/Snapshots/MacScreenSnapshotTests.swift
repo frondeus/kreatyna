@@ -111,6 +111,27 @@ extension MainActorTests {
             )
         }
 
+        /// New Recipe: the draft row first, the editor with "Coming soon" areas (REC-02).
+        @Test(arguments: Appearance.allCases)
+        func emptyRecipeEditor(appearance: Appearance) {
+            snapshot(
+                recipes(.ready(rows: [Fixtures.recipeRow("Pancakes")]), editor: ("", nil)),
+                appearance: appearance
+            )
+        }
+
+        /// A refused title: the draft row shows the typed title, the problem shows under the field (REC-02).
+        @Test(arguments: Appearance.allCases)
+        func duplicateRecipeTitle(appearance: Appearance) {
+            snapshot(
+                recipes(
+                    .ready(rows: [Fixtures.recipeRow("Shakshuka")]),
+                    editor: ("shakshuka", .saveFailed(error: .duplicateTitle))
+                ),
+                appearance: appearance
+            )
+        }
+
         /// The sidebar alone, with Recipes selected (REC-01). Inside the split
         /// view, the off-screen capture draws the sidebar blank.
         @Test(arguments: Appearance.allCases)
@@ -177,6 +198,22 @@ extension MainActorTests {
         /// The catalog with Garlic's edit form open (MAC-06).
         private func editing(_ form: IngredientFormView) -> some View {
             ingredients(Fixtures.splitCatalog(editing: Fixtures.garlic, form: form))
+        }
+
+        /// The Recipes section with the create editor open.
+        private func recipes(
+            _ status: RecipeListStatus,
+            editor: (title: String, problem: RecipeEditorProblem?)
+        ) -> some View {
+            let view = RecipeEditorView(title: editor.title, status: .editing(problem: editor.problem))
+            let pane = RecipePaneView.create(
+                editor: view, draftRow: editor.title.trimmingCharacters(in: .whitespaces)
+            )
+            return MacMainView(
+                app: Fixtures.splitApp(section: .recipes, recipes: Fixtures.recipeSection(status, pane: pane)),
+                columnVisibility: .doubleColumn,
+                send: { _ in }
+            )
         }
 
         private func ingredients(_ catalog: IngredientSplitCatalogView) -> some View {

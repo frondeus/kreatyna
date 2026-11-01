@@ -37,6 +37,15 @@ struct EventCompositionTests {
         #expect(app.stack == nil)
     }
 
+    /// The draft row is Rust's trimmed title, and only while the create editor is open.
+    @Test func recipeDraftRowFollowsThePane() {
+        #expect(Fixtures.recipeSection().draftRow == nil)
+        let editor = RecipeEditorView(title: " Shakshuka ", status: .editing(problem: nil))
+        let creating = Fixtures.recipeSection(pane: .create(editor: editor, draftRow: "Shakshuka"))
+        #expect(creating.draftRow == "Shakshuka")
+        #expect(!creating.canCreate)
+    }
+
     @Test func platformLayoutMatchesTheTestHost() {
         #if os(macOS)
         #expect(AppLayout.platform == .split)

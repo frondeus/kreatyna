@@ -193,6 +193,7 @@
         <tr><td>E-05</td><td>The <b>▶ Cook</b> button from the mockups is not shown in the MVP.</td><td>Cooking mode needs timing (D-31) and is not in the MVP (D-06). A dead button would only confuse.</td></tr>
         <tr><td>E-06</td><td>Every slice is vertical; agents own the Swift side.</td><td>Swift handover is permanent (<code>AGENTS.md</code>, 2026-10-11).</td></tr>
         <tr><td>E-07</td><td>The Mac app opens on the <b>Recipes</b> section. Until REC-02 that is an empty list.</td><td>The user's answer to REC-01/Q1: the mockup and the sidebar order put Recipes first.</td></tr>
+        <tr><td>E-08</td><td>The read view loads its recipe by id from the store (<code>RecipeStore::get</code>). REC-07 and REC-14 add lines and steps to the same load.</td><td>The user's answer to REC-03/Q1.</td></tr>
       </table>
     </div>
   </section>
@@ -293,14 +294,15 @@ const EPIC = {
       id: "REC-03", bead: "vibetyna-hrx.3", short: "Read view",
       title: "Open a recipe to read it",
       outcome: "Clicking “Shakshuka” shows its read view in the detail pane: the title, with **Ingredients** and **Steps** headings that are still empty.",
-      layers: ["rust", "ffi", "swift"],
+      layers: ["db", "rust", "ffi", "swift"],
       stubs: ["**Edit** in the toolbar is visible but does nothing (REC-04).", "Empty Ingredients and Steps sections say “None yet”."],
       acceptance: [
         "Recipe navigation: list → read view. The list selection comes from the Rust route; clicking only sends an event. Opening another recipe replaces the read view.",
         "After creating a recipe, its read view opens.",
         "Snapshot: read view. UI smoke: open a recipe.",
       ],
-      refs: ["D-16", "D-18"],
+      refs: ["D-16", "D-18", "E-08"],
+      plan: "tasks/REC-03.md",
     },
     {
       id: "REC-04", bead: "vibetyna-hrx.4", short: "Edit title",

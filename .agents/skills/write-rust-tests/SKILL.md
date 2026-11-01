@@ -1,6 +1,6 @@
 ---
 name: write-rust-tests
-description: Lay out and write any Rust test module in kreatyna (core, db, ffi, widget, or integration tests) with a fixed section order, test_case/test_matrix parameterization, and insta snapshots. Use whenever you add, move, refactor, or review a Rust test.
+description: Lay out and write any Rust test module in kreatyna (core, db, ffi, widget, or integration tests) with a fixed section order, test_case/test_matrix parameterization, insta snapshots, and anyhow::Result with ? instead of unwrap or expect. Use whenever you add, move, refactor, or review a Rust test.
 ---
 
 # Write Rust tests
@@ -63,6 +63,24 @@ row that fails to load is a red case.
 - Do not write a helper that builds a runtime and calls `block_on`. Use
   `#[tokio::test(flavor = "multi_thread")]` only when the test needs threads
   that run at the same time, and say why in a comment.
+
+## Errors: no unwrap, no expect
+
+Every test returns `anyhow::Result<()>` and uses `?` for each step that can
+fail. Never call `unwrap()` or `expect()` in a test or a test helper. A test
+helper that can fail returns `anyhow::Result<T>` too.
+
+- `Option`: `.context("what was missing")?`.
+- A wrong enum variant: `let ... else { anyhow::bail!("expected ...") };`.
+- A value that must be an error: `assert_eq!(result, Err(...))`, or
+  `assert!(matches!(result, Err(...)))`. Do not `unwrap_err()`.
+- Assertions stay `assert!` and `assert_eq!`: they state the claim.
+- `#[test_case]` and `#[tokio::test]` work with `-> anyhow::Result<()>`.
+- Add `anyhow` to the crate's `[dev-dependencies]` when the first test in that
+  crate needs it.
+
+Why: `?` shows which step failed and why. An `unwrap` panic hides it behind a
+line number (the user's review of REC-02, 2026-11-01).
 
 ## Style
 

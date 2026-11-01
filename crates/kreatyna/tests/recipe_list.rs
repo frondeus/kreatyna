@@ -36,12 +36,8 @@ async fn initialization_renders_then_reads_and_dispatching_its_result_shows_the_
     let outcome = command.step().await?.expect_outcome();
     command.step().await?.expect_done();
     drop(command);
-    assert_eq!(
-        outcome,
-        RecipeListOutcome::LoadFinished {
-            result: Ok(stored.clone())
-        }
-    );
+    let RecipeListOutcome::LoadFinished(finished) = &outcome;
+    assert_eq!(finished.value, Ok(stored.clone()));
 
     // Reading the store does not apply the result. Dispatch it to leave loading.
     let mut render = fixture
@@ -90,6 +86,28 @@ async fn refresh_is_ignored_when_the_list_is_ready() -> anyhow::Result<()> {
         .driver(&mut fixture.effects);
     assert_eq!(fixture.list.view(), ready(&[shakshuka]));
     refresh.step().await?.expect_done();
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_result_of_an_earlier_load_is_ignored() -> anyhow::Result<()> {
+    let mut fixture = ListFixture::new();
+    let load = fixture.list.init();
+    let failed = fixture
+        .run_load(load, Err(RecipeLoadError::Storage))
+        .await?;
+    let command = fixture.list.update(Message::Outcome(failed.clone()));
+    fixture.render(command).await?;
+
+    let _retry = fixture
+        .list
+        .update(Message::Event(RecipeListEvent::Refresh));
+    let mut stale = fixture
+        .list
+        .update(Message::Outcome(failed))
+        .driver(&mut fixture.effects);
+    stale.step().await?.expect_done();
+    assert_eq!(fixture.list.view(), loading());
     Ok(())
 }
 
@@ -206,6 +224,32 @@ impl ListFixture {
         load: Command<RecipeListOutcome>,
         result: Result<Vec<Recipe>, RecipeLoadError>,
     ) -> anyhow::Result<()> {
+        let outcome = self.run_load(load, result).await?;
+        let command = self.list.update(Message::Outcome(outcome));
+        self.render(command).await
+    }
+
+    /// Runs a command that only renders.
+    async fn render(&mut self, command: Command<RecipeListOutcome>) -> anyhow::Result<()> {
+        let mut render = command.driver(&mut self.effects);
+        render
+            .step()
+            .await?
+            .expect_effect()
+            .expect_render()
+            .resolve_render(|| async {})
+            .await?;
+        render.step().await?.expect_done();
+        Ok(())
+    }
+
+    /// Runs a load command to its end with `result`. Returns its outcome,
+    /// not yet dispatched.
+    async fn run_load(
+        &mut self,
+        load: Command<RecipeListOutcome>,
+        result: Result<Vec<Recipe>, RecipeLoadError>,
+    ) -> anyhow::Result<RecipeListOutcome> {
         let mut command = load.driver(&mut self.effects);
         command
             .step()
@@ -223,20 +267,6 @@ impl ListFixture {
             .await?;
         let outcome = command.step().await?.expect_outcome();
         command.step().await?.expect_done();
-        drop(command);
-
-        let mut render = self
-            .list
-            .update(Message::Outcome(outcome))
-            .driver(&mut self.effects);
-        render
-            .step()
-            .await?
-            .expect_effect()
-            .expect_render()
-            .resolve_render(|| async {})
-            .await?;
-        render.step().await?.expect_done();
-        Ok(())
+        Ok(outcome)
     }
 }

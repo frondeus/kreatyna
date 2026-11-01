@@ -294,19 +294,98 @@ fn split_app_event_conversion_reaches_the_sections() {
 }
 
 #[test]
-fn a_recipe_editor_event_keeps_its_pane_scope() {
-    let event = RecipeSectionEvent::Editor {
-        scope: ScopeId { value: 7 },
+fn recipe_section_events_keep_their_pane_scope() {
+    let scope = ScopeId { value: 7 };
+    let editor = RecipeSectionEvent::Editor {
+        scope,
         event: RecipeEditorEvent::SetTitle {
             title: " Pasta ".into(),
         },
     };
     assert_eq!(
-        kreatyna::recipes::RecipeSectionEvent::from(event),
+        kreatyna::recipes::RecipeSectionEvent::from(editor),
         kreatyna::recipes::RecipeSectionEvent::Editor(Scoped::new(
             CommandScopeId::from(7),
             kreatyna::recipes::RecipeEditorEvent::SetTitle(" Pasta ".into())
         ))
+    );
+    let retry = RecipeSectionEvent::Detail {
+        scope,
+        event: RecipeDetailEvent::Retry,
+    };
+    assert_eq!(
+        kreatyna::recipes::RecipeSectionEvent::from(retry),
+        kreatyna::recipes::RecipeSectionEvent::Detail(Scoped::new(
+            CommandScopeId::from(7),
+            kreatyna::recipes::RecipeDetailEvent::Retry
+        ))
+    );
+    assert_eq!(
+        kreatyna::recipes::RecipeSectionEvent::from(RecipeSectionEvent::ClearSelection { scope }),
+        kreatyna::recipes::RecipeSectionEvent::ClearSelection {
+            scope: CommandScopeId::from(7)
+        }
+    );
+}
+
+#[test]
+fn a_recipe_row_click_carries_the_recipe_id() {
+    let id = kreatyna::recipes::RecipeId::new();
+    assert_eq!(
+        kreatyna::recipes::RecipeSectionEvent::from(RecipeSectionEvent::Select { id }),
+        kreatyna::recipes::RecipeSectionEvent::Select(id)
+    );
+}
+
+#[test]
+fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
+    let id = kreatyna::recipes::RecipeId::new();
+    assert_eq!(support::lift_recipe_id(id.to_string())?, id);
+    Ok(())
+}
+
+#[test]
+fn invalid_recipe_id_text_fails_the_call_with_a_conversion_error() {
+    let error = support::lift_recipe_id("not-a-uuid".into())
+        .err()
+        .and_then(|error| error.downcast::<crate::AppFfiError>().ok());
+    assert!(matches!(
+        error,
+        Some(crate::AppFfiError::Conversion {
+            error: AppTypeConversionError::InvalidRecipeId { value }
+        }) if value == "not-a-uuid"
+    ));
+}
+
+#[test_case(kreatyna::recipes::RecipeDetailStatus::Loading, RecipeDetailStatus::Loading; "loading")]
+#[test_case(
+    kreatyna::recipes::RecipeDetailStatus::Failed(kreatyna::recipes::capabilities::RecipeLoadError::Transport),
+    RecipeDetailStatus::Failed { error: RecipeLoadError::Transport };
+    "failed"
+)]
+#[test_case(kreatyna::recipes::RecipeDetailStatus::Missing, RecipeDetailStatus::Missing; "missing")]
+#[test_case(
+    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into() },
+    RecipeDetailStatus::Ready { title: "Shakshuka".into() };
+    "ready"
+)]
+fn a_read_view_pane_keeps_the_id_and_the_status(
+    status: kreatyna::recipes::RecipeDetailStatus,
+    expected: RecipeDetailStatus,
+) {
+    let id = kreatyna::recipes::RecipeId::new();
+    let pane = kreatyna::recipes::RecipePaneView::Detail(kreatyna::recipes::RecipeDetailView {
+        id,
+        status,
+    });
+    assert_eq!(
+        RecipePaneView::from(pane),
+        RecipePaneView::Detail {
+            detail: RecipeDetailView {
+                id,
+                status: expected,
+            }
+        }
     );
 }
 
@@ -363,12 +442,13 @@ fn split_app_view_conversion_keeps_the_section_and_the_recipe_rows() -> anyhow::
         app.recipes.list.status,
         RecipeListStatus::Ready {
             rows: vec![RecipeListRow {
-                id: id.to_string(),
+                id,
                 title: "Shakshuka".into()
             }]
         }
     );
     assert_eq!(app.recipes.pane.value, RecipePaneView::Empty);
+    assert_eq!(app.recipes.selected, None);
     assert!(app.recipes.can_create);
     Ok(())
 }

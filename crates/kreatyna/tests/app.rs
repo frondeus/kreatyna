@@ -194,6 +194,33 @@ async fn recipe_section_events_route_through_the_app() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn a_recipe_row_click_opens_its_read_view_and_a_section_switch_keeps_it() -> anyhow::Result<()>
+{
+    let mut f = Fixture::with(AppLayout::Split);
+    f.initialize().await?;
+    let command = f.recipes(RecipeSectionEvent::Select(shakshuka().id));
+    f.drive_initialization(command).await?;
+    let recipes = f.split().recipes;
+    assert_eq!(recipes.selected, Some(shakshuka().id));
+    assert_eq!(
+        recipes.pane.value,
+        RecipePaneView::Detail(RecipeDetailView {
+            id: shakshuka().id,
+            status: RecipeDetailStatus::Ready {
+                title: "Shakshuka".into()
+            },
+        })
+    );
+
+    let command = f.split_event(SplitAppEvent::SelectSection(AppSection::Ingredients));
+    f.render(command).await?;
+    let command = f.split_event(SplitAppEvent::SelectSection(AppSection::Recipes));
+    f.render(command).await?;
+    assert_eq!(f.split().recipes, recipes);
+    Ok(())
+}
+
+#[tokio::test]
 async fn switching_sections_keeps_an_open_recipe_editor() -> anyhow::Result<()> {
     let mut f = Fixture::with(AppLayout::Split);
     f.initialize().await?;

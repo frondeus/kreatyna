@@ -34,14 +34,14 @@ impl From<RecipeListEvent> for core::RecipeListEvent {
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct RecipeListRow {
-    pub id: String,
+    pub id: core::RecipeId,
     pub title: String,
 }
 
 impl From<core::RecipeListRow> for RecipeListRow {
     fn from(value: core::RecipeListRow) -> Self {
         Self {
-            id: value.id.to_string(),
+            id: value.id,
             title: value.title,
         }
     }
@@ -204,9 +204,67 @@ impl From<RecipeEditorEvent> for core::RecipeEditorEvent {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum RecipeDetailEvent {
+    /// Load again after a failure (the Retry button).
+    Retry,
+}
+
+impl From<RecipeDetailEvent> for core::RecipeDetailEvent {
+    fn from(value: RecipeDetailEvent) -> Self {
+        match value {
+            RecipeDetailEvent::Retry => Self::Retry,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum RecipeDetailStatus {
+    Loading,
+    Failed {
+        error: RecipeLoadError,
+    },
+    /// No recipe has this id any more.
+    Missing,
+    Ready {
+        title: String,
+    },
+}
+
+impl From<core::RecipeDetailStatus> for RecipeDetailStatus {
+    fn from(value: core::RecipeDetailStatus) -> Self {
+        match value {
+            core::RecipeDetailStatus::Loading => Self::Loading,
+            core::RecipeDetailStatus::Failed(error) => Self::Failed {
+                error: error.into(),
+            },
+            core::RecipeDetailStatus::Missing => Self::Missing,
+            core::RecipeDetailStatus::Ready { title } => Self::Ready { title },
+        }
+    }
+}
+
+/// The read view of one recipe.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct RecipeDetailView {
+    pub id: core::RecipeId,
+    pub status: RecipeDetailStatus,
+}
+
+impl From<core::RecipeDetailView> for RecipeDetailView {
+    fn from(value: core::RecipeDetailView) -> Self {
+        Self {
+            id: value.id,
+            status: value.status.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum RecipePaneView {
     /// "Select a recipe".
     Empty,
+    /// The read view of the selected recipe.
+    Detail { detail: RecipeDetailView },
     Create {
         editor: RecipeEditorView,
         /// The typed title, trimmed, for the draft row at the top of the
@@ -219,9 +277,9 @@ impl From<core::RecipePaneView> for RecipePaneView {
     fn from(value: core::RecipePaneView) -> Self {
         match value {
             core::RecipePaneView::Empty => Self::Empty,
-            // Nothing selects a recipe through the FFI yet: `Select` arrives
-            // with the read view's FFI types in the next change.
-            core::RecipePaneView::Detail(_) => Self::Empty,
+            core::RecipePaneView::Detail(detail) => Self::Detail {
+                detail: detail.into(),
+            },
             core::RecipePaneView::Create { editor, draft_row } => Self::Create {
                 editor: editor.into(),
                 draft_row,
@@ -249,6 +307,9 @@ impl From<Scoped<core::RecipePaneView>> for ScopedRecipePaneView {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct RecipeSectionView {
     pub list: RecipeListView,
+    /// The highlighted row: the open recipe's id. `None` while the editor is
+    /// open.
+    pub selected: Option<core::RecipeId>,
     pub pane: ScopedRecipePaneView,
     /// Whether New Recipe works now.
     pub can_create: bool,
@@ -258,6 +319,7 @@ impl From<core::RecipeSectionView> for RecipeSectionView {
     fn from(value: core::RecipeSectionView) -> Self {
         Self {
             list: value.list.into(),
+            selected: value.selected,
             pane: value.pane.into(),
             can_create: value.can_create,
         }
@@ -271,6 +333,18 @@ pub enum RecipeSectionEvent {
     },
     /// New Recipe or ⌘N.
     NewRecipe,
+    /// A row click.
+    Select {
+        id: core::RecipeId,
+    },
+    /// ⌘-click on the open recipe.
+    ClearSelection {
+        scope: ScopeId,
+    },
+    Detail {
+        scope: ScopeId,
+        event: RecipeDetailEvent,
+    },
     Editor {
         scope: ScopeId,
         event: RecipeEditorEvent,
@@ -282,6 +356,13 @@ impl From<RecipeSectionEvent> for core::RecipeSectionEvent {
         match value {
             RecipeSectionEvent::List { event } => Self::List(event.into()),
             RecipeSectionEvent::NewRecipe => Self::NewRecipe,
+            RecipeSectionEvent::Select { id } => Self::Select(id),
+            RecipeSectionEvent::ClearSelection { scope } => Self::ClearSelection {
+                scope: scope.into(),
+            },
+            RecipeSectionEvent::Detail { scope, event } => {
+                Self::Detail(Scoped::new(scope.into(), event.into()))
+            }
             RecipeSectionEvent::Editor { scope, event } => {
                 Self::Editor(Scoped::new(scope.into(), event.into()))
             }

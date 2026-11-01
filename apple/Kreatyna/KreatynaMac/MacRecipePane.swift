@@ -7,7 +7,8 @@ struct MacRecipePane: View {
 
     var body: some View {
         switch section.pane.value {
-        case .empty:
+        // The read view arrives in the next change; until then it looks empty.
+        case .empty, .detail:
             // A recipe opens here from REC-03.
             ContentUnavailableView {
                 Text("Select a recipe")

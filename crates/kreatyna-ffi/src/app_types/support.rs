@@ -1,4 +1,6 @@
-use kreatyna::ingredients::IngredientId;
+use kreatyna::{ingredients::IngredientId, recipes::RecipeId};
+
+use crate::AppFfiError;
 use krucyfiks::CommandScopeId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
@@ -24,6 +26,8 @@ impl From<ScopeId> for CommandScopeId {
 pub enum AppTypeConversionError {
     #[error("invalid ingredient ID: {value}")]
     InvalidIngredientId { value: String },
+    #[error("invalid recipe ID: {value}")]
+    InvalidRecipeId { value: String },
     #[error("integer cannot be represented on this platform")]
     IntegerOutOfRange,
 }
@@ -44,4 +48,22 @@ pub(super) fn ingredient_id(value: String) -> Result<IngredientId, AppTypeConver
     value
         .parse()
         .map_err(|_| AppTypeConversionError::InvalidIngredientId { value })
+}
+
+// A recipe id crosses the FFI as its UUID text. Swift sees `RecipeId`, a
+// type alias of `String`.
+uniffi::custom_type!(RecipeId, String, {
+    remote,
+    lower: |id| id.to_string(),
+    try_lift: |value| lift_recipe_id(value),
+});
+
+/// Swift's id text as a `RecipeId`. Invalid text fails the call that carries
+/// it, for example `dispatch`, with `AppFfiError::Conversion`.
+pub(crate) fn lift_recipe_id(value: String) -> uniffi::Result<RecipeId> {
+    value.parse().map_err(|_| {
+        uniffi::deps::anyhow::Error::new(AppFfiError::from(
+            AppTypeConversionError::InvalidRecipeId { value },
+        ))
+    })
 }

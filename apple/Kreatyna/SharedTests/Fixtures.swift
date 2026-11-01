@@ -124,15 +124,17 @@ enum Fixtures {
         RecipeListView(status: status)
     }
 
-    /// The Recipes section: a list and an empty pane, or the create editor
-    /// with its draft row (REC-02).
+    /// The Recipes section: a list and an empty pane, a read view with its
+    /// row selected (REC-03), or the create editor with its draft row (REC-02).
     static func recipeSection(
         _ status: RecipeListStatus = .ready(rows: []),
         pane: RecipePaneView = .empty
     ) -> RecipeSectionView {
-        let canCreate = if case .empty = pane { true } else { false }
+        let canCreate = if case .create = pane { false } else { true }
+        let selected = if case .detail(let detail) = pane { detail.id } else { nil as String? }
         return RecipeSectionView(
             list: recipeList(status),
+            selected: selected,
             pane: ScopedRecipePaneView(scope: ScopeId(value: 5), value: pane),
             canCreate: canCreate
         )

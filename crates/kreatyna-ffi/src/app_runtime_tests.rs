@@ -118,7 +118,8 @@ fn the_split_layout_starts_on_recipes_with_both_sections_ready() {
 }
 
 #[test]
-fn a_created_recipe_is_listed_and_its_title_cannot_be_taken_again() -> anyhow::Result<()> {
+fn a_created_recipe_is_listed_opens_its_read_view_and_its_title_cannot_be_taken_again()
+-> anyhow::Result<()> {
     let database = TemporaryDatabase::new();
     let (render, rendered) = TestRender::new();
     let app = app(
@@ -134,10 +135,21 @@ fn a_created_recipe_is_listed_and_its_title_cannot_be_taken_again() -> anyhow::R
     create_recipe(&app, &rendered, "Shakshuka")?;
     wait_until(&app, &rendered, |view| {
         split_of(view).is_some_and(|split| {
+            // The saved recipe is listed, highlighted, and read from the store.
             matches!(
                 (&split.recipes.list.status, &split.recipes.pane.value),
-                (RecipeListStatus::Ready { rows }, RecipePaneView::Empty)
-                    if rows.iter().map(|row| row.title.as_str()).eq(["Shakshuka"])
+                (
+                    RecipeListStatus::Ready { rows },
+                    RecipePaneView::Detail {
+                        detail: RecipeDetailView {
+                            status: RecipeDetailStatus::Ready { title },
+                            id,
+                        }
+                    },
+                ) if rows.iter().map(|row| row.title.as_str()).eq(["Shakshuka"])
+                    && title == "Shakshuka"
+                    && split.recipes.selected.as_ref() == Some(id)
+                    && rows[0].id == *id
             )
         })
     });

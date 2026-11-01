@@ -1,4 +1,4 @@
-use krucyfiks::{Command, CommandExt, CommandId, Latest, LatestCommandSlot, Message, Widget};
+use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
 use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 
@@ -30,17 +30,9 @@ pub enum IngredientFormEvent {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IngredientFormOutcome {
-    ConfirmationDecided {
-        id: CommandId,
-        decision: ConfirmationOutcome,
-    },
-    SaveFinished {
-        id: CommandId,
-        result: Result<Ingredient, IngredientSaveError>,
-    },
-    Saved {
-        ingredient: Ingredient,
-    },
+    ConfirmationDecided(Latest<ConfirmationOutcome>),
+    SaveFinished(Latest<Result<Ingredient, IngredientSaveError>>),
+    Saved { ingredient: Ingredient },
     Discarded,
 }
 
@@ -166,9 +158,7 @@ impl Widget for IngredientForm {
                     store.save(write).await
                 })
                 .latest(&mut self.save)
-                .map(|Latest { id, value: result }| {
-                    IngredientFormOutcome::SaveFinished { id, result }
-                })
+                .map(IngredientFormOutcome::SaveFinished)
             }
             Message::Event(IngredientFormEvent::RequestClose)
                 if matches!(self.state, FormState::Editing) =>
@@ -191,15 +181,7 @@ impl Widget for IngredientForm {
                 confirmation
                     .update(Message::Event(event))
                     .latest(&mut self.confirmation)
-                    .map(
-                        |Latest {
-                             id,
-                             value: decision,
-                         }| IngredientFormOutcome::ConfirmationDecided {
-                            id,
-                            decision,
-                        },
-                    )
+                    .map(IngredientFormOutcome::ConfirmationDecided)
             }
             Message::Event(event) if matches!(self.state, FormState::Editing) => {
                 if !self.edit(event) {
@@ -209,13 +191,14 @@ impl Widget for IngredientForm {
                 self.update_issues();
                 self.render()
             }
-            Message::Outcome(IngredientFormOutcome::ConfirmationDecided { id, decision }) => {
+            Message::Outcome(IngredientFormOutcome::ConfirmationDecided(decided)) => {
                 let FormState::ConfirmingDiscard(confirmation) = &self.state else {
                     return Command::empty();
                 };
-                if !self.confirmation.accepts(id)
-                    || confirmation.view() != (ConfirmationView::Resolved { decision })
-                {
+                let Some(decision) = self.confirmation.accept(decided) else {
+                    return Command::empty();
+                };
+                if confirmation.view() != (ConfirmationView::Resolved { decision }) {
                     return Command::empty();
                 }
                 self.confirmation.stop();
@@ -227,10 +210,10 @@ impl Widget for IngredientForm {
                     }
                 }
             }
-            Message::Outcome(IngredientFormOutcome::SaveFinished { id, result }) => {
-                if !self.save.accepts(id) {
+            Message::Outcome(IngredientFormOutcome::SaveFinished(finished)) => {
+                let Some(result) = self.save.accept(finished) else {
                     return Command::empty();
-                }
+                };
                 self.save.stop();
                 match result {
                     Ok(ingredient) => {

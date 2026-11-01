@@ -6,7 +6,7 @@ use kreatyna::ingredients::{
     capabilities::{IngredientEffectStream, IngredientLoadError, ResolveIngredientStore},
 };
 use krucyfiks::{
-    Message, Widget,
+    Latest, Message, Widget,
     effects::{CommandTestExt, EnvelopeError},
 };
 use test_case::{test_case, test_matrix};
@@ -43,7 +43,7 @@ async fn initialization_renders_then_reads_and_dispatching_its_result_exposes_so
     command.step().await?.expect_done();
     drop(command);
 
-    let IngredientListOutcome::LoadFinished { result, .. } = &outcome else {
+    let IngredientListOutcome::LoadFinished(Latest { value: result, .. }) = &outcome else {
         panic!("expected a completed load");
     };
     assert_eq!(result, &Ok(records.clone()));
@@ -1112,7 +1112,7 @@ async fn a_dropped_initial_store_response_exposes_a_transport_failure() -> anyho
         .await?;
     drop(command.step().await?.expect_effect().expect_store());
     let outcome = command.step().await?.expect_outcome();
-    let IngredientListOutcome::LoadFinished { result, .. } = &outcome else {
+    let IngredientListOutcome::LoadFinished(Latest { value: result, .. }) = &outcome else {
         panic!("expected a completed load");
     };
     assert_eq!(result, &Err(IngredientLoadError::Transport));

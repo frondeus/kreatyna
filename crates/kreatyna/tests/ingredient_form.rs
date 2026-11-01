@@ -9,7 +9,7 @@ use kreatyna::{
     },
 };
 use krucyfiks::{
-    Message, Widget,
+    Latest, Message, Widget,
     effects::{CommandDriver, CommandTestExt},
     test_utils::EmptyInitTest,
 };
@@ -592,7 +592,7 @@ async fn saving_a_valid_create_draft_sends_a_normalized_create_and_finishes_with
     );
     assert!(matches!(
         &outcome,
-        IngredientFormOutcome::SaveFinished { result: Ok(record), .. } if record == &saved
+        IngredientFormOutcome::SaveFinished(Latest { value: Ok(record), .. }) if record == &saved
     ));
 
     let mut command = fixture
@@ -773,10 +773,10 @@ async fn confirming_discard_finishes_with_discarded() -> anyhow::Result<()> {
     let decision = command.step().await?.expect_outcome();
     assert!(matches!(
         decision,
-        IngredientFormOutcome::ConfirmationDecided {
-            decision: ConfirmationOutcome::Confirmed,
+        IngredientFormOutcome::ConfirmationDecided(Latest {
+            value: ConfirmationOutcome::Confirmed,
             ..
-        }
+        })
     ));
     command.step().await?.expect_done();
     drop(command);
@@ -825,10 +825,10 @@ async fn cancelling_discard_returns_to_editing_with_the_dirty_draft() -> anyhow:
     let decision = command.step().await?.expect_outcome();
     assert!(matches!(
         decision,
-        IngredientFormOutcome::ConfirmationDecided {
-            decision: ConfirmationOutcome::Cancelled,
+        IngredientFormOutcome::ConfirmationDecided(Latest {
+            value: ConfirmationOutcome::Cancelled,
             ..
-        }
+        })
     ));
     command.step().await?.expect_done();
     drop(command);
@@ -988,7 +988,7 @@ async fn a_second_decision_before_the_first_is_applied_is_ignored(
     let decision = pending.step().await?.expect_outcome();
     assert!(matches!(
         decision,
-        IngredientFormOutcome::ConfirmationDecided { decision, .. } if decision == expected
+        IngredientFormOutcome::ConfirmationDecided(Latest { value: decision, .. }) if decision == expected
     ));
     pending.step().await?.expect_done();
     Ok(())
@@ -1266,10 +1266,10 @@ async fn a_dropped_store_response_reports_a_transport_failure() -> anyhow::Resul
     let outcome = command.step().await?.expect_outcome();
     assert!(matches!(
         outcome,
-        IngredientFormOutcome::SaveFinished {
-            result: Err(IngredientSaveError::Transport),
+        IngredientFormOutcome::SaveFinished(Latest {
+            value: Err(IngredientSaveError::Transport),
             ..
-        }
+        })
     ));
     command.step().await?.expect_done();
     drop(command);

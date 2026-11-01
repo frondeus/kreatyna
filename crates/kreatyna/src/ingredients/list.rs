@@ -1,4 +1,4 @@
-use krucyfiks::{Command, CommandExt, CommandId, Latest, LatestCommandSlot, Message, Widget};
+use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
 use super::{
     Ingredient, IngredientId,
@@ -17,17 +17,10 @@ pub enum IngredientListEvent {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IngredientListOutcome {
-    LoadFinished {
-        id: CommandId,
-        result: Result<Vec<Ingredient>, IngredientLoadError>,
-    },
+    LoadFinished(Latest<Result<Vec<Ingredient>, IngredientLoadError>>),
     CreateRequested,
-    OpenDetail {
-        ingredient: Ingredient,
-    },
-    OpenEdit {
-        ingredient: Ingredient,
-    },
+    OpenDetail { ingredient: Ingredient },
+    OpenEdit { ingredient: Ingredient },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -182,7 +175,7 @@ impl IngredientList {
             store.list().await
         })
         .latest(&mut self.load)
-        .map(|Latest { id, value: result }| IngredientListOutcome::LoadFinished { id, result })
+        .map(IngredientListOutcome::LoadFinished)
     }
 
     fn begin_load(&mut self) -> Command<IngredientListOutcome> {
@@ -276,10 +269,10 @@ impl Widget for IngredientList {
                     Command::empty()
                 }
             }
-            Message::Outcome(IngredientListOutcome::LoadFinished { id, result }) => {
-                if !self.load.accepts(id) {
+            Message::Outcome(IngredientListOutcome::LoadFinished(finished)) => {
+                let Some(result) = self.load.accept(finished) else {
                     return Command::empty();
-                }
+                };
                 self.load.stop();
                 match result {
                     Ok(ingredients) => {

@@ -1,4 +1,4 @@
-use krucyfiks::{Command, CommandExt, CommandId, Latest, LatestCommandSlot, Message, Widget};
+use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
 use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 
@@ -16,20 +16,10 @@ pub enum IngredientDetailEvent {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IngredientDetailOutcome {
-    OpenEdit {
-        ingredient: Ingredient,
-    },
-    ConfirmationDecided {
-        id: CommandId,
-        decision: ConfirmationOutcome,
-    },
-    DeleteFinished {
-        id: CommandId,
-        result: Result<(), IngredientDeleteError>,
-    },
-    Deleted {
-        id: IngredientId,
-    },
+    OpenEdit { ingredient: Ingredient },
+    ConfirmationDecided(Latest<ConfirmationOutcome>),
+    DeleteFinished(Latest<Result<(), IngredientDeleteError>>),
+    Deleted { id: IngredientId },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -106,7 +96,7 @@ impl IngredientDetail {
             store.delete(ingredient_id).await
         })
         .latest(&mut self.deletion)
-        .map(|Latest { id, value: result }| IngredientDetailOutcome::DeleteFinished { id, result })
+        .map(IngredientDetailOutcome::DeleteFinished)
     }
 }
 
@@ -141,23 +131,16 @@ impl Widget for IngredientDetail {
                 confirmation
                     .update(Message::Event(event))
                     .latest(&mut self.confirmation)
-                    .map(
-                        |Latest {
-                             id,
-                             value: decision,
-                         }| IngredientDetailOutcome::ConfirmationDecided {
-                            id,
-                            decision,
-                        },
-                    )
+                    .map(IngredientDetailOutcome::ConfirmationDecided)
             }
-            Message::Outcome(IngredientDetailOutcome::ConfirmationDecided { id, decision }) => {
+            Message::Outcome(IngredientDetailOutcome::ConfirmationDecided(decided)) => {
                 let DetailState::Confirming { confirmation, .. } = &self.state else {
                     return Command::empty();
                 };
-                if !self.confirmation.accepts(id)
-                    || confirmation.view() != (ConfirmationView::Resolved { decision })
-                {
+                let Some(decision) = self.confirmation.accept(decided) else {
+                    return Command::empty();
+                };
+                if confirmation.view() != (ConfirmationView::Resolved { decision }) {
                     return Command::empty();
                 }
                 self.confirmation.stop();
@@ -169,10 +152,10 @@ impl Widget for IngredientDetail {
                     }
                 }
             }
-            Message::Outcome(IngredientDetailOutcome::DeleteFinished { id, result }) => {
-                if !self.deletion.accepts(id) {
+            Message::Outcome(IngredientDetailOutcome::DeleteFinished(finished)) => {
+                let Some(result) = self.deletion.accept(finished) else {
                     return Command::empty();
-                }
+                };
                 self.deletion.stop();
                 match result {
                     Err(error) => {

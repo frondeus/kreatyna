@@ -6,8 +6,7 @@ use kreatyna::{
     ingredients::capabilities::IngredientStoreClient, recipes::capabilities::RecipeStoreClient,
 };
 use krucyfiks::{
-    Command, CommandExt, CommandId, Latest, LatestCommandSlot, Message, Widget,
-    effects::RequestCloseHandle,
+    Command, CommandExt, Latest, LatestCommandSlot, Message, Widget, effects::RequestCloseHandle,
 };
 use parking_lot::Mutex;
 use tokio::{sync::oneshot, task::JoinHandle};
@@ -41,7 +40,7 @@ impl fmt::Debug for AppShellEvent {
 pub(crate) enum AppShellOutcome {
     InitializationFinished(Result<Box<PreparedApp>, AppInitializationError>),
     /// The database task ended while the app was running (P06).
-    DatabaseStopped(CommandId),
+    DatabaseStopped(Latest<()>),
     App(kreatyna::AppOutcome),
 }
 
@@ -55,9 +54,10 @@ impl fmt::Debug for AppShellOutcome {
                 .debug_tuple("InitializationFinished")
                 .field(error)
                 .finish(),
-            Self::DatabaseStopped(id) => {
-                formatter.debug_tuple("DatabaseStopped").field(id).finish()
-            }
+            Self::DatabaseStopped(stopped) => formatter
+                .debug_tuple("DatabaseStopped")
+                .field(stopped)
+                .finish(),
             Self::App(outcome) => formatter.debug_tuple("App").field(outcome).finish(),
         }
     }
@@ -93,7 +93,7 @@ impl AppShell {
             let _ = stopped.await;
         })
         .latest(&mut self.database_watch)
-        .map(|Latest { id, value: () }| AppShellOutcome::DatabaseStopped(id))
+        .map(AppShellOutcome::DatabaseStopped)
     }
 
     fn render(&self) -> Command<AppShellOutcome> {
@@ -158,10 +158,12 @@ impl Widget for AppShell {
                     }
                 }
             }
-            Message::Outcome(AppShellOutcome::DatabaseStopped(id))
-                if self.database_watch.accepts(id)
-                    && matches!(self.state, AppShellState::Running(_)) =>
-            {
+            Message::Outcome(AppShellOutcome::DatabaseStopped(stopped)) => {
+                if self.database_watch.accept(stopped).is_none()
+                    || !matches!(self.state, AppShellState::Running(_))
+                {
+                    return Command::empty();
+                }
                 tracing::error!("Database task stopped; the app needs a restart");
                 self.database_watch.stop();
                 // Dropping the app releases its clients of the stopped task.
@@ -188,9 +190,7 @@ impl Widget for AppShell {
                     .map(AppShellOutcome::App)
             }
             Message::Event(AppShellEvent::RetryInitialization)
-            | Message::Outcome(
-                AppShellOutcome::InitializationFinished(_) | AppShellOutcome::DatabaseStopped(_),
-            ) => Command::empty(),
+            | Message::Outcome(AppShellOutcome::InitializationFinished(_)) => Command::empty(),
         }
     }
 

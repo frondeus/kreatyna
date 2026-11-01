@@ -9,7 +9,7 @@ use kreatyna::{
     },
 };
 use krucyfiks::{
-    Message, Widget,
+    Latest, Message, Widget,
     effects::{CommandDriver, CommandTestExt, EnvelopeError},
     test_utils::EmptyInitTest,
 };
@@ -112,10 +112,10 @@ async fn cancelling_deletion_returns_to_idle_without_contacting_the_store() -> a
     let decision = command.step().await?.expect_outcome();
     assert!(matches!(
         decision,
-        IngredientDetailOutcome::ConfirmationDecided {
-            decision: ConfirmationOutcome::Cancelled,
+        IngredientDetailOutcome::ConfirmationDecided(Latest {
+            value: ConfirmationOutcome::Cancelled,
             ..
-        }
+        })
     ));
     command.step().await?.expect_done();
     drop(command);
@@ -162,10 +162,10 @@ async fn confirming_deletion_deletes_the_record_and_reports_its_id() -> anyhow::
     let decision = command.step().await?.expect_outcome();
     assert!(matches!(
         decision,
-        IngredientDetailOutcome::ConfirmationDecided {
-            decision: ConfirmationOutcome::Confirmed,
+        IngredientDetailOutcome::ConfirmationDecided(Latest {
+            value: ConfirmationOutcome::Confirmed,
             ..
-        }
+        })
     ));
     command.step().await?.expect_done();
     drop(command);
@@ -206,7 +206,7 @@ async fn confirming_deletion_deletes_the_record_and_reports_its_id() -> anyhow::
     assert_eq!(requested, Some(original.id));
     assert!(matches!(
         outcome,
-        IngredientDetailOutcome::DeleteFinished { result: Ok(()), .. }
+        IngredientDetailOutcome::DeleteFinished(Latest { value: Ok(()), .. })
     ));
 
     let mut command = fixture
@@ -307,7 +307,7 @@ async fn a_second_decision_before_the_first_is_applied_is_ignored(
     let decision = pending.step().await?.expect_outcome();
     assert!(matches!(
         decision,
-        IngredientDetailOutcome::ConfirmationDecided { decision, .. } if decision == expected
+        IngredientDetailOutcome::ConfirmationDecided(Latest { value: decision, .. }) if decision == expected
     ));
     pending.step().await?.expect_done();
     Ok(())
@@ -571,10 +571,10 @@ async fn a_dropped_store_response_reports_a_transport_failure() -> anyhow::Resul
     let outcome = command.step().await?.expect_outcome();
     assert!(matches!(
         outcome,
-        IngredientDetailOutcome::DeleteFinished {
-            result: Err(IngredientDeleteError::Transport),
+        IngredientDetailOutcome::DeleteFinished(Latest {
+            value: Err(IngredientDeleteError::Transport),
             ..
-        }
+        })
     ));
     command.step().await?.expect_done();
     drop(command);

@@ -14,7 +14,7 @@ use crate::ingredients::{
     capabilities::{IngredientCapabilities, IngredientEffect},
 };
 use crate::recipes::{
-    RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListView,
+    RecipeSection, RecipeSectionEvent, RecipeSectionOutcome, RecipeSectionView,
     capabilities::{RecipeCapabilities, RecipeEffect},
 };
 use crate::scoped_child::ScopedChild;
@@ -46,14 +46,14 @@ pub enum AppEvent {
 #[derive(Debug)]
 pub enum SplitAppEvent {
     SelectSection(AppSection),
-    Recipes(RecipeListEvent),
+    Recipes(RecipeSectionEvent),
     Ingredients(IngredientSplitCatalogEvent),
 }
 
 #[derive(Debug)]
 pub enum AppOutcome {
     Stack(Scoped<IngredientCatalogOutcome>),
-    SplitRecipes(Scoped<RecipeListOutcome>),
+    SplitRecipes(Scoped<RecipeSectionOutcome>),
     SplitIngredients(Scoped<IngredientSplitCatalogOutcome>),
 }
 
@@ -72,7 +72,7 @@ pub enum AppView {
 pub struct SplitAppView {
     /// The selected section. Both sections always exist.
     pub section: AppSection,
-    pub recipes: RecipeListView,
+    pub recipes: RecipeSectionView,
     pub ingredients: IngredientSplitCatalogView,
 }
 
@@ -118,7 +118,7 @@ enum Layout {
 struct SplitLayout {
     section: AppSection,
     render: Arc<dyn Render>,
-    recipes: ScopedChild<RecipeList>,
+    recipes: ScopedChild<RecipeSection>,
     ingredients: ScopedChild<IngredientSplitCatalog>,
 }
 
@@ -137,7 +137,7 @@ impl AppWidget {
                 // REC-01/Q1: the Mac app opens on Recipes.
                 section: AppSection::Recipes,
                 render: caps.recipes.render.clone(),
-                recipes: ScopedChild::new(RecipeList::new(caps.recipes)),
+                recipes: ScopedChild::new(RecipeSection::new(caps.recipes)),
                 ingredients: ScopedChild::new(IngredientSplitCatalog::new(caps.ingredients)),
             }),
         };
@@ -160,7 +160,7 @@ impl AppWidget {
 impl SplitLayout {
     // The scopes live as long as the app, so dropping the app cancels the
     // children's commands.
-    fn recipes(&mut self, command: Command<RecipeListOutcome>) -> Command<AppOutcome> {
+    fn recipes(&mut self, command: Command<RecipeSectionOutcome>) -> Command<AppOutcome> {
         self.recipes.command(command).map(AppOutcome::SplitRecipes)
     }
 
@@ -220,8 +220,8 @@ impl Widget for AppWidget {
         }
     }
 
-    /// Only the ingredient catalog can delay shutdown. A recipe load has
-    /// nothing to save.
+    /// Only the ingredient catalog can delay shutdown. The recipe section
+    /// does not: shutdown does not cancel a recipe save that already runs.
     fn can_begin_shutdown(&self) -> bool {
         match &self.layout {
             Layout::Stack(catalog) => catalog.widget.can_begin_shutdown(),

@@ -3,7 +3,7 @@ use kreatyna_db::sqlite::SqliteStartupError;
 
 use super::{
     AppTypeConversionError, IngredientCatalogEvent, IngredientCatalogView,
-    IngredientSplitCatalogEvent, IngredientSplitCatalogView, RecipeListEvent, RecipeListView,
+    IngredientSplitCatalogEvent, IngredientSplitCatalogView, RecipeSectionEvent, RecipeSectionView,
 };
 
 /// How the platform shows the app. Swift passes it once, to `app` (E-19).
@@ -69,7 +69,7 @@ impl TryFrom<AppEvent> for core::AppEvent {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum SplitAppEvent {
     SelectSection { section: AppSection },
-    Recipes { event: RecipeListEvent },
+    Recipes { event: RecipeSectionEvent },
     Ingredients { event: IngredientSplitCatalogEvent },
 }
 
@@ -149,7 +149,7 @@ impl TryFrom<core::AppView> for RunningAppView {
 pub struct SplitAppView {
     /// The selected section. Both sections always exist.
     pub section: AppSection,
-    pub recipes: RecipeListView,
+    pub recipes: RecipeSectionView,
     pub ingredients: IngredientSplitCatalogView,
 }
 

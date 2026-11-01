@@ -18,7 +18,7 @@ struct EventCompositionTests {
     @Test func splitEventsUseTheListAndPaneScopes() throws {
         let app = RunningAppView.split(app: SplitAppView(
             section: .ingredients,
-            recipes: RecipeListView(status: .ready(rows: [])),
+            recipes: Fixtures.recipeSection(),
             ingredients: Fixtures.splitCatalog(selected: Fixtures.garlic)
         ))
         let split = try #require(app.split)
@@ -28,7 +28,9 @@ struct EventCompositionTests {
             event: .ingredients(event: .list(scope: ScopeId(value: 3), event: .select(id: Fixtures.cucumberId)))
         ))
         #expect(split.selectSection(.recipes) == .split(event: .selectSection(section: .recipes)))
-        #expect(split.recipes(.refresh) == .split(event: .recipes(event: .refresh)))
+        #expect(split.recipes(split.recipes.list(.refresh)) == .split(event: .recipes(event: .list(event: .refresh))))
+        #expect(split.recipes.newRecipe == .newRecipe)
+        #expect(split.recipes.editor(.save) == .editor(scope: ScopeId(value: 5), event: .save))
         #expect(catalog.detail(.edit) == .detail(scope: ScopeId(value: 4), event: .edit))
         #expect(catalog.form(.save) == .form(scope: ScopeId(value: 4), event: .save))
         #expect(catalog.clearSelection == .clearSelection(scope: ScopeId(value: 4)))

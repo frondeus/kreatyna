@@ -21,7 +21,7 @@ extension SplitAppView {
         .split(event: .selectSection(section: section))
     }
 
-    func recipes(_ event: RecipeListEvent) -> AppEvent {
+    func recipes(_ event: RecipeSectionEvent) -> AppEvent {
         .split(event: .recipes(event: event))
     }
 
@@ -47,6 +47,22 @@ extension IngredientSplitCatalogView {
 
     var clearSelection: IngredientSplitCatalogEvent {
         .clearSelection(scope: pane.scope)
+    }
+}
+
+// The recipe list lives as long as the section and needs no scope. Editor
+// events carry the pane's scope, which is new for each editor.
+extension RecipeSectionView {
+    func list(_ event: RecipeListEvent) -> RecipeSectionEvent {
+        .list(event: event)
+    }
+
+    var newRecipe: RecipeSectionEvent {
+        .newRecipe
+    }
+
+    func editor(_ event: RecipeEditorEvent) -> RecipeSectionEvent {
+        .editor(scope: pane.scope, event: event)
     }
 }
 

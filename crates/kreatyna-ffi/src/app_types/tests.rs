@@ -278,40 +278,89 @@ fn split_app_event_conversion_reaches_the_sections() {
 
     let refresh = AppEvent::Split {
         event: SplitAppEvent::Recipes {
-            event: RecipeListEvent::Refresh,
+            event: RecipeSectionEvent::List {
+                event: RecipeListEvent::Refresh,
+            },
         },
     };
     assert!(matches!(
         core::AppEvent::try_from(refresh),
         Ok(core::AppEvent::Split(core::SplitAppEvent::Recipes(
-            kreatyna::recipes::RecipeListEvent::Refresh
+            kreatyna::recipes::RecipeSectionEvent::List(
+                kreatyna::recipes::RecipeListEvent::Refresh
+            )
         )))
     ));
 }
 
 #[test]
-fn split_app_view_conversion_keeps_the_section_and_the_recipe_rows() {
+fn a_recipe_editor_event_keeps_its_pane_scope() {
+    let event = RecipeSectionEvent::Editor {
+        scope: ScopeId { value: 7 },
+        event: RecipeEditorEvent::SetTitle {
+            title: " Pasta ".into(),
+        },
+    };
+    assert_eq!(
+        kreatyna::recipes::RecipeSectionEvent::from(event),
+        kreatyna::recipes::RecipeSectionEvent::Editor(Scoped::new(
+            CommandScopeId::from(7),
+            kreatyna::recipes::RecipeEditorEvent::SetTitle(" Pasta ".into())
+        ))
+    );
+}
+
+#[test]
+fn a_create_pane_keeps_the_draft_row_and_the_problem() {
+    let pane = kreatyna::recipes::RecipePaneView::Create {
+        editor: kreatyna::recipes::RecipeEditorView {
+            title: "shakshuka ".into(),
+            status: kreatyna::recipes::RecipeEditorStatus::Editing {
+                problem: Some(kreatyna::recipes::RecipeEditorProblem::SaveFailed(
+                    kreatyna::recipes::capabilities::RecipeSaveError::DuplicateTitle,
+                )),
+            },
+        },
+        draft_row: "shakshuka".into(),
+    };
+    assert_eq!(
+        RecipePaneView::from(pane),
+        RecipePaneView::Create {
+            editor: RecipeEditorView {
+                title: "shakshuka ".into(),
+                status: RecipeEditorStatus::Editing {
+                    problem: Some(RecipeEditorProblem::SaveFailed {
+                        error: RecipeSaveError::DuplicateTitle
+                    }),
+                },
+            },
+            draft_row: "shakshuka".into(),
+        }
+    );
+}
+
+#[test]
+fn split_app_view_conversion_keeps_the_section_and_the_recipe_rows() -> anyhow::Result<()> {
     let (mut app, _effects) = core::AppWidget::test_fixture_with(core::AppLayout::Split);
     drop(app.init());
     let core::AppView::Split(mut view) = app.view() else {
-        panic!("expected the split layout")
+        anyhow::bail!("expected the split layout")
     };
     let id = kreatyna::recipes::RecipeId::new();
-    view.recipes.status = kreatyna::recipes::RecipeListStatus::Ready {
+    view.recipes.list.status = kreatyna::recipes::RecipeListStatus::Ready {
         rows: vec![kreatyna::recipes::RecipeListRow {
             id,
             title: "Shakshuka".into(),
         }],
     };
 
-    let RunningAppView::Split { app } =
-        RunningAppView::try_from(core::AppView::Split(view)).unwrap()
+    let RunningAppView::Split { app } = RunningAppView::try_from(core::AppView::Split(view))?
     else {
-        panic!("expected the split layout")
+        anyhow::bail!("expected the split layout")
     };
     assert_eq!(app.section, AppSection::Recipes);
     assert_eq!(
-        app.recipes.status,
+        app.recipes.list.status,
         RecipeListStatus::Ready {
             rows: vec![RecipeListRow {
                 id: id.to_string(),
@@ -319,6 +368,9 @@ fn split_app_view_conversion_keeps_the_section_and_the_recipe_rows() {
             }]
         }
     );
+    assert_eq!(app.recipes.pane.value, RecipePaneView::Empty);
+    assert!(app.recipes.can_create);
+    Ok(())
 }
 
 #[test_case(kreatyna::recipes::capabilities::RecipeLoadError::Storage, RecipeLoadError::Storage; "storage")]
@@ -331,6 +383,16 @@ fn recipe_load_errors_keep_their_kind(
         RecipeListStatus::from(kreatyna::recipes::RecipeListStatus::Failed(error)),
         RecipeListStatus::Failed { error: expected }
     );
+}
+
+#[test_case(kreatyna::recipes::capabilities::RecipeSaveError::DuplicateTitle, RecipeSaveError::DuplicateTitle; "duplicate title")]
+#[test_case(kreatyna::recipes::capabilities::RecipeSaveError::Storage, RecipeSaveError::Storage; "storage")]
+#[test_case(kreatyna::recipes::capabilities::RecipeSaveError::Transport, RecipeSaveError::Transport; "transport")]
+fn recipe_save_errors_keep_their_kind(
+    error: kreatyna::recipes::capabilities::RecipeSaveError,
+    expected: RecipeSaveError,
+) {
+    assert_eq!(RecipeSaveError::from(error), expected);
 }
 
 fn stack(view: RunningAppView) -> IngredientCatalogView {

@@ -29,7 +29,8 @@ struct MacMainView: View {
         } content: {
             switch app.section {
             case .recipes:
-                MacRecipeList(view: app.recipes) { send(app.recipes($0)) }
+                let section = app.recipes
+                MacRecipeList(view: section.list) { send(app.recipes(section.list($0))) }
                     .navigationSplitViewColumnWidth(min: 220, ideal: 280)
             case .ingredients:
                 let catalog = app.ingredients

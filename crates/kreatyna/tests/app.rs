@@ -1,3 +1,4 @@
+use anyhow::Context;
 use futures::StreamExt;
 use kreatyna::{
     capabilities::ResolveRender,
@@ -6,7 +7,8 @@ use kreatyna::{
         *,
     },
     recipes::{
-        Recipe, RecipeId, RecipeListEvent, RecipeListRow, RecipeListStatus,
+        Recipe, RecipeEditorEvent, RecipeId, RecipeListEvent, RecipeListRow, RecipeListStatus,
+        RecipePaneView, RecipeSectionEvent,
         capabilities::{RecipeEffect, RecipeLoadError, ResolveRecipeStore},
     },
     *,
@@ -112,7 +114,7 @@ async fn the_split_layout_starts_on_recipes_and_loads_both_sections() -> anyhow:
     let app = f.split();
     assert_eq!(app.section, AppSection::Recipes);
     assert_eq!(
-        app.recipes.status,
+        app.recipes.list.status,
         RecipeListStatus::Ready {
             rows: vec![RecipeListRow {
                 id: shakshuka().id,
@@ -164,11 +166,95 @@ async fn the_split_layout_routes_ingredient_events_to_its_catalog() -> anyhow::R
             IngredientListEvent::Select(row),
         )),
     ));
-    let outcome = command.into_stream().next().await.unwrap();
+    let outcome = command
+        .into_stream()
+        .next()
+        .await
+        .context("the selection has no outcome")?;
     f.apply_render(outcome).await?;
     assert_eq!(f.split().ingredients.selected, Some(row));
     // Opening an ingredient does not change the selected section.
     assert_eq!(f.split().section, AppSection::Recipes);
+    Ok(())
+}
+
+#[tokio::test]
+async fn recipe_section_events_route_through_the_app() -> anyhow::Result<()> {
+    let mut f = Fixture::with(AppLayout::Split);
+    f.initialize().await?;
+    let command = f.recipes(RecipeSectionEvent::NewRecipe);
+    f.render(command).await?;
+    f.recipe_editor(RecipeEditorEvent::SetTitle("Pasta".into()))
+        .await?;
+    assert!(matches!(
+        f.split().recipes.pane.value,
+        RecipePaneView::Create { ref draft_row, .. } if draft_row == "Pasta"
+    ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn switching_sections_keeps_an_open_recipe_editor() -> anyhow::Result<()> {
+    let mut f = Fixture::with(AppLayout::Split);
+    f.initialize().await?;
+    let command = f.recipes(RecipeSectionEvent::NewRecipe);
+    f.render(command).await?;
+    f.recipe_editor(RecipeEditorEvent::SetTitle("Pasta".into()))
+        .await?;
+    let before = f.split().recipes;
+
+    let command = f.split_event(SplitAppEvent::SelectSection(AppSection::Ingredients));
+    f.render(command).await?;
+    let command = f.split_event(SplitAppEvent::SelectSection(AppSection::Recipes));
+    f.render(command).await?;
+    assert_eq!(f.split().recipes, before);
+    Ok(())
+}
+
+#[tokio::test]
+async fn shutdown_keeps_an_accepted_recipe_save() -> anyhow::Result<()> {
+    let mut f = Fixture::with(AppLayout::Split);
+    f.initialize().await?;
+    let command = f.recipes(RecipeSectionEvent::NewRecipe);
+    f.render(command).await?;
+    f.recipe_editor(RecipeEditorEvent::SetTitle("Pasta".into()))
+        .await?;
+    let scope = f.split().recipes.pane.scope;
+    let save = f.recipes(RecipeSectionEvent::Editor(Scoped::new(
+        scope,
+        RecipeEditorEvent::Save,
+    )));
+
+    assert!(f.app.can_begin_shutdown());
+    empty(f.app.begin_shutdown()).await;
+
+    let mut save = save.driver(&mut f.effects);
+    save.step()
+        .await?
+        .expect_effect()
+        .expect_recipes()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    save.step()
+        .await?
+        .expect_effect()
+        .expect_recipes()
+        .expect_store()
+        .resolve_create(|_| async { Ok(pasta()) })
+        .await?;
+    let finished = save.step().await?.expect_outcome();
+    save.step().await?.expect_done();
+    drop(save);
+    let command = f.app.update(Message::Outcome(finished));
+    let saved = f.render_then_outcome(command).await?;
+    let command = f.app.update(Message::Outcome(saved));
+    f.drive_initialization(command).await?;
+    assert_eq!(f.split().recipes.pane.value, RecipePaneView::Empty);
+    assert!(matches!(
+        f.split().recipes.list.status,
+        RecipeListStatus::Ready { ref rows } if rows.len() == 1
+    ));
     Ok(())
 }
 
@@ -213,16 +299,16 @@ async fn a_failed_recipe_load_can_be_retried_through_the_app() -> anyhow::Result
     f.recipes = Err(RecipeLoadError::Storage);
     f.initialize().await?;
     assert_eq!(
-        f.split().recipes.status,
+        f.split().recipes.list.status,
         RecipeListStatus::Failed(RecipeLoadError::Storage)
     );
 
     f.recipes = Ok(vec![shakshuka()]);
-    let command = f.split_event(SplitAppEvent::Recipes(RecipeListEvent::Refresh));
-    assert_eq!(f.split().recipes.status, RecipeListStatus::Loading);
+    let command = f.recipes(RecipeSectionEvent::List(RecipeListEvent::Refresh));
+    assert_eq!(f.split().recipes.list.status, RecipeListStatus::Loading);
     f.drive_initialization(command).await?;
     assert!(matches!(
-        f.split().recipes.status,
+        f.split().recipes.list.status,
         RecipeListStatus::Ready { ref rows } if rows.len() == 1
     ));
     Ok(())
@@ -250,6 +336,13 @@ fn shakshuka() -> Recipe {
     Recipe {
         id: RecipeId::from(uuid::Uuid::from_u128(1)),
         title: "Shakshuka".into(),
+    }
+}
+
+fn pasta() -> Recipe {
+    Recipe {
+        id: RecipeId::from(uuid::Uuid::from_u128(2)),
+        title: "Pasta".into(),
     }
 }
 
@@ -303,6 +396,34 @@ impl Fixture {
         self.app.update(Message::Event(AppEvent::Split(event)))
     }
 
+    fn recipes(&mut self, event: RecipeSectionEvent) -> Command<AppOutcome> {
+        self.split_event(SplitAppEvent::Recipes(event))
+    }
+
+    /// Sends an editor event with the pane's scope and runs its render.
+    async fn recipe_editor(&mut self, event: RecipeEditorEvent) -> anyhow::Result<()> {
+        let scope = self.split().recipes.pane.scope;
+        let command = self.recipes(RecipeSectionEvent::Editor(Scoped::new(scope, event)));
+        self.render(command).await
+    }
+
+    async fn render_then_outcome(
+        &mut self,
+        command: Command<AppOutcome>,
+    ) -> anyhow::Result<AppOutcome> {
+        let mut driver = command.driver(&mut self.effects);
+        driver
+            .step()
+            .await?
+            .expect_effect()
+            .any_route()
+            .resolve_render(|| async {})
+            .await?;
+        let outcome = driver.step().await?.expect_outcome();
+        driver.step().await?.expect_done();
+        Ok(outcome)
+    }
+
     fn stack_event(&mut self, event: IngredientCatalogEvent) -> Command<AppOutcome> {
         self.app.update(Message::Event(AppEvent::Stack(event)))
     }
@@ -337,7 +458,11 @@ impl Fixture {
 
     async fn create(&mut self) -> anyhow::Result<()> {
         let command = self.list(IngredientListEvent::CreateRequested);
-        let outcome = command.into_stream().next().await.unwrap();
+        let outcome = command
+            .into_stream()
+            .next()
+            .await
+            .context("the create request has no outcome")?;
         self.apply_render(outcome).await
     }
 

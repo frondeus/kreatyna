@@ -4,6 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use anyhow::Context;
 use diesel::{Connection, RunQueryDsl, connection::SimpleConnection};
 
 use super::*;
@@ -108,12 +109,98 @@ fn the_split_layout_starts_on_recipes_with_both_sections_ready() {
     // REC-01/Q1: the Mac app opens on Recipes. A new database has none.
     assert_eq!(split.section, AppSection::Recipes);
     assert_eq!(
-        split.recipes.status,
+        split.recipes.list.status,
         RecipeListStatus::Ready { rows: vec![] }
     );
     assert_eq!(split.ingredients.selected, None);
     assert_eq!(split.ingredients.pane.value, IngredientSplitPaneView::Empty);
     app.shutdown();
+}
+
+#[test]
+fn a_created_recipe_is_listed_and_its_title_cannot_be_taken_again() -> anyhow::Result<()> {
+    let database = TemporaryDatabase::new();
+    let (render, rendered) = TestRender::new();
+    let app = app(
+        AppCapabilities {
+            render: Arc::new(render),
+        },
+        database.path().into(),
+        AppLayout::Split,
+    );
+    app.start()?;
+    wait_until_ready(&app, &rendered);
+
+    create_recipe(&app, &rendered, "Shakshuka")?;
+    wait_until(&app, &rendered, |view| {
+        split_of(view).is_some_and(|split| {
+            matches!(
+                (&split.recipes.list.status, &split.recipes.pane.value),
+                (RecipeListStatus::Ready { rows }, RecipePaneView::Empty)
+                    if rows.iter().map(|row| row.title.as_str()).eq(["Shakshuka"])
+            )
+        })
+    });
+
+    create_recipe(&app, &rendered, "shakshuka ")?;
+    wait_until(&app, &rendered, |view| {
+        split_of(view).is_some_and(|split| {
+            matches!(
+                &split.recipes.pane.value,
+                RecipePaneView::Create {
+                    editor: RecipeEditorView {
+                        status: RecipeEditorStatus::Editing {
+                            problem: Some(RecipeEditorProblem::SaveFailed {
+                                error: RecipeSaveError::DuplicateTitle
+                            })
+                        },
+                        ..
+                    },
+                    ..
+                }
+            )
+        })
+    });
+    app.shutdown();
+    Ok(())
+}
+
+/// New Recipe, type `title`, Save. The runtime handles events in the
+/// background, so the editor's scope is read once the editor shows.
+fn create_recipe(app: &AppFfi, rendered: &flume::Receiver<()>, title: &str) -> anyhow::Result<()> {
+    let recipes = |event| AppEvent::Split {
+        event: SplitAppEvent::Recipes { event },
+    };
+    app.dispatch(recipes(RecipeSectionEvent::NewRecipe))?;
+    wait_until(app, rendered, |view| {
+        split_of(view)
+            .is_some_and(|split| matches!(split.recipes.pane.value, RecipePaneView::Create { .. }))
+    });
+    let scope = split_of(&app.view()?)
+        .context("expected the split layout")?
+        .recipes
+        .pane
+        .scope;
+    app.dispatch(recipes(RecipeSectionEvent::Editor {
+        scope,
+        event: RecipeEditorEvent::SetTitle {
+            title: title.into(),
+        },
+    }))?;
+    app.dispatch(recipes(RecipeSectionEvent::Editor {
+        scope,
+        event: RecipeEditorEvent::Save,
+    }))?;
+    Ok(())
+}
+
+fn split_of(view: &AppView) -> Option<&SplitAppView> {
+    match view {
+        AppView::Running {
+            app: RunningAppView::Split { app },
+        } => Some(app),
+        _ => None,
+    }
 }
 
 #[test]
@@ -385,7 +472,7 @@ fn sections_ready(app: &RunningAppView) -> bool {
             matches!(catalog.list.status, IngredientListStatus::Ready { .. })
         }
         RunningAppView::Split { app } => {
-            matches!(app.recipes.status, RecipeListStatus::Ready { .. })
+            matches!(app.recipes.list.status, RecipeListStatus::Ready { .. })
                 && matches!(
                     app.ingredients.list.value.status,
                     IngredientListStatus::Ready { .. }

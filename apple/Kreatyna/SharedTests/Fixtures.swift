@@ -106,10 +106,10 @@ enum Fixtures {
         )
     }
 
-    /// The Mac app: the selected section, the recipe list, and the ingredient catalog (REC-01).
+    /// The Mac app: the selected section, the Recipes section, and the ingredient catalog (REC-01).
     static func splitApp(
         section: AppSection = .recipes,
-        recipes: RecipeListView = recipeList(.ready(rows: [])),
+        recipes: RecipeSectionView = recipeSection(),
         ingredients: IngredientSplitCatalogView = splitCatalog()
     ) -> SplitAppView {
         SplitAppView(section: section, recipes: recipes, ingredients: ingredients)
@@ -117,6 +117,20 @@ enum Fixtures {
 
     static func recipeList(_ status: RecipeListStatus) -> RecipeListView {
         RecipeListView(status: status)
+    }
+
+    /// The Recipes section: a list and an empty pane, or the create editor
+    /// with its draft row (REC-02).
+    static func recipeSection(
+        _ status: RecipeListStatus = .ready(rows: []),
+        pane: RecipePaneView = .empty
+    ) -> RecipeSectionView {
+        let canCreate = if case .empty = pane { true } else { false }
+        return RecipeSectionView(
+            list: recipeList(status),
+            pane: ScopedRecipePaneView(scope: ScopeId(value: 5), value: pane),
+            canCreate: canCreate
+        )
     }
 
     /// The Mac catalog with the edit form open: the saved row stays

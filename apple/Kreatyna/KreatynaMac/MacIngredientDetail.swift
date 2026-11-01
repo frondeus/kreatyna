@@ -30,6 +30,8 @@ struct MacIngredientDetail: View {
             }
         }
         .formStyle(.grouped)
+        // On the form only: on the whole view it would replace the name's identifier.
+        .accessibilityIdentifier("ingredientDetail")
         .safeAreaInset(edge: .top, spacing: 0) {
             Text(ingredient.name)
                 .font(.title2.bold())
@@ -38,7 +40,6 @@ struct MacIngredientDetail: View {
                 .padding(.top, 16)
                 .accessibilityIdentifier("ingredientName")
         }
-        .accessibilityIdentifier("ingredientDetail")
         .overlay {
             if case .deleting = view.deletion {
                 ProgressView("Deleting…")

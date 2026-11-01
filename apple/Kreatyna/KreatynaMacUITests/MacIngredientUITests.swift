@@ -26,10 +26,11 @@ final class MacIngredientUITests: MacUITestCase {
         row(named: "Garlic", in: app).click()
         XCTAssertTrue(app.staticTexts["clove"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["5 g"].exists)
+        XCTAssertTrue(waitFor(app.staticTexts["ingredientName"], value: "Garlic"))
 
         row(named: "Basil", in: app).click()
         XCTAssertTrue(waitForNonExistence(app.staticTexts["clove"], timeout: 5))
-        XCTAssertTrue(app.staticTexts["Basil"].firstMatch.exists)
+        XCTAssertTrue(waitFor(app.staticTexts["ingredientName"], value: "Basil"))
 
         // ↓ moves the selection like a click: Basil → Garlic.
         app.typeKey(.downArrow, modifierFlags: [])
@@ -99,6 +100,7 @@ final class MacIngredientUITests: MacUITestCase {
         XCTAssertTrue(row(named: "Paprika", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(waitForNonExistence(draftRow(in: app), timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["ingredientDetail"].exists)
+        XCTAssertTrue(waitFor(app.staticTexts["ingredientName"], value: "Paprika"))
         XCTAssertTrue(app.buttons["addIngredient"].isEnabled)
 
         app.terminate()
@@ -165,13 +167,8 @@ final class MacIngredientUITests: MacUITestCase {
 
         XCTAssertTrue(row(named: "Black Garlic", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(waitForNonExistence(row(named: "Garlic", in: app), timeout: 5))
-        // The detail's title, apart from the row.
         XCTAssertTrue(app.descendants(matching: .any)["ingredientDetail"].waitForExistence(timeout: 5))
-        let title = app.staticTexts
-            .matching(NSPredicate(format: "identifier != %@ AND (value == %@ OR label == %@)",
-                                  "ingredientRow", "Black Garlic", "Black Garlic"))
-            .firstMatch
-        XCTAssertTrue(title.exists)
+        XCTAssertTrue(waitFor(app.staticTexts["ingredientName"], value: "Black Garlic"))
         XCTAssertTrue(app.buttons["addIngredient"].isEnabled)
     }
 

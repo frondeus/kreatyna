@@ -50,8 +50,8 @@ extension IngredientSplitCatalogView {
     }
 }
 
-// The recipe list lives as long as the section and needs no scope. Editor
-// events carry the pane's scope, which is new for each editor.
+// The recipe list lives as long as the section and needs no scope. Read view
+// and editor events carry the pane's scope, which is new for each content.
 extension RecipeSectionView {
     func list(_ event: RecipeListEvent) -> RecipeSectionEvent {
         .list(event: event)
@@ -59,6 +59,20 @@ extension RecipeSectionView {
 
     var newRecipe: RecipeSectionEvent {
         .newRecipe
+    }
+
+    /// A row click.
+    func select(_ id: RecipeId) -> RecipeSectionEvent {
+        .select(id: id)
+    }
+
+    /// ⌘-click on the open recipe.
+    var clearSelection: RecipeSectionEvent {
+        .clearSelection(scope: pane.scope)
+    }
+
+    func detail(_ event: RecipeDetailEvent) -> RecipeSectionEvent {
+        .detail(scope: pane.scope, event: event)
     }
 
     func editor(_ event: RecipeEditorEvent) -> RecipeSectionEvent {

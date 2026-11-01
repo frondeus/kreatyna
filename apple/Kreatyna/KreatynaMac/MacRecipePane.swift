@@ -7,13 +7,13 @@ struct MacRecipePane: View {
 
     var body: some View {
         switch section.pane.value {
-        // The read view arrives in the next change; until then it looks empty.
-        case .empty, .detail:
-            // A recipe opens here from REC-03.
+        case .empty:
             ContentUnavailableView {
                 Text("Select a recipe")
             }
             .accessibilityIdentifier("recipeDetailPlaceholder")
+        case .detail(let detail):
+            MacRecipeDetail(view: detail) { send(section.detail($0)) }
         case .create(let editor, _):
             // A new pane scope is new content, so the title field starts fresh.
             MacRecipeEditor(view: editor) { send(section.editor($0)) }

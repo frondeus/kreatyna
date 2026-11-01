@@ -261,6 +261,52 @@ final class MacDemoCaptureUITests: XCTestCase {
         app.terminate()
     }
 
+    /// REC-03: a row click opens the read view; Save opens the new recipe;
+    /// a row click with a typed title asks first.
+    @MainActor
+    func testCaptureREC03Demo() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = UUID().uuidString
+        app.launch()
+        let title = app.staticTexts["recipeTitle"]
+        let rows = app.staticTexts.matching(identifier: "recipeRow")
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        for recipe in ["Shakshuka", "Pasta"] {
+            app.typeKey("n", modifierFlags: .command)
+            XCTAssertTrue(app.textFields["recipeTitleField"].waitForExistence(timeout: 5))
+            app.typeText(recipe)
+            app.typeKey("s", modifierFlags: .command)
+            XCTAssertTrue(rows[recipe].waitForExistence(timeout: 5))
+        }
+
+        rows["Shakshuka"].click()
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitFor(title, label: "Shakshuka"))
+        capture("01-read-view", app)
+
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(app.textFields["recipeTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Omelette")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitFor(title, label: "Omelette"))
+        capture("02-after-save", app)
+
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(app.textFields["recipeTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Toast")
+        rows["Shakshuka"].click()
+        XCTAssertTrue(app.buttons["confirmDiscard"].waitForExistence(timeout: 5))
+        capture("03-discard-on-click", app)
+        app.terminate()
+    }
+
+    private func waitFor(_ element: XCUIElement, label: String) -> Bool {
+        let shown = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@ OR value == %@", label, label), object: element
+        )
+        return XCTWaiter().wait(for: [shown], timeout: 5) == .completed
+    }
+
     private func waitForNonExistence(_ element: XCUIElement) -> Bool {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
         return XCTWaiter().wait(for: [gone], timeout: 5) == .completed

@@ -416,4 +416,31 @@ The full suite runs once per cycle, in the cycle's full-suite step.
 
 ## Validation
 
-Not run yet.
+Run on 2026-11-01, on the last change of the slice.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `cargo test --workspace` | 577 passed, 0 failed. |
+| 2 | `cargo clippy --workspace --all-targets -- -D warnings` | No warnings (run on changes 2 to 4; change 5 has no Rust). |
+| 3 | `cargo fmt --check` | No diff. |
+| 4 | `devenv shell -- mac-test --ui MacRecipeUITests` | 80 passed, 0 failed: every Mac unit and snapshot test, and the 4 recipe UI tests. The 2 new images (`recipeReadView`, light and dark) were checked by eye. No existing image changed. |
+| 5 | iOS `xcodebuild build-for-testing` | Builds. |
+| 6 | `capture-demo.sh … testCaptureREC03Demo` | `REC-03-demo/01-read-view.png`, `02-after-save.png`, `03-discard-on-click.png`. |
+| 7 | Change sizes (insertions + deletions) | Plan 425, read view widget 447, section 884, app and FFI 261, Mac 273. All under 1,000. |
+
+### Differences from the plan
+
+- **`RecipeId` is a UniFFI custom type** (review of change 4). The FFI
+  carries recipe ids as `RecipeId`, lowered as its UUID text, in place of
+  `String`. Invalid text from Swift fails `dispatch` with
+  `AppFfiError::Conversion { InvalidRecipeId }`, so `RecipeSectionEvent`
+  converts with `From`, not `TryFrom`. Swift sees `typealias RecipeId =
+  String`. Bead `vibetyna-v56` (tech debt) moves `IngredientId` to the same
+  type and gives both ids a Swift struct (the user's answer: later).
+- **Change 3 had a temporary FFI arm** `Detail => Empty`, so it built alone;
+  change 4 replaced it.
+- **The app test moved to change 3** in part: Save now loads the saved
+  recipe, so the app test's effect driver answers `get` from change 3 on.
+- **The read view's identifier sits on its form.** On the whole view, SwiftUI
+  gave `recipeDetail` to the title too, and the UI tests could not find
+  `recipeTitle`.

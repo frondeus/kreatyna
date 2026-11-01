@@ -1,18 +1,27 @@
 import SwiftUI
 
-/// The Recipes section's list column. Rust sorts the rows by title.
-/// No search (REC-06) and no selection (REC-03) yet. While the create editor
-/// is open, Rust's draft row is first and highlighted (REC-02/Q1).
+/// The Recipes section's list column. Rust sorts the rows by title. No
+/// search yet (REC-06).
+///
+/// Swift keeps no selection: the highlight is Rust's `selected`, and a click,
+/// an arrow key, or a ⌘-click only reports the new choice through `select`.
+/// While the create editor is open, Rust's draft row is first and highlighted
+/// (REC-02/Q1).
 struct MacRecipeList: View {
     let view: RecipeListView
+    var selected: RecipeId? = nil
     /// The typed title of the recipe being created; empty before a title.
     var draftRow: String? = nil
     var canCreate = true
     let newRecipe: () -> Void
+    var select: (RecipeId?) -> Void = { _ in }
     let send: (RecipeListEvent) -> Void
 
     /// The draft row's tag in the list selection. It is never a recipe ID.
     private static let draftTag = "draft"
+
+    /// Presentation only: keyboard focus, so the arrow keys move the selection.
+    @FocusState private var focused: Bool
 
     var body: some View {
         content
@@ -25,6 +34,11 @@ struct MacRecipeList: View {
                         .accessibilityIdentifier("newRecipe")
                 }
             }
+    }
+
+    /// A click on the draft row changes nothing; Rust keeps it highlighted.
+    private func choose(_ id: RecipeId?) {
+        if id != Self.draftTag { select(id) }
     }
 
     @ViewBuilder
@@ -46,8 +60,7 @@ struct MacRecipeList: View {
             }
             .accessibilityIdentifier("recipeListFailed")
         case .ready(let rows):
-            // Only the draft row can be highlighted; a click changes nothing.
-            List(selection: .constant(draftRow == nil ? nil : Self.draftTag)) {
+            List(selection: Binding(get: { draftRow == nil ? selected : Self.draftTag }, set: choose)) {
                 if let draftRow {
                     Text(draftRow.isEmpty ? "New Recipe" : draftRow)
                         .italic()
@@ -56,10 +69,16 @@ struct MacRecipeList: View {
                 }
                 ForEach(rows, id: \.id) { row in
                     Text(row.title)
+                        .tag(row.id)
                         .accessibilityIdentifier("recipeRow")
                 }
             }
             .accessibilityIdentifier("recipeList")
+            .focused($focused)
+            // A click selects through the binding but does not focus the list.
+            // Focusing it on each selection lets ↑ and ↓ work after a click.
+            // Not when the editor opens (`selected` becomes nil): Title has the focus then.
+            .onChange(of: selected) { if selected != nil { focused = true } }
             .overlay {
                 // A draft row covers the empty state: something is being added.
                 if rows.isEmpty && draftRow == nil {

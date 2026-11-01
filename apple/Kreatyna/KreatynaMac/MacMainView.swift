@@ -32,9 +32,13 @@ struct MacMainView: View {
                 let section = app.recipes
                 MacRecipeList(
                     view: section.list,
+                    selected: section.selected,
                     draftRow: section.draftRow,
                     canCreate: section.canCreate,
                     newRecipe: { send(app.recipes(section.newRecipe)) },
+                    select: { id in
+                        send(app.recipes(id.map { section.select($0) } ?? section.clearSelection))
+                    },
                     send: { send(app.recipes(section.list($0))) }
                 )
                 .navigationSplitViewColumnWidth(min: 220, ideal: 280)

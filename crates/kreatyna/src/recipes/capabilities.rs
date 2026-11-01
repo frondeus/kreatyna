@@ -6,7 +6,7 @@ use futures::{
 };
 use krucyfiks::effects::{Envelope, TransportError};
 
-use super::{NewRecipe, Recipe};
+use super::{NewRecipe, Recipe, RecipeId};
 use crate::{
     CLIENT_CAPABILITY,
     capabilities::{Render, RenderClient, RenderRequest},
@@ -49,6 +49,8 @@ pub trait RecipeStore: Send + Sync {
     /// All recipes, sorted by title key (`ingredients::name_key` of the
     /// title). Title keys are unique, so the order is complete.
     async fn list(&self) -> Result<Vec<Recipe>, RecipeLoadError>;
+    /// The recipe with this id, or `None` when no recipe has it.
+    async fn get(&self, id: RecipeId) -> Result<Option<Recipe>, RecipeLoadError>;
     /// Saves a new recipe with a new id. Fails with `DuplicateTitle` when
     /// another recipe has the same title key.
     async fn create(&self, recipe: NewRecipe) -> Result<Recipe, RecipeSaveError>;

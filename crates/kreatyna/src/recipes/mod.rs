@@ -1,11 +1,15 @@
 //! Recipes: the hand-made recipe of the Recipe MVP epic (D-06).
 
 pub mod capabilities;
+mod detail;
 mod editor;
 mod list;
 mod model;
 mod section;
 
+pub use detail::{
+    RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome, RecipeDetailStatus, RecipeDetailView,
+};
 pub use editor::{
     RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus,
     RecipeEditorView,

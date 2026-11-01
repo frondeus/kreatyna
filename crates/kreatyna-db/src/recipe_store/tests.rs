@@ -57,6 +57,28 @@ async fn created_recipes_are_listed_by_title_key() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn get_returns_a_created_recipe() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let created = RecipeStoreMut::create(&mut db, new_recipe("Shakshuka")?).await?;
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, created.id).await,
+        Ok(Some(created))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn get_finds_the_recipe_by_id_among_others() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    execute(&mut db, TWO_RECIPES).await?;
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, PASTA.parse()?).await,
+        Ok(Some(recipe(PASTA, "Roasted tomato pasta")?))
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn a_catalog_from_before_rec_01_upgrades_and_keeps_its_ingredients() -> anyhow::Result<()> {
     let folder = tempfile::tempdir()?;
     let path = folder.path().join("app.sqlite");
@@ -141,6 +163,17 @@ fn a_taken_id_is_a_storage_failure_not_a_duplicate() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn get_of_an_unknown_id_is_none() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    execute(&mut db, TWO_RECIPES).await?;
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, RecipeId::new()).await,
+        Ok(None)
+    );
+    Ok(())
+}
+
 // Red cases
 
 #[test_case("UPDATE recipes SET title_key = 'wrong' WHERE title = 'Shakshuka'"; "inconsistent title key")]
@@ -153,6 +186,29 @@ async fn a_corrupted_recipe_fails_the_whole_list(sql: &'static str) -> anyhow::R
     assert_eq!(
         RecipeStoreMut::list(&mut db).await,
         Err(RecipeLoadError::Storage)
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn get_of_a_recipe_with_an_inconsistent_title_key_is_a_storage_failure() -> anyhow::Result<()>
+{
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    execute(&mut db, TWO_RECIPES).await?;
+    execute(
+        &mut db,
+        "UPDATE recipes SET title_key = 'wrong' WHERE title = 'Shakshuka'",
+    )
+    .await?;
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, SHAKSHUKA.parse()?).await,
+        Err(RecipeLoadError::Storage)
+    );
+    // The other recipe still opens.
+    assert!(
+        RecipeStoreMut::get(&mut db, PASTA.parse()?)
+            .await?
+            .is_some()
     );
     Ok(())
 }

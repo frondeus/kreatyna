@@ -13,7 +13,7 @@ use kreatyna::{
 };
 
 use super::{
-    recipe_models::{NewRecipeRow, RecipeRow},
+    recipe_models::{NewRecipeRow, RecipeRow, RemoteRecipeId},
     schema::recipes,
     sqlite::SqliteDatabase,
 };
@@ -35,13 +35,26 @@ fn records(connection: &mut SqliteConnection) -> Result<Vec<Recipe>, StoreFailur
         .select(RecipeRow::as_select())
         .load::<RecipeRow>(connection)?
         .into_iter()
-        .map(|row| {
-            if row.title_key != name_key(&row.title) {
-                return Err(StoreFailure::InvalidTitleKey);
-            }
-            Ok(row.into_domain())
-        })
+        .map(checked)
         .collect()
+}
+
+fn checked(row: RecipeRow) -> Result<Recipe, StoreFailure> {
+    if row.title_key != name_key(&row.title) {
+        return Err(StoreFailure::InvalidTitleKey);
+    }
+    Ok(row.into_domain())
+}
+
+/// The recipe with this id. The unique index on `remote_id` finds at most one.
+fn record(connection: &mut SqliteConnection, id: RecipeId) -> Result<Option<Recipe>, StoreFailure> {
+    recipes::table
+        .filter(recipes::remote_id.eq(RemoteRecipeId(id)))
+        .select(RecipeRow::as_select())
+        .first::<RecipeRow>(connection)
+        .optional()?
+        .map(checked)
+        .transpose()
 }
 
 /// Runs inside an immediate transaction, so the check and the insert see the
@@ -92,6 +105,24 @@ impl RecipeStoreMut for SqliteDatabase {
             Ok(Ok(records)) => Ok(records),
             error => {
                 tracing::error!(?error, "Recipe list failed");
+                Err(RecipeLoadError::Storage)
+            }
+        }
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn get(&mut self, id: RecipeId) -> Result<Option<Recipe>, RecipeLoadError> {
+        let result = self
+            .connection
+            .spawn_blocking(move |connection| {
+                Ok(connection
+                    .transaction::<_, StoreFailure, _>(|connection| record(connection, id)))
+            })
+            .await;
+        match result {
+            Ok(Ok(recipe)) => Ok(recipe),
+            error => {
+                tracing::error!(?error, "Recipe get failed");
                 Err(RecipeLoadError::Storage)
             }
         }

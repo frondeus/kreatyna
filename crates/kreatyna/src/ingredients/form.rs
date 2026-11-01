@@ -1,4 +1,4 @@
-use krucyfiks::{Command, CommandExt, CommandId, LatestCommandSlot, Message, Widget};
+use krucyfiks::{Command, CommandExt, CommandId, Latest, LatestCommandSlot, Message, Widget};
 
 use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 
@@ -166,7 +166,9 @@ impl Widget for IngredientForm {
                     store.save(write).await
                 })
                 .latest(&mut self.save)
-                .map(|(id, result)| IngredientFormOutcome::SaveFinished { id, result })
+                .map(|Latest { id, value: result }| {
+                    IngredientFormOutcome::SaveFinished { id, result }
+                })
             }
             Message::Event(IngredientFormEvent::RequestClose)
                 if matches!(self.state, FormState::Editing) =>
@@ -190,7 +192,10 @@ impl Widget for IngredientForm {
                     .update(Message::Event(event))
                     .latest(&mut self.confirmation)
                     .map(
-                        |(id, decision)| IngredientFormOutcome::ConfirmationDecided {
+                        |Latest {
+                             id,
+                             value: decision,
+                         }| IngredientFormOutcome::ConfirmationDecided {
                             id,
                             decision,
                         },

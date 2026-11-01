@@ -6,7 +6,8 @@ use kreatyna::{
     ingredients::capabilities::IngredientStoreClient, recipes::capabilities::RecipeStoreClient,
 };
 use krucyfiks::{
-    Command, CommandExt, CommandId, LatestCommandSlot, Message, Widget, effects::RequestCloseHandle,
+    Command, CommandExt, CommandId, Latest, LatestCommandSlot, Message, Widget,
+    effects::RequestCloseHandle,
 };
 use parking_lot::Mutex;
 use tokio::{sync::oneshot, task::JoinHandle};
@@ -92,7 +93,7 @@ impl AppShell {
             let _ = stopped.await;
         })
         .latest(&mut self.database_watch)
-        .map(|(id, ())| AppShellOutcome::DatabaseStopped(id))
+        .map(|Latest { id, value: () }| AppShellOutcome::DatabaseStopped(id))
     }
 
     fn render(&self) -> Command<AppShellOutcome> {

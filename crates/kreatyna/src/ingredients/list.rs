@@ -1,4 +1,4 @@
-use krucyfiks::{Command, CommandExt, CommandId, LatestCommandSlot, Message, Widget};
+use krucyfiks::{Command, CommandExt, CommandId, Latest, LatestCommandSlot, Message, Widget};
 
 use super::{
     Ingredient, IngredientId,
@@ -182,7 +182,7 @@ impl IngredientList {
             store.list().await
         })
         .latest(&mut self.load)
-        .map(|(id, result)| IngredientListOutcome::LoadFinished { id, result })
+        .map(|Latest { id, value: result }| IngredientListOutcome::LoadFinished { id, result })
     }
 
     fn begin_load(&mut self) -> Command<IngredientListOutcome> {

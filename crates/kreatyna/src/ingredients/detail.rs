@@ -1,4 +1,4 @@
-use krucyfiks::{Command, CommandExt, CommandId, LatestCommandSlot, Message, Widget};
+use krucyfiks::{Command, CommandExt, CommandId, Latest, LatestCommandSlot, Message, Widget};
 
 use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 
@@ -106,7 +106,7 @@ impl IngredientDetail {
             store.delete(ingredient_id).await
         })
         .latest(&mut self.deletion)
-        .map(|(id, result)| IngredientDetailOutcome::DeleteFinished { id, result })
+        .map(|Latest { id, value: result }| IngredientDetailOutcome::DeleteFinished { id, result })
     }
 }
 
@@ -142,7 +142,10 @@ impl Widget for IngredientDetail {
                     .update(Message::Event(event))
                     .latest(&mut self.confirmation)
                     .map(
-                        |(id, decision)| IngredientDetailOutcome::ConfirmationDecided {
+                        |Latest {
+                             id,
+                             value: decision,
+                         }| IngredientDetailOutcome::ConfirmationDecided {
                             id,
                             decision,
                         },

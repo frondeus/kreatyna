@@ -9,8 +9,8 @@ struct MacIngredientList: View {
     let view: IngredientListView
     let selected: String?
     /// The typed name of the ingredient being created; empty before a name.
-    var draftRow: String? = nil
-    var canCreate = true
+    let draftRow: String?
+    let canCreate: Bool
     let select: (String?) -> Void
     let send: (IngredientListEvent) -> Void
 

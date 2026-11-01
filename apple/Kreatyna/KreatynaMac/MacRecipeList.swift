@@ -9,12 +9,12 @@ import SwiftUI
 /// (REC-02/Q1).
 struct MacRecipeList: View {
     let view: RecipeListView
-    var selected: RecipeId? = nil
+    let selected: RecipeId?
     /// The typed title of the recipe being created; empty before a title.
-    var draftRow: String? = nil
-    var canCreate = true
+    let draftRow: String?
+    let canCreate: Bool
     let newRecipe: () -> Void
-    var select: (RecipeId?) -> Void = { _ in }
+    let select: (RecipeId?) -> Void
     let send: (RecipeListEvent) -> Void
 
     /// The draft row's tag in the list selection. It is never a recipe ID.

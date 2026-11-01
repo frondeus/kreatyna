@@ -45,7 +45,7 @@ class MacUITestCase: XCTestCase {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
-    func waitForNonExistence(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+    func waitForNonExistence(_ element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
         return XCTWaiter().wait(for: [gone], timeout: timeout) == .completed
     }

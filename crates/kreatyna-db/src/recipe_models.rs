@@ -1,13 +1,16 @@
 //! Typed SQLite rows for recipes and their conversion to the domain type.
-//! `recipe_store` reads them.
+//! `recipe_store` reads and writes them.
 use diesel::{
-    AsExpression, FromSqlRow, Queryable, Selectable,
+    AsExpression, FromSqlRow, Insertable, Queryable, Selectable,
     deserialize::FromSql,
     serialize::{IsNull, Output, ToSql},
     sql_types::Text,
     sqlite::{Sqlite, SqliteValue},
 };
-use kreatyna::recipes::{Recipe, RecipeId};
+use kreatyna::{
+    ingredients::name_key,
+    recipes::{Recipe, RecipeId, RecipeTitle},
+};
 
 use super::schema::recipes;
 
@@ -38,6 +41,31 @@ pub(crate) struct RecipeRow {
 }
 
 impl RecipeRow {
+    pub fn into_domain(self) -> Recipe {
+        Recipe {
+            id: self.remote_id.0,
+            title: self.title,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Insertable)]
+#[diesel(table_name = recipes)]
+pub(crate) struct NewRecipeRow {
+    pub remote_id: RemoteRecipeId,
+    pub title: String,
+    pub title_key: String,
+}
+
+impl NewRecipeRow {
+    pub fn new(id: RecipeId, title: &RecipeTitle) -> Self {
+        Self {
+            remote_id: RemoteRecipeId(id),
+            title: title.as_ref().to_owned(),
+            title_key: name_key(title.as_ref()),
+        }
+    }
+
     pub fn into_domain(self) -> Recipe {
         Recipe {
             id: self.remote_id.0,

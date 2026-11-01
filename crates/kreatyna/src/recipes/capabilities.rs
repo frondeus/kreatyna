@@ -6,7 +6,7 @@ use futures::{
 };
 use krucyfiks::effects::{Envelope, TransportError};
 
-use super::Recipe;
+use super::{NewRecipe, Recipe};
 use crate::{
     CLIENT_CAPABILITY,
     capabilities::{Render, RenderClient, RenderRequest},
@@ -26,13 +26,32 @@ impl From<TransportError> for RecipeLoadError {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum RecipeSaveError {
+    #[error("Recipe title already exists")]
+    DuplicateTitle,
+    #[error("Recipe storage failed")]
+    Storage,
+    #[error("Recipe store transport failed")]
+    Transport,
+}
+
+impl From<TransportError> for RecipeSaveError {
+    fn from(_: TransportError) -> Self {
+        Self::Transport
+    }
+}
+
 /// Persistence boundary for recipes. Its implementation owns identity and
-/// the title rule; REC-02 adds `save`.
+/// title uniqueness.
 #[krucyfiks::capability]
 pub trait RecipeStore: Send + Sync {
     /// All recipes, sorted by title key (`ingredients::name_key` of the
     /// title). Title keys are unique, so the order is complete.
     async fn list(&self) -> Result<Vec<Recipe>, RecipeLoadError>;
+    /// Saves a new recipe with a new id. Fails with `DuplicateTitle` when
+    /// another recipe has the same title key.
+    async fn create(&self, recipe: NewRecipe) -> Result<Recipe, RecipeSaveError>;
 }
 
 #[derive(Clone)]

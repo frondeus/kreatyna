@@ -7,4 +7,4 @@ mod model;
 pub use list::{
     RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListRow, RecipeListStatus, RecipeListView,
 };
-pub use model::{Recipe, RecipeId};
+pub use model::{NewRecipe, Recipe, RecipeId, RecipeTitle, RecipeTitleError};

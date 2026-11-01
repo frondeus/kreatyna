@@ -38,8 +38,8 @@ pub struct RecipeListView {
     pub status: RecipeListStatus,
 }
 
-/// The recipe list of the Recipes section. It has no search (REC-06) and no
-/// selection (REC-03).
+/// The recipe list of the Recipes section. It has no search (REC-06). The
+/// section owns the selection: it is the open read view (REC-03).
 pub struct RecipeList {
     caps: RecipeCapabilities,
     status: RecipeListStatus,
@@ -72,6 +72,14 @@ impl RecipeList {
         match self.status {
             RecipeListStatus::Ready { .. } => self.start_load(),
             RecipeListStatus::Loading | RecipeListStatus::Failed(_) => self.load(),
+        }
+    }
+
+    /// Whether the ready list has a row with this id.
+    pub(crate) fn contains(&self, id: RecipeId) -> bool {
+        match &self.status {
+            RecipeListStatus::Ready { rows } => rows.iter().any(|row| row.id == id),
+            RecipeListStatus::Loading | RecipeListStatus::Failed(_) => false,
         }
     }
 

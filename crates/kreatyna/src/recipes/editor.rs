@@ -101,7 +101,7 @@ impl RecipeEditor {
     }
 
     /// Whether the title differs from the one the editor opened with.
-    fn is_dirty(&self) -> bool {
+    pub(crate) fn is_dirty(&self) -> bool {
         !self.title.is_empty()
     }
 

@@ -19,5 +19,6 @@ pub use list::{
 };
 pub use model::{NewRecipe, Recipe, RecipeId, RecipeTitle, RecipeTitleError};
 pub use section::{
-    RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome, RecipeSectionView,
+    RecipePaneOutcome, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
+    RecipeSectionView,
 };

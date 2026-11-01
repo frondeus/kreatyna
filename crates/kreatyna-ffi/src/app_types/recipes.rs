@@ -219,6 +219,9 @@ impl From<core::RecipePaneView> for RecipePaneView {
     fn from(value: core::RecipePaneView) -> Self {
         match value {
             core::RecipePaneView::Empty => Self::Empty,
+            // Nothing selects a recipe through the FFI yet: `Select` arrives
+            // with the read view's FFI types in the next change.
+            core::RecipePaneView::Detail(_) => Self::Empty,
             core::RecipePaneView::Create { editor, draft_row } => Self::Create {
                 editor: editor.into(),
                 draft_row,

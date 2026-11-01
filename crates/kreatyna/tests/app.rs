@@ -7,9 +7,9 @@ use kreatyna::{
         *,
     },
     recipes::{
-        Recipe, RecipeEditorEvent, RecipeId, RecipeListEvent, RecipeListRow, RecipeListStatus,
-        RecipePaneView, RecipeSectionEvent,
-        capabilities::{RecipeEffect, RecipeLoadError, ResolveRecipeStore},
+        Recipe, RecipeDetailStatus, RecipeDetailView, RecipeEditorEvent, RecipeId, RecipeListEvent,
+        RecipeListRow, RecipeListStatus, RecipePaneView, RecipeSectionEvent,
+        capabilities::{RecipeEffect, RecipeLoadError, RecipeStoreRequest, ResolveRecipeStore},
     },
     *,
 };
@@ -249,11 +249,21 @@ async fn shutdown_keeps_an_accepted_recipe_save() -> anyhow::Result<()> {
     let command = f.app.update(Message::Outcome(finished));
     let saved = f.render_then_outcome(command).await?;
     let command = f.app.update(Message::Outcome(saved));
+    f.recipes = Ok(vec![pasta(), shakshuka()]);
     f.drive_initialization(command).await?;
-    assert_eq!(f.split().recipes.pane.value, RecipePaneView::Empty);
+    // The saved recipe's read view opens (REC-03).
+    assert_eq!(
+        f.split().recipes.pane.value,
+        RecipePaneView::Detail(RecipeDetailView {
+            id: pasta().id,
+            status: RecipeDetailStatus::Ready {
+                title: "Pasta".into()
+            },
+        })
+    );
     assert!(matches!(
         f.split().recipes.list.status,
-        RecipeListStatus::Ready { ref rows } if rows.len() == 1
+        RecipeListStatus::Ready { ref rows } if rows.len() == 2
     ));
     Ok(())
 }
@@ -487,7 +497,14 @@ impl Fixture {
                 }
                 CommandEffect::Effect(AppEffect::Recipes(RecipeEffect::Store(e))) => {
                     let recipes = self.recipes.clone();
-                    e.resolve_list(|| async { recipes }).await?;
+                    match e.request {
+                        RecipeStoreRequest::Get { id } => {
+                            let found = recipes
+                                .map(|recipes| recipes.into_iter().find(|recipe| recipe.id == id));
+                            e.resolve_get(|_| async { found }).await?;
+                        }
+                        _ => e.resolve_list(|| async { recipes }).await?,
+                    }
                 }
                 CommandEffect::Outcome(outcome) => outcomes.push(outcome),
                 CommandEffect::Done => break,

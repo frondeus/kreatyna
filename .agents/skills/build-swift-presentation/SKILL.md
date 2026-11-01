@@ -56,8 +56,12 @@ Run the checks for each change and report any that could not run. Inside the
 devenv shell, `ios-bindings debug` rebuilds the Rust core and `ios-test` runs
 all iOS tests (Swift Testing, snapshots, and UI tests) on a booted simulator.
 `mac-bindings debug` rebuilds the Rust core for the Mac, and `mac-test` runs all
-Mac tests on this Mac; its UI tests need Automation Mode without a password
-prompt (`automationmodetool`). Mac tests run in the app's real sandbox
+Mac tests on this Mac. `mac-test --ui <Class>` runs every unit and snapshot test
+and only the named UI test class (one per section: `MacRecipeUITests`,
+`MacIngredientUITests`, `MacShellUITests`); see "Test scope" in
+plan-reviewable-epics for which one a change runs. Snapshot tests draw into an
+off-screen window and never move the pointer. The UI tests need Automation
+Mode without a password prompt (`automationmodetool`). Mac tests run in the app's real sandbox
 container, so tests never open the real database (E-18), and UI tests seed data
 through Rust's `seed_ingredients` (E-17), never through files.
 

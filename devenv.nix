@@ -175,20 +175,48 @@ in
   };
 
   scripts.mac-test = {
-    description = "Generate the Xcode project and run all macOS tests: mac-test";
+    description = "Generate the Xcode project and run macOS tests: mac-test [--ui <UI test class[/method]> | --ui none]...";
     exec = ''
       set -euo pipefail
       cd ${lib.escapeShellArg config.devenv.root}
+
+      # No arguments: every test. With --ui: every unit and snapshot test, and
+      # only the named UI tests (none: no UI test). The full suite runs before
+      # each cooldown (mol-cycle).
+      only=()
+      while [ "$#" -gt 0 ]; do
+        case "$1" in
+          --ui)
+            if [ "$#" -lt 2 ]; then
+              echo "usage: mac-test [--ui <class[/method]> | --ui none]..." >&2
+              exit 2
+            fi
+            [ ''${#only[@]} -gt 0 ] || only+=("-only-testing:KreatynaMacTests")
+            [ "$2" = none ] || only+=("-only-testing:KreatynaMacUITests/$2")
+            shift 2
+            ;;
+          *)
+            echo "usage: mac-test [--ui <class[/method]> | --ui none]..." >&2
+            exit 2
+            ;;
+        esac
+      done
+
       apple-generate
       ${xcodeEnv}
 
       # The UI tests need Automation Mode without a prompt (MAC-00/Q1):
       # sudo automationmodetool enable-automationmode-without-authentication
       mkdir -p target/xcode
-      echo "==> Testing on this Mac (log: target/xcode/mac-test.log)"
+      if [ ''${#only[@]} -eq 0 ]; then
+        echo "==> Testing everything on this Mac (log: target/xcode/mac-test.log)"
+      else
+        echo "==> Testing on this Mac: ''${only[*]} (log: target/xcode/mac-test.log)"
+      fi
       if ! "''${clean_env[@]}" xcodebuild test \
           -project apple/Kreatyna/Kreatyna.xcodeproj -scheme KreatynaMac \
           -destination "platform=macOS,arch=arm64" -derivedDataPath target/xcode/DerivedData \
+          ''${only[@]+"''${only[@]}"} \
           >target/xcode/mac-test.log 2>&1; then
         grep -E "error:|failed|TEST FAILED" target/xcode/mac-test.log >&2 || tail -40 target/xcode/mac-test.log >&2
         exit 1

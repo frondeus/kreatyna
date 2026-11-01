@@ -149,9 +149,10 @@ jj change, or its series of changes when the slice is 1,000 lines or more
    [model-effectful-initialization](../model-effectful-initialization/SKILL.md),
    [build-swift-presentation](../build-swift-presentation/SKILL.md)). Never
    hand-edit generated bindings.
-3. Run the relevant checks: Rust tests, formatting and Clippy, binding
-   generation, and Swift Testing, snapshots, and UI tests for the platforms the
-   slice touches. Capture demo evidence per
+3. Run the relevant checks: Rust tests, formatting and Clippy in full, binding
+   generation, all Mac unit and snapshot tests, and only the UI tests of the
+   sections the change touches (`mac-test --ui <Class>`, see "Test scope"
+   below). Capture demo evidence per
    [document-apple-delivery](../document-apple-delivery/SKILL.md). Report any check
    that could not run.
 4. Record the behavior, validation, and remaining stubs in the plan's
@@ -165,6 +166,34 @@ jj change, or its series of changes when the slice is 1,000 lines or more
    gate and the slice's last step, resolve its Inbox thread, and close the
    slice bead. Run `bd export -o .beads/issues.jsonl` before the change is
    finished.
+
+### Test scope
+
+Each change runs the fast suites in full and narrows only the slow UI tests:
+
+| Suite | Per change |
+|---|---|
+| `cargo test --workspace`, Clippy, `cargo fmt --check` | All. |
+| Mac unit and snapshot tests (`KreatynaMacTests`) | All. |
+| Mac UI tests (`KreatynaMacUITests`) | Only the classes of the sections the diff touches: `MacRecipeUITests`, `MacIngredientUITests`, `MacShellUITests` (sidebar, switching sections). |
+| iOS | The build only (iOS is parked). |
+
+Run them with `devenv shell -- mac-test --ui MacRecipeUITests` (repeat `--ui`
+for more classes, or `--ui none` for no UI test). A change to shared Swift
+(`Shared/`, `MacMainView`, the test base class) or to the app shell touches
+every section: run `mac-test` with no `--ui`. The full suite also runs once
+per cycle, before the cooldown.
+
+### The delivery cycle
+
+The `mol-cycle` workflow (`.beads/formulas/mol-cycle.formula.json`) holds the
+order of the work: four feature slices, then the open bugs, then the full test
+suite, then the tech-debt cooldown, then the user's approval. Start a cycle
+with `scripts/start-cycle.sh <cycle>`. Bugs still come first at every step: no
+feature slice starts while a bug bead is open, and a bug fix is not a feature
+slice. Each feature step names its slice in its notes and closes when the
+slice bead closes. Tech-debt beads carry the `tech-debt` label, so the
+cooldown step can list them.
 
 A series of changes inside one slice may follow layers; the slice as a whole
 stays vertical, and its last change shows the behavior. Review fixes stay in

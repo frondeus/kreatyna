@@ -2,11 +2,8 @@ import XCTest
 
 // Smoke flows over the real Rust core. They prove that the app starts Rust and
 // that its views reach the window. Rust tests own the behavior rules.
-final class KreatynaMacUITests: XCTestCase {
-
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
+/// The Ingredients section.
+final class MacIngredientUITests: MacUITestCase {
 
     @MainActor
     func testLaunchShowsSeededCatalog() throws {
@@ -236,84 +233,6 @@ final class KreatynaMacUITests: XCTestCase {
         XCTAssertFalse(row(named: "Garlic", in: app).exists)
     }
 
-    /// The app opens on Recipes. Switching sections keeps each section's state (REC-01).
-    @MainActor
-    func testSidebarSwitchesSections() throws {
-        let app = try launch(seed: ["Garlic", "Tomato"], openIngredients: false)
-
-        XCTAssertTrue(app.descendants(matching: .any)["recipeListEmpty"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["newRecipe"].isEnabled)
-
-        sidebar("sidebarIngredients", in: app).click()
-        let garlic = row(named: "Garlic", in: app)
-        XCTAssertTrue(garlic.waitForExistence(timeout: 5))
-        garlic.click()
-        XCTAssertTrue(app.buttons["editIngredient"].waitForExistence(timeout: 5))
-
-        sidebar("sidebarRecipes", in: app).click()
-        XCTAssertTrue(app.descendants(matching: .any)["recipeDetailPlaceholder"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["editIngredient"].exists)
-
-        sidebar("sidebarIngredients", in: app).click()
-        // Rust kept Garlic open while Recipes showed.
-        XCTAssertTrue(app.buttons["editIngredient"].waitForExistence(timeout: 5))
-    }
-
-    /// New Recipe, a title, Save: the row shows and stays after a relaunch (REC-02).
-    @MainActor
-    func testCreatedRecipeSurvivesRelaunch() throws {
-        let database = UUID().uuidString
-        var app = try launch(json: nil, database: database, openIngredients: false)
-        XCTAssertTrue(app.descendants(matching: .any)["recipeListEmpty"].waitForExistence(timeout: 5))
-
-        app.buttons["newRecipe"].click()
-        XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(waitFor(recipeDraftRow(in: app), value: "New Recipe"))
-        XCTAssertFalse(app.buttons["newRecipe"].isEnabled)
-
-        // Title has the focus, so typing goes there; the draft row follows.
-        app.typeText("Shakshuka")
-        XCTAssertTrue(waitFor(recipeDraftRow(in: app), value: "Shakshuka"))
-        app.typeKey("s", modifierFlags: .command)
-
-        XCTAssertTrue(recipeRow(named: "Shakshuka", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(waitForNonExistence(recipeDraftRow(in: app), timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["recipeDetailPlaceholder"].exists)
-        XCTAssertTrue(app.buttons["newRecipe"].isEnabled)
-
-        app.terminate()
-        app = try launch(json: nil, database: database, openIngredients: false)
-        XCTAssertTrue(recipeRow(named: "Shakshuka", in: app).waitForExistence(timeout: 5))
-    }
-
-    /// A title that differs only in case is refused; Cancel then asks first (REC-02).
-    @MainActor
-    func testDuplicateRecipeTitleIsRefused() throws {
-        let app = try launch(json: nil, openIngredients: false)
-        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
-
-        app.typeKey("n", modifierFlags: .command)
-        XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
-        app.typeText("Shakshuka")
-        app.typeKey("s", modifierFlags: .command)
-        XCTAssertTrue(recipeRow(named: "Shakshuka", in: app).waitForExistence(timeout: 5))
-
-        app.typeKey("n", modifierFlags: .command)
-        XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
-        app.typeText("shakshuka")
-        app.typeKey("s", modifierFlags: .command)
-        let problem = app.staticTexts["recipeTitleProblem"]
-        XCTAssertTrue(problem.waitForExistence(timeout: 5))
-        XCTAssertTrue(waitFor(problem, value: "A recipe with this title already exists."))
-
-        app.typeKey(.escape, modifierFlags: [])
-        let discard = app.buttons["confirmDiscard"]
-        XCTAssertTrue(discard.waitForExistence(timeout: 5))
-        discard.click()
-        XCTAssertTrue(app.descendants(matching: .any)["recipeDetailPlaceholder"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts.matching(identifier: "recipeRow").count, 1)
-    }
-
     @MainActor
     func testLaunchShowsEmptyCatalog() throws {
         let app = try launch(seed: [])
@@ -322,66 +241,8 @@ final class KreatynaMacUITests: XCTestCase {
     }
 
     @MainActor
-    private func launch(seed: [String], openIngredients: Bool = true) throws -> XCUIApplication {
-        // The seed is a JSON array of names (E-17).
-        try launch(
-            json: seed.isEmpty ? nil : String(decoding: JSONEncoder().encode(seed), as: UTF8.self),
-            openIngredients: openIngredients
-        )
-    }
-
-    /// The app opens on Recipes (REC-01/Q1). The ingredient tests click
-    /// Ingredients first, unless `openIngredients` is false.
-    @MainActor
-    private func launch(
-        json: String?,
-        database: String = UUID().uuidString,
-        openIngredients: Bool = true
-    ) throws -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchEnvironment["KREATYNA_TEST_DATABASE_ID"] = database
-        if let json {
-            app.launchEnvironment["KREATYNA_TEST_SEED"] = json
-        }
-        app.launch()
-        if openIngredients {
-            let item = sidebar("sidebarIngredients", in: app)
-            XCTAssertTrue(item.waitForExistence(timeout: 5))
-            item.click()
-        }
-        return app
-    }
-
-    @MainActor
-    private func sidebar(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
-    }
-
-    private func waitForNonExistence(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
-        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
-        return XCTWaiter().wait(for: [gone], timeout: timeout) == .completed
-    }
-
-    private func waitFor(_ element: XCUIElement, value: String, timeout: TimeInterval = 5) -> Bool {
-        let match = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", value), object: element)
-        return XCTWaiter().wait(for: [match], timeout: timeout) == .completed
-    }
-
-    @MainActor
     private func draftRow(in app: XCUIApplication) -> XCUIElement {
         app.staticTexts.matching(identifier: "ingredientDraftRow").firstMatch
-    }
-
-    @MainActor
-    private func recipeDraftRow(in app: XCUIApplication) -> XCUIElement {
-        app.staticTexts.matching(identifier: "recipeDraftRow").firstMatch
-    }
-
-    @MainActor
-    private func recipeRow(named title: String, in app: XCUIApplication) -> XCUIElement {
-        app.staticTexts.matching(identifier: "recipeRow")
-            .matching(NSPredicate(format: "value == %@ OR label == %@", title, title))
-            .firstMatch
     }
 
     @MainActor

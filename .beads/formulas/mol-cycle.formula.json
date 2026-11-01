@@ -1,0 +1,60 @@
+{
+  "formula": "mol-cycle",
+  "description": "One delivery cycle: four feature slices, then the open bugs, then the full test suite, then the tech-debt cooldown and the user's approval. Bugs come first at every step: no feature slice starts while a bug bead is open. Start it with .agents/skills/plan-reviewable-epics/scripts/start-cycle.sh <cycle>.",
+  "version": 1,
+  "type": "workflow",
+  "pour": true,
+  "vars": {
+    "cycle": {"description": "Cycle number. Cooldown 1 closed cycle 1.", "required": true}
+  },
+  "steps": [
+    {
+      "id": "feature-1",
+      "title": "Cycle {{cycle}}: feature slice 1",
+      "description": "Bugs first: `bd list --type bug --status open` must be empty before the slice starts; fix each open bug in its own reviewed jj change (a bug fix is not a feature slice). When the user asks for the next slice, take the next one by epic order and `bd ready`, and start it with start-slice.sh. Write the slice into this step: `bd update <this step> --notes \"<slice-bead> <ID>\"`. Close this step when the slice bead closes."
+    },
+    {
+      "id": "feature-2",
+      "title": "Cycle {{cycle}}: feature slice 2",
+      "needs": ["feature-1"],
+      "description": "Same as feature slice 1: bugs first, then the next slice through start-slice.sh. Note the slice here and close this step when the slice bead closes."
+    },
+    {
+      "id": "feature-3",
+      "title": "Cycle {{cycle}}: feature slice 3",
+      "needs": ["feature-2"],
+      "description": "Same as feature slice 1: bugs first, then the next slice through start-slice.sh. Note the slice here and close this step when the slice bead closes."
+    },
+    {
+      "id": "feature-4",
+      "title": "Cycle {{cycle}}: feature slice 4",
+      "needs": ["feature-3"],
+      "description": "Same as feature slice 1: bugs first, then the next slice through start-slice.sh. Note the slice here and close this step when the slice bead closes."
+    },
+    {
+      "id": "bugs",
+      "title": "Cycle {{cycle}}: fix the open bugs",
+      "needs": ["feature-4"],
+      "description": "Fix every open bug bead (`bd list --type bug --status open`), each in its own reviewed jj change. Close this step when none is open."
+    },
+    {
+      "id": "full-suite",
+      "title": "Cycle {{cycle}}: run the full test suite",
+      "needs": ["bugs"],
+      "description": "Per change, only the touched section's UI tests ran (`mac-test --ui <Class>`). Now run everything: `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --check`, `devenv shell -- mac-test` with no --ui, and the iOS build-for-testing. File each failure as a bug bead and fix it, then run the whole suite again. Write the results into this step's notes and close it when everything passes."
+    },
+    {
+      "id": "cooldown",
+      "title": "Cycle {{cycle}}: tech-debt cooldown",
+      "needs": ["full-suite"],
+      "description": "Audit the codebase: correctness, API hygiene, performance, tests, naming, dependencies, migrations, tooling, security, each finding with file:line and severity. Push back on false findings. File the real ones as beads with the tech-debt label. Send the audit to an Inbox thread named \"Cooldown {{cycle}}\". Clear every open tech-debt bead (`bd list --label tech-debt --status open`), each in a reviewed jj change. Close this step when none is open."
+    },
+    {
+      "id": "finish",
+      "title": "Cycle {{cycle}}: close the cycle",
+      "needs": ["cooldown"],
+      "gate": {"type": "human"},
+      "description": "Waits for the human gate: close it when the user approves the cooldown in the \"Cooldown {{cycle}}\" thread. Then close this step and the workflow root (\"Cycle {{cycle}}\"), and start the next cycle with start-cycle.sh <next number>."
+    }
+  ]
+}

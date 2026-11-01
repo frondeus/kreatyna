@@ -25,7 +25,7 @@
       "title": "{{slice}}: implement",
       "needs": ["plan"],
       "gate": {"type": "human"},
-      "description": "Waits for the human gate: close it when the user accepts the plan (\"Looks good\", \"LGTM\" or all recommendations chosen). Then implement the plan in the slice's jj change: Rust, FFI, Swift and their tests. Run the checks the plan names: cargo test, cargo clippy, mac-test, ios-test, snapshots."
+      "description": "Waits for the human gate: close it when the user accepts the plan (\"Looks good\", \"LGTM\" or all recommendations chosen). Then implement the plan in the slice's jj change: Rust, FFI, Swift and their tests. Run the checks the plan names: cargo test, cargo clippy and fmt in full; mac-test --ui with the UI test class of each section the change touches (unit and snapshot tests always run in full); the iOS build. See \"Test scope\" in plan-reviewable-epics."
     },
     {
       "id": "report",

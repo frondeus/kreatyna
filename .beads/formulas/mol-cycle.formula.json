@@ -41,7 +41,7 @@
       "id": "full-suite",
       "title": "Cycle {{cycle}}: run the full test suite",
       "needs": ["bugs"],
-      "description": "Per change, only the touched section's UI tests ran (`mac-test --ui <Class>`). Now run everything: `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --check`, `devenv shell -- mac-test` with no --ui, and the iOS build-for-testing. File each failure as a bug bead and fix it, then run the whole suite again. Write the results into this step's notes and close it when everything passes."
+      "description": "Per change, only the touched section's UI tests ran (`mac-test --ui <Class>`). Now run everything: `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --check`, `devenv shell -- mac-test` with no --ui, and `devenv shell -- ios-app-build`. File each failure as a bug bead and fix it, then run the whole suite again. Write the results into this step's notes and close it when everything passes."
     },
     {
       "id": "cooldown",

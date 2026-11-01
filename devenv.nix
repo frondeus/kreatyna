@@ -174,6 +174,41 @@ in
     '';
   };
 
+  scripts.ios-app-build = {
+    description = "Build the iOS app and its tests for the simulator, then restore the Mac bindings: ios-app-build [debug|release]";
+    exec = appleSetup + ''
+      log=target/xcode/ios-app-build.log
+      mkdir -p target/xcode
+      : >"$log"
+      # iOS and the Mac share one folder of generated Swift bindings. Restore
+      # the Mac ones on every exit, so a failed build does not leave the Mac
+      # app on iOS bindings.
+      restore_mac() {
+        echo "==> Restoring the Mac bindings"
+        mac-bindings "$profile" >>"$log" 2>&1 \
+          || echo "Restoring failed: run mac-bindings $profile (log: $log)" >&2
+      }
+      trap restore_mac EXIT
+      echo "==> Building the Rust core for iOS (log: $log)"
+      if ! ios-bindings "$profile" >>"$log" 2>&1; then
+        tail -40 "$log" >&2
+        exit 1
+      fi
+      apple-generate
+      ${xcodeEnv}
+
+      echo "==> Building the iOS app for testing (log: $log)"
+      if ! "''${clean_env[@]}" xcodebuild build-for-testing \
+          -project apple/Kreatyna/Kreatyna.xcodeproj -scheme Kreatyna \
+          -destination "generic/platform=iOS Simulator" -derivedDataPath target/xcode/DerivedData-ios \
+          >>"$log" 2>&1; then
+        grep -E "error:|BUILD FAILED" "$log" >&2 || tail -40 "$log" >&2
+        exit 1
+      fi
+      grep -E "TEST BUILD SUCCEEDED" "$log"
+    '';
+  };
+
   scripts.mac-test = {
     description = "Generate the Xcode project and run macOS tests: mac-test [--ui <UI test class[/method]> | --ui none]...";
     exec = ''

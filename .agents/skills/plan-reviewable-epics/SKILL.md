@@ -176,7 +176,7 @@ Each change runs the fast suites in full and narrows only the slow UI tests:
 | `cargo test --workspace`, Clippy, `cargo fmt --check` | All. |
 | Mac unit and snapshot tests (`KreatynaMacTests`) | All. |
 | Mac UI tests (`KreatynaMacUITests`) | Only the classes of the sections the diff touches: `MacRecipeUITests`, `MacIngredientUITests`, `MacShellUITests` (sidebar, switching sections). |
-| iOS | The build only (iOS is parked). |
+| iOS | The build only (iOS is parked): `devenv shell -- ios-app-build`. |
 
 Run them with `devenv shell -- mac-test --ui MacRecipeUITests` (repeat `--ui`
 for more classes, or `--ui none` for no UI test). A change to shared Swift

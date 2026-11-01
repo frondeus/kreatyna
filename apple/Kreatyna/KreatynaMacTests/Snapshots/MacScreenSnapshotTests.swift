@@ -153,6 +153,27 @@ extension MainActorTests {
             )
         }
 
+        /// Shakshuka's read view after a failed load: the singular storage text and Retry.
+        @Test(arguments: Appearance.allCases)
+        func recipeReadViewFailed(appearance: Appearance) {
+            let shakshuka = Fixtures.recipeRow("Shakshuka")
+            let detail = RecipeDetailView(id: shakshuka.id, status: .failed(error: .storage))
+            snapshot(
+                MacMainView(
+                    app: Fixtures.splitApp(
+                        section: .recipes,
+                        recipes: Fixtures.recipeSection(
+                            .ready(rows: [Fixtures.recipeRow("Pasta"), shakshuka]),
+                            pane: .detail(detail: detail)
+                        )
+                    ),
+                    columnVisibility: .doubleColumn,
+                    send: { _ in }
+                ),
+                appearance: appearance
+            )
+        }
+
         /// The sidebar alone, with Recipes selected (REC-01). Inside the split
         /// view, the off-screen capture draws the sidebar blank.
         @Test(arguments: Appearance.allCases)

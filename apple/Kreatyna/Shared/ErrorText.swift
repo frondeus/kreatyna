@@ -43,6 +43,14 @@ extension RecipeLoadError {
         case .transport: "Recipes are temporarily unavailable."
         }
     }
+
+    /// The read view loads one recipe, so its text is singular.
+    var detailMessage: String {
+        switch self {
+        case .storage: "This recipe could not be read from storage."
+        case .transport: "This recipe is temporarily unavailable."
+        }
+    }
 }
 
 extension RecipeSaveError {

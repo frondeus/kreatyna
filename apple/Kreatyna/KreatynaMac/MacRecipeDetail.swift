@@ -30,7 +30,7 @@ struct MacRecipeDetail: View {
             ContentUnavailableView {
                 Text("Recipe unavailable")
             } description: {
-                Text(error.message)
+                Text(error.detailMessage)
             } actions: {
                 Button("Retry") { send(.retry) }
                     .buttonStyle(.borderedProminent)

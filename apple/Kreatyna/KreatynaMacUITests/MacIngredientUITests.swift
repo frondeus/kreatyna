@@ -180,10 +180,14 @@ final class MacIngredientUITests: MacUITestCase {
         let app = try launch(seed: ["Garlic"])
         XCTAssertTrue(row(named: "Garlic", in: app).waitForExistence(timeout: 5))
         app.buttons["addIngredient"].click()
+        // The draft row can show before the form does, so wait for Add Unit
+        // too: a click on a missing element fails at once (vibetyna-kqh).
         XCTAssertTrue(draftRow(in: app).waitForExistence(timeout: 5))
+        let addUnit = app.buttons["addIngredientUnit"]
+        XCTAssertTrue(addUnit.waitForExistence(timeout: 5))
 
         for (index, name) in ["clove", "bulb"].enumerated() {
-            app.buttons["addIngredientUnit"].click()
+            addUnit.click()
             let field = app.textFields["ingredientUnitNameField.\(index)"]
             XCTAssertTrue(field.waitForExistence(timeout: 5))
             field.click()

@@ -39,7 +39,7 @@ extension MainActorTests {
             let model = AppModel(layout: .stack, databasePath: ":memory:")
             defer { model.shutdown() }
             let app = try await waitForRunning(model)
-            model.dispatch(.stack(event: stack(app).list(.select(id: "not-a-uuid"))))
+            model.dispatch(.stack(event: stack(app).list(.select(id: IngredientId(uuid: "not-a-uuid")))))
             #expect(model.errorMessage != nil)
         }
 
@@ -56,7 +56,7 @@ extension MainActorTests {
             let model = AppModel(layout: .stack, databasePath: ":memory:")
             defer { model.shutdown() }
             let app = try await waitForRunning(model)
-            model.dispatch(.stack(event: stack(app).list(.select(id: "not-a-uuid"))))
+            model.dispatch(.stack(event: stack(app).list(.select(id: IngredientId(uuid: "not-a-uuid")))))
             #expect(model.errorMessage != nil)
 
             model.dispatch(.stack(event: stack(app).list(.search(query: "gar"))))

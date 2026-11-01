@@ -44,14 +44,24 @@ pub(super) fn count(value: usize) -> Result<u64, AppTypeConversionError> {
         .map_err(|_| AppTypeConversionError::IntegerOutOfRange)
 }
 
-pub(super) fn ingredient_id(value: String) -> Result<IngredientId, AppTypeConversionError> {
-    value
-        .parse()
-        .map_err(|_| AppTypeConversionError::InvalidIngredientId { value })
+// An id crosses the FFI as its UUID text. `uniffi.toml` maps each one to a
+// Swift struct of the same name, so Swift cannot mix the two ids up.
+uniffi::custom_type!(IngredientId, String, {
+    remote,
+    lower: |id| id.to_string(),
+    try_lift: |value| lift_ingredient_id(value),
+});
+
+/// Swift's id text as an `IngredientId`. Invalid text fails the call that
+/// carries it, for example `dispatch`, with `AppFfiError::Conversion`.
+pub(crate) fn lift_ingredient_id(value: String) -> uniffi::Result<IngredientId> {
+    value.parse().map_err(|_| {
+        uniffi::deps::anyhow::Error::new(AppFfiError::from(
+            AppTypeConversionError::InvalidIngredientId { value },
+        ))
+    })
 }
 
-// A recipe id crosses the FFI as its UUID text. Swift sees `RecipeId`, a
-// type alias of `String`.
 uniffi::custom_type!(RecipeId, String, {
     remote,
     lower: |id| id.to_string(),

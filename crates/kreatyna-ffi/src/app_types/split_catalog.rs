@@ -31,7 +31,7 @@ impl TryFrom<IngredientSplitCatalogEvent> for core::IngredientSplitCatalogEvent 
     fn try_from(value: IngredientSplitCatalogEvent) -> Result<Self, Self::Error> {
         Ok(match value {
             IngredientSplitCatalogEvent::List { scope, event } => {
-                Self::List(Scoped::new(scope.into(), event.try_into()?))
+                Self::List(Scoped::new(scope.into(), event.into()))
             }
             IngredientSplitCatalogEvent::Detail { scope, event } => {
                 Self::Detail(Scoped::new(scope.into(), event.into()))
@@ -126,7 +126,7 @@ impl TryFrom<Scoped<core::IngredientSplitPaneView>> for ScopedIngredientSplitPan
 pub struct IngredientSplitCatalogView {
     pub list: ScopedIngredientListView,
     /// The highlighted row's ingredient ID.
-    pub selected: Option<String>,
+    pub selected: Option<core::IngredientId>,
     pub pane: ScopedIngredientSplitPaneView,
     /// Whether **＋** opens the create form now.
     pub can_create: bool,
@@ -141,7 +141,7 @@ impl TryFrom<core::IngredientSplitCatalogView> for IngredientSplitCatalogView {
     fn try_from(value: core::IngredientSplitCatalogView) -> Result<Self, Self::Error> {
         Ok(Self {
             list: value.list.try_into()?,
-            selected: value.selected.map(|id| id.to_string()),
+            selected: value.selected,
             pane: value.pane.try_into()?,
             can_create: value.can_create,
             draft_row: value.draft_row,

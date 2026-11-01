@@ -1,0 +1,10 @@
+# Each id crosses the FFI as its UUID text. Swift wraps the text in a struct of
+# the same name (apple/Kreatyna/Shared/Ids.swift), so the compiler keeps
+# recipe ids and ingredient ids apart.
+[bindings.swift.custom_types.RecipeId]
+lift = "RecipeId(uuid: {})"
+lower = "{}.uuid"
+
+[bindings.swift.custom_types.IngredientId]
+lift = "IngredientId(uuid: {})"
+lower = "{}.uuid"

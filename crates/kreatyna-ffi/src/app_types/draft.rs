@@ -6,14 +6,14 @@ use super::{AppTypeConversionError, NutritionBasis};
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum DraftMode {
     Create,
-    Edit { id: String },
+    Edit { id: core::IngredientId },
 }
 
 impl From<core::DraftMode> for DraftMode {
     fn from(value: core::DraftMode) -> Self {
         match value {
             core::DraftMode::Create => Self::Create,
-            core::DraftMode::Edit { id } => Self::Edit { id: id.to_string() },
+            core::DraftMode::Edit { id } => Self::Edit { id },
         }
     }
 }

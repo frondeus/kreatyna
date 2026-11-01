@@ -101,15 +101,6 @@ fn split_event_conversion_preserves_the_scopes() {
     };
     assert_eq!(u64::from(inner.scope), 8);
     assert_eq!(inner.value, ingredient::IngredientDetailEvent::Edit);
-
-    let select = IngredientSplitCatalogEvent::List {
-        scope: ScopeId { value: 9 },
-        event: IngredientListEvent::Select { id: "bad".into() },
-    };
-    assert!(matches!(
-        ingredient::IngredientSplitCatalogEvent::try_from(select),
-        Err(AppTypeConversionError::InvalidIngredientId { .. })
-    ));
 }
 
 #[test]
@@ -149,7 +140,7 @@ fn split_view_conversion_keeps_the_selection_and_the_detail() {
     };
 
     let catalog = IngredientSplitCatalogView::try_from(view).unwrap();
-    assert_eq!(catalog.selected.as_deref(), Some(id.to_string().as_str()));
+    assert_eq!(catalog.selected, Some(id));
     assert_eq!(catalog.list.scope, ScopeId { value: 3 });
     assert_eq!(catalog.pane.scope, ScopeId { value: 4 });
     let IngredientSplitPaneView::Detail { detail } = catalog.pane.value else {
@@ -253,7 +244,7 @@ fn split_view_conversion_carries_the_edit_form_and_its_saved_name() {
     };
 
     let catalog = IngredientSplitCatalogView::try_from(view).unwrap();
-    assert_eq!(catalog.selected.as_deref(), Some(id.to_string().as_str()));
+    assert_eq!(catalog.selected, Some(id));
     assert_eq!(catalog.pane.scope, ScopeId { value: 7 });
     let IngredientSplitPaneView::Edit { saved_name, form } = catalog.pane.value else {
         panic!("expected the edit form")
@@ -482,15 +473,37 @@ fn stack(view: RunningAppView) -> IngredientCatalogView {
     catalog
 }
 
-#[test_case(IngredientListEvent::Select { id: "bad".into() }; "select")]
-#[test_case(IngredientListEvent::Edit { id: "bad".into() }; "edit")]
-fn malformed_ingredient_ids_are_rejected(event: IngredientListEvent) {
+#[test]
+fn list_events_carry_the_ingredient_id() {
+    let id = ingredient::IngredientId::new();
     assert_eq!(
-        ingredient::IngredientListEvent::try_from(event),
-        Err(AppTypeConversionError::InvalidIngredientId {
-            value: "bad".into()
-        })
+        ingredient::IngredientListEvent::from(IngredientListEvent::Select { id }),
+        ingredient::IngredientListEvent::Select(id)
     );
+    assert_eq!(
+        ingredient::IngredientListEvent::from(IngredientListEvent::Edit { id }),
+        ingredient::IngredientListEvent::Edit(id)
+    );
+}
+
+#[test]
+fn an_ingredient_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
+    let id = ingredient::IngredientId::new();
+    assert_eq!(support::lift_ingredient_id(id.to_string())?, id);
+    Ok(())
+}
+
+#[test]
+fn invalid_ingredient_id_text_fails_the_call_with_a_conversion_error() {
+    let error = support::lift_ingredient_id("not-a-uuid".into())
+        .err()
+        .and_then(|error| error.downcast::<crate::AppFfiError>().ok());
+    assert!(matches!(
+        error,
+        Some(crate::AppFfiError::Conversion {
+            error: AppTypeConversionError::InvalidIngredientId { value }
+        }) if value == "not-a-uuid"
+    ));
 }
 
 #[test]
@@ -514,6 +527,7 @@ fn index_conversion_is_checked_but_out_of_bounds_values_remain_events() {
 
 #[test]
 fn list_statuses_and_typed_errors_are_preserved() {
+    let id = ingredient::IngredientId::new();
     for (source, expected) in [
         (
             ingredient::IngredientListStatus::Loading,
@@ -530,7 +544,7 @@ fn list_statuses_and_typed_errors_are_preserved() {
         (
             ingredient::IngredientListStatus::Ready {
                 rows: vec![ingredient::IngredientListRow {
-                    id: ingredient::IngredientId::new(),
+                    id,
                     name: "Garlic".into(),
                 }],
                 total_count: 3,
@@ -540,7 +554,7 @@ fn list_statuses_and_typed_errors_are_preserved() {
             },
             IngredientListStatus::Ready {
                 rows: vec![IngredientListRow {
-                    id: String::new(),
+                    id,
                     name: "Garlic".into(),
                 }],
                 total_count: 3,
@@ -550,27 +564,7 @@ fn list_statuses_and_typed_errors_are_preserved() {
             },
         ),
     ] {
-        let converted = IngredientListStatus::try_from(source).unwrap();
-        match (converted, expected) {
-            (
-                IngredientListStatus::Ready {
-                    rows,
-                    total_count,
-                    refresh,
-                },
-                IngredientListStatus::Ready {
-                    total_count: expected_count,
-                    refresh: expected_refresh,
-                    ..
-                },
-            ) => {
-                assert_eq!(rows[0].name, "Garlic");
-                assert_eq!(rows[0].id.len(), 36);
-                assert_eq!(total_count, expected_count);
-                assert_eq!(refresh, expected_refresh);
-            }
-            (actual, expected) => assert_eq!(actual, expected),
-        }
+        assert_eq!(IngredientListStatus::try_from(source).unwrap(), expected);
     }
 }
 

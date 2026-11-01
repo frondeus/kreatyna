@@ -17,9 +17,6 @@ struct MacRecipeList: View {
     let select: (RecipeId?) -> Void
     let send: (RecipeListEvent) -> Void
 
-    /// The draft row's tag in the list selection. It is never a recipe ID.
-    private static let draftTag = "draft"
-
     /// Presentation only: keyboard focus, so the arrow keys move the selection.
     @FocusState private var focused: Bool
 
@@ -34,11 +31,6 @@ struct MacRecipeList: View {
                         .accessibilityIdentifier("newRecipe")
                 }
             }
-    }
-
-    /// A click on the draft row changes nothing; Rust keeps it highlighted.
-    private func choose(_ id: RecipeId?) {
-        if id != Self.draftTag { select(id) }
     }
 
     @ViewBuilder
@@ -60,16 +52,16 @@ struct MacRecipeList: View {
             }
             .accessibilityIdentifier("recipeListFailed")
         case .ready(let rows):
-            List(selection: Binding(get: { draftRow == nil ? selected : Self.draftTag }, set: choose)) {
+            List(selection: MacListTag.selection(draftShown: draftRow != nil, selected: selected, select: select)) {
                 if let draftRow {
                     Text(draftRow.isEmpty ? "New Recipe" : draftRow)
                         .italic()
-                        .tag(Self.draftTag)
+                        .tag(MacListTag<RecipeId>.draft)
                         .accessibilityIdentifier("recipeDraftRow")
                 }
                 ForEach(rows, id: \.id) { row in
                     Text(row.title)
-                        .tag(row.id)
+                        .tag(MacListTag.item(row.id))
                         .accessibilityIdentifier("recipeRow")
                 }
             }

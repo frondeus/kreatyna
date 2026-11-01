@@ -3,9 +3,9 @@ import Foundation
 
 /// Hand-built Rust view values. Tests and snapshots use them without the core.
 enum Fixtures {
-    static let garlicId = "6f1c1a3e-2b8f-4d9a-9a47-3c1e6b0d5a11"
-    static let tomatoesId = "0b6e3c55-91d2-4f7e-8a1b-77a2c4d9e0f3"
-    static let cucumberId = "c9d2e7a4-58b1-4c3f-b6e0-1d4a8f2b9c76"
+    static let garlicId = IngredientId(uuid: "6f1c1a3e-2b8f-4d9a-9a47-3c1e6b0d5a11")
+    static let tomatoesId = IngredientId(uuid: "0b6e3c55-91d2-4f7e-8a1b-77a2c4d9e0f3")
+    static let cucumberId = IngredientId(uuid: "c9d2e7a4-58b1-4c3f-b6e0-1d4a8f2b9c76")
 
     static let rows = [
         IngredientListRow(id: tomatoesId, name: "Canned tomatoes"),
@@ -75,7 +75,7 @@ enum Fixtures {
 
     /// An ingredient with a name only.
     static let basil = Ingredient(
-        id: "3a7d0f52-6c1e-4b8a-9d2f-5e4c3b2a1908",
+        id: IngredientId(uuid: "3a7d0f52-6c1e-4b8a-9d2f-5e4c3b2a1908"),
         name: "Basil",
         notes: nil,
         nutrition: Nutrition(basis: .per100Grams, calories: nil, protein: nil, carbohydrates: nil, fat: nil),
@@ -117,7 +117,7 @@ enum Fixtures {
 
     /// A saved recipe's row. The ID only has to be unique in the list.
     static func recipeRow(_ title: String) -> RecipeListRow {
-        RecipeListRow(id: "recipe-\(title)", title: title)
+        RecipeListRow(id: RecipeId(uuid: "recipe-\(title)"), title: title)
     }
 
     static func recipeList(_ status: RecipeListStatus) -> RecipeListView {
@@ -131,7 +131,7 @@ enum Fixtures {
         pane: RecipePaneView = .empty
     ) -> RecipeSectionView {
         let canCreate = if case .create = pane { false } else { true }
-        let selected = if case .detail(let detail) = pane { detail.id } else { nil as String? }
+        let selected = if case .detail(let detail) = pane { detail.id } else { nil as RecipeId? }
         return RecipeSectionView(
             list: recipeList(status),
             selected: selected,

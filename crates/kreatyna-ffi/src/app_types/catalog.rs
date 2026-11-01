@@ -31,7 +31,7 @@ impl TryFrom<IngredientCatalogEvent> for core::IngredientCatalogEvent {
     fn try_from(value: IngredientCatalogEvent) -> Result<Self, Self::Error> {
         Ok(match value {
             IngredientCatalogEvent::List { scope, event } => {
-                Self::List(Scoped::new(scope.into(), event.try_into()?))
+                Self::List(Scoped::new(scope.into(), event.into()))
             }
             IngredientCatalogEvent::Detail { scope, event } => {
                 Self::Detail(Scoped::new(scope.into(), event.into()))
@@ -132,11 +132,11 @@ impl From<core::IngredientEditOrigin> for IngredientEditOrigin {
 pub enum IngredientNavigation {
     List,
     Detail {
-        id: String,
+        id: core::IngredientId,
     },
     Create,
     Edit {
-        id: String,
+        id: core::IngredientId,
         origin: IngredientEditOrigin,
     },
 }
@@ -145,10 +145,10 @@ impl From<core::IngredientNavigation> for IngredientNavigation {
     fn from(value: core::IngredientNavigation) -> Self {
         match value {
             core::IngredientNavigation::List => Self::List,
-            core::IngredientNavigation::Detail { id } => Self::Detail { id: id.to_string() },
+            core::IngredientNavigation::Detail { id } => Self::Detail { id },
             core::IngredientNavigation::Create => Self::Create,
             core::IngredientNavigation::Edit { id, origin } => Self::Edit {
-                id: id.to_string(),
+                id,
                 origin: origin.into(),
             },
         }

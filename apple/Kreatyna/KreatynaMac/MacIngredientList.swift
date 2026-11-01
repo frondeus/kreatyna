@@ -7,15 +7,12 @@ import SwiftUI
 /// While the create form is open, Rust's draft row is first and highlighted.
 struct MacIngredientList: View {
     let view: IngredientListView
-    let selected: String?
+    let selected: IngredientId?
     /// The typed name of the ingredient being created; empty before a name.
     let draftRow: String?
     let canCreate: Bool
-    let select: (String?) -> Void
+    let select: (IngredientId?) -> Void
     let send: (IngredientListEvent) -> Void
-
-    /// The draft row's tag in the list selection. It is never an ingredient ID.
-    private static let draftTag = "draft"
 
     /// Presentation only: keyboard focus, so the arrow keys move the selection.
     @FocusState private var focused: Bool
@@ -38,11 +35,6 @@ struct MacIngredientList: View {
         }
     }
 
-    /// A click on the draft row changes nothing; Rust keeps it highlighted.
-    private func choose(_ id: String?) {
-        if id != Self.draftTag { select(id) }
-    }
-
     @ViewBuilder
     private var content: some View {
         switch view.status {
@@ -62,7 +54,7 @@ struct MacIngredientList: View {
             }
             .accessibilityIdentifier("ingredientListFailed")
         case .ready(let rows, let totalCount, let refresh):
-            List(selection: Binding(get: { draftRow == nil ? selected : Self.draftTag }, set: choose)) {
+            List(selection: MacListTag.selection(draftShown: draftRow != nil, selected: selected, select: select)) {
                 if case .failed(let error) = refresh {
                     Section {
                         Text(error.message)
@@ -74,12 +66,12 @@ struct MacIngredientList: View {
                 if let draftRow {
                     Text(draftRow.isEmpty ? "New Ingredient" : draftRow)
                         .italic()
-                        .tag(Self.draftTag)
+                        .tag(MacListTag<IngredientId>.draft)
                         .accessibilityIdentifier("ingredientDraftRow")
                 }
                 ForEach(rows, id: \.id) { row in
                     Text(row.name)
-                        .tag(row.id)
+                        .tag(MacListTag.item(row.id))
                         .accessibilityIdentifier("ingredientRow")
                 }
             }

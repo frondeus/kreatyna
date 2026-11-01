@@ -26,7 +26,7 @@ impl From<core::NutritionBasis> for NutritionBasis {
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct Ingredient {
-    pub id: String,
+    pub id: core::IngredientId,
     pub name: String,
     pub notes: Option<String>,
     pub nutrition: Nutrition,
@@ -36,7 +36,7 @@ pub struct Ingredient {
 impl From<core::Ingredient> for Ingredient {
     fn from(value: core::Ingredient) -> Self {
         Self {
-            id: value.id.to_string(),
+            id: value.id,
             name: value.name,
             notes: value.notes,
             nutrition: value.nutrition.into(),

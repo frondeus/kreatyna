@@ -1,6 +1,6 @@
 use kreatyna::ingredients as core;
 
-use super::support::{count, ingredient_id};
+use super::support::count;
 use super::{AppTypeConversionError, IngredientLoadError};
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -8,34 +8,32 @@ pub enum IngredientListEvent {
     Search { query: String },
     Refresh,
     CreateRequested,
-    Select { id: String },
-    Edit { id: String },
+    Select { id: core::IngredientId },
+    Edit { id: core::IngredientId },
 }
 
-impl TryFrom<IngredientListEvent> for core::IngredientListEvent {
-    type Error = AppTypeConversionError;
-
-    fn try_from(value: IngredientListEvent) -> Result<Self, Self::Error> {
-        Ok(match value {
+impl From<IngredientListEvent> for core::IngredientListEvent {
+    fn from(value: IngredientListEvent) -> Self {
+        match value {
             IngredientListEvent::Search { query } => Self::Search(query),
             IngredientListEvent::Refresh => Self::Refresh,
             IngredientListEvent::CreateRequested => Self::CreateRequested,
-            IngredientListEvent::Select { id } => Self::Select(ingredient_id(id)?),
-            IngredientListEvent::Edit { id } => Self::Edit(ingredient_id(id)?),
-        })
+            IngredientListEvent::Select { id } => Self::Select(id),
+            IngredientListEvent::Edit { id } => Self::Edit(id),
+        }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct IngredientListRow {
-    pub id: String,
+    pub id: core::IngredientId,
     pub name: String,
 }
 
 impl From<core::IngredientListRow> for IngredientListRow {
     fn from(value: core::IngredientListRow) -> Self {
         Self {
-            id: value.id.to_string(),
+            id: value.id,
             name: value.name,
         }
     }

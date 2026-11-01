@@ -54,7 +54,8 @@ struct EventCompositionTests {
         #expect(reading.selected == shakshuka.id)
         #expect(reading.canCreate)
         #expect(reading.draftRow == nil)
-        #expect(reading.select("recipe-Pasta") == .select(id: "recipe-Pasta"))
+        let pasta = Fixtures.recipeRow("Pasta").id
+        #expect(reading.select(pasta) == .select(id: pasta))
         #expect(reading.clearSelection == .clearSelection(scope: ScopeId(value: 5)))
         #expect(reading.detail(.retry) == .detail(scope: ScopeId(value: 5), event: .retry))
     }

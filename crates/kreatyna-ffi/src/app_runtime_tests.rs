@@ -29,22 +29,6 @@ fn app_ffi_initializes_before_exposing_the_running_app() {
     assert!(matches!(app.start(), Err(AppFfiError::AlreadyStarted)));
     wait_until_ready(&app, &rendered);
 
-    assert!(matches!(
-        app.dispatch(AppEvent::Stack {
-            event: IngredientCatalogEvent::List {
-                scope: stack_view(&app).scope,
-                event: IngredientListEvent::Select {
-                    id: "not-a-uuid".into(),
-                },
-            },
-        }),
-        Err(AppFfiError::Conversion {
-            error: AppTypeConversionError::InvalidIngredientId {
-                value,
-            },
-        }) if value == "not-a-uuid"
-    ));
-
     app.shutdown();
     assert!(matches!(app.start(), Err(AppFfiError::Terminated)));
     assert!(matches!(

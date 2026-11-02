@@ -1,28 +1,9 @@
-use super::*;
 use parking_lot::Mutex;
+use test_case::test_case;
 
-#[derive(Default)]
-struct RecordingLogger(Mutex<Vec<LogRecord>>);
+use super::*;
 
-impl LoggerHandler for RecordingLogger {
-    fn log(&self, record: LogRecord) {
-        self.0.lock().push(record);
-    }
-}
-
-fn setup(level: LogLevel) -> (Arc<RecordingLogger>, tracing::Dispatch) {
-    let logger = Arc::new(RecordingLogger::default());
-    let subscriber = tracing_subscriber::registry()
-        .with(LoggerLayer::new(logger.clone()).with_filter(LevelFilter::from(level)));
-    (logger, tracing::Dispatch::new(subscriber))
-}
-
-fn field(name: &str, value: &str) -> LogField {
-    LogField {
-        name: name.into(),
-        value: value.into(),
-    }
-}
+// Green path
 
 #[test]
 fn preserves_message_fields_and_source() {
@@ -51,45 +32,6 @@ fn preserves_message_fields_and_source() {
     assert!(records[0].spans.is_empty());
     assert_eq!(records[1].message, None);
     assert_eq!(records[1].fields, vec![field("count", "8")]);
-}
-
-#[test]
-fn filters_every_severity_threshold_before_formatting() {
-    struct MustNotFormat;
-    impl fmt::Debug for MustNotFormat {
-        fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-            panic!("filtered field was formatted");
-        }
-    }
-    let levels = [
-        LogLevel::Trace,
-        LogLevel::Debug,
-        LogLevel::Info,
-        LogLevel::Warn,
-        LogLevel::Error,
-    ];
-    for (index, level) in levels.iter().enumerate() {
-        let (logger, dispatch) = setup(level.clone());
-        tracing::dispatcher::with_default(&dispatch, || {
-            tracing::trace!("trace");
-            tracing::debug!("debug");
-            tracing::info!("info");
-            tracing::warn!("warn");
-            tracing::error!("error");
-        });
-        let actual: Vec<_> = logger
-            .0
-            .lock()
-            .iter()
-            .map(|record| record.level.clone())
-            .collect();
-        assert_eq!(actual, levels[index..]);
-    }
-    let (logger, dispatch) = setup(LogLevel::Info);
-    tracing::dispatcher::with_default(&dispatch, || {
-        tracing::debug!(value = ?MustNotFormat, "disabled");
-    });
-    assert!(logger.0.lock().is_empty());
 }
 
 #[test]
@@ -182,59 +124,95 @@ fn delivers_concurrently_from_multiple_threads() {
     assert_eq!(pairs.len(), 100);
 }
 
-#[test]
-fn preserves_span_context_across_async_yields() {
+// The task can resume on another worker thread after the yield, so the span
+// must travel with the future, not with the thread.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn preserves_span_context_across_async_yields() -> anyhow::Result<()> {
     use tracing::{Instrument, instrument::WithSubscriber};
 
     let (logger, dispatch) = setup(LogLevel::Info);
     let span =
         tracing::dispatcher::with_default(&dispatch, || tracing::info_span!("worker", id = 42));
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(2)
-        .build()
-        .unwrap();
-    runtime.block_on(async {
-        tokio::spawn(
-            async {
-                tokio::task::yield_now().await;
-                tracing::info!("after yield");
-            }
-            .instrument(span)
-            .with_subscriber(dispatch),
-        )
-        .await
-        .unwrap();
-    });
+    tokio::spawn(
+        async {
+            tokio::task::yield_now().await;
+            tracing::info!("after yield");
+        }
+        .instrument(span)
+        .with_subscriber(dispatch),
+    )
+    .await?;
     let records = logger.0.lock();
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].spans[0].name, "worker");
     assert_eq!(records[0].spans[0].fields, vec![field("id", "42")]);
+    Ok(())
+}
+
+// Validation
+
+#[test_case(LogLevel::Trace; "trace")]
+#[test_case(LogLevel::Debug; "debug")]
+#[test_case(LogLevel::Info; "info")]
+#[test_case(LogLevel::Warn; "warn")]
+#[test_case(LogLevel::Error; "error")]
+fn a_threshold_keeps_its_level_and_every_more_severe_one(level: LogLevel) {
+    let (logger, dispatch) = setup(level.clone());
+    tracing::dispatcher::with_default(&dispatch, || {
+        tracing::trace!("trace");
+        tracing::debug!("debug");
+        tracing::info!("info");
+        tracing::warn!("warn");
+        tracing::error!("error");
+    });
+    let actual: Vec<_> = logger
+        .0
+        .lock()
+        .iter()
+        .map(|record| record.level.clone())
+        .collect();
+    let from = LEVELS.iter().position(|kept| *kept == level);
+    assert_eq!(Some(actual.as_slice()), from.map(|from| &LEVELS[from..]));
 }
 
 #[test]
-fn initialization_is_process_wide_and_cannot_replace_the_handler() {
+fn a_filtered_event_does_not_format_its_fields() {
+    struct MustNotFormat;
+    impl fmt::Debug for MustNotFormat {
+        fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+            panic!("filtered field was formatted");
+        }
+    }
+    let (logger, dispatch) = setup(LogLevel::Info);
+    tracing::dispatcher::with_default(&dispatch, || {
+        tracing::debug!(value = ?MustNotFormat, "disabled");
+    });
+    assert!(logger.0.lock().is_empty());
+}
+
+#[test]
+fn initialization_is_process_wide_and_cannot_replace_the_handler() -> anyhow::Result<()> {
     // A subprocess keeps the irreversible global installation out of other tests.
     const CHILD: &str = "KREATYNA_LOGGING_INIT_TEST_CHILD";
     if std::env::var_os(CHILD).is_none() {
-        let output = std::process::Command::new(std::env::current_exe().unwrap())
+        let output = std::process::Command::new(std::env::current_exe()?)
             .args([
                 "--exact",
                 "logging::tests::initialization_is_process_wide_and_cannot_replace_the_handler",
                 "--nocapture",
             ])
             .env(CHILD, "1")
-            .output()
-            .unwrap();
+            .output()?;
         assert!(
             output.status.success(),
             "{}\n{}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
-        return;
+        return Ok(());
     }
     let first = Arc::new(RecordingLogger::default());
-    initialize_logging(first.clone(), LogLevel::Info).unwrap();
+    initialize_logging(first.clone(), LogLevel::Info)?;
     let second = Arc::new(RecordingLogger::default());
     assert!(matches!(
         initialize_logging(second.clone(), LogLevel::Trace),
@@ -245,8 +223,43 @@ fn initialization_is_process_wide_and_cannot_replace_the_handler() {
         tracing::info!("worker event");
     })
     .join()
-    .unwrap();
+    .map_err(|_| anyhow::anyhow!("the logging thread panicked"))?;
     assert_eq!(first.0.lock().len(), 1);
     assert_eq!(first.0.lock()[0].message.as_deref(), Some("worker event"));
     assert!(second.0.lock().is_empty());
+    Ok(())
+}
+
+// Test support
+
+/// Every level, from the least to the most severe.
+const LEVELS: [LogLevel; 5] = [
+    LogLevel::Trace,
+    LogLevel::Debug,
+    LogLevel::Info,
+    LogLevel::Warn,
+    LogLevel::Error,
+];
+
+#[derive(Default)]
+struct RecordingLogger(Mutex<Vec<LogRecord>>);
+
+impl LoggerHandler for RecordingLogger {
+    fn log(&self, record: LogRecord) {
+        self.0.lock().push(record);
+    }
+}
+
+fn setup(level: LogLevel) -> (Arc<RecordingLogger>, tracing::Dispatch) {
+    let logger = Arc::new(RecordingLogger::default());
+    let subscriber = tracing_subscriber::registry()
+        .with(LoggerLayer::new(logger.clone()).with_filter(LevelFilter::from(level)));
+    (logger, tracing::Dispatch::new(subscriber))
+}
+
+fn field(name: &str, value: &str) -> LogField {
+    LogField {
+        name: name.into(),
+        value: value.into(),
+    }
 }

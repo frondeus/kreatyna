@@ -23,7 +23,7 @@ async fn create_update_list_and_reopen_preserve_values(
     let mut db = SqliteDatabase::new(file.path()?).await?;
     assert!(db.list().await?.is_empty());
     let saved = db.save(write(&draft("  Tomatoes  ", basis))?).await?;
-    assert_eq!(saved.name, "Tomatoes");
+    assert_eq!(saved.name.as_ref(), "Tomatoes");
     assert_eq!(saved.nutrition.basis, basis);
     let calories = saved.nutrition.calories.context("no calories")?;
     assert_eq!(calories.to_string(), "12.3400");
@@ -50,7 +50,7 @@ async fn create_update_list_and_reopen_preserve_values(
     });
     let updated = db.save(write(&edit)?).await?;
     assert_eq!(updated.id, saved.id);
-    assert_eq!(updated.name, "Red  tomatoes");
+    assert_eq!(updated.name.as_ref(), "Red  tomatoes");
     assert_eq!(updated.notes.as_deref(), Some("fresh"));
     assert!(updated.nutrition.calories.is_none());
     let protein = updated.nutrition.protein.context("no protein")?;
@@ -272,7 +272,7 @@ fn unit_names(ingredient: &kreatyna::ingredients::Ingredient) -> Vec<&str> {
     ingredient
         .units
         .iter()
-        .map(|unit| unit.name.as_str())
+        .map(|unit| unit.name.as_ref())
         .collect()
 }
 

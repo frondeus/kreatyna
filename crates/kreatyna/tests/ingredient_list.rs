@@ -2,7 +2,7 @@ use kreatyna::capabilities::ResolveRender;
 use kreatyna::ingredients::{
     Grams, Ingredient, IngredientId, IngredientList, IngredientListEvent, IngredientListOutcome,
     IngredientListRefresh, IngredientListRow, IngredientListStatus, IngredientListView,
-    Kilocalories, Nutrition, NutritionBasis, ReferenceUnit,
+    IngredientName, Kilocalories, Nutrition, NutritionBasis, ReferenceUnit, UnitName,
     capabilities::{IngredientEffectStream, IngredientLoadError, ResolveIngredientStore},
 };
 use krucyfiks::{
@@ -1250,7 +1250,7 @@ fn id(value: u128) -> IngredientId {
 fn ingredient(value: u128, name: &str) -> anyhow::Result<Ingredient> {
     Ok(Ingredient {
         id: id(value),
-        name: name.into(),
+        name: IngredientName::try_new(name)?,
         notes: Some("complete record".into()),
         nutrition: Nutrition {
             basis: NutritionBasis::Per100Grams,
@@ -1260,7 +1260,7 @@ fn ingredient(value: u128, name: &str) -> anyhow::Result<Ingredient> {
             fat: Some(Grams::try_new(Decimal::ZERO)?),
         },
         units: vec![ReferenceUnit {
-            name: "clove".into(),
+            name: UnitName::try_new("clove")?,
             grams: Some(Grams::try_new(Decimal::from(3))?),
             millilitres: None,
         }],
@@ -1295,7 +1295,7 @@ fn ready_view(
                 .iter()
                 .map(|ingredient| IngredientListRow {
                     id: ingredient.id,
-                    name: ingredient.name.clone(),
+                    name: ingredient.name.to_string(),
                 })
                 .collect(),
             total_count,

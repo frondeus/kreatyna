@@ -37,7 +37,7 @@ impl From<core::Ingredient> for Ingredient {
     fn from(value: core::Ingredient) -> Self {
         Self {
             id: value.id,
-            name: value.name,
+            name: value.name.into_inner(),
             notes: value.notes,
             nutrition: value.nutrition.into(),
             units: value.units.into_iter().map(Into::into).collect(),
@@ -76,7 +76,7 @@ pub struct ReferenceUnit {
 impl From<core::ReferenceUnit> for ReferenceUnit {
     fn from(value: core::ReferenceUnit) -> Self {
         Self {
-            name: value.name,
+            name: value.name.into_inner(),
             grams: value.grams.map(|quantity| quantity.to_string()),
             millilitres: value.millilitres.map(|quantity| quantity.to_string()),
         }

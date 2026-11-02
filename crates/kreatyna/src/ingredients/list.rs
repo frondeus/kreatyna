@@ -74,7 +74,7 @@ struct CatalogEntry {
 impl CatalogEntry {
     fn new(ingredient: Ingredient) -> Self {
         Self {
-            key: name_key(&ingredient.name),
+            key: name_key(ingredient.name.as_ref()),
             ingredient,
         }
     }
@@ -309,7 +309,7 @@ impl Widget for IngredientList {
                     .into_iter()
                     .map(|ingredient| IngredientListRow {
                         id: ingredient.id,
-                        name: ingredient.name.clone(),
+                        name: ingredient.name.to_string(),
                     })
                     .collect(),
                 total_count: catalog.len(),

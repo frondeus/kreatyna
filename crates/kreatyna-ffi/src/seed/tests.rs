@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use kreatyna::ingredients::{
-    Ingredient, NutritionBasis, ReferenceUnit, capabilities::IngredientStoreMut,
+    Ingredient, NutritionBasis, ReferenceUnit, UnitName, capabilities::IngredientStoreMut,
 };
 use kreatyna_db::sqlite::SqliteDatabase;
 use rust_decimal::Decimal;
@@ -34,7 +34,7 @@ fn seeds_all_fields() -> anyhow::Result<()> {
     seed_ingredients(database.path()?, json.into())?;
 
     let garlic = only(stored(&database)?)?;
-    assert_eq!(garlic.name, "Garlic");
+    assert_eq!(garlic.name.as_ref(), "Garlic");
     assert_eq!(garlic.notes.as_deref(), Some("Peel the cloves."));
     assert_eq!(garlic.nutrition.basis, NutritionBasis::Per100Grams);
     assert_eq!(garlic.nutrition.calories, Some(decimal("149")?.try_into()?));
@@ -47,7 +47,7 @@ fn seeds_all_fields() -> anyhow::Result<()> {
     assert_eq!(
         garlic.units,
         [ReferenceUnit {
-            name: "clove".into(),
+            name: UnitName::try_new("clove")?,
             grams: Some(decimal("5")?.try_into()?),
             millilitres: None,
         }]
@@ -223,7 +223,7 @@ fn stored(database: &TemporaryDatabase) -> anyhow::Result<Vec<Ingredient>> {
     RUNTIME.block_on(async {
         let mut database = SqliteDatabase::new(&database.path()?).await?;
         let mut ingredients = database.list().await?;
-        ingredients.sort_by(|a, b| a.name.cmp(&b.name));
+        ingredients.sort_by(|a, b| a.name.as_ref().cmp(b.name.as_ref()));
         Ok(ingredients)
     })
 }
@@ -231,7 +231,7 @@ fn stored(database: &TemporaryDatabase) -> anyhow::Result<Vec<Ingredient>> {
 fn stored_names(database: &TemporaryDatabase) -> anyhow::Result<Vec<String>> {
     let names = stored(database)?
         .into_iter()
-        .map(|ingredient| ingredient.name)
+        .map(|ingredient| ingredient.name.into_inner())
         .collect();
     Ok(names)
 }

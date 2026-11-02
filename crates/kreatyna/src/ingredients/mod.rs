@@ -26,9 +26,9 @@ pub use list::{
 };
 
 pub use model::{
-    Grams, GramsError, Ingredient, IngredientId, IngredientIdParseError, Kilocalories,
-    KilocaloriesError, Millilitres, MillilitresError, Nutrition, NutritionBasis, ReferenceUnit,
-    name_key,
+    Grams, GramsError, Ingredient, IngredientId, IngredientIdParseError, IngredientName,
+    IngredientNameError, Kilocalories, KilocaloriesError, Millilitres, MillilitresError, Nutrition,
+    NutritionBasis, ReferenceUnit, UnitName, UnitNameError, name_key,
 };
 
 pub use detail::{

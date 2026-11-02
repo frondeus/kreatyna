@@ -60,7 +60,7 @@ fn counter_database_upgrades_and_keeps_ingredients() -> anyhow::Result<()> {
     let row = i::table
         .select(IngredientRow::as_select())
         .first::<IngredientRow>(&mut db)?;
-    assert_eq!(row.name, "Canned tomatoes");
+    assert_eq!(row.name.0.as_ref(), "Canned tomatoes");
     let calories = row.calories.context("the calories were not kept")?;
     assert_eq!(Decimal::from(calories.0).to_string(), "1.2300");
     Ok(())
@@ -77,7 +77,7 @@ fn typed_rows_round_trip_domain_and_order(
     let id = IngredientId::generate();
     let data = write_data(basis, calories, grams)?;
     let row = NewIngredientRow::from_write(id, &data);
-    assert_eq!(row.name, "Canned tomatoes");
+    assert_eq!(row.name.0.as_ref(), "Canned tomatoes");
     assert_eq!(row.name_key, "canned tomatoes");
     diesel::insert_into(i::table).values(row).execute(&mut db)?;
     let parent = i::table
@@ -88,7 +88,7 @@ fn typed_rows_round_trip_domain_and_order(
         parent.local_id,
         0,
         &ReferenceUnit {
-            name: "cup".into(),
+            name: UnitName::try_new("cup")?,
             grams: None,
             millilitres: Some(Decimal::from_str_exact("250.00")?.try_into()?),
         },
@@ -110,7 +110,7 @@ fn typed_rows_round_trip_domain_and_order(
     assert_eq!(
         positions_and_units
             .iter()
-            .map(|(position, unit)| (*position, unit.name.as_str()))
+            .map(|(position, unit)| (*position, unit.name.as_ref()))
             .collect::<Vec<_>>(),
         [(0, "cup"), (1, "can")]
     );
@@ -139,7 +139,7 @@ fn full_decimal_range_and_nullable_values_round_trip() -> anyhow::Result<()> {
     let id = IngredientId::generate();
     let row = NewIngredientRow {
         remote_id: id.into(),
-        name: "Garlic".into(),
+        name: DbIngredientName(IngredientName::try_new("Garlic")?),
         name_key: "garlic".into(),
         notes: None,
         basis: NutritionBasis::Per100Grams.into(),
@@ -196,7 +196,7 @@ fn invalid_basis_is_rejected(value: i32) -> anyhow::Result<()> {
 fn invalid_unit_values_are_rejected_by_row_mapping() -> anyhow::Result<()> {
     let parent = LocalIngredientId(1);
     let unit = ReferenceUnit {
-        name: "cup".into(),
+        name: UnitName::try_new("cup")?,
         grams: Some(Decimal::ZERO.try_into()?),
         millilitres: None,
     };
@@ -205,7 +205,7 @@ fn invalid_unit_values_are_rejected_by_row_mapping() -> anyhow::Result<()> {
         Err(ModelError::NonPositiveMeasurement)
     );
     let unit = ReferenceUnit {
-        name: "cup".into(),
+        name: UnitName::try_new("cup")?,
         grams: None,
         millilitres: None,
     };
@@ -216,7 +216,7 @@ fn invalid_unit_values_are_rejected_by_row_mapping() -> anyhow::Result<()> {
     let row = UnitRow {
         ingredient_local_id: parent,
         position: UnitPosition(0),
-        name: "cup".into(),
+        name: DbUnitName(UnitName::try_new("cup")?),
         name_key: "cup".into(),
         grams: Some(DbGrams(Decimal::ZERO.try_into()?)),
         millilitres: None,
@@ -251,8 +251,8 @@ fn constraints_and_cascade_work_in_sqlite() -> anyhow::Result<()> {
         other_id,
         &write_data(NutritionBasis::Per100Grams, "0", "1")?,
     );
-    duplicate_key.name = " GARLIC ".into();
-    duplicate_key.name_key = name_key(&duplicate_key.name);
+    duplicate_key.name = DbIngredientName(IngredientName::try_new(" GARLIC ")?);
+    duplicate_key.name_key = name_key(duplicate_key.name.0.as_ref());
     assert!(
         diesel::insert_into(i::table)
             .values(duplicate_key)
@@ -262,7 +262,7 @@ fn constraints_and_cascade_work_in_sqlite() -> anyhow::Result<()> {
     let unit = UnitRow {
         ingredient_local_id: parent,
         position: UnitPosition(0),
-        name: "can".into(),
+        name: DbUnitName(UnitName::try_new("can")?),
         name_key: "can".into(),
         grams: Some(DbGrams(Decimal::ONE.try_into()?)),
         millilitres: None,
@@ -416,7 +416,7 @@ fn insert_parent(
 ) -> anyhow::Result<LocalIngredientId> {
     let data = write_data(NutritionBasis::Per100Grams, "0", "1")?;
     let mut row = NewIngredientRow::from_write(id, &data);
-    row.name = name.into();
+    row.name = DbIngredientName(IngredientName::try_new(name)?);
     row.name_key = name_key(name);
     diesel::insert_into(i::table).values(&row).execute(db)?;
     let local_id = i::table

@@ -101,7 +101,7 @@ async fn a_catalog_from_before_rec_01_upgrades_and_keeps_its_ingredients() -> an
         assert_eq!(
             ingredients
                 .iter()
-                .map(|ingredient| ingredient.name.as_str())
+                .map(|ingredient| ingredient.name.as_ref())
                 .collect::<Vec<_>>(),
             ["Garlic"]
         );

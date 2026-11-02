@@ -9,8 +9,8 @@ use diesel::{
     sqlite::{Sqlite, SqliteValue},
 };
 use kreatyna::ingredients::{
-    Grams, Ingredient, IngredientId, IngredientWriteData, Kilocalories, Millilitres, Nutrition,
-    NutritionBasis, ReferenceUnit, name_key,
+    Grams, Ingredient, IngredientId, IngredientName, IngredientWriteData, Kilocalories,
+    Millilitres, Nutrition, NutritionBasis, ReferenceUnit, UnitName, name_key,
 };
 use rust_decimal::Decimal;
 
@@ -207,12 +207,50 @@ db_quantity!(DbCalories, Kilocalories);
 db_quantity!(DbGrams, Grams);
 db_quantity!(DbMillilitres, Millilitres);
 
+/// A name column. Reading a blank name fails, because the domain type rejects it.
+macro_rules! db_name {
+    ($name:ident, $domain:ty) => {
+        #[derive(Debug, Clone, PartialEq, Eq, AsExpression, FromSqlRow)]
+        #[diesel(sql_type = Text)]
+        pub(crate) struct $name(pub $domain);
+
+        impl From<$domain> for $name {
+            fn from(value: $domain) -> Self {
+                Self(value)
+            }
+        }
+
+        impl From<$name> for $domain {
+            fn from(value: $name) -> Self {
+                value.0
+            }
+        }
+
+        impl FromSql<Text, Sqlite> for $name {
+            fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
+                let text = <String as FromSql<Text, Sqlite>>::from_sql(value)?;
+                Ok(Self(<$domain>::try_new(text)?))
+            }
+        }
+
+        impl ToSql<Text, Sqlite> for $name {
+            fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
+                out.set_value(self.0.as_ref());
+                Ok(IsNull::No)
+            }
+        }
+    };
+}
+
+db_name!(DbIngredientName, IngredientName);
+db_name!(DbUnitName, UnitName);
+
 #[derive(Debug, Clone, Queryable, Selectable)]
 #[diesel(table_name = ingredients)]
 pub(crate) struct IngredientRow {
     pub local_id: LocalIngredientId,
     pub remote_id: RemoteIngredientId,
-    pub name: String,
+    pub name: DbIngredientName,
     pub name_key: String,
     pub notes: Option<String>,
     pub basis: DbNutritionBasis,
@@ -226,7 +264,7 @@ impl IngredientRow {
     pub fn into_domain(self, units: Vec<ReferenceUnit>) -> Ingredient {
         Ingredient {
             id: self.remote_id.into(),
-            name: self.name,
+            name: self.name.into(),
             notes: self.notes,
             nutrition: Nutrition {
                 basis: self.basis.into(),
@@ -244,7 +282,7 @@ impl IngredientRow {
 #[diesel(table_name = ingredients)]
 pub(crate) struct NewIngredientRow {
     pub remote_id: RemoteIngredientId,
-    pub name: String,
+    pub name: DbIngredientName,
     pub name_key: String,
     pub notes: Option<String>,
     pub basis: DbNutritionBasis,
@@ -259,8 +297,8 @@ impl NewIngredientRow {
         let nutrition = data.nutrition();
         Self {
             remote_id: id.into(),
-            name: data.name().to_owned(),
-            name_key: name_key(data.name()),
+            name: data.name().clone().into(),
+            name_key: name_key(data.name().as_ref()),
             notes: data.notes().map(str::to_owned),
             basis: nutrition.basis.into(),
             calories: nutrition.calories.map(Into::into),
@@ -276,7 +314,7 @@ impl NewIngredientRow {
 pub(crate) struct UnitRow {
     pub ingredient_local_id: LocalIngredientId,
     pub position: UnitPosition,
-    pub name: String,
+    pub name: DbUnitName,
     pub name_key: String,
     pub grams: Option<DbGrams>,
     pub millilitres: Option<DbMillilitres>,
@@ -303,8 +341,8 @@ impl UnitRow {
         Ok(Self {
             ingredient_local_id: parent,
             position: position.try_into()?,
-            name: unit.name.clone(),
-            name_key: name_key(&unit.name),
+            name: unit.name.clone().into(),
+            name_key: name_key(unit.name.as_ref()),
             grams: unit.grams.map(Into::into),
             millilitres: unit.millilitres.map(Into::into),
         })
@@ -326,7 +364,7 @@ impl UnitRow {
         Ok((
             self.position.try_into()?,
             ReferenceUnit {
-                name: self.name,
+                name: self.name.into(),
                 grams: self.grams.map(Into::into),
                 millilitres: self.millilitres.map(Into::into),
             },

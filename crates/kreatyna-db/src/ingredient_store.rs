@@ -40,7 +40,7 @@ enum StoreFailure {
 fn checked_unit(
     unit: UnitRow,
 ) -> Result<(i64, kreatyna::ingredients::ReferenceUnit), StoreFailure> {
-    if unit.name_key != name_key(&unit.name) {
+    if unit.name_key != name_key(unit.name.0.as_ref()) {
         return Err(StoreFailure::InvalidNameKey);
     }
     let parent = unit.ingredient_local_id.0;
@@ -52,7 +52,7 @@ fn checked_ingredient(
     parent: IngredientRow,
     units: Vec<kreatyna::ingredients::ReferenceUnit>,
 ) -> Result<Ingredient, StoreFailure> {
-    if parent.name_key != name_key(&parent.name) {
+    if parent.name_key != name_key(parent.name.0.as_ref()) {
         return Err(StoreFailure::InvalidNameKey);
     }
     Ok(parent.into_domain(units))
@@ -123,7 +123,7 @@ fn save_in_transaction(
         }
     };
     let conflict = ingredients::table
-        .filter(ingredients::name_key.eq(name_key(data.name())))
+        .filter(ingredients::name_key.eq(name_key(data.name().as_ref())))
         .select(ingredients::local_id)
         .first::<LocalIngredientId>(connection)
         .optional()?;

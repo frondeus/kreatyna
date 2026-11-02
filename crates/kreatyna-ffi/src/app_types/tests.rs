@@ -69,7 +69,7 @@ fn split_view_conversion_keeps_the_selection_and_the_detail() -> anyhow::Result<
     let id = ingredient::IngredientId::generate();
     let garlic = ingredient::Ingredient {
         id,
-        name: "Garlic".into(),
+        name: ingredient::IngredientName::try_new("Garlic")?,
         notes: None,
         nutrition: ingredient::Nutrition {
             basis: ingredient::NutritionBasis::Per100Grams,
@@ -783,7 +783,7 @@ fn stack(view: RunningAppView) -> anyhow::Result<IngredientCatalogView> {
 fn sample_ingredient() -> anyhow::Result<ingredient::Ingredient> {
     Ok(ingredient::Ingredient {
         id: ingredient::IngredientId::generate(),
-        name: "Garlic".into(),
+        name: ingredient::IngredientName::try_new("Garlic")?,
         notes: Some("Fresh".into()),
         nutrition: ingredient::Nutrition {
             basis: ingredient::NutritionBasis::Per100Grams,
@@ -794,12 +794,12 @@ fn sample_ingredient() -> anyhow::Result<ingredient::Ingredient> {
         },
         units: vec![
             ingredient::ReferenceUnit {
-                name: "clove".into(),
+                name: ingredient::UnitName::try_new("clove")?,
                 grams: Some(Decimal::new(2_500, 3).try_into()?),
                 millilitres: None,
             },
             ingredient::ReferenceUnit {
-                name: "cup".into(),
+                name: ingredient::UnitName::try_new("cup")?,
                 grams: None,
                 millilitres: Some(Decimal::new(25_000, 2).try_into()?),
             },

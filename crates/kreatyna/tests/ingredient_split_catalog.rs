@@ -20,7 +20,7 @@ use uuid::Uuid;
 
 #[tokio::test]
 async fn the_catalog_starts_with_nothing_selected() -> anyhow::Result<()> {
-    let fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
 
     let view = fixture.catalog.view();
     assert_eq!(row_names(&view.list.value)?, ["Garlic"]);
@@ -31,7 +31,7 @@ async fn the_catalog_starts_with_nothing_selected() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn selecting_a_row_shows_its_detail_in_a_new_pane_scope() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
     let before = fixture.catalog.view();
 
@@ -69,8 +69,8 @@ async fn selecting_a_row_shows_its_detail_in_a_new_pane_scope() -> anyhow::Resul
 
 #[tokio::test]
 async fn selecting_another_row_replaces_the_detail() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
-    let basil = ingredient(2, "Basil");
+    let garlic = ingredient(1, "Garlic")?;
+    let basil = ingredient(2, "Basil")?;
     let mut fixture = SplitFixture::ready(vec![garlic.clone(), basil.clone()], "").await?;
     fixture.select(garlic.id).await?;
     let garlic_scope = fixture.catalog.view().pane.scope;
@@ -89,7 +89,7 @@ async fn selecting_another_row_replaces_the_detail() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn selecting_the_selected_row_keeps_the_detail() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
     fixture.select(garlic.id).await?;
     let before = fixture.catalog.view();
@@ -111,7 +111,7 @@ async fn selecting_the_selected_row_keeps_the_detail() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn clearing_the_selection_empties_the_pane() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
     fixture.select(garlic.id).await?;
     let detail_scope = fixture.catalog.view().pane.scope;
@@ -131,8 +131,8 @@ async fn clearing_the_selection_empties_the_pane() -> anyhow::Result<()> {
 async fn the_list_stays_live_while_a_detail_is_open(
     event: IngredientListEvent,
 ) -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
-    let basil = ingredient(2, "Basil");
+    let garlic = ingredient(1, "Garlic")?;
+    let basil = ingredient(2, "Basil")?;
     let mut fixture = SplitFixture::ready(vec![garlic.clone(), basil.clone()], "").await?;
     fixture.select(garlic.id).await?;
     let before = fixture.catalog.view();
@@ -175,8 +175,9 @@ async fn the_list_stays_live_while_a_detail_is_open(
 #[tokio::test]
 async fn deleting_the_selected_ingredient_removes_its_row_and_empties_the_pane()
 -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
-    let mut fixture = SplitFixture::ready(vec![garlic.clone(), ingredient(2, "Basil")], "").await?;
+    let garlic = ingredient(1, "Garlic")?;
+    let mut fixture =
+        SplitFixture::ready(vec![garlic.clone(), ingredient(2, "Basil")?], "").await?;
     fixture.select(garlic.id).await?;
     let scope = fixture.catalog.view().pane.scope;
     let deleted = fixture.finish_delete().await?;
@@ -202,7 +203,7 @@ async fn deleting_the_selected_ingredient_removes_its_row_and_empties_the_pane()
 
 #[tokio::test]
 async fn create_opens_the_form_in_a_new_pane_scope() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.select(id(1)).await?;
     let before = fixture.catalog.view();
     assert!(before.can_create);
@@ -225,13 +226,13 @@ async fn create_opens_the_form_in_a_new_pane_scope() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn the_draft_row_shows_the_typed_name() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.create().await?;
 
     fixture.type_name("  Paprika ").await?;
     assert_eq!(fixture.catalog.view().draft_row.as_deref(), Some("Paprika"));
 
-    let saved = fixture.finish_save(ingredient(2, "Paprika")).await?;
+    let saved = fixture.finish_save(ingredient(2, "Paprika")?).await?;
     fixture.apply_outcome(saved).await?;
     assert_eq!(fixture.catalog.view().draft_row, None);
     Ok(())
@@ -240,7 +241,7 @@ async fn the_draft_row_shows_the_typed_name() -> anyhow::Result<()> {
 #[tokio::test]
 async fn the_draft_row_ignores_the_search() -> anyhow::Result<()> {
     let mut fixture = SplitFixture::ready(
-        vec![ingredient(1, "Tomato"), ingredient(2, "Garlic")],
+        vec![ingredient(1, "Tomato")?, ingredient(2, "Garlic")?],
         "tom",
     )
     .await?;
@@ -255,9 +256,9 @@ async fn the_draft_row_ignores_the_search() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn saving_adds_the_row_and_shows_its_detail() -> anyhow::Result<()> {
-    let paprika = ingredient(3, "Paprika");
+    let paprika = ingredient(3, "Paprika")?;
     let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
+        SplitFixture::ready(vec![ingredient(1, "Garlic")?, ingredient(2, "Tomato")?], "").await?;
     fixture.create().await?;
     fixture.type_name("Paprika").await?;
     let form_scope = fixture.catalog.view().pane.scope;
@@ -282,9 +283,9 @@ async fn saving_adds_the_row_and_shows_its_detail() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn a_saved_ingredient_hidden_by_the_search_still_opens() -> anyhow::Result<()> {
-    let paprika = ingredient(3, "Paprika");
+    let paprika = ingredient(3, "Paprika")?;
     let mut fixture = SplitFixture::ready(
-        vec![ingredient(1, "Tomato"), ingredient(2, "Garlic")],
+        vec![ingredient(1, "Tomato")?, ingredient(2, "Garlic")?],
         "tom",
     )
     .await?;
@@ -307,7 +308,7 @@ async fn a_saved_ingredient_hidden_by_the_search_still_opens() -> anyhow::Result
 
 #[tokio::test]
 async fn cancel_on_a_clean_form_returns_to_the_previous_detail() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
     fixture.select(garlic.id).await?;
     fixture.create().await?;
@@ -328,7 +329,7 @@ async fn cancel_on_a_clean_form_returns_to_the_previous_detail() -> anyhow::Resu
 
 #[tokio::test]
 async fn cancel_on_a_clean_form_with_nothing_before_empties_the_pane() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.create().await?;
 
     let discarded = fixture.close_clean_form().await?;
@@ -343,9 +344,9 @@ async fn cancel_on_a_clean_form_with_nothing_before_empties_the_pane() -> anyhow
 
 #[tokio::test]
 async fn a_row_click_on_a_clean_form_opens_the_row() -> anyhow::Result<()> {
-    let tomato = ingredient(2, "Tomato");
+    let tomato = ingredient(2, "Tomato")?;
     let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
+        SplitFixture::ready(vec![ingredient(1, "Garlic")?, tomato.clone()], "").await?;
     fixture.create().await?;
 
     fixture.select(tomato.id).await?;
@@ -362,9 +363,9 @@ async fn a_row_click_on_a_clean_form_opens_the_row() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn a_row_click_on_a_dirty_form_asks_and_discard_opens_the_row() -> anyhow::Result<()> {
-    let tomato = ingredient(2, "Tomato");
+    let tomato = ingredient(2, "Tomato")?;
     let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
+        SplitFixture::ready(vec![ingredient(1, "Garlic")?, tomato.clone()], "").await?;
     fixture.select(id(1)).await?;
     fixture.create().await?;
     fixture.type_name("Pap").await?;
@@ -393,9 +394,9 @@ async fn a_row_click_on_a_dirty_form_asks_and_discard_opens_the_row() -> anyhow:
 
 #[tokio::test]
 async fn keep_editing_forgets_the_clicked_row() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture =
-        SplitFixture::ready(vec![garlic.clone(), ingredient(2, "Tomato")], "").await?;
+        SplitFixture::ready(vec![garlic.clone(), ingredient(2, "Tomato")?], "").await?;
     fixture.select(garlic.id).await?;
     fixture.create().await?;
     fixture.type_name("Pap").await?;
@@ -430,7 +431,7 @@ async fn keep_editing_forgets_the_clicked_row() -> anyhow::Result<()> {
 #[tokio::test]
 async fn edit_opens_the_form_in_a_new_pane_scope() -> anyhow::Result<()> {
     let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
+        SplitFixture::ready(vec![ingredient(1, "Garlic")?, ingredient(2, "Tomato")?], "").await?;
     fixture.select(id(1)).await?;
     let before = fixture.catalog.view();
 
@@ -453,7 +454,7 @@ async fn edit_opens_the_form_in_a_new_pane_scope() -> anyhow::Result<()> {
 #[tokio::test]
 async fn the_edited_row_keeps_its_saved_name_until_save() -> anyhow::Result<()> {
     let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
+        SplitFixture::ready(vec![ingredient(1, "Garlic")?, ingredient(2, "Tomato")?], "").await?;
     fixture.select(id(1)).await?;
     fixture.edit().await?;
 
@@ -470,9 +471,9 @@ async fn the_edited_row_keeps_its_saved_name_until_save() -> anyhow::Result<()> 
 
 #[tokio::test]
 async fn saving_an_edit_updates_the_row_and_shows_its_detail() -> anyhow::Result<()> {
-    let renamed = ingredient(2, "Basil");
+    let renamed = ingredient(2, "Basil")?;
     let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
+        SplitFixture::ready(vec![ingredient(1, "Garlic")?, ingredient(2, "Tomato")?], "").await?;
     fixture.select(id(2)).await?;
     fixture.edit().await?;
     fixture.type_name("Basil").await?;
@@ -495,7 +496,7 @@ async fn saving_an_edit_updates_the_row_and_shows_its_detail() -> anyhow::Result
 
 #[tokio::test]
 async fn cancel_on_a_clean_edit_returns_to_the_detail() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
     fixture.select(garlic.id).await?;
     fixture.edit().await?;
@@ -514,7 +515,7 @@ async fn cancel_on_a_clean_edit_returns_to_the_detail() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn discard_on_a_dirty_edit_returns_to_the_saved_detail() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
     fixture.select(garlic.id).await?;
     fixture.edit().await?;
@@ -542,9 +543,9 @@ async fn discard_on_a_dirty_edit_returns_to_the_saved_detail() -> anyhow::Result
 
 #[tokio::test]
 async fn a_row_click_on_a_clean_edit_form_opens_the_row() -> anyhow::Result<()> {
-    let tomato = ingredient(2, "Tomato");
+    let tomato = ingredient(2, "Tomato")?;
     let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
+        SplitFixture::ready(vec![ingredient(1, "Garlic")?, tomato.clone()], "").await?;
     fixture.select(id(1)).await?;
     fixture.edit().await?;
 
@@ -561,9 +562,9 @@ async fn a_row_click_on_a_clean_edit_form_opens_the_row() -> anyhow::Result<()> 
 
 #[tokio::test]
 async fn a_row_click_on_a_dirty_edit_form_asks_and_discard_opens_the_row() -> anyhow::Result<()> {
-    let tomato = ingredient(2, "Tomato");
+    let tomato = ingredient(2, "Tomato")?;
     let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
+        SplitFixture::ready(vec![ingredient(1, "Garlic")?, tomato.clone()], "").await?;
     fixture.select(id(1)).await?;
     fixture.edit().await?;
     fixture.type_name("Black Garlic").await?;
@@ -591,9 +592,9 @@ async fn a_row_click_on_a_dirty_edit_form_asks_and_discard_opens_the_row() -> an
 
 #[tokio::test]
 async fn keep_editing_on_an_edit_forgets_the_clicked_row() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture =
-        SplitFixture::ready(vec![garlic.clone(), ingredient(2, "Tomato")], "").await?;
+        SplitFixture::ready(vec![garlic.clone(), ingredient(2, "Tomato")?], "").await?;
     fixture.select(garlic.id).await?;
     fixture.edit().await?;
     fixture.type_name("Black Garlic").await?;
@@ -628,7 +629,7 @@ async fn keep_editing_on_an_edit_forgets_the_clicked_row() -> anyhow::Result<()>
 #[tokio::test]
 async fn a_search_that_hides_the_edited_row_keeps_the_form() -> anyhow::Result<()> {
     let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
+        SplitFixture::ready(vec![ingredient(1, "Garlic")?, ingredient(2, "Tomato")?], "").await?;
     fixture.select(id(1)).await?;
     fixture.edit().await?;
     let form_scope = fixture.catalog.view().pane.scope;
@@ -652,8 +653,11 @@ async fn a_search_that_hides_the_edited_row_keeps_the_form() -> anyhow::Result<(
 
 #[tokio::test]
 async fn a_row_hidden_by_the_search_cannot_be_selected() -> anyhow::Result<()> {
-    let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Basil")], "bas").await?;
+    let mut fixture = SplitFixture::ready(
+        vec![ingredient(1, "Garlic")?, ingredient(2, "Basil")?],
+        "bas",
+    )
+    .await?;
     let before = fixture.catalog.view();
 
     let mut command = fixture
@@ -671,7 +675,7 @@ async fn a_row_hidden_by_the_search_cannot_be_selected() -> anyhow::Result<()> {
 #[tokio::test]
 async fn a_detail_event_for_the_previous_selection_is_ignored() -> anyhow::Result<()> {
     let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Basil")], "").await?;
+        SplitFixture::ready(vec![ingredient(1, "Garlic")?, ingredient(2, "Basil")?], "").await?;
     fixture.select(id(1)).await?;
     let garlic_scope = fixture.catalog.view().pane.scope;
     fixture.select(id(2)).await?;
@@ -691,7 +695,7 @@ async fn a_detail_event_for_the_previous_selection_is_ignored() -> anyhow::Resul
 
 #[tokio::test]
 async fn a_late_selection_result_from_another_list_scope_is_ignored() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     let before = fixture.catalog.view();
     let foreign = CommandScopeId::from(u64::MAX);
 
@@ -701,7 +705,7 @@ async fn a_late_selection_result_from_another_list_scope_is_ignored() -> anyhow:
             Scoped::new(
                 foreign,
                 IngredientListOutcome::OpenDetail {
-                    ingredient: ingredient(1, "Garlic"),
+                    ingredient: ingredient(1, "Garlic")?,
                 },
             ),
         )))
@@ -714,7 +718,7 @@ async fn a_late_selection_result_from_another_list_scope_is_ignored() -> anyhow:
 #[tokio::test]
 async fn clearing_with_a_previous_pane_scope_is_ignored() -> anyhow::Result<()> {
     let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Basil")], "").await?;
+        SplitFixture::ready(vec![ingredient(1, "Garlic")?, ingredient(2, "Basil")?], "").await?;
     fixture.select(id(1)).await?;
     let garlic_scope = fixture.catalog.view().pane.scope;
     fixture.select(id(2)).await?;
@@ -731,7 +735,7 @@ async fn clearing_with_a_previous_pane_scope_is_ignored() -> anyhow::Result<()> 
 
 #[tokio::test]
 async fn clearing_with_nothing_selected_does_nothing() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     let before = fixture.catalog.view();
 
     let mut command = fixture
@@ -746,7 +750,7 @@ async fn clearing_with_nothing_selected_does_nothing() -> anyhow::Result<()> {
 #[tokio::test]
 async fn the_selection_is_kept_while_a_delete_is_being_confirmed() -> anyhow::Result<()> {
     let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Basil")], "").await?;
+        SplitFixture::ready(vec![ingredient(1, "Garlic")?, ingredient(2, "Basil")?], "").await?;
     fixture.select(id(1)).await?;
     let pane_scope = fixture.catalog.view().pane.scope;
     fixture
@@ -781,7 +785,7 @@ async fn the_selection_is_kept_while_a_delete_is_being_confirmed() -> anyhow::Re
 #[tokio::test]
 /// No Mac list action sends it: Edit is in the detail.
 async fn edit_from_the_list_is_ignored() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     let before = fixture.catalog.view();
 
     let outcome = fixture
@@ -801,7 +805,7 @@ async fn edit_from_the_list_is_ignored() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn a_duplicate_name_keeps_the_form_with_the_error() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.create().await?;
     fixture.type_name("garlic").await?;
     let form_scope = fixture.catalog.view().pane.scope;
@@ -825,7 +829,7 @@ async fn a_duplicate_name_keeps_the_form_with_the_error() -> anyhow::Result<()> 
 #[test_case(Busy::DeleteRuns; "a delete is being confirmed")]
 #[tokio::test]
 async fn create_is_ignored_while_a_form_is_open_or_a_delete_runs(busy: Busy) -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.select(id(1)).await?;
     match busy {
         Busy::FormOpen => {
@@ -859,10 +863,10 @@ async fn create_is_ignored_while_a_form_is_open_or_a_delete_runs(busy: Busy) -> 
 
 #[tokio::test]
 async fn a_late_form_result_from_an_old_pane_scope_is_ignored() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.create().await?;
     fixture.type_name("Paprika").await?;
-    let saved = fixture.finish_save(ingredient(2, "Paprika")).await?;
+    let saved = fixture.finish_save(ingredient(2, "Paprika")?).await?;
     fixture.apply_outcome(saved.clone()).await?;
     let before = fixture.catalog.view();
 
@@ -877,7 +881,7 @@ async fn a_late_form_result_from_an_old_pane_scope_is_ignored() -> anyhow::Resul
 
 #[tokio::test]
 async fn clearing_the_selection_is_ignored_while_a_form_is_open() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.select(id(1)).await?;
     fixture.create().await?;
     let before = fixture.catalog.view();
@@ -895,7 +899,7 @@ async fn clearing_the_selection_is_ignored_while_a_form_is_open() -> anyhow::Res
 #[test_case(true; "dirty")]
 #[tokio::test]
 async fn clicking_the_edited_row_does_nothing(dirty: bool) -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.select(id(1)).await?;
     fixture.edit().await?;
     if dirty {
@@ -918,7 +922,7 @@ async fn clicking_the_edited_row_does_nothing(dirty: bool) -> anyhow::Result<()>
 
 #[tokio::test]
 async fn edit_is_ignored_while_a_delete_is_being_confirmed() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.select(id(1)).await?;
     let scope = fixture.catalog.view().pane.scope;
     fixture
@@ -942,7 +946,7 @@ async fn edit_is_ignored_while_a_delete_is_being_confirmed() -> anyhow::Result<(
 
 #[tokio::test]
 async fn a_failed_delete_keeps_the_selection() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.select(id(1)).await?;
     let failed = fixture.delete(Err(IngredientDeleteError::Storage)).await?;
     fixture.apply_outcome(failed).await?;
@@ -1290,10 +1294,10 @@ fn id(value: u128) -> IngredientId {
     Uuid::from_u128(value).into()
 }
 
-fn ingredient(value: u128, name: &str) -> Ingredient {
-    Ingredient {
+fn ingredient(value: u128, name: &str) -> anyhow::Result<Ingredient> {
+    Ok(Ingredient {
         id: id(value),
-        name: name.into(),
+        name: IngredientName::try_new(name)?,
         notes: None,
         nutrition: Nutrition {
             basis: NutritionBasis::Per100Grams,
@@ -1303,5 +1307,5 @@ fn ingredient(value: u128, name: &str) -> Ingredient {
             fat: None,
         },
         units: vec![],
-    }
+    })
 }

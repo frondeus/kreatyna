@@ -1,7 +1,8 @@
 use anyhow::Context;
 use kreatyna::ingredients::{
-    Grams, GramsError, Ingredient, IngredientId, Kilocalories, KilocaloriesError, Millilitres,
-    MillilitresError, Nutrition, NutritionBasis, ReferenceUnit, name_key,
+    Grams, GramsError, Ingredient, IngredientId, IngredientName, IngredientNameError, Kilocalories,
+    KilocaloriesError, Millilitres, MillilitresError, Nutrition, NutritionBasis, ReferenceUnit,
+    UnitName, UnitNameError, name_key,
 };
 use rust_decimal::Decimal;
 use test_case::test_case;
@@ -51,7 +52,7 @@ fn ingredient_keeps_unknown_and_known_zero_distinct_and_units_ordered() -> anyho
     let zero = Decimal::ZERO;
     let item = Ingredient {
         id: IngredientId::generate(),
-        name: "Canned tomatoes".into(),
+        name: IngredientName::try_new("Canned tomatoes")?,
         notes: None,
         nutrition: Nutrition {
             basis: NutritionBasis::Per100Grams,
@@ -62,17 +63,17 @@ fn ingredient_keeps_unknown_and_known_zero_distinct_and_units_ordered() -> anyho
         },
         units: vec![
             ReferenceUnit {
-                name: "clove".into(),
+                name: UnitName::try_new("clove")?,
                 grams: Some(Decimal::ONE.try_into()?),
                 millilitres: None,
             },
             ReferenceUnit {
-                name: "scoop".into(),
+                name: UnitName::try_new("scoop")?,
                 grams: None,
                 millilitres: Some(Decimal::ONE.try_into()?),
             },
             ReferenceUnit {
-                name: "can".into(),
+                name: UnitName::try_new("can")?,
                 grams: Some(Decimal::ONE.try_into()?),
                 millilitres: Some(Decimal::ONE.try_into()?),
             },
@@ -86,7 +87,7 @@ fn ingredient_keeps_unknown_and_known_zero_distinct_and_units_ordered() -> anyho
     assert_eq!(
         copy.units
             .iter()
-            .map(|unit| unit.name.as_str())
+            .map(|unit| unit.name.as_ref())
             .collect::<Vec<_>>(),
         vec!["clove", "scoop", "can"]
     );
@@ -119,6 +120,15 @@ fn name_key_keeps_spacing_accents_and_punctuation(left: &str, right: &str) {
 }
 
 #[test]
+fn names_trim_only_surrounding_whitespace() -> anyhow::Result<()> {
+    let ingredient = IngredientName::try_new("  Red  Pepper\u{2003}")?;
+    let unit = UnitName::try_new(" Small Can ")?;
+    assert_eq!(ingredient.as_ref(), "Red  Pepper");
+    assert_eq!(unit.as_ref(), "Small Can");
+    Ok(())
+}
+
+#[test]
 fn name_key_is_idempotent() {
     assert_eq!(name_key(&name_key("Straße")), name_key("Straße"));
 }
@@ -128,6 +138,19 @@ fn name_key_is_idempotent() {
 #[test]
 fn an_invalid_id_text_does_not_parse() {
     assert!("not-an-id".parse::<IngredientId>().is_err());
+}
+
+#[test_case(""; "empty")]
+#[test_case(" \u{2003}"; "whitespace only")]
+fn a_name_is_never_blank(text: &str) {
+    assert_eq!(
+        IngredientName::try_new(text),
+        Err(IngredientNameError::NotEmptyViolated)
+    );
+    assert_eq!(
+        UnitName::try_new(text),
+        Err(UnitNameError::NotEmptyViolated)
+    );
 }
 
 #[test]

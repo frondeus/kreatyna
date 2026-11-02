@@ -937,7 +937,7 @@ fn resolved(
 fn ingredient(basis: NutritionBasis) -> anyhow::Result<Ingredient> {
     Ok(Ingredient {
         id: Uuid::from_u128(1).into(),
-        name: "Garlic".into(),
+        name: IngredientName::try_new("Garlic")?,
         notes: Some("Fresh".into()),
         nutrition: Nutrition {
             basis,
@@ -948,12 +948,12 @@ fn ingredient(basis: NutritionBasis) -> anyhow::Result<Ingredient> {
         },
         units: vec![
             ReferenceUnit {
-                name: "cup".into(),
+                name: UnitName::try_new("cup")?,
                 grams: None,
                 millilitres: Some(Decimal::new(25_000, 2).try_into()?),
             },
             ReferenceUnit {
-                name: "clove".into(),
+                name: UnitName::try_new("clove")?,
                 grams: Some(Decimal::ONE.try_into()?),
                 millilitres: None,
             },

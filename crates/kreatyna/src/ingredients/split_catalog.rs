@@ -206,7 +206,7 @@ impl Widget for Pane {
             Self::Detail(detail) => IngredientSplitPaneView::Detail(detail.view()),
             Self::Create(pane) => IngredientSplitPaneView::Create(pane.form.view()),
             Self::Edit { saved, form } => IngredientSplitPaneView::Edit {
-                saved_name: saved.name.clone(),
+                saved_name: saved.name.to_string(),
                 form: form.form.view(),
             },
         }

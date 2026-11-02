@@ -72,12 +72,13 @@ async fn shutdown_hook_preserves_an_accepted_ingredient_save_and_follow_up() -> 
         .expect_render()
         .resolve_render(|| async {})
         .await?;
+    let stored = garlic()?;
     save.step()
         .await?
         .expect_effect()
         .expect_ingredients()
         .expect_store()
-        .resolve_save(|_| async { Ok(garlic()) })
+        .resolve_save(|_| async move { Ok(stored) })
         .await?;
     let saved = save.step().await?.expect_outcome();
     save.step().await?.expect_done();
@@ -353,10 +354,10 @@ async fn a_failed_recipe_load_can_be_retried_through_the_app() -> anyhow::Result
 
 // Test support
 
-fn garlic() -> Ingredient {
-    Ingredient {
+fn garlic() -> anyhow::Result<Ingredient> {
+    Ok(Ingredient {
         id: IngredientId::generate(),
-        name: "Garlic".into(),
+        name: IngredientName::try_new("Garlic")?,
         notes: None,
         nutrition: Nutrition {
             basis: NutritionBasis::Per100Grams,
@@ -366,7 +367,7 @@ fn garlic() -> Ingredient {
             fat: None,
         },
         units: vec![],
-    }
+    })
 }
 
 fn shakshuka() -> Recipe {
@@ -523,7 +524,8 @@ impl Fixture {
                     e.resolve_render(|| async {}).await?;
                 }
                 CommandEffect::Effect(AppEffect::Ingredients(IngredientEffect::Store(e))) => {
-                    e.resolve_list(|| async { Ok(vec![garlic()]) }).await?;
+                    let stored = vec![garlic()?];
+                    e.resolve_list(|| async move { Ok(stored) }).await?;
                 }
                 CommandEffect::Effect(AppEffect::Recipes(RecipeEffect::Store(e))) => {
                     let recipes = self.recipes.clone();

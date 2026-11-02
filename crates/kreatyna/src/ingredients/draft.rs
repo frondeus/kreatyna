@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 use rust_decimal::Decimal;
 
-use super::{Ingredient, IngredientId, Nutrition, NutritionBasis, ReferenceUnit, name_key};
+use super::{
+    Ingredient, IngredientId, IngredientName, IngredientNameError, Nutrition, NutritionBasis,
+    ReferenceUnit, UnitName, UnitNameError, name_key,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DraftMode {
@@ -125,7 +128,7 @@ impl From<&Ingredient> for IngredientDraft {
         }
         Self {
             mode: DraftMode::Edit { id: value.id },
-            name: value.name.clone(),
+            name: value.name.to_string(),
             notes: value.notes.clone().unwrap_or_default(),
             basis: value.nutrition.basis,
             calories: text(value.nutrition.calories),
@@ -136,7 +139,7 @@ impl From<&Ingredient> for IngredientDraft {
                 .units
                 .iter()
                 .map(|unit| ReferenceUnitDraft {
-                    name: unit.name.clone(),
+                    name: unit.name.to_string(),
                     grams: text(unit.grams),
                     millilitres: text(unit.millilitres),
                 })
@@ -148,14 +151,14 @@ impl From<&Ingredient> for IngredientDraft {
 /// Validated data; construction is restricted to draft validation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IngredientWriteData {
-    name: String,
+    name: IngredientName,
     notes: Option<String>,
     nutrition: Nutrition,
     units: Vec<ReferenceUnit>,
 }
 
 impl IngredientWriteData {
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &IngredientName {
         &self.name
     }
     pub fn notes(&self) -> Option<&str> {
@@ -221,13 +224,15 @@ impl TryFrom<&IngredientDraft> for IngredientWrite {
 
     fn try_from(draft: &IngredientDraft) -> Result<Self, Self::Error> {
         let mut issues = Vec::new();
-        let name = draft.name.trim();
-        if name.is_empty() {
-            issues.push(ValidationIssue {
-                field: ValidationField::Name,
-                reason: ValidationReason::Required,
-            });
-        }
+        // The type owns the "trimmed and not empty" rule.
+        let name = IngredientName::try_new(draft.name.as_str())
+            .map_err(|IngredientNameError::NotEmptyViolated| {
+                issues.push(ValidationIssue {
+                    field: ValidationField::Name,
+                    reason: ValidationReason::Required,
+                });
+            })
+            .ok();
         let nutrition = Nutrition {
             basis: draft.basis,
             calories: number(
@@ -258,20 +263,21 @@ impl TryFrom<&IngredientDraft> for IngredientWrite {
         let mut names = HashSet::new();
         let mut units = Vec::with_capacity(draft.units.len());
         for (index, unit) in draft.units.iter().enumerate() {
-            let unit_name = unit.name.trim();
-            let reason = if unit_name.is_empty() {
-                Some(ValidationReason::Required)
-            } else if !names.insert(name_key(unit_name)) {
-                Some(ValidationReason::DuplicateName)
-            } else {
-                None
+            let unit_name = match UnitName::try_new(unit.name.as_str()) {
+                Err(UnitNameError::NotEmptyViolated) => Err(ValidationReason::Required),
+                Ok(name) if !names.insert(name_key(name.as_ref())) => {
+                    Err(ValidationReason::DuplicateName)
+                }
+                Ok(name) => Ok(name),
             };
-            if let Some(reason) = reason {
-                issues.push(ValidationIssue {
-                    field: ValidationField::UnitName { index },
-                    reason,
-                });
-            }
+            let unit_name = unit_name
+                .map_err(|reason| {
+                    issues.push(ValidationIssue {
+                        field: ValidationField::UnitName { index },
+                        reason,
+                    });
+                })
+                .ok();
             let grams = number(
                 &unit.grams,
                 ValidationField::UnitGrams { index },
@@ -290,18 +296,20 @@ impl TryFrom<&IngredientDraft> for IngredientWrite {
                     reason: ValidationReason::Required,
                 });
             }
-            units.push(ReferenceUnit {
-                name: unit_name.to_owned(),
-                grams,
-                millilitres,
-            });
+            if let Some(name) = unit_name {
+                units.push(ReferenceUnit {
+                    name,
+                    grams,
+                    millilitres,
+                });
+            }
         }
-        if !issues.is_empty() {
+        let (Some(name), true) = (name, issues.is_empty()) else {
             return Err(issues);
-        }
+        };
         let notes = draft.notes.trim();
         let data = IngredientWriteData {
-            name: name.to_owned(),
+            name,
             notes: (!notes.is_empty()).then(|| notes.to_owned()),
             nutrition,
             units,

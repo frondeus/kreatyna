@@ -572,7 +572,7 @@ async fn saving_a_valid_create_draft_sends_a_normalized_create_and_finishes_with
     let Some(IngredientWrite::Create { data }) = request else {
         anyhow::bail!("expected a create request, got {request:?}");
     };
-    assert_eq!(data.name(), "Garlic");
+    assert_eq!(data.name().as_ref(), "Garlic");
     assert_eq!(data.notes(), Some("Fresh"));
     assert_eq!(
         data.nutrition(),
@@ -587,7 +587,7 @@ async fn saving_a_valid_create_draft_sends_a_normalized_create_and_finishes_with
     assert_eq!(
         data.units(),
         [ReferenceUnit {
-            name: "cup".into(),
+            name: UnitName::try_new("cup")?,
             grams: None,
             millilitres: Some(Decimal::new(250, 0).try_into()?),
         }]
@@ -645,7 +645,7 @@ async fn saving_an_edited_draft_sends_an_update_for_the_original_id() -> anyhow:
         .resolve_render(|| async {})
         .await?;
     let saved = Ingredient {
-        name: "Updated garlic".into(),
+        name: IngredientName::try_new("Updated garlic")?,
         ..original.clone()
     };
     let mut request = None;
@@ -668,7 +668,7 @@ async fn saving_an_edited_draft_sends_an_update_for_the_original_id() -> anyhow:
         anyhow::bail!("expected an update request, got {request:?}");
     };
     assert_eq!(id, original.id);
-    assert_eq!(data.name(), "Updated garlic");
+    assert_eq!(data.name().as_ref(), "Updated garlic");
     assert_eq!(data.notes(), original.notes.as_deref());
     assert_eq!(data.nutrition(), &original.nutrition);
     assert_eq!(data.units(), original.units);
@@ -1717,7 +1717,7 @@ fn draft_of(basis: NutritionBasis) -> anyhow::Result<IngredientDraft> {
 fn ingredient(basis: NutritionBasis) -> anyhow::Result<Ingredient> {
     Ok(Ingredient {
         id: Uuid::from_u128(1).into(),
-        name: "Garlic".into(),
+        name: IngredientName::try_new("Garlic")?,
         notes: Some("Fresh".into()),
         nutrition: Nutrition {
             basis,
@@ -1728,12 +1728,12 @@ fn ingredient(basis: NutritionBasis) -> anyhow::Result<Ingredient> {
         },
         units: vec![
             ReferenceUnit {
-                name: "cup".into(),
+                name: UnitName::try_new("cup")?,
                 grams: None,
                 millilitres: Some(Decimal::new(25_000, 2).try_into()?),
             },
             ReferenceUnit {
-                name: "clove".into(),
+                name: UnitName::try_new("clove")?,
                 grams: Some(Decimal::new(1_000, 3).try_into()?),
                 millilitres: None,
             },

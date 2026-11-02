@@ -52,6 +52,26 @@ quantity!(
     Kilocalories
 );
 
+/// An ingredient name: trimmed and not empty. `try_new` keeps the spaces
+/// inside the name and fails with `IngredientNameError::NotEmptyViolated`.
+/// Uniqueness compares `name_key` and is the store's rule.
+#[nutype(
+    sanitize(trim),
+    validate(not_empty),
+    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom)
+)]
+pub struct IngredientName(String);
+
+/// A reference unit name, such as "clove": trimmed and not empty. `try_new`
+/// fails with `UnitNameError::NotEmptyViolated`. The draft checks that the
+/// names of one ingredient's units are unique.
+#[nutype(
+    sanitize(trim),
+    validate(not_empty),
+    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom)
+)]
+pub struct UnitName(String);
+
 /// Interpretation of nutrition values. Switching basis does not convert them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NutritionBasis {
@@ -71,10 +91,10 @@ pub struct Nutrition {
 
 /// Named approximate measurement, such as one clove or one can.
 ///
-/// The draft layer validates that the name and at least one measurement exist.
+/// The draft layer validates that at least one measurement exists.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReferenceUnit {
-    pub name: String,
+    pub name: UnitName,
     pub grams: Option<Grams>,
     pub millilitres: Option<Millilitres>,
 }
@@ -83,7 +103,7 @@ pub struct ReferenceUnit {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ingredient {
     pub id: IngredientId,
-    pub name: String,
+    pub name: IngredientName,
     pub notes: Option<String>,
     pub nutrition: Nutrition,
     pub units: Vec<ReferenceUnit>,

@@ -43,9 +43,9 @@ fn creation_trims_only_surrounding_whitespace(
         anyhow::bail!("expected a create write, got {write:?}");
     };
     assert_eq!(draft, before);
-    assert_eq!(data.name(), "Red  Pepper");
+    assert_eq!(data.name().as_ref(), "Red  Pepper");
     assert_eq!(data.notes(), expected);
-    assert_eq!(data.units()[0].name, "Small Can");
+    assert_eq!(data.units()[0].name.as_ref(), "Small Can");
     Ok(())
 }
 
@@ -56,7 +56,7 @@ fn edit_round_trip_preserves_identity_and_exact_fields(
 ) -> anyhow::Result<()> {
     let item = Ingredient {
         id: IngredientId::generate(),
-        name: "Garlic".into(),
+        name: IngredientName::try_new("Garlic")?,
         notes: Some("Fresh".into()),
         nutrition: Nutrition {
             basis,
@@ -67,12 +67,12 @@ fn edit_round_trip_preserves_identity_and_exact_fields(
         },
         units: vec![
             ReferenceUnit {
-                name: "clove".into(),
+                name: UnitName::try_new("clove")?,
                 grams: Some(Decimal::from_str_exact("2.500")?.try_into()?),
                 millilitres: None,
             },
             ReferenceUnit {
-                name: "cup".into(),
+                name: UnitName::try_new("cup")?,
                 grams: None,
                 millilitres: Some(Decimal::ONE.try_into()?),
             },
@@ -249,7 +249,7 @@ fn edit_preserves_excess_precision_until_corrected() -> anyhow::Result<()> {
     nutrition.calories = Some(Decimal::from_str_exact("1.0000000")?.try_into()?);
     let item = Ingredient {
         id: IngredientId::generate(),
-        name: "Garlic".into(),
+        name: IngredientName::try_new("Garlic")?,
         notes: None,
         nutrition,
         units: vec![],

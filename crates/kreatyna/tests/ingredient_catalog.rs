@@ -43,12 +43,13 @@ async fn initialization_loads_the_list_in_the_current_scope() -> anyhow::Result<
         .expect_render()
         .resolve_render(|| async {})
         .await?;
+    let stored = vec![ingredient(1, "Garlic")?];
     command
         .step()
         .await?
         .expect_effect()
         .expect_store()
-        .resolve_list(|| async { Ok(vec![ingredient(1, "Garlic")]) })
+        .resolve_list(|| async move { Ok(stored) })
         .await?;
     let outcome = command.step().await?.expect_outcome();
     let IngredientCatalogOutcome::List(Scoped {
@@ -82,29 +83,30 @@ async fn initialization_loads_the_list_in_the_current_scope() -> anyhow::Result<
 
 #[test_case(
     IngredientListEvent::Select(id(1)),
-    IngredientListOutcome::OpenDetail { ingredient: ingredient(1, "Garlic") },
+    ingredient(1, "Garlic").map(|ingredient| IngredientListOutcome::OpenDetail { ingredient }),
     IngredientNavigation::Detail { id: id(1) };
     "select opens detail"
 )]
 #[test_case(
     IngredientListEvent::Edit(id(1)),
-    IngredientListOutcome::OpenEdit { ingredient: ingredient(1, "Garlic") },
+    ingredient(1, "Garlic").map(|ingredient| IngredientListOutcome::OpenEdit { ingredient }),
     IngredientNavigation::Edit { id: id(1), origin: IngredientEditOrigin::List };
     "edit opens the form from the list"
 )]
 #[test_case(
     IngredientListEvent::CreateRequested,
-    IngredientListOutcome::CreateRequested,
+    Ok(IngredientListOutcome::CreateRequested),
     IngredientNavigation::Create;
     "create opens an empty form"
 )]
 #[tokio::test]
 async fn choosing_from_the_list_opens_the_screen_in_a_new_scope(
     event: IngredientListEvent,
-    expected_outcome: IngredientListOutcome,
+    expected_outcome: anyhow::Result<IngredientListOutcome>,
     expected_navigation: IngredientNavigation,
 ) -> anyhow::Result<()> {
-    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let expected_outcome = expected_outcome?;
+    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     let list_scope = fixture.scope();
     let before = fixture.catalog.view();
     let mut command = fixture
@@ -140,7 +142,7 @@ async fn choosing_from_the_list_opens_the_screen_in_a_new_scope(
 
 #[tokio::test]
 async fn editing_from_the_detail_keeps_the_detail_behind_the_form() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture = CatalogFixture::ready(vec![garlic.clone()], "").await?;
     fixture.open_detail(garlic.id).await?;
     let detail_scope = fixture.scope();
@@ -196,8 +198,11 @@ async fn editing_from_the_detail_keeps_the_detail_behind_the_form() -> anyhow::R
 #[tokio::test]
 async fn back_from_the_detail_returns_to_the_list_with_its_search_and_without_reloading()
 -> anyhow::Result<()> {
-    let mut fixture =
-        CatalogFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Basil")], "gar").await?;
+    let mut fixture = CatalogFixture::ready(
+        vec![ingredient(1, "Garlic")?, ingredient(2, "Basil")?],
+        "gar",
+    )
+    .await?;
     let list = fixture.catalog.view().list;
     fixture.open_detail(id(1)).await?;
     let detail_scope = fixture.scope();
@@ -224,16 +229,17 @@ async fn back_from_the_detail_returns_to_the_list_with_its_search_and_without_re
     Ok(())
 }
 
-#[test_case(Origin::Create, IngredientNavigation::List, IngredientCatalogScreenView::List; "create returns to the list")]
-#[test_case(Origin::List, IngredientNavigation::List, IngredientCatalogScreenView::List; "list edit returns to the list")]
-#[test_case(Origin::Detail, IngredientNavigation::Detail { id: id(1) }, IngredientCatalogScreenView::Detail(idle_detail(&ingredient(1, "Garlic"))); "detail edit returns to the detail")]
+#[test_case(Origin::Create, IngredientNavigation::List, Ok(IngredientCatalogScreenView::List); "create returns to the list")]
+#[test_case(Origin::List, IngredientNavigation::List, Ok(IngredientCatalogScreenView::List); "list edit returns to the list")]
+#[test_case(Origin::Detail, IngredientNavigation::Detail { id: id(1) }, ingredient(1, "Garlic").map(|garlic| IngredientCatalogScreenView::Detail(idle_detail(&garlic))); "detail edit returns to the detail")]
 #[tokio::test]
 async fn closing_a_clean_form_returns_to_its_origin(
     origin: Origin,
     expected_navigation: IngredientNavigation,
-    expected_screen: IngredientCatalogScreenView,
+    expected_screen: anyhow::Result<IngredientCatalogScreenView>,
 ) -> anyhow::Result<()> {
-    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let expected_screen = expected_screen?;
+    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.open_form(origin, id(1)).await?;
     let form_scope = fixture.scope();
 
@@ -363,7 +369,7 @@ async fn back_on_a_dirty_form_asks_for_confirmation_and_discarding_returns_to_th
 #[tokio::test]
 async fn back_during_delete_confirmation_cancels_it_and_stays_on_the_detail() -> anyhow::Result<()>
 {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture = CatalogFixture::ready(vec![garlic.clone()], "").await?;
     fixture.open_detail(garlic.id).await?;
     let scope = fixture.scope();
@@ -425,7 +431,7 @@ async fn back_during_delete_confirmation_cancels_it_and_stays_on_the_detail() ->
 async fn saving_a_new_ingredient_adds_it_to_the_cached_list_in_order_and_returns_to_the_list()
 -> anyhow::Result<()> {
     let mut fixture =
-        CatalogFixture::ready(vec![ingredient(1, "Basil"), ingredient(3, "Tomato")], "").await?;
+        CatalogFixture::ready(vec![ingredient(1, "Basil")?, ingredient(3, "Tomato")?], "").await?;
     fixture.open_create().await?;
     let scope = fixture.scope();
     fixture
@@ -434,7 +440,7 @@ async fn saving_a_new_ingredient_adds_it_to_the_cached_list_in_order_and_returns
             field(IngredientDraftField::Name, "Garlic"),
         ))
         .await?;
-    let saved = fixture.finish_save(ingredient(2, "Garlic")).await?;
+    let saved = fixture.finish_save(ingredient(2, "Garlic")?).await?;
 
     let mut command = fixture
         .catalog
@@ -461,12 +467,12 @@ async fn saving_a_new_ingredient_adds_it_to_the_cached_list_in_order_and_returns
 #[tokio::test]
 async fn saving_an_edit_from_the_list_replaces_the_cached_record_in_order_and_returns_to_the_list()
 -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture = CatalogFixture::ready(
         vec![
             garlic.clone(),
-            ingredient(2, "Basil"),
-            ingredient(3, "Tomato"),
+            ingredient(2, "Basil")?,
+            ingredient(3, "Tomato")?,
         ],
         "",
     )
@@ -479,7 +485,9 @@ async fn saving_an_edit_from_the_list_replaces_the_cached_record_in_order_and_re
             field(IngredientDraftField::Name, "Roasted garlic"),
         ))
         .await?;
-    let saved = fixture.finish_save(ingredient(1, "Roasted garlic")).await?;
+    let saved = fixture
+        .finish_save(ingredient(1, "Roasted garlic")?)
+        .await?;
 
     let mut command = fixture
         .catalog
@@ -507,7 +515,7 @@ async fn saving_an_edit_from_the_list_replaces_the_cached_record_in_order_and_re
 #[tokio::test]
 async fn saving_an_edit_from_the_detail_opens_a_fresh_detail_with_the_saved_record()
 -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture = CatalogFixture::ready(vec![garlic.clone()], "").await?;
     fixture.open_detail(garlic.id).await?;
     fixture.open_edit_from_detail().await?;
@@ -518,7 +526,7 @@ async fn saving_an_edit_from_the_detail_opens_a_fresh_detail_with_the_saved_reco
             field(IngredientDraftField::Name, "Roasted garlic"),
         ))
         .await?;
-    let roasted = ingredient(1, "Roasted garlic");
+    let roasted = ingredient(1, "Roasted garlic")?;
     let saved = fixture.finish_save(roasted.clone()).await?;
 
     let mut command = fixture
@@ -552,9 +560,9 @@ async fn saving_an_edit_from_the_detail_opens_a_fresh_detail_with_the_saved_reco
 #[tokio::test]
 async fn deleting_from_the_detail_removes_the_cached_record_and_returns_to_the_list()
 -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture =
-        CatalogFixture::ready(vec![garlic.clone(), ingredient(2, "Basil")], "").await?;
+        CatalogFixture::ready(vec![garlic.clone(), ingredient(2, "Basil")?], "").await?;
     fixture.open_detail(garlic.id).await?;
     let scope = fixture.scope();
     let deleted = fixture.finish_delete().await?;
@@ -592,7 +600,7 @@ async fn deleting_from_the_detail_removes_the_cached_record_and_returns_to_the_l
 
 #[tokio::test]
 async fn a_list_event_from_before_the_detail_opened_is_ignored() -> anyhow::Result<()> {
-    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     let list_scope = fixture.scope();
     fixture.open_detail(id(1)).await?;
 
@@ -611,7 +619,7 @@ async fn a_list_event_from_before_the_detail_opened_is_ignored() -> anyhow::Resu
 
 #[tokio::test]
 async fn a_detail_event_after_returning_to_the_list_is_ignored() -> anyhow::Result<()> {
-    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.open_detail(id(1)).await?;
     let detail_scope = fixture.scope();
     fixture.apply(back(detail_scope)).await?;
@@ -631,7 +639,7 @@ async fn a_detail_event_after_returning_to_the_list_is_ignored() -> anyhow::Resu
 
 #[tokio::test]
 async fn back_from_a_previous_screen_is_ignored() -> anyhow::Result<()> {
-    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     let list_scope = fixture.scope();
     fixture.open_detail(id(1)).await?;
 
@@ -655,11 +663,12 @@ async fn a_load_result_arriving_after_another_screen_opened_is_ignored() -> anyh
         .expect_render()
         .resolve_render(|| async {})
         .await?;
+    let stored = vec![ingredient(1, "Garlic")?];
     load.step()
         .await?
         .expect_effect()
         .expect_store()
-        .resolve_list(|| async { Ok(vec![ingredient(1, "Garlic")]) })
+        .resolve_list(|| async move { Ok(stored) })
         .await?;
     let stale = load.step().await?.expect_outcome();
     load.step().await?.expect_done();
@@ -678,7 +687,7 @@ async fn a_load_result_arriving_after_another_screen_opened_is_ignored() -> anyh
 
 #[tokio::test]
 async fn a_list_choice_arriving_after_another_screen_opened_is_ignored() -> anyhow::Result<()> {
-    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     let list_scope = fixture.scope();
     let stale = fixture
         .choose(list_event(list_scope, IngredientListEvent::Select(id(1))))
@@ -697,7 +706,7 @@ async fn a_list_choice_arriving_after_another_screen_opened_is_ignored() -> anyh
 
 #[tokio::test]
 async fn back_on_the_list_does_nothing() -> anyhow::Result<()> {
-    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     let before = fixture.catalog.view();
     let mut command = fixture
         .catalog
@@ -740,7 +749,7 @@ async fn back_is_ignored_while_saving() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn back_is_ignored_while_deleting() -> anyhow::Result<()> {
-    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.open_detail(id(1)).await?;
     let scope = fixture.scope();
     fixture
@@ -774,7 +783,7 @@ async fn back_is_ignored_while_deleting() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn opening_a_screen_cancels_a_pending_refresh_and_back_restarts_it() -> anyhow::Result<()> {
-    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     let list_scope = fixture.scope();
     let refresh = fixture.catalog.update(Message::Event(list_event(
         list_scope,
@@ -808,12 +817,13 @@ async fn opening_a_screen_cancels_a_pending_refresh_and_back_restarts_it() -> an
         .expect_render()
         .resolve_render(|| async {})
         .await?;
+    let stored = vec![ingredient(1, "Garlic")?, ingredient(2, "Basil")?];
     command
         .step()
         .await?
         .expect_effect()
         .expect_store()
-        .resolve_list(|| async { Ok(vec![ingredient(1, "Garlic"), ingredient(2, "Basil")]) })
+        .resolve_list(|| async move { Ok(stored) })
         .await?;
     let outcome = command.step().await?.expect_outcome();
     command.step().await?.expect_done();
@@ -855,12 +865,13 @@ async fn opening_creation_during_the_initial_load_cancels_it_and_closing_resumes
         .expect_render()
         .resolve_render(|| async {})
         .await?;
+    let stored = vec![ingredient(1, "Garlic")?];
     command
         .step()
         .await?
         .expect_effect()
         .expect_store()
-        .resolve_list(|| async { Ok(vec![ingredient(1, "Garlic")]) })
+        .resolve_list(|| async move { Ok(stored) })
         .await?;
     let outcome = command.step().await?.expect_outcome();
     command.step().await?.expect_done();
@@ -886,7 +897,7 @@ async fn saving_without_a_complete_cache_reloads_the_list(
             field(IngredientDraftField::Name, "Garlic"),
         ))
         .await?;
-    let saved = fixture.finish_save(ingredient(2, "Garlic")).await?;
+    let saved = fixture.finish_save(ingredient(2, "Garlic")?).await?;
 
     let mut command = fixture
         .catalog
@@ -903,12 +914,13 @@ async fn saving_without_a_complete_cache_reloads_the_list(
         .expect_render()
         .resolve_render(|| async {})
         .await?;
+    let stored = vec![ingredient(1, "Basil")?, ingredient(2, "Garlic")?];
     command
         .step()
         .await?
         .expect_effect()
         .expect_store()
-        .resolve_list(|| async { Ok(vec![ingredient(1, "Basil"), ingredient(2, "Garlic")]) })
+        .resolve_list(|| async move { Ok(stored) })
         .await?;
     let outcome = command.step().await?.expect_outcome();
     command.step().await?.expect_done();
@@ -963,7 +975,7 @@ async fn dropping_the_catalog_cancels_a_pending_save() -> anyhow::Result<()> {
 async fn a_failed_save_keeps_the_form_and_does_not_change_the_cached_list(
     error: IngredientSaveError,
 ) -> anyhow::Result<()> {
-    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Basil")], "").await?;
+    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Basil")?], "").await?;
     fixture.open_create().await?;
     let scope = fixture.scope();
     fixture
@@ -1003,7 +1015,7 @@ async fn a_failed_save_keeps_the_form_and_does_not_change_the_cached_list(
 async fn a_failed_delete_keeps_the_detail_and_the_cached_record(
     error: IngredientDeleteError,
 ) -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
+    let garlic = ingredient(1, "Garlic")?;
     let mut fixture = CatalogFixture::ready(vec![garlic.clone()], "").await?;
     fixture.open_detail(garlic.id).await?;
     let scope = fixture.scope();
@@ -1043,7 +1055,7 @@ async fn a_failed_delete_keeps_the_detail_and_the_cached_record(
 
 #[tokio::test]
 async fn saving_after_a_failed_save_navigates_like_a_first_save() -> anyhow::Result<()> {
-    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Basil")], "").await?;
+    let mut fixture = CatalogFixture::ready(vec![ingredient(1, "Basil")?], "").await?;
     fixture.open_create().await?;
     let scope = fixture.scope();
     fixture
@@ -1054,7 +1066,7 @@ async fn saving_after_a_failed_save_navigates_like_a_first_save() -> anyhow::Res
         .await?;
     let failed = fixture.save(Err(IngredientSaveError::Storage)).await?;
     fixture.apply_outcome(failed).await?;
-    let saved = fixture.finish_save(ingredient(2, "Garlic")).await?;
+    let saved = fixture.finish_save(ingredient(2, "Garlic")?).await?;
 
     let mut command = fixture
         .catalog
@@ -1077,7 +1089,7 @@ async fn saving_after_a_failed_save_navigates_like_a_first_save() -> anyhow::Res
 #[tokio::test]
 async fn deleting_after_a_failed_delete_navigates_like_a_first_delete() -> anyhow::Result<()> {
     let mut fixture =
-        CatalogFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Basil")], "").await?;
+        CatalogFixture::ready(vec![ingredient(1, "Garlic")?, ingredient(2, "Basil")?], "").await?;
     fixture.open_detail(id(1)).await?;
     let failed = fixture.delete(Err(IngredientDeleteError::Storage)).await?;
     fixture.apply_outcome(failed).await?;
@@ -1466,10 +1478,10 @@ fn id(value: u128) -> IngredientId {
     Uuid::from_u128(value).into()
 }
 
-fn ingredient(value: u128, name: &str) -> Ingredient {
-    Ingredient {
+fn ingredient(value: u128, name: &str) -> anyhow::Result<Ingredient> {
+    Ok(Ingredient {
         id: id(value),
-        name: name.into(),
+        name: IngredientName::try_new(name)?,
         notes: None,
         nutrition: Nutrition {
             basis: NutritionBasis::Per100Grams,
@@ -1479,5 +1491,5 @@ fn ingredient(value: u128, name: &str) -> Ingredient {
             fat: None,
         },
         units: vec![],
-    }
+    })
 }

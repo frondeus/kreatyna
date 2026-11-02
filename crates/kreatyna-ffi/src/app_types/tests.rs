@@ -460,8 +460,8 @@ fn a_ready_list_keeps_its_rows_the_total_and_the_refresh_error() -> anyhow::Resu
 }
 
 #[test]
-fn ingredient_values_keep_exact_text_unknowns_zero_and_unit_order() {
-    let source = sample_ingredient();
+fn ingredient_values_keep_exact_text_unknowns_zero_and_unit_order() -> anyhow::Result<()> {
+    let source = sample_ingredient()?;
     let converted = Ingredient::from(source);
     assert_eq!(converted.nutrition.calories.as_deref(), Some("12.3400"));
     assert_eq!(converted.nutrition.protein, None);
@@ -474,6 +474,7 @@ fn ingredient_values_keep_exact_text_unknowns_zero_and_unit_order() {
     assert_eq!(converted.units[0].grams.as_deref(), Some("2.500"));
     assert_eq!(converted.units[1].name, "cup");
     assert_eq!(converted.units[1].millilitres.as_deref(), Some("250.00"));
+    Ok(())
 }
 
 #[test]
@@ -579,7 +580,7 @@ fn every_catalog_screen_and_both_edit_origins_are_representable(
     navigation_and_screen: fn(&ingredient::Ingredient) -> (Navigation, Screen),
     expected: &str,
 ) -> anyhow::Result<()> {
-    let (navigation, screen) = navigation_and_screen(&sample_ingredient());
+    let (navigation, screen) = navigation_and_screen(&sample_ingredient()?);
     let converted = IngredientCatalogView::try_from(ingredient::IngredientCatalogView {
         navigation,
         list: ingredient::IngredientListView {
@@ -779,31 +780,31 @@ fn stack(view: RunningAppView) -> anyhow::Result<IngredientCatalogView> {
 
 /// Garlic with exact decimals: 12.3400, unknown protein, the largest
 /// carbohydrates, 0.00 fat, and two units in order.
-fn sample_ingredient() -> ingredient::Ingredient {
-    ingredient::Ingredient {
+fn sample_ingredient() -> anyhow::Result<ingredient::Ingredient> {
+    Ok(ingredient::Ingredient {
         id: ingredient::IngredientId::generate(),
         name: "Garlic".into(),
         notes: Some("Fresh".into()),
         nutrition: ingredient::Nutrition {
             basis: ingredient::NutritionBasis::Per100Grams,
-            calories: Some(Decimal::new(123_400, 4).into()),
+            calories: Some(Decimal::new(123_400, 4).try_into()?),
             protein: None,
-            carbohydrates: Some(Decimal::MAX.into()),
-            fat: Some(Decimal::new(0, 2).into()),
+            carbohydrates: Some(Decimal::MAX.try_into()?),
+            fat: Some(Decimal::new(0, 2).try_into()?),
         },
         units: vec![
             ingredient::ReferenceUnit {
                 name: "clove".into(),
-                grams: Some(Decimal::new(2_500, 3).into()),
+                grams: Some(Decimal::new(2_500, 3).try_into()?),
                 millilitres: None,
             },
             ingredient::ReferenceUnit {
                 name: "cup".into(),
                 grams: None,
-                millilitres: Some(Decimal::new(25_000, 2).into()),
+                millilitres: Some(Decimal::new(25_000, 2).try_into()?),
             },
         ],
-    }
+    })
 }
 
 type Navigation = ingredient::IngredientNavigation;

@@ -19,13 +19,14 @@ use uuid::Uuid;
 
 // Green path
 
-#[test_case(IngredientDraft::new(NutritionBasis::Per100Grams); "new mass draft")]
-#[test_case(IngredientDraft::new(NutritionBasis::Per100Millilitres); "new volume draft")]
-#[test_case(IngredientDraft::from(&ingredient(NutritionBasis::Per100Millilitres)); "edit draft")]
+#[test_case(Ok(IngredientDraft::new(NutritionBasis::Per100Grams)); "new mass draft")]
+#[test_case(Ok(IngredientDraft::new(NutritionBasis::Per100Millilitres)); "new volume draft")]
+#[test_case(draft_of(NutritionBasis::Per100Millilitres); "edit draft")]
 #[tokio::test]
 async fn initialization_does_nothing_and_exposes_the_supplied_draft_as_clean(
-    draft: IngredientDraft,
-) {
+    draft: anyhow::Result<IngredientDraft>,
+) -> anyhow::Result<()> {
+    let draft = draft?;
     let mut fixture = FormFixture::new(draft.clone());
     assert_eq!(
         fixture.form.view(),
@@ -38,6 +39,7 @@ async fn initialization_does_nothing_and_exposes_the_supplied_draft_as_clean(
         }
     );
     fixture.form.expect_noop_init().await;
+    Ok(())
 }
 
 #[test_case(IngredientDraftField::Name, "  Garlic  ", edited(blank_draft(), |d| d.name = "  Garlic  ".into()); "name keeps surrounding spaces")]
@@ -550,7 +552,7 @@ async fn saving_a_valid_create_draft_sends_a_normalized_create_and_finishes_with
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    let saved = ingredient(NutritionBasis::Per100Grams);
+    let saved = ingredient(NutritionBasis::Per100Grams)?;
     let mut request = None;
     command
         .step()
@@ -576,7 +578,7 @@ async fn saving_a_valid_create_draft_sends_a_normalized_create_and_finishes_with
         data.nutrition(),
         &Nutrition {
             basis: NutritionBasis::Per100Grams,
-            calories: Some(Decimal::new(50, 2).into()),
+            calories: Some(Decimal::new(50, 2).try_into()?),
             protein: None,
             carbohydrates: None,
             fat: None,
@@ -587,7 +589,7 @@ async fn saving_a_valid_create_draft_sends_a_normalized_create_and_finishes_with
         [ReferenceUnit {
             name: "cup".into(),
             grams: None,
-            millilitres: Some(Decimal::new(250, 0).into()),
+            millilitres: Some(Decimal::new(250, 0).try_into()?),
         }]
     );
     assert!(matches!(
@@ -620,7 +622,7 @@ async fn saving_a_valid_create_draft_sends_a_normalized_create_and_finishes_with
 
 #[tokio::test]
 async fn saving_an_edited_draft_sends_an_update_for_the_original_id() -> anyhow::Result<()> {
-    let original = ingredient(NutritionBasis::Per100Millilitres);
+    let original = ingredient(NutritionBasis::Per100Millilitres)?;
     let mut fixture = FormFixture::new(IngredientDraft::from(&original));
     fixture
         .apply(field(IngredientDraftField::Name, "  Updated garlic  "))
@@ -692,12 +694,13 @@ async fn saving_an_edited_draft_sends_an_update_for_the_original_id() -> anyhow:
     Ok(())
 }
 
-#[test_case(blank_draft(); "create draft")]
-#[test_case(IngredientDraft::from(&ingredient(NutritionBasis::Per100Grams)); "edit draft")]
+#[test_case(Ok(blank_draft()); "create draft")]
+#[test_case(draft_of(NutritionBasis::Per100Grams); "edit draft")]
 #[tokio::test]
 async fn closing_a_clean_draft_discards_without_confirmation(
-    draft: IngredientDraft,
+    draft: anyhow::Result<IngredientDraft>,
 ) -> anyhow::Result<()> {
+    let draft = draft?;
     let mut fixture = FormFixture::new(draft);
     let mut command = fixture
         .form
@@ -1103,12 +1106,13 @@ async fn a_save_result_delivered_twice_is_applied_once() -> anyhow::Result<()> {
         .expect_render()
         .resolve_render(|| async {})
         .await?;
+    let saved = ingredient(NutritionBasis::Per100Grams)?;
     command
         .step()
         .await?
         .expect_effect()
         .expect_store()
-        .resolve_save(|_| async { Ok(ingredient(NutritionBasis::Per100Grams)) })
+        .resolve_save(|_| async move { Ok(saved) })
         .await?;
     let outcome = command.step().await?.expect_outcome();
     command.step().await?.expect_done();
@@ -1193,7 +1197,7 @@ async fn dropping_the_form_cancels_a_pending_save_before_the_store_request() -> 
 async fn a_rejected_save_returns_to_editing_with_the_error_and_the_draft(
     error: IngredientSaveError,
 ) -> anyhow::Result<()> {
-    let original = ingredient(NutritionBasis::Per100Millilitres);
+    let original = ingredient(NutritionBasis::Per100Millilitres)?;
     let mut fixture = FormFixture::new(IngredientDraft::from(&original));
     fixture
         .apply(field(IngredientDraftField::Name, "  Updated garlic  "))
@@ -1352,7 +1356,7 @@ async fn retrying_a_rejected_save_clears_the_error_and_can_succeed(
         .expect_render()
         .resolve_render(|| async {})
         .await?;
-    let saved = ingredient(NutritionBasis::Per100Grams);
+    let saved = ingredient(NutritionBasis::Per100Grams)?;
     command
         .step()
         .await?
@@ -1438,7 +1442,7 @@ async fn a_stale_rejection_is_ignored_while_the_retry_is_saving() -> anyhow::Res
     command.step().await?.expect_done();
     drop(command);
 
-    let saved = ingredient(NutritionBasis::Per100Grams);
+    let saved = ingredient(NutritionBasis::Per100Grams)?;
     let mut retry = retry.driver(&mut fixture.effects);
     retry
         .step()
@@ -1587,6 +1591,7 @@ impl FormFixture {
     async fn finish(&mut self, finish: Finish) -> anyhow::Result<()> {
         match finish {
             Finish::Saved => {
+                let saved = ingredient(NutritionBasis::Per100Grams)?;
                 let mut command = self
                     .form
                     .update(Message::Event(IngredientFormEvent::Save))
@@ -1603,7 +1608,7 @@ impl FormFixture {
                     .await?
                     .expect_effect()
                     .expect_store()
-                    .resolve_save(|_| async { Ok(ingredient(NutritionBasis::Per100Grams)) })
+                    .resolve_save(|_| async move { Ok(saved) })
                     .await?;
                 let outcome = command.step().await?.expect_outcome();
                 command.step().await?.expect_done();
@@ -1704,29 +1709,34 @@ fn unit(name: &str, grams: &str, millilitres: &str) -> ReferenceUnitDraft {
     }
 }
 
-fn ingredient(basis: NutritionBasis) -> Ingredient {
-    Ingredient {
+/// The edit draft of `ingredient(basis)`.
+fn draft_of(basis: NutritionBasis) -> anyhow::Result<IngredientDraft> {
+    Ok(IngredientDraft::from(&ingredient(basis)?))
+}
+
+fn ingredient(basis: NutritionBasis) -> anyhow::Result<Ingredient> {
+    Ok(Ingredient {
         id: Uuid::from_u128(1).into(),
         name: "Garlic".into(),
         notes: Some("Fresh".into()),
         nutrition: Nutrition {
             basis,
-            calories: Some(Decimal::new(123_400, 4).into()),
+            calories: Some(Decimal::new(123_400, 4).try_into()?),
             protein: None,
-            carbohydrates: Some(Decimal::ZERO.into()),
+            carbohydrates: Some(Decimal::ZERO.try_into()?),
             fat: None,
         },
         units: vec![
             ReferenceUnit {
                 name: "cup".into(),
                 grams: None,
-                millilitres: Some(Decimal::new(25_000, 2).into()),
+                millilitres: Some(Decimal::new(25_000, 2).try_into()?),
             },
             ReferenceUnit {
                 name: "clove".into(),
-                grams: Some(Decimal::new(1_000, 3).into()),
+                grams: Some(Decimal::new(1_000, 3).try_into()?),
                 millilitres: None,
             },
         ],
-    }
+    })
 }

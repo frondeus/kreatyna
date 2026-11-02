@@ -130,7 +130,7 @@ fn save_in_transaction(
     if conflict.is_some() && conflict != existing {
         return Err(StoreFailure::DuplicateName);
     }
-    let row = NewIngredientRow::from_write(id, &data)?;
+    let row = NewIngredientRow::from_write(id, &data);
     let local_id = if let Some(local_id) = existing {
         diesel::update(ingredients::table.find(local_id))
             .set((

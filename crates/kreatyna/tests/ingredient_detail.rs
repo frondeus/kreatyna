@@ -26,7 +26,7 @@ use uuid::Uuid;
 async fn initialization_does_nothing_and_shows_the_complete_record(
     basis: NutritionBasis,
 ) -> anyhow::Result<()> {
-    let original = ingredient(basis);
+    let original = ingredient(basis)?;
     let mut fixture = DetailFixture::new(original.clone());
     let view = fixture.detail.view();
     assert_eq!(
@@ -49,7 +49,7 @@ async fn initialization_does_nothing_and_shows_the_complete_record(
 
 #[tokio::test]
 async fn editing_emits_the_complete_record_without_changing_the_view() -> anyhow::Result<()> {
-    let original = ingredient(NutritionBasis::Per100Grams);
+    let original = ingredient(NutritionBasis::Per100Grams)?;
     let mut fixture = DetailFixture::new(original.clone());
     let before = fixture.detail.view();
     let mut command = fixture
@@ -70,7 +70,7 @@ async fn editing_emits_the_complete_record_without_changing_the_view() -> anyhow
 
 #[tokio::test]
 async fn requesting_deletion_asks_for_confirmation() -> anyhow::Result<()> {
-    let original = ingredient(NutritionBasis::Per100Grams);
+    let original = ingredient(NutritionBasis::Per100Grams)?;
     let mut fixture = DetailFixture::new(original.clone());
     let mut command = fixture
         .detail
@@ -97,7 +97,7 @@ async fn requesting_deletion_asks_for_confirmation() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn cancelling_deletion_returns_to_idle_without_contacting_the_store() -> anyhow::Result<()> {
-    let original = ingredient(NutritionBasis::Per100Grams);
+    let original = ingredient(NutritionBasis::Per100Grams)?;
     let mut fixture = DetailFixture::new(original.clone());
     fixture.request_deletion().await?;
 
@@ -147,7 +147,7 @@ async fn cancelling_deletion_returns_to_idle_without_contacting_the_store() -> a
 
 #[tokio::test]
 async fn confirming_deletion_deletes_the_record_and_reports_its_id() -> anyhow::Result<()> {
-    let original = ingredient(NutritionBasis::Per100Grams);
+    let original = ingredient(NutritionBasis::Per100Grams)?;
     let mut fixture = DetailFixture::new(original.clone());
     fixture.request_deletion().await?;
 
@@ -246,7 +246,7 @@ async fn confirming_deletion_deletes_the_record_and_reports_its_id() -> anyhow::
 async fn confirmation_events_while_idle_are_ignored(
     event: ConfirmationEvent,
 ) -> anyhow::Result<()> {
-    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams));
+    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams)?);
     let before = fixture.detail.view();
     let mut command = fixture
         .detail
@@ -263,7 +263,7 @@ async fn confirmation_events_while_idle_are_ignored(
 async fn edit_and_repeated_delete_requests_while_confirming_are_ignored(
     event: IngredientDetailEvent,
 ) -> anyhow::Result<()> {
-    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams));
+    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams)?);
     fixture.request_deletion().await?;
 
     let before = fixture.detail.view();
@@ -288,7 +288,7 @@ async fn a_second_decision_before_the_first_is_applied_is_ignored(
     (first, expected): (ConfirmationEvent, ConfirmationOutcome),
     second: ConfirmationEvent,
 ) -> anyhow::Result<()> {
-    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams));
+    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams)?);
     fixture.request_deletion().await?;
     let pending = fixture
         .detail
@@ -317,7 +317,7 @@ async fn a_second_decision_before_the_first_is_applied_is_ignored(
 
 #[tokio::test]
 async fn a_cancel_decision_delivered_twice_is_applied_once() -> anyhow::Result<()> {
-    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams));
+    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams)?);
     fixture.request_deletion().await?;
     let cancelled = fixture.decide(ConfirmationEvent::Cancel).await?;
     fixture.apply_outcome(cancelled.clone()).await?;
@@ -339,7 +339,7 @@ async fn a_cancel_decision_delivered_twice_is_applied_once() -> anyhow::Result<(
 #[tokio::test]
 async fn a_cancel_decision_from_an_earlier_dialog_does_not_close_a_reopened_dialog()
 -> anyhow::Result<()> {
-    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams));
+    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams)?);
     fixture.request_deletion().await?;
     let cancelled = fixture.decide(ConfirmationEvent::Cancel).await?;
     fixture.apply_outcome(cancelled.clone()).await?;
@@ -362,7 +362,7 @@ async fn a_cancel_decision_from_an_earlier_dialog_does_not_close_a_reopened_dial
 #[test_case(IngredientDetailEvent::Confirmation(ConfirmationEvent::Cancel); "cancel")]
 #[tokio::test]
 async fn events_while_deleting_are_ignored(event: IngredientDetailEvent) -> anyhow::Result<()> {
-    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams));
+    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams)?);
     fixture.request_deletion().await?;
     let confirmed = fixture.decide(ConfirmationEvent::Confirm).await?;
     let deletion = fixture.detail.update(Message::Outcome(confirmed));
@@ -388,7 +388,7 @@ async fn events_while_deleting_are_ignored(event: IngredientDetailEvent) -> anyh
 #[test_case(IngredientDetailEvent::Confirmation(ConfirmationEvent::Cancel); "cancel")]
 #[tokio::test]
 async fn events_after_deletion_are_ignored(event: IngredientDetailEvent) -> anyhow::Result<()> {
-    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams));
+    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams)?);
     fixture.request_deletion().await?;
     let confirmed = fixture.decide(ConfirmationEvent::Confirm).await?;
     let finished = fixture.delete(confirmed, Ok(())).await?;
@@ -410,7 +410,7 @@ async fn events_after_deletion_are_ignored(event: IngredientDetailEvent) -> anyh
 
 #[tokio::test]
 async fn a_deletion_result_delivered_twice_is_applied_once() -> anyhow::Result<()> {
-    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams));
+    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams)?);
     fixture.request_deletion().await?;
     let confirmed = fixture.decide(ConfirmationEvent::Confirm).await?;
     let finished = fixture.delete(confirmed, Ok(())).await?;
@@ -432,7 +432,7 @@ async fn a_deletion_result_delivered_twice_is_applied_once() -> anyhow::Result<(
 
 #[tokio::test]
 async fn dropping_the_detail_cancels_deletion_before_the_store_request() -> anyhow::Result<()> {
-    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams));
+    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams)?);
     fixture.request_deletion().await?;
     let confirmed = fixture.decide(ConfirmationEvent::Confirm).await?;
     let mut command = fixture
@@ -458,7 +458,7 @@ async fn dropping_the_detail_cancels_deletion_before_the_store_request() -> anyh
 
 #[tokio::test]
 async fn dropping_the_detail_cancels_an_in_flight_store_request() -> anyhow::Result<()> {
-    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams));
+    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams)?);
     fixture.request_deletion().await?;
     let confirmed = fixture.decide(ConfirmationEvent::Confirm).await?;
     let mut command = fixture
@@ -497,7 +497,7 @@ async fn dropping_the_detail_cancels_an_in_flight_store_request() -> anyhow::Res
 async fn a_failed_deletion_keeps_the_record_and_reopens_confirmation_with_the_error(
     error: IngredientDeleteError,
 ) -> anyhow::Result<()> {
-    let original = ingredient(NutritionBasis::Per100Grams);
+    let original = ingredient(NutritionBasis::Per100Grams)?;
     let mut fixture = DetailFixture::new(original.clone());
     fixture.request_deletion().await?;
     let confirmed = fixture.decide(ConfirmationEvent::Confirm).await?;
@@ -551,7 +551,7 @@ async fn a_failed_deletion_keeps_the_record_and_reopens_confirmation_with_the_er
 
 #[tokio::test]
 async fn a_dropped_store_response_reports_a_transport_failure() -> anyhow::Result<()> {
-    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams));
+    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams)?);
     fixture.request_deletion().await?;
     let confirmed = fixture.decide(ConfirmationEvent::Confirm).await?;
     let mut command = fixture
@@ -606,7 +606,7 @@ async fn a_dropped_store_response_reports_a_transport_failure() -> anyhow::Resul
 async fn retrying_after_a_failed_deletion_can_succeed(
     error: IngredientDeleteError,
 ) -> anyhow::Result<()> {
-    let original = ingredient(NutritionBasis::Per100Grams);
+    let original = ingredient(NutritionBasis::Per100Grams)?;
     let mut fixture = DetailFixture::new(original.clone());
     fixture.fail_deletion(error.clone()).await?;
 
@@ -684,7 +684,7 @@ async fn retrying_after_a_failed_deletion_can_succeed(
 async fn cancelling_after_a_failed_deletion_clears_the_error(
     error: IngredientDeleteError,
 ) -> anyhow::Result<()> {
-    let original = ingredient(NutritionBasis::Per100Grams);
+    let original = ingredient(NutritionBasis::Per100Grams)?;
     let mut fixture = DetailFixture::new(original.clone());
     fixture.fail_deletion(error).await?;
     let cancelled = fixture.decide(ConfirmationEvent::Cancel).await?;
@@ -730,7 +730,7 @@ async fn cancelling_after_a_failed_deletion_clears_the_error(
 #[tokio::test]
 async fn a_stale_decision_is_ignored_after_a_failed_deletion_reopens_confirmation()
 -> anyhow::Result<()> {
-    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams));
+    let mut fixture = DetailFixture::new(ingredient(NutritionBasis::Per100Grams)?);
     fixture.request_deletion().await?;
     let confirmed = fixture.decide(ConfirmationEvent::Confirm).await?;
     let failed = fixture
@@ -754,7 +754,7 @@ async fn a_stale_decision_is_ignored_after_a_failed_deletion_reopens_confirmatio
 
 #[tokio::test]
 async fn a_stale_failure_is_ignored_while_the_retry_is_deleting() -> anyhow::Result<()> {
-    let original = ingredient(NutritionBasis::Per100Grams);
+    let original = ingredient(NutritionBasis::Per100Grams)?;
     let mut fixture = DetailFixture::new(original.clone());
     fixture.request_deletion().await?;
     let confirmed = fixture.decide(ConfirmationEvent::Confirm).await?;
@@ -934,29 +934,29 @@ fn resolved(
     }
 }
 
-fn ingredient(basis: NutritionBasis) -> Ingredient {
-    Ingredient {
+fn ingredient(basis: NutritionBasis) -> anyhow::Result<Ingredient> {
+    Ok(Ingredient {
         id: Uuid::from_u128(1).into(),
         name: "Garlic".into(),
         notes: Some("Fresh".into()),
         nutrition: Nutrition {
             basis,
-            calories: Some(Decimal::new(123_400, 4).into()),
+            calories: Some(Decimal::new(123_400, 4).try_into()?),
             protein: None,
-            carbohydrates: Some(Decimal::ZERO.into()),
+            carbohydrates: Some(Decimal::ZERO.try_into()?),
             fat: None,
         },
         units: vec![
             ReferenceUnit {
                 name: "cup".into(),
                 grams: None,
-                millilitres: Some(Decimal::new(25_000, 2).into()),
+                millilitres: Some(Decimal::new(25_000, 2).try_into()?),
             },
             ReferenceUnit {
                 name: "clove".into(),
-                grams: Some(Decimal::ONE.into()),
+                grams: Some(Decimal::ONE.try_into()?),
                 millilitres: None,
             },
         ],
-    }
+    })
 }

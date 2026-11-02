@@ -60,21 +60,21 @@ fn edit_round_trip_preserves_identity_and_exact_fields(
         notes: Some("Fresh".into()),
         nutrition: Nutrition {
             basis,
-            calories: Some(Decimal::from_str_exact("12.3400")?.into()),
+            calories: Some(Decimal::from_str_exact("12.3400")?.try_into()?),
             protein: None,
-            carbohydrates: Some(Decimal::ZERO.into()),
+            carbohydrates: Some(Decimal::ZERO.try_into()?),
             fat: None,
         },
         units: vec![
             ReferenceUnit {
                 name: "clove".into(),
-                grams: Some(Decimal::from_str_exact("2.500")?.into()),
+                grams: Some(Decimal::from_str_exact("2.500")?.try_into()?),
                 millilitres: None,
             },
             ReferenceUnit {
                 name: "cup".into(),
                 grams: None,
-                millilitres: Some(Decimal::ONE.into()),
+                millilitres: Some(Decimal::ONE.try_into()?),
             },
         ],
     };
@@ -246,7 +246,7 @@ fn edit_preserves_excess_precision_until_corrected() -> anyhow::Result<()> {
     let mut draft = draft();
     draft.calories = "1".into();
     let mut nutrition = data(&draft)?.nutrition().clone();
-    nutrition.calories = Some(Decimal::from_str_exact("1.0000000")?.into());
+    nutrition.calories = Some(Decimal::from_str_exact("1.0000000")?.try_into()?);
     let item = Ingredient {
         id: IngredientId::generate(),
         name: "Garlic".into(),

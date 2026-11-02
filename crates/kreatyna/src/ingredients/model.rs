@@ -1,4 +1,5 @@
 use nutype::nutype;
+use rust_decimal::Decimal;
 use unicode_casefold::UnicodeCaseFold;
 use uuid::Uuid;
 
@@ -19,31 +20,35 @@ impl IngredientId {
 macro_rules! quantity {
     ($(#[$doc:meta])* $name:ident) => {
         $(#[$doc])*
-        #[nutype(derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Display, From, Into))]
+        #[nutype(
+            validate(greater_or_equal = Decimal::ZERO),
+            derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Display, TryFrom, Into)
+        )]
         pub struct $name(Decimal);
     };
 }
 
 quantity!(
-    /// Exact quantity in grams. The draft layer checks the sign: nutrition
-    /// accepts zero, and a reference unit needs more than zero.
+    /// Exact quantity in grams, never negative: `try_new` fails with
+    /// `GramsError::GreaterOrEqualViolated`. A reference unit's "more than
+    /// zero" rule stays in the draft layer, because nutrition accepts zero.
     ///
     /// Grams and millilitres do not mix:
     ///
     /// ```compile_fail
     /// use kreatyna::ingredients::{Grams, Millilitres};
     /// use rust_decimal::Decimal;
-    /// let mass = Grams::new(Decimal::ONE);
+    /// let mass = Grams::try_new(Decimal::ONE).unwrap();
     /// let volume: Millilitres = mass;
     /// ```
     Grams
 );
 quantity!(
-    /// Exact quantity in millilitres. The draft layer checks the sign.
+    /// Exact quantity in millilitres, never negative.
     Millilitres
 );
 quantity!(
-    /// Exact energy in kilocalories. The draft layer checks the sign.
+    /// Exact energy in kilocalories, never negative.
     Kilocalories
 );
 

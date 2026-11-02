@@ -235,29 +235,25 @@ impl TryFrom<&IngredientDraft> for IngredientWrite {
                 ValidationField::Calories,
                 AcceptsZero::Yes,
                 &mut issues,
-            )
-            .map(Into::into),
+            ),
             protein: number(
                 &draft.protein,
                 ValidationField::Protein,
                 AcceptsZero::Yes,
                 &mut issues,
-            )
-            .map(Into::into),
+            ),
             carbohydrates: number(
                 &draft.carbohydrates,
                 ValidationField::Carbohydrates,
                 AcceptsZero::Yes,
                 &mut issues,
-            )
-            .map(Into::into),
+            ),
             fat: number(
                 &draft.fat,
                 ValidationField::Fat,
                 AcceptsZero::Yes,
                 &mut issues,
-            )
-            .map(Into::into),
+            ),
         };
         let mut names = HashSet::new();
         let mut units = Vec::with_capacity(draft.units.len());
@@ -281,15 +277,13 @@ impl TryFrom<&IngredientDraft> for IngredientWrite {
                 ValidationField::UnitGrams { index },
                 AcceptsZero::No,
                 &mut issues,
-            )
-            .map(Into::into);
+            );
             let millilitres = number(
                 &unit.millilitres,
                 ValidationField::UnitMillilitres { index },
                 AcceptsZero::No,
                 &mut issues,
-            )
-            .map(Into::into);
+            );
             if unit.grams.trim().is_empty() && unit.millilitres.trim().is_empty() {
                 issues.push(ValidationIssue {
                     field: ValidationField::UnitMeasurements { index },
@@ -319,12 +313,12 @@ impl TryFrom<&IngredientDraft> for IngredientWrite {
     }
 }
 
-fn number(
+fn number<Q: TryFrom<Decimal>>(
     input: &str,
     field: ValidationField,
     accepts_zero: AcceptsZero,
     issues: &mut Vec<ValidationIssue>,
-) -> Option<Decimal> {
+) -> Option<Q> {
     let input = input.trim();
     if input.is_empty() {
         return None;
@@ -338,7 +332,10 @@ fn number(
     }
 }
 
-fn parse_number(input: &str, accepts_zero: AcceptsZero) -> Result<Decimal, ValidationReason> {
+fn parse_number<Q: TryFrom<Decimal>>(
+    input: &str,
+    accepts_zero: AcceptsZero,
+) -> Result<Q, ValidationReason> {
     let unsigned = input.strip_prefix('-').unwrap_or(input);
     let mut parts = unsigned.split(['.', ',']);
     let integer = parts.next().unwrap_or_default();
@@ -352,14 +349,10 @@ fn parse_number(input: &str, accepts_zero: AcceptsZero) -> Result<Decimal, Valid
     }
     let value = Decimal::from_str_exact(&input.replace(',', "."))
         .map_err(|_| ValidationReason::OutOfRange)?;
-    match accepts_zero {
-        AcceptsZero::Yes if value < Decimal::ZERO => {
-            return Err(ValidationReason::MustBeNonNegative);
-        }
-        AcceptsZero::No if value <= Decimal::ZERO => {
-            return Err(ValidationReason::MustBePositive);
-        }
-        _ => {}
+    if matches!(accepts_zero, AcceptsZero::No) && value <= Decimal::ZERO {
+        return Err(ValidationReason::MustBePositive);
     }
-    Ok(value)
+    // The quantity type owns the "not negative" rule. Its only error is
+    // `GreaterOrEqualViolated`, so every error means a negative number.
+    Q::try_from(value).map_err(|_| ValidationReason::MustBeNonNegative)
 }

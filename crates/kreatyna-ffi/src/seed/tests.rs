@@ -37,15 +37,18 @@ fn seeds_all_fields() -> anyhow::Result<()> {
     assert_eq!(garlic.name, "Garlic");
     assert_eq!(garlic.notes.as_deref(), Some("Peel the cloves."));
     assert_eq!(garlic.nutrition.basis, NutritionBasis::Per100Grams);
-    assert_eq!(garlic.nutrition.calories, Some(decimal("149")?.into()));
-    assert_eq!(garlic.nutrition.protein, Some(decimal("6.4")?.into()));
-    assert_eq!(garlic.nutrition.carbohydrates, Some(decimal("33")?.into()));
-    assert_eq!(garlic.nutrition.fat, Some(decimal("0.5")?.into()));
+    assert_eq!(garlic.nutrition.calories, Some(decimal("149")?.try_into()?));
+    assert_eq!(garlic.nutrition.protein, Some(decimal("6.4")?.try_into()?));
+    assert_eq!(
+        garlic.nutrition.carbohydrates,
+        Some(decimal("33")?.try_into()?)
+    );
+    assert_eq!(garlic.nutrition.fat, Some(decimal("0.5")?.try_into()?));
     assert_eq!(
         garlic.units,
         [ReferenceUnit {
             name: "clove".into(),
-            grams: Some(decimal("5")?.into()),
+            grams: Some(decimal("5")?.try_into()?),
             millilitres: None,
         }]
     );
@@ -65,7 +68,7 @@ fn seeds_millilitre_basis() -> anyhow::Result<()> {
     let oil = only(stored(&database)?)?;
     assert_eq!(oil.nutrition.basis, NutritionBasis::Per100Millilitres);
     assert_eq!(oil.nutrition.calories, None);
-    assert_eq!(oil.units[0].millilitres, Some(decimal("15")?.into()));
+    assert_eq!(oil.units[0].millilitres, Some(decimal("15")?.try_into()?));
     assert_eq!(oil.units[0].grams, None);
     Ok(())
 }

@@ -1,7 +1,7 @@
 use anyhow::Context;
 use kreatyna::ingredients::{
-    Grams, Ingredient, IngredientId, Kilocalories, Millilitres, Nutrition, NutritionBasis,
-    ReferenceUnit, name_key,
+    Grams, GramsError, Ingredient, IngredientId, Kilocalories, KilocaloriesError, Millilitres,
+    MillilitresError, Nutrition, NutritionBasis, ReferenceUnit, name_key,
 };
 use rust_decimal::Decimal;
 use test_case::test_case;
@@ -30,9 +30,9 @@ fn ingredient_identity_is_stable_and_explicit() -> anyhow::Result<()> {
 #[test_case("79228162514264337593543950335"; "maximum magnitude")]
 fn quantities_preserve_decimal_value_and_scale(text: &str) -> anyhow::Result<()> {
     let decimal = Decimal::from_str_exact(text)?;
-    let grams: Grams = decimal.into();
-    let millilitres: Millilitres = decimal.into();
-    let calories: Kilocalories = decimal.into();
+    let grams: Grams = decimal.try_into()?;
+    let millilitres: Millilitres = decimal.try_into()?;
+    let calories: Kilocalories = decimal.try_into()?;
     for result in [
         Decimal::from(grams),
         Decimal::from(millilitres),
@@ -55,26 +55,26 @@ fn ingredient_keeps_unknown_and_known_zero_distinct_and_units_ordered() -> anyho
         notes: None,
         nutrition: Nutrition {
             basis: NutritionBasis::Per100Grams,
-            calories: Some(zero.into()),
+            calories: Some(zero.try_into()?),
             protein: None,
-            carbohydrates: Some(zero.into()),
+            carbohydrates: Some(zero.try_into()?),
             fat: None,
         },
         units: vec![
             ReferenceUnit {
                 name: "clove".into(),
-                grams: Some(Decimal::ONE.into()),
+                grams: Some(Decimal::ONE.try_into()?),
                 millilitres: None,
             },
             ReferenceUnit {
                 name: "scoop".into(),
                 grams: None,
-                millilitres: Some(Decimal::ONE.into()),
+                millilitres: Some(Decimal::ONE.try_into()?),
             },
             ReferenceUnit {
                 name: "can".into(),
-                grams: Some(Decimal::ONE.into()),
-                millilitres: Some(Decimal::ONE.into()),
+                grams: Some(Decimal::ONE.try_into()?),
+                millilitres: Some(Decimal::ONE.try_into()?),
             },
         ],
     };
@@ -128,4 +128,21 @@ fn name_key_is_idempotent() {
 #[test]
 fn an_invalid_id_text_does_not_parse() {
     assert!("not-an-id".parse::<IngredientId>().is_err());
+}
+
+#[test]
+fn a_quantity_is_never_negative() {
+    let minus_one = Decimal::NEGATIVE_ONE;
+    assert_eq!(
+        Grams::try_new(minus_one),
+        Err(GramsError::GreaterOrEqualViolated)
+    );
+    assert_eq!(
+        Millilitres::try_new(minus_one),
+        Err(MillilitresError::GreaterOrEqualViolated)
+    );
+    assert_eq!(
+        Kilocalories::try_new(minus_one),
+        Err(KilocaloriesError::GreaterOrEqualViolated)
+    );
 }

@@ -20,8 +20,6 @@ use super::schema::{ingredient_units, ingredients};
 pub(crate) enum ModelError {
     #[error("invalid ingredient basis: {0}")]
     Basis(i32),
-    #[error("negative ingredient quantity")]
-    NegativeQuantity,
     #[error("reference measurement must be positive")]
     NonPositiveMeasurement,
     #[error("reference unit needs a measurement")]
@@ -192,20 +190,13 @@ macro_rules! db_quantity {
             fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
                 let text = <String as FromSql<Text, Sqlite>>::from_sql(value)?;
                 let decimal = Decimal::from_str_exact(&text)?;
-                if decimal < Decimal::ZERO {
-                    return Err(ModelError::NegativeQuantity.into());
-                }
-                Ok(Self(decimal.into()))
+                Ok(Self(<$domain>::try_new(decimal)?))
             }
         }
 
         impl ToSql<Text, Sqlite> for $name {
             fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
-                let decimal = Decimal::from(self.0);
-                if decimal < Decimal::ZERO {
-                    return Err(ModelError::NegativeQuantity.into());
-                }
-                out.set_value(decimal.to_string());
+                out.set_value(Decimal::from(self.0).to_string());
                 Ok(IsNull::No)
             }
         }
@@ -264,20 +255,9 @@ pub(crate) struct NewIngredientRow {
 }
 
 impl NewIngredientRow {
-    pub fn from_write(id: IngredientId, data: &IngredientWriteData) -> Result<Self, ModelError> {
+    pub fn from_write(id: IngredientId, data: &IngredientWriteData) -> Self {
         let nutrition = data.nutrition();
-        for grams in [nutrition.protein, nutrition.carbohydrates, nutrition.fat] {
-            if grams.is_some_and(|value| Decimal::from(value) < Decimal::ZERO) {
-                return Err(ModelError::NegativeQuantity);
-            }
-        }
-        if nutrition
-            .calories
-            .is_some_and(|value| Decimal::from(value) < Decimal::ZERO)
-        {
-            return Err(ModelError::NegativeQuantity);
-        }
-        Ok(Self {
+        Self {
             remote_id: id.into(),
             name: data.name().to_owned(),
             name_key: name_key(data.name()),
@@ -287,7 +267,7 @@ impl NewIngredientRow {
             protein: nutrition.protein.map(Into::into),
             carbohydrates: nutrition.carbohydrates.map(Into::into),
             fat: nutrition.fat.map(Into::into),
-        })
+        }
     }
 }
 

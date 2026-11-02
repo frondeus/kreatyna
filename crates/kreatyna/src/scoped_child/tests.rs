@@ -3,6 +3,8 @@ use krucyfiks::{Command, Message, Scoped, Widget};
 
 use super::*;
 
+// Green path
+
 #[test]
 fn accept_takes_values_for_the_current_scope_only() {
     let child = ScopedChild::new(Counter);
@@ -48,6 +50,18 @@ async fn forward_updates_the_child_and_scopes_its_outcome() {
 }
 
 #[tokio::test]
+async fn replace_cancels_the_old_childs_commands() {
+    let mut child = ScopedChild::new(Counter);
+    let pending = child.command(Command::single(std::future::pending::<u32>()));
+
+    child.replace(Counter);
+
+    assert_eq!(pending.into_stream().next().await, None);
+}
+
+// Validation
+
+#[tokio::test]
 async fn forward_ignores_an_event_for_an_old_scope() {
     let mut child = ScopedChild::new(Counter);
     let old = child.scope();
@@ -58,15 +72,7 @@ async fn forward_ignores_an_event_for_an_old_scope() {
     assert_eq!(command.next().await, None);
 }
 
-#[tokio::test]
-async fn replace_cancels_the_old_childs_commands() {
-    let mut child = ScopedChild::new(Counter);
-    let pending = child.command(Command::single(std::future::pending::<u32>()));
-
-    child.replace(Counter);
-
-    assert_eq!(pending.into_stream().next().await, None);
-}
+// Test support
 
 /// Answers each event with the next number.
 struct Counter;

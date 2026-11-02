@@ -4,6 +4,8 @@ use kreatyna::confirmation::{
 use krucyfiks::{Message, Widget, effects::CommandTestExt, test_utils::EmptyInitTest};
 use test_case::{test_case, test_matrix};
 
+// Green path
+
 #[tokio::test]
 async fn confirmation_widget_has_awaiting_decision_initial_state() -> anyhow::Result<()> {
     let mut confirmation = Confirmation::new();
@@ -39,6 +41,8 @@ async fn decision_changes_state_and_creates_an_outcome(
     driver.step().await?.expect_done();
     Ok(())
 }
+
+// Validation
 
 #[test_matrix(
     [ConfirmationEvent::Confirm, ConfirmationEvent::Cancel],
@@ -147,6 +151,8 @@ async fn outcomes_do_not_change_resolved_state(
     );
     Ok(())
 }
+
+// Test support
 
 fn expected_outcome(event: ConfirmationEvent) -> ConfirmationOutcome {
     match event {

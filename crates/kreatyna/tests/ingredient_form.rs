@@ -17,7 +17,7 @@ use rust_decimal::Decimal;
 use test_case::{test_case, test_matrix};
 use uuid::Uuid;
 
-// Ordinary behavior
+// Green path
 
 #[test_case(IngredientDraft::new(NutritionBasis::Per100Grams); "new mass draft")]
 #[test_case(IngredientDraft::new(NutritionBasis::Per100Millilitres); "new volume draft")]
@@ -568,7 +568,7 @@ async fn saving_a_valid_create_draft_sends_a_normalized_create_and_finishes_with
 
     // The store receives normalized values.
     let Some(IngredientWrite::Create { data }) = request else {
-        panic!("expected a create request, got {request:?}");
+        anyhow::bail!("expected a create request, got {request:?}");
     };
     assert_eq!(data.name(), "Garlic");
     assert_eq!(data.notes(), Some("Fresh"));
@@ -576,7 +576,7 @@ async fn saving_a_valid_create_draft_sends_a_normalized_create_and_finishes_with
         data.nutrition(),
         &Nutrition {
             basis: NutritionBasis::Per100Grams,
-            calories: Some(decimal("0.50").into()),
+            calories: Some(Decimal::new(50, 2).into()),
             protein: None,
             carbohydrates: None,
             fat: None,
@@ -587,7 +587,7 @@ async fn saving_a_valid_create_draft_sends_a_normalized_create_and_finishes_with
         [ReferenceUnit {
             name: "cup".into(),
             grams: None,
-            millilitres: Some(decimal("250").into()),
+            millilitres: Some(Decimal::new(250, 0).into()),
         }]
     );
     assert!(matches!(
@@ -663,7 +663,7 @@ async fn saving_an_edited_draft_sends_an_update_for_the_original_id() -> anyhow:
 
     // Only the name changed. Other stored values round-trip.
     let Some(IngredientWrite::Update { id, data }) = request else {
-        panic!("expected an update request, got {request:?}");
+        anyhow::bail!("expected an update request, got {request:?}");
     };
     assert_eq!(id, original.id);
     assert_eq!(data.name(), "Updated garlic");
@@ -853,7 +853,7 @@ async fn cancelling_discard_returns_to_editing_with_the_dirty_draft() -> anyhow:
     Ok(())
 }
 
-// Edge cases and guards
+// Validation
 
 #[test_case(field(IngredientDraftField::Name, "Garlic"); "same field value")]
 #[test_case(IngredientFormEvent::SetBasis(NutritionBasis::Per100Grams); "same basis")]
@@ -1183,7 +1183,7 @@ async fn dropping_the_form_cancels_a_pending_save_before_the_store_request() -> 
     Ok(())
 }
 
-// Failures and recovery
+// Red cases
 
 #[test_case(IngredientSaveError::DuplicateName; "duplicate name")]
 #[test_case(IngredientSaveError::NotFound; "missing record")]
@@ -1704,10 +1704,6 @@ fn unit(name: &str, grams: &str, millilitres: &str) -> ReferenceUnitDraft {
     }
 }
 
-fn decimal(value: &str) -> Decimal {
-    Decimal::from_str_exact(value).unwrap()
-}
-
 fn ingredient(basis: NutritionBasis) -> Ingredient {
     Ingredient {
         id: Uuid::from_u128(1).into(),
@@ -1715,7 +1711,7 @@ fn ingredient(basis: NutritionBasis) -> Ingredient {
         notes: Some("Fresh".into()),
         nutrition: Nutrition {
             basis,
-            calories: Some(decimal("12.3400").into()),
+            calories: Some(Decimal::new(123_400, 4).into()),
             protein: None,
             carbohydrates: Some(Decimal::ZERO.into()),
             fat: None,
@@ -1724,11 +1720,11 @@ fn ingredient(basis: NutritionBasis) -> Ingredient {
             ReferenceUnit {
                 name: "cup".into(),
                 grams: None,
-                millilitres: Some(decimal("250.00").into()),
+                millilitres: Some(Decimal::new(25_000, 2).into()),
             },
             ReferenceUnit {
                 name: "clove".into(),
-                grams: Some(decimal("1.000").into()),
+                grams: Some(Decimal::new(1_000, 3).into()),
                 millilitres: None,
             },
         ],

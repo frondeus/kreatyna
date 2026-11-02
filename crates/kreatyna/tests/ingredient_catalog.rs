@@ -16,7 +16,7 @@ use krucyfiks::{
 use test_case::test_case;
 use uuid::Uuid;
 
-// Ordinary behavior
+// Green path
 
 #[tokio::test]
 async fn initialization_loads_the_list_in_the_current_scope() -> anyhow::Result<()> {
@@ -56,7 +56,7 @@ async fn initialization_loads_the_list_in_the_current_scope() -> anyhow::Result<
         value: IngredientListOutcome::LoadFinished { .. },
     }) = &outcome
     else {
-        panic!("expected a list load result, got {outcome:?}");
+        anyhow::bail!("expected a list load result, got {outcome:?}");
     };
     assert_eq!(*outcome_scope, scope);
     command.step().await?.expect_done();
@@ -67,7 +67,7 @@ async fn initialization_loads_the_list_in_the_current_scope() -> anyhow::Result<
         .update(Message::Outcome(outcome))
         .driver(&mut fixture.effects);
     let view = fixture.catalog.view();
-    assert_eq!(row_names(&view.list), ["Garlic"]);
+    assert_eq!(row_names(&view.list)?, ["Garlic"]);
     assert_eq!(view.scope, scope);
     command
         .step()
@@ -178,7 +178,7 @@ async fn editing_from_the_detail_keeps_the_detail_behind_the_form() -> anyhow::R
     );
     assert_ne!(view.scope, detail_scope);
     let IngredientCatalogScreenView::EditFromDetail { detail, form } = view.screen else {
-        panic!("expected the form above the detail, got {:?}", view.screen);
+        anyhow::bail!("expected the form above the detail, got {:?}", view.screen);
     };
     assert_eq!(detail, idle_detail(&garlic));
     assert_eq!(form.draft, IngredientDraft::from(&garlic));
@@ -242,7 +242,7 @@ async fn closing_a_clean_form_returns_to_its_origin(
         .update(Message::Event(back(form_scope)))
         .driver(&mut fixture.effects);
     assert_eq!(
-        active_form(&fixture.catalog.view().screen).status,
+        active_form(&fixture.catalog.view().screen)?.status,
         IngredientFormStatus::Finished
     );
     command
@@ -299,7 +299,7 @@ async fn back_on_a_dirty_form_asks_for_confirmation_and_discarding_returns_to_th
     let view = fixture.catalog.view();
     assert_eq!(view.navigation, IngredientNavigation::Create);
     assert_eq!(
-        active_form(&view.screen).status,
+        active_form(&view.screen)?.status,
         IngredientFormStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
     );
     command
@@ -323,7 +323,7 @@ async fn back_on_a_dirty_form_asks_for_confirmation_and_discarding_returns_to_th
         .update(Message::Outcome(decision))
         .driver(&mut fixture.effects);
     assert_eq!(
-        active_form(&fixture.catalog.view().screen).status,
+        active_form(&fixture.catalog.view().screen)?.status,
         IngredientFormStatus::Finished
     );
     command
@@ -444,7 +444,7 @@ async fn saving_a_new_ingredient_adds_it_to_the_cached_list_in_order_and_returns
     assert_eq!(view.navigation, IngredientNavigation::List);
     assert_eq!(view.screen, IngredientCatalogScreenView::List);
     assert_ne!(view.scope, scope);
-    assert_eq!(row_names(&view.list), ["Basil", "Garlic", "Tomato"]);
+    assert_eq!(row_names(&view.list)?, ["Basil", "Garlic", "Tomato"]);
 
     // Only a render follows. The cache is updated without a reload.
     command
@@ -488,7 +488,10 @@ async fn saving_an_edit_from_the_list_replaces_the_cached_record_in_order_and_re
     let view = fixture.catalog.view();
     assert_eq!(view.navigation, IngredientNavigation::List);
     assert_eq!(view.screen, IngredientCatalogScreenView::List);
-    assert_eq!(row_names(&view.list), ["Basil", "Roasted garlic", "Tomato"]);
+    assert_eq!(
+        row_names(&view.list)?,
+        ["Basil", "Roasted garlic", "Tomato"]
+    );
 
     command
         .step()
@@ -533,7 +536,7 @@ async fn saving_an_edit_from_the_detail_opens_a_fresh_detail_with_the_saved_reco
     );
     assert_ne!(view.scope, scope);
     // The list behind the detail is updated too.
-    assert_eq!(row_names(&view.list), ["Roasted garlic"]);
+    assert_eq!(row_names(&view.list)?, ["Roasted garlic"]);
 
     command
         .step()
@@ -571,7 +574,7 @@ async fn deleting_from_the_detail_removes_the_cached_record_and_returns_to_the_l
     assert_eq!(view.navigation, IngredientNavigation::List);
     assert_eq!(view.screen, IngredientCatalogScreenView::List);
     assert_ne!(view.scope, scope);
-    assert_eq!(row_names(&view.list), ["Basil"]);
+    assert_eq!(row_names(&view.list)?, ["Basil"]);
 
     // Only a render follows. The cache is updated without a reload.
     command
@@ -585,7 +588,7 @@ async fn deleting_from_the_detail_removes_the_cached_record_and_returns_to_the_l
     Ok(())
 }
 
-// Edge cases and guards
+// Validation
 
 #[tokio::test]
 async fn a_list_event_from_before_the_detail_opened_is_ignored() -> anyhow::Result<()> {
@@ -720,7 +723,7 @@ async fn back_is_ignored_while_saving() -> anyhow::Result<()> {
         .catalog
         .update(Message::Event(form_event(scope, IngredientFormEvent::Save)));
     assert_eq!(
-        active_form(&fixture.catalog.view().screen).status,
+        active_form(&fixture.catalog.view().screen)?.status,
         IngredientFormStatus::Saving
     );
 
@@ -817,7 +820,10 @@ async fn opening_a_screen_cancels_a_pending_refresh_and_back_restarts_it() -> an
     drop(command);
 
     fixture.apply_outcome(outcome).await?;
-    assert_eq!(row_names(&fixture.catalog.view().list), ["Basil", "Garlic"]);
+    assert_eq!(
+        row_names(&fixture.catalog.view().list)?,
+        ["Basil", "Garlic"]
+    );
     Ok(())
 }
 
@@ -861,7 +867,7 @@ async fn opening_creation_during_the_initial_load_cancels_it_and_closing_resumes
     drop(command);
 
     fixture.apply_outcome(outcome).await?;
-    assert_eq!(row_names(&fixture.catalog.view().list), ["Garlic"]);
+    assert_eq!(row_names(&fixture.catalog.view().list)?, ["Garlic"]);
     Ok(())
 }
 
@@ -909,7 +915,10 @@ async fn saving_without_a_complete_cache_reloads_the_list(
     drop(command);
 
     fixture.apply_outcome(outcome).await?;
-    assert_eq!(row_names(&fixture.catalog.view().list), ["Basil", "Garlic"]);
+    assert_eq!(
+        row_names(&fixture.catalog.view().list)?,
+        ["Basil", "Garlic"]
+    );
     Ok(())
 }
 
@@ -929,7 +938,7 @@ async fn dropping_the_catalog_cancels_a_pending_save() -> anyhow::Result<()> {
         .update(Message::Event(form_event(scope, IngredientFormEvent::Save)))
         .driver(&mut fixture.effects);
     assert_eq!(
-        active_form(&fixture.catalog.view().screen).status,
+        active_form(&fixture.catalog.view().screen)?.status,
         IngredientFormStatus::Saving
     );
     save.step()
@@ -944,7 +953,7 @@ async fn dropping_the_catalog_cancels_a_pending_save() -> anyhow::Result<()> {
     Ok(())
 }
 
-// Failures and recovery
+// Red cases
 
 #[test_case(IngredientSaveError::DuplicateName; "duplicate name")]
 #[test_case(IngredientSaveError::NotFound; "missing record")]
@@ -972,11 +981,11 @@ async fn a_failed_save_keeps_the_form_and_does_not_change_the_cached_list(
     let view = fixture.catalog.view();
     assert_eq!(view.navigation, IngredientNavigation::Create);
     assert_eq!(view.scope, scope);
-    let form = active_form(&view.screen);
+    let form = active_form(&view.screen)?;
     assert_eq!(form.status, IngredientFormStatus::Editing);
     assert_eq!(form.save_error, Some(error));
     assert_eq!(form.draft.name, "  Garlic  ");
-    assert_eq!(row_names(&view.list), ["Basil"]);
+    assert_eq!(row_names(&view.list)?, ["Basil"]);
     command
         .step()
         .await?
@@ -1020,7 +1029,7 @@ async fn a_failed_delete_keeps_the_detail_and_the_cached_record(
             },
         })
     );
-    assert_eq!(row_names(&view.list), ["Garlic"]);
+    assert_eq!(row_names(&view.list)?, ["Garlic"]);
     command
         .step()
         .await?
@@ -1053,7 +1062,7 @@ async fn saving_after_a_failed_save_navigates_like_a_first_save() -> anyhow::Res
         .driver(&mut fixture.effects);
     let view = fixture.catalog.view();
     assert_eq!(view.navigation, IngredientNavigation::List);
-    assert_eq!(row_names(&view.list), ["Basil", "Garlic"]);
+    assert_eq!(row_names(&view.list)?, ["Basil", "Garlic"]);
     command
         .step()
         .await?
@@ -1081,7 +1090,7 @@ async fn deleting_after_a_failed_delete_navigates_like_a_first_delete() -> anyho
         .driver(&mut fixture.effects);
     let view = fixture.catalog.view();
     assert_eq!(view.navigation, IngredientNavigation::List);
-    assert_eq!(row_names(&view.list), ["Basil"]);
+    assert_eq!(row_names(&view.list)?, ["Basil"]);
     command
         .step()
         .await?
@@ -1430,12 +1439,12 @@ fn field(field: IngredientDraftField, value: &str) -> IngredientFormEvent {
     }
 }
 
-fn active_form(screen: &IngredientCatalogScreenView) -> &IngredientFormView {
+fn active_form(screen: &IngredientCatalogScreenView) -> anyhow::Result<&IngredientFormView> {
     match screen {
         IngredientCatalogScreenView::Create(form)
         | IngredientCatalogScreenView::EditFromList(form)
-        | IngredientCatalogScreenView::EditFromDetail { form, .. } => form,
-        other => panic!("expected a form screen, got {other:?}"),
+        | IngredientCatalogScreenView::EditFromDetail { form, .. } => Ok(form),
+        other => anyhow::bail!("expected a form screen, got {other:?}"),
     }
 }
 
@@ -1446,11 +1455,11 @@ fn idle_detail(ingredient: &Ingredient) -> IngredientDetailView {
     }
 }
 
-fn row_names(view: &IngredientListView) -> Vec<&str> {
+fn row_names(view: &IngredientListView) -> anyhow::Result<Vec<&str>> {
     let IngredientListStatus::Ready { rows, .. } = &view.status else {
-        panic!("expected a ready list, got {:?}", view.status);
+        anyhow::bail!("expected a ready list, got {:?}", view.status);
     };
-    rows.iter().map(|row| row.name.as_str()).collect()
+    Ok(rows.iter().map(|row| row.name.as_str()).collect())
 }
 
 fn id(value: u128) -> IngredientId {

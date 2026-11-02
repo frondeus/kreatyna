@@ -1,5 +1,4 @@
-use std::str::FromStr;
-
+use anyhow::Context;
 use kreatyna::ingredients::{
     Grams, Ingredient, IngredientId, Kilocalories, Millilitres, Nutrition, NutritionBasis,
     ReferenceUnit, name_key,
@@ -8,8 +7,10 @@ use rust_decimal::Decimal;
 use test_case::test_case;
 use uuid::{Variant, Version};
 
+// Green path
+
 #[test]
-fn ingredient_identity_is_stable_and_explicit() {
+fn ingredient_identity_is_stable_and_explicit() -> anyhow::Result<()> {
     let first = IngredientId::generate();
     let second = IngredientId::generate();
     assert_ne!(first, second);
@@ -17,9 +18,9 @@ fn ingredient_identity_is_stable_and_explicit() {
     assert_eq!(uuid.get_version(), Some(Version::Random));
     assert_eq!(uuid.get_variant(), Variant::RFC4122);
     assert_eq!(IngredientId::from(uuid), first);
-    assert_eq!(IngredientId::from_str(&first.to_string()).unwrap(), first);
+    assert_eq!(first.to_string().parse::<IngredientId>()?, first);
     assert_eq!(first.to_string().len(), 36);
-    assert!(IngredientId::from_str("not-an-id").is_err());
+    Ok(())
 }
 
 #[test_case("0"; "zero")]
@@ -27,8 +28,8 @@ fn ingredient_identity_is_stable_and_explicit() {
 #[test_case("12.3400"; "fraction with trailing zeros")]
 #[test_case("0.0000000000000000000000000001"; "smallest increment")]
 #[test_case("79228162514264337593543950335"; "maximum magnitude")]
-fn quantities_preserve_decimal_value_and_scale(text: &str) {
-    let decimal = Decimal::from_str_exact(text).unwrap();
+fn quantities_preserve_decimal_value_and_scale(text: &str) -> anyhow::Result<()> {
+    let decimal = Decimal::from_str_exact(text)?;
     let grams: Grams = decimal.into();
     let millilitres: Millilitres = decimal.into();
     let calories: Kilocalories = decimal.into();
@@ -42,10 +43,11 @@ fn quantities_preserve_decimal_value_and_scale(text: &str) {
         assert_eq!(result.to_string(), text);
     }
     assert_eq!(grams.to_string(), text);
+    Ok(())
 }
 
 #[test]
-fn ingredient_keeps_unknown_and_known_zero_distinct_and_units_ordered() {
+fn ingredient_keeps_unknown_and_known_zero_distinct_and_units_ordered() -> anyhow::Result<()> {
     let zero = Decimal::ZERO;
     let item = Ingredient {
         id: IngredientId::generate(),
@@ -78,7 +80,8 @@ fn ingredient_keeps_unknown_and_known_zero_distinct_and_units_ordered() {
     };
     let copy = item.clone();
     assert_eq!(copy.id, item.id);
-    assert_eq!(Decimal::from(copy.nutrition.calories.unwrap()), zero);
+    let calories = copy.nutrition.calories.context("no calories")?;
+    assert_eq!(Decimal::from(calories), zero);
     assert!(copy.nutrition.protein.is_none());
     assert_eq!(
         copy.units
@@ -92,6 +95,7 @@ fn ingredient_keeps_unknown_and_known_zero_distinct_and_units_ordered() {
         ..copy.nutrition.clone()
     };
     assert_eq!(volume_based.calories, copy.nutrition.calories);
+    Ok(())
 }
 
 #[test_case("  GARLIC\u{2003}", "garlic"; "trims and folds")]
@@ -100,17 +104,28 @@ fn name_key_produces_expected_key(input: &str, expected: &str) {
     assert_eq!(name_key(input), expected);
 }
 
-#[test_case("Straße", "STRASSE", true; "sharp s")]
-#[test_case("Σ", "σ", true; "capital sigma")]
-#[test_case("ς", "σ", true; "final sigma")]
-#[test_case("red  pepper", "red pepper", false; "internal spacing")]
-#[test_case("café", "cafe", false; "accents")]
-#[test_case("a-b", "ab", false; "punctuation")]
-fn name_key_compares_names(left: &str, right: &str, equal: bool) {
-    assert_eq!(name_key(left) == name_key(right), equal);
+#[test_case("Straße", "STRASSE"; "sharp s")]
+#[test_case("Σ", "σ"; "capital sigma")]
+#[test_case("ς", "σ"; "final sigma")]
+fn name_key_folds_case_variants_to_one_key(left: &str, right: &str) {
+    assert_eq!(name_key(left), name_key(right));
+}
+
+#[test_case("red  pepper", "red pepper"; "internal spacing")]
+#[test_case("café", "cafe"; "accents")]
+#[test_case("a-b", "ab"; "punctuation")]
+fn name_key_keeps_spacing_accents_and_punctuation(left: &str, right: &str) {
+    assert_ne!(name_key(left), name_key(right));
 }
 
 #[test]
 fn name_key_is_idempotent() {
     assert_eq!(name_key(&name_key("Straße")), name_key("Straße"));
+}
+
+// Validation
+
+#[test]
+fn an_invalid_id_text_does_not_parse() {
+    assert!("not-an-id".parse::<IngredientId>().is_err());
 }

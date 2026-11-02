@@ -2,17 +2,7 @@ use kreatyna::ingredients::*;
 use rust_decimal::Decimal;
 use test_case::test_case;
 
-fn draft() -> IngredientDraft {
-    let mut draft = IngredientDraft::new(NutritionBasis::Per100Grams);
-    draft.name = "Garlic".into();
-    draft
-}
-
-fn data(draft: &IngredientDraft) -> IngredientWriteData {
-    match IngredientWrite::try_from(draft).unwrap() {
-        IngredientWrite::Create { data } | IngredientWrite::Update { data, .. } => data,
-    }
-}
+// Green path
 
 #[test_case("", None; "unknown")]
 #[test_case(" \u{2003}", None; "whitespace unknown")]
@@ -21,15 +11,91 @@ fn data(draft: &IngredientDraft) -> IngredientWriteData {
 #[test_case(" 12,3400\u{2003}", Some("12.3400"); "comma and whitespace")]
 #[test_case("12.345678", Some("12.345678"); "six digits")]
 #[test_case("79228162514264337593543950335", Some("79228162514264337593543950335"); "maximum")]
-fn nutrition_accepts_exact_values(input: &str, expected: Option<&str>) {
+fn nutrition_accepts_exact_values(input: &str, expected: Option<&str>) -> anyhow::Result<()> {
     let mut draft = draft();
     draft.calories = input.into();
-    let result = data(&draft);
+    let result = data(&draft)?;
     let actual = result.nutrition().calories.map(Decimal::from);
-    let expected = expected.map(|text| Decimal::from_str_exact(text).unwrap());
+    let expected = expected.map(Decimal::from_str_exact).transpose()?;
     assert_eq!(actual, expected);
     assert_eq!(actual.map(|v| v.scale()), expected.map(|v| v.scale()));
+    Ok(())
 }
+
+#[test_case(" \u{2003}", None; "empty notes")]
+#[test_case("  fresh\n cloves  ", Some("fresh\n cloves"); "trimmed notes")]
+fn creation_trims_only_surrounding_whitespace(
+    notes: &str,
+    expected: Option<&str>,
+) -> anyhow::Result<()> {
+    let mut draft = draft();
+    draft.name = "  Red  Pepper\u{2003}".into();
+    draft.notes = notes.into();
+    draft.units.push(ReferenceUnitDraft {
+        name: "  Small Can ".into(),
+        grams: "1".into(),
+        millilitres: String::new(),
+    });
+    let before = draft.clone();
+    let write = IngredientWrite::try_from(&draft)
+        .map_err(|issues| anyhow::anyhow!("the draft is invalid: {issues:?}"))?;
+    let IngredientWrite::Create { data } = write else {
+        anyhow::bail!("expected a create write, got {write:?}");
+    };
+    assert_eq!(draft, before);
+    assert_eq!(data.name(), "Red  Pepper");
+    assert_eq!(data.notes(), expected);
+    assert_eq!(data.units()[0].name, "Small Can");
+    Ok(())
+}
+
+#[test_case(NutritionBasis::Per100Grams; "mass basis")]
+#[test_case(NutritionBasis::Per100Millilitres; "volume basis")]
+fn edit_round_trip_preserves_identity_and_exact_fields(
+    basis: NutritionBasis,
+) -> anyhow::Result<()> {
+    let item = Ingredient {
+        id: IngredientId::generate(),
+        name: "Garlic".into(),
+        notes: Some("Fresh".into()),
+        nutrition: Nutrition {
+            basis,
+            calories: Some(Decimal::from_str_exact("12.3400")?.into()),
+            protein: None,
+            carbohydrates: Some(Decimal::ZERO.into()),
+            fat: None,
+        },
+        units: vec![
+            ReferenceUnit {
+                name: "clove".into(),
+                grams: Some(Decimal::from_str_exact("2.500")?.into()),
+                millilitres: None,
+            },
+            ReferenceUnit {
+                name: "cup".into(),
+                grams: None,
+                millilitres: Some(Decimal::ONE.into()),
+            },
+        ],
+    };
+    let draft = IngredientDraft::from(&item);
+    assert_eq!(draft.mode, DraftMode::Edit { id: item.id });
+    assert_eq!(draft.calories, "12.3400");
+    assert_eq!(draft.units[0].grams, "2.500");
+    assert_eq!(draft.protein, "");
+    let write = IngredientWrite::try_from(&draft)
+        .map_err(|issues| anyhow::anyhow!("the draft is invalid: {issues:?}"))?;
+    let IngredientWrite::Update { id, data } = write else {
+        anyhow::bail!("expected an update write, got {write:?}");
+    };
+    assert_eq!(id, item.id);
+    assert_eq!(data.nutrition(), &item.nutrition);
+    assert_eq!(data.units(), item.units);
+    assert_eq!(data.notes(), Some("Fresh"));
+    Ok(())
+}
+
+// Validation
 
 #[test_case("+1", ValidationReason::InvalidNumber; "plus")]
 #[test_case("1e2", ValidationReason::InvalidNumber; "exponent")]
@@ -61,38 +127,37 @@ fn nutrition_rejects_invalid_values(input: &str, reason: ValidationReason) {
     assert_eq!(draft, before);
 }
 
-#[test_case("1", "", None; "mass only")]
-#[test_case("", "2", None; "volume only")]
-#[test_case("1", "2", None; "both")]
-#[test_case("", "", Some((ValidationField::UnitMeasurements { index: 0 }, ValidationReason::Required)); "neither")]
-#[test_case("0", "1", Some((ValidationField::UnitGrams { index: 0 }, ValidationReason::MustBePositive)); "zero mass")]
-#[test_case("1", "-0.00", Some((ValidationField::UnitMillilitres { index: 0 }, ValidationReason::MustBePositive)); "negative zero volume")]
-#[test_case("-1", "", Some((ValidationField::UnitGrams { index: 0 }, ValidationReason::MustBePositive)); "negative mass")]
-#[test_case("bad", "1", Some((ValidationField::UnitGrams { index: 0 }, ValidationReason::InvalidNumber)); "malformed with valid alternative")]
-fn reference_measurements(
+#[test_case("1", ""; "mass only")]
+#[test_case("", "2"; "volume only")]
+#[test_case("1", "2"; "both")]
+fn a_reference_unit_keeps_the_measurements_it_has(
     grams: &str,
     millilitres: &str,
-    error: Option<(ValidationField, ValidationReason)>,
+) -> anyhow::Result<()> {
+    let result = data(&draft_with_unit(grams, millilitres))?;
+    assert_eq!(result.units()[0].grams.is_some(), !grams.is_empty());
+    assert_eq!(
+        result.units()[0].millilitres.is_some(),
+        !millilitres.is_empty()
+    );
+    Ok(())
+}
+
+#[test_case("", "", ValidationField::UnitMeasurements { index: 0 }, ValidationReason::Required; "neither")]
+#[test_case("0", "1", ValidationField::UnitGrams { index: 0 }, ValidationReason::MustBePositive; "zero mass")]
+#[test_case("1", "-0.00", ValidationField::UnitMillilitres { index: 0 }, ValidationReason::MustBePositive; "negative zero volume")]
+#[test_case("-1", "", ValidationField::UnitGrams { index: 0 }, ValidationReason::MustBePositive; "negative mass")]
+#[test_case("bad", "1", ValidationField::UnitGrams { index: 0 }, ValidationReason::InvalidNumber; "malformed with valid alternative")]
+fn a_reference_unit_rejects_a_missing_or_invalid_measurement(
+    grams: &str,
+    millilitres: &str,
+    field: ValidationField,
+    reason: ValidationReason,
 ) {
-    let mut draft = draft();
-    draft.units.push(ReferenceUnitDraft {
-        name: "clove".into(),
-        grams: grams.into(),
-        millilitres: millilitres.into(),
-    });
-    if let Some((field, reason)) = error {
-        assert_eq!(
-            IngredientWrite::try_from(&draft),
-            Err(vec![ValidationIssue { field, reason }])
-        );
-    } else {
-        let result = data(&draft);
-        assert_eq!(result.units()[0].grams.is_some(), !grams.is_empty());
-        assert_eq!(
-            result.units()[0].millilitres.is_some(),
-            !millilitres.is_empty()
-        );
-    }
+    assert_eq!(
+        IngredientWrite::try_from(&draft_with_unit(grams, millilitres)),
+        Err(vec![ValidationIssue { field, reason }])
+    );
 }
 
 #[test]
@@ -176,74 +241,12 @@ fn duplicate_units_report_each_later_occurrence(first: &str, duplicate: &str) {
     );
 }
 
-#[test_case(" \u{2003}", None; "empty notes")]
-#[test_case("  fresh\n cloves  ", Some("fresh\n cloves"); "trimmed notes")]
-fn creation_trims_only_surrounding_whitespace(notes: &str, expected: Option<&str>) {
-    let mut draft = draft();
-    draft.name = "  Red  Pepper\u{2003}".into();
-    draft.notes = notes.into();
-    draft.units.push(ReferenceUnitDraft {
-        name: "  Small Can ".into(),
-        grams: "1".into(),
-        millilitres: String::new(),
-    });
-    let before = draft.clone();
-    let IngredientWrite::Create { data } = IngredientWrite::try_from(&draft).unwrap() else {
-        panic!("expected create")
-    };
-    assert_eq!(draft, before);
-    assert_eq!(data.name(), "Red  Pepper");
-    assert_eq!(data.notes(), expected);
-    assert_eq!(data.units()[0].name, "Small Can");
-}
-
-#[test_case(NutritionBasis::Per100Grams; "mass basis")]
-#[test_case(NutritionBasis::Per100Millilitres; "volume basis")]
-fn edit_round_trip_preserves_identity_and_exact_fields(basis: NutritionBasis) {
-    let item = Ingredient {
-        id: IngredientId::generate(),
-        name: "Garlic".into(),
-        notes: Some("Fresh".into()),
-        nutrition: Nutrition {
-            basis,
-            calories: Some(Decimal::from_str_exact("12.3400").unwrap().into()),
-            protein: None,
-            carbohydrates: Some(Decimal::ZERO.into()),
-            fat: None,
-        },
-        units: vec![
-            ReferenceUnit {
-                name: "clove".into(),
-                grams: Some(Decimal::from_str_exact("2.500").unwrap().into()),
-                millilitres: None,
-            },
-            ReferenceUnit {
-                name: "cup".into(),
-                grams: None,
-                millilitres: Some(Decimal::ONE.into()),
-            },
-        ],
-    };
-    let draft = IngredientDraft::from(&item);
-    assert_eq!(draft.mode, DraftMode::Edit { id: item.id });
-    assert_eq!(draft.calories, "12.3400");
-    assert_eq!(draft.units[0].grams, "2.500");
-    assert_eq!(draft.protein, "");
-    let IngredientWrite::Update { id, data } = IngredientWrite::try_from(&draft).unwrap() else {
-        panic!("expected update")
-    };
-    assert_eq!(id, item.id);
-    assert_eq!(data.nutrition(), &item.nutrition);
-    assert_eq!(data.units(), item.units);
-    assert_eq!(data.notes(), Some("Fresh"));
-}
-
 #[test]
-fn edit_preserves_excess_precision_until_corrected() {
+fn edit_preserves_excess_precision_until_corrected() -> anyhow::Result<()> {
     let mut draft = draft();
     draft.calories = "1".into();
-    let mut nutrition = data(&draft).nutrition().clone();
-    nutrition.calories = Some(Decimal::from_str_exact("1.0000000").unwrap().into());
+    let mut nutrition = data(&draft)?.nutrition().clone();
+    nutrition.calories = Some(Decimal::from_str_exact("1.0000000")?.into());
     let item = Ingredient {
         id: IngredientId::generate(),
         name: "Garlic".into(),
@@ -262,4 +265,33 @@ fn edit_preserves_excess_precision_until_corrected() {
     );
     draft.calories = "1.000000".into();
     assert!(IngredientWrite::try_from(&draft).is_ok());
+    Ok(())
+}
+
+// Test support
+
+/// A create draft named Garlic that passes validation.
+fn draft() -> IngredientDraft {
+    let mut draft = IngredientDraft::new(NutritionBasis::Per100Grams);
+    draft.name = "Garlic".into();
+    draft
+}
+
+fn data(draft: &IngredientDraft) -> anyhow::Result<IngredientWriteData> {
+    let write = IngredientWrite::try_from(draft)
+        .map_err(|issues| anyhow::anyhow!("the draft is invalid: {issues:?}"))?;
+    match write {
+        IngredientWrite::Create { data } | IngredientWrite::Update { data, .. } => Ok(data),
+    }
+}
+
+/// The Garlic draft with one "clove" unit.
+fn draft_with_unit(grams: &str, millilitres: &str) -> IngredientDraft {
+    let mut draft = draft();
+    draft.units.push(ReferenceUnitDraft {
+        name: "clove".into(),
+        grams: grams.into(),
+        millilitres: millilitres.into(),
+    });
+    draft
 }

@@ -12,7 +12,7 @@ use krucyfiks::{
 use test_case::{test_case, test_matrix};
 use uuid::Uuid;
 
-// Ordinary behavior
+// Green path
 
 #[test_case(vec![], vec![]; "empty catalog")]
 #[test_case(vec![ingredient(2, "Garlic"), ingredient(1, "Basil")], vec![ingredient(1, "Basil"), ingredient(2, "Garlic")]; "sort populated catalog")]
@@ -44,7 +44,7 @@ async fn initialization_renders_then_reads_and_dispatching_its_result_exposes_so
     drop(command);
 
     let IngredientListOutcome::LoadFinished(Latest { value: result, .. }) = &outcome else {
-        panic!("expected a completed load");
+        anyhow::bail!("expected a completed load, got {outcome:?}");
     };
     assert_eq!(result, &Ok(records.clone()));
 
@@ -288,7 +288,7 @@ async fn search_entered_during_initial_loading_is_used_when_records_arrive() -> 
     Ok(())
 }
 
-// Edge cases and guards
+// Validation
 
 #[test_case(IngredientListEvent::Select(id(2)); "select hidden record")]
 #[test_case(IngredientListEvent::Edit(id(2)); "edit hidden record")]
@@ -740,7 +740,7 @@ async fn refresh_cancels_an_in_flight_store_request_and_accepts_only_the_replace
     Ok(())
 }
 
-// Failures and recovery
+// Red cases
 
 #[test_case(IngredientLoadError::Storage; "storage failure")]
 #[test_case(IngredientLoadError::Transport; "transport failure")]
@@ -1113,7 +1113,7 @@ async fn a_dropped_initial_store_response_exposes_a_transport_failure() -> anyho
     drop(command.step().await?.expect_effect().expect_store());
     let outcome = command.step().await?.expect_outcome();
     let IngredientListOutcome::LoadFinished(Latest { value: result, .. }) = &outcome else {
-        panic!("expected a completed load");
+        anyhow::bail!("expected a completed load, got {outcome:?}");
     };
     assert_eq!(result, &Err(IngredientLoadError::Transport));
     command.step().await?.expect_done();

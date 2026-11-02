@@ -1,3 +1,4 @@
+use anyhow::Context;
 use kreatyna::{
     capabilities::ResolveRender,
     confirmation::{ConfirmationEvent, ConfirmationOutcome, ConfirmationView},
@@ -17,12 +18,14 @@ use rust_decimal::Decimal;
 use test_case::{test_case, test_matrix};
 use uuid::Uuid;
 
-// Ordinary behavior
+// Green path
 
 #[test_case(NutritionBasis::Per100Grams; "mass basis")]
 #[test_case(NutritionBasis::Per100Millilitres; "volume basis")]
 #[tokio::test]
-async fn initialization_does_nothing_and_shows_the_complete_record(basis: NutritionBasis) {
+async fn initialization_does_nothing_and_shows_the_complete_record(
+    basis: NutritionBasis,
+) -> anyhow::Result<()> {
     let original = ingredient(basis);
     let mut fixture = DetailFixture::new(original.clone());
     let view = fixture.detail.view();
@@ -34,15 +37,14 @@ async fn initialization_does_nothing_and_shows_the_complete_record(basis: Nutrit
         }
     );
     // Equality alone would not detect lost decimal scale.
-    assert_eq!(
-        view.ingredient.nutrition.calories.unwrap().to_string(),
-        "12.3400"
-    );
-    assert_eq!(
-        view.ingredient.units[0].millilitres.unwrap().to_string(),
-        "250.00"
-    );
+    let calories = view.ingredient.nutrition.calories.context("no calories")?;
+    assert_eq!(calories.to_string(), "12.3400");
+    let cup = view.ingredient.units[0]
+        .millilitres
+        .context("no cup millilitres")?;
+    assert_eq!(cup.to_string(), "250.00");
     fixture.detail.expect_noop_init().await;
+    Ok(())
 }
 
 #[tokio::test]
@@ -236,7 +238,7 @@ async fn confirming_deletion_deletes_the_record_and_reports_its_id() -> anyhow::
     Ok(())
 }
 
-// Edge cases and guards
+// Validation
 
 #[test_case(ConfirmationEvent::Confirm; "confirm")]
 #[test_case(ConfirmationEvent::Cancel; "cancel")]
@@ -487,7 +489,7 @@ async fn dropping_the_detail_cancels_an_in_flight_store_request() -> anyhow::Res
     Ok(())
 }
 
-// Failures and recovery
+// Red cases
 
 #[test_case(IngredientDeleteError::Storage; "storage failure")]
 #[test_case(IngredientDeleteError::Transport; "transport failure")]
@@ -932,10 +934,6 @@ fn resolved(
     }
 }
 
-fn decimal(value: &str) -> Decimal {
-    Decimal::from_str_exact(value).unwrap()
-}
-
 fn ingredient(basis: NutritionBasis) -> Ingredient {
     Ingredient {
         id: Uuid::from_u128(1).into(),
@@ -943,7 +941,7 @@ fn ingredient(basis: NutritionBasis) -> Ingredient {
         notes: Some("Fresh".into()),
         nutrition: Nutrition {
             basis,
-            calories: Some(decimal("12.3400").into()),
+            calories: Some(Decimal::new(123_400, 4).into()),
             protein: None,
             carbohydrates: Some(Decimal::ZERO.into()),
             fat: None,
@@ -952,7 +950,7 @@ fn ingredient(basis: NutritionBasis) -> Ingredient {
             ReferenceUnit {
                 name: "cup".into(),
                 grams: None,
-                millilitres: Some(decimal("250.00").into()),
+                millilitres: Some(Decimal::new(25_000, 2).into()),
             },
             ReferenceUnit {
                 name: "clove".into(),

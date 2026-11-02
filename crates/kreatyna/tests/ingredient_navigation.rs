@@ -5,6 +5,8 @@ use kreatyna::ingredients::{
 use test_case::test_case;
 use uuid::Uuid;
 
+// Green path
+
 #[test]
 fn default_navigation_is_the_list() {
     assert_eq!(Navigation::default(), Navigation::List);
@@ -31,6 +33,19 @@ fn allowed_transitions_return_the_expected_history(
 ) {
     assert_eq!(source.transition(action), Ok(expected));
 }
+
+#[test_case(Navigation::List, None; "root has no back destination")]
+#[test_case(detail(1), Some(Navigation::List); "detail returns to list")]
+#[test_case(Navigation::Create, Some(Navigation::List); "creation returns to list")]
+#[test_case(edit(Origin::List), Some(Navigation::List); "direct edit returns to list")]
+#[test_case(edit(Origin::Detail), Some(detail(1)); "detail edit returns to its ingredient")]
+fn back_is_a_destination_query(source: Navigation, expected: Option<Navigation>) {
+    let before = source;
+    assert_eq!(source.back_destination(), expected);
+    assert_eq!(source, before);
+}
+
+// Validation
 
 #[test_case(Navigation::List, Action::CloseDetail; "list cannot close detail")]
 #[test_case(Navigation::List, Action::FormDiscarded; "list cannot discard form")]
@@ -70,16 +85,7 @@ fn mismatched_ingredients_leave_the_source_unchanged(source: Navigation, action:
     assert_eq!(source, before);
 }
 
-#[test_case(Navigation::List, None; "root has no back destination")]
-#[test_case(detail(1), Some(Navigation::List); "detail returns to list")]
-#[test_case(Navigation::Create, Some(Navigation::List); "creation returns to list")]
-#[test_case(edit(Origin::List), Some(Navigation::List); "direct edit returns to list")]
-#[test_case(edit(Origin::Detail), Some(detail(1)); "detail edit returns to its ingredient")]
-fn back_is_a_destination_query(source: Navigation, expected: Option<Navigation>) {
-    let before = source;
-    assert_eq!(source.back_destination(), expected);
-    assert_eq!(source, before);
-}
+// Test support
 
 fn id(value: u128) -> IngredientId {
     Uuid::from_u128(value).into()

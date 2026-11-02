@@ -27,7 +27,7 @@ async fn initialization_loads_the_catalog_once() -> anyhow::Result<()> {
     empty(f.app.init()).await;
     f.drive_initialization(command).await?;
     assert!(matches!(
-        f.stack().list.status,
+        f.stack()?.list.status,
         IngredientListStatus::Ready { ref rows, .. }
             if rows.iter().map(|row| row.name.as_str()).eq(["Garlic"])
     ));
@@ -39,12 +39,12 @@ async fn initialization_loads_the_catalog_once() -> anyhow::Result<()> {
 async fn catalog_events_and_outcomes_route_through_the_app() -> anyhow::Result<()> {
     let mut f = Fixture::new();
     f.initialize().await?;
-    let command = f.list(IngredientListEvent::Search("gar".into()));
+    let command = f.list(IngredientListEvent::Search("gar".into()))?;
     f.render(command).await?;
-    assert_eq!(f.stack().list.search, "gar");
+    assert_eq!(f.stack()?.list.search, "gar");
     f.create().await?;
     assert!(matches!(
-        f.stack().screen,
+        f.stack()?.screen,
         IngredientCatalogScreenView::Create(_)
     ));
     Ok(())
@@ -58,9 +58,9 @@ async fn shutdown_hook_preserves_an_accepted_ingredient_save_and_follow_up() -> 
     let command = f.form(IngredientFormEvent::SetField {
         field: IngredientDraftField::Name,
         value: "Garlic".into(),
-    });
+    })?;
     f.render(command).await?;
-    let save = f.form(IngredientFormEvent::Save);
+    let save = f.form(IngredientFormEvent::Save)?;
 
     empty(f.app.begin_shutdown()).await;
 
@@ -98,9 +98,9 @@ async fn shutdown_hook_preserves_an_accepted_ingredient_save_and_follow_up() -> 
     drop(command);
     f.apply_render(terminal).await?;
 
-    assert_eq!(f.stack().navigation, IngredientNavigation::List);
+    assert_eq!(f.stack()?.navigation, IngredientNavigation::List);
     assert!(matches!(
-        f.stack().list.status,
+        f.stack()?.list.status,
         IngredientListStatus::Ready { ref rows, .. }
             if rows.iter().any(|row| row.name == "Garlic")
     ));
@@ -111,7 +111,7 @@ async fn shutdown_hook_preserves_an_accepted_ingredient_save_and_follow_up() -> 
 async fn the_split_layout_starts_on_recipes_and_loads_both_sections() -> anyhow::Result<()> {
     let mut f = Fixture::with(AppLayout::Split);
     f.initialize().await?;
-    let app = f.split();
+    let app = f.split()?;
     assert_eq!(app.section, AppSection::Recipes);
     assert_eq!(
         app.recipes.list.status,
@@ -135,11 +135,11 @@ async fn the_split_layout_starts_on_recipes_and_loads_both_sections() -> anyhow:
 async fn selecting_a_section_renders_and_keeps_both_sections() -> anyhow::Result<()> {
     let mut f = Fixture::with(AppLayout::Split);
     f.initialize().await?;
-    let before = f.split();
+    let before = f.split()?;
 
     let command = f.split_event(SplitAppEvent::SelectSection(AppSection::Ingredients));
     assert_eq!(
-        f.split(),
+        f.split()?,
         SplitAppView {
             section: AppSection::Ingredients,
             ..before.clone()
@@ -148,7 +148,7 @@ async fn selecting_a_section_renders_and_keeps_both_sections() -> anyhow::Result
     f.render(command).await?;
 
     let command = f.split_event(SplitAppEvent::SelectSection(AppSection::Recipes));
-    assert_eq!(f.split(), before);
+    assert_eq!(f.split()?, before);
     f.render(command).await?;
     Ok(())
 }
@@ -157,8 +157,8 @@ async fn selecting_a_section_renders_and_keeps_both_sections() -> anyhow::Result
 async fn the_split_layout_routes_ingredient_events_to_its_catalog() -> anyhow::Result<()> {
     let mut f = Fixture::with(AppLayout::Split);
     f.initialize().await?;
-    let catalog = f.split().ingredients;
-    let row = first_ingredient(&catalog.list.value);
+    let catalog = f.split()?.ingredients;
+    let row = first_ingredient(&catalog.list.value)?;
 
     let command = f.split_event(SplitAppEvent::Ingredients(
         IngredientSplitCatalogEvent::List(Scoped::new(
@@ -172,9 +172,9 @@ async fn the_split_layout_routes_ingredient_events_to_its_catalog() -> anyhow::R
         .await
         .context("the selection has no outcome")?;
     f.apply_render(outcome).await?;
-    assert_eq!(f.split().ingredients.selected, Some(row));
+    assert_eq!(f.split()?.ingredients.selected, Some(row));
     // Opening an ingredient does not change the selected section.
-    assert_eq!(f.split().section, AppSection::Recipes);
+    assert_eq!(f.split()?.section, AppSection::Recipes);
     Ok(())
 }
 
@@ -187,7 +187,7 @@ async fn recipe_section_events_route_through_the_app() -> anyhow::Result<()> {
     f.recipe_editor(RecipeEditorEvent::SetTitle("Pasta".into()))
         .await?;
     assert!(matches!(
-        f.split().recipes.pane.value,
+        f.split()?.recipes.pane.value,
         RecipePaneView::Create { ref draft_row, .. } if draft_row == "Pasta"
     ));
     Ok(())
@@ -200,7 +200,7 @@ async fn a_recipe_row_click_opens_its_read_view_and_a_section_switch_keeps_it() 
     f.initialize().await?;
     let command = f.recipes(RecipeSectionEvent::Select(shakshuka().id));
     f.drive_initialization(command).await?;
-    let recipes = f.split().recipes;
+    let recipes = f.split()?.recipes;
     assert_eq!(recipes.selected, Some(shakshuka().id));
     assert_eq!(
         recipes.pane.value,
@@ -216,7 +216,7 @@ async fn a_recipe_row_click_opens_its_read_view_and_a_section_switch_keeps_it() 
     f.render(command).await?;
     let command = f.split_event(SplitAppEvent::SelectSection(AppSection::Recipes));
     f.render(command).await?;
-    assert_eq!(f.split().recipes, recipes);
+    assert_eq!(f.split()?.recipes, recipes);
     Ok(())
 }
 
@@ -228,13 +228,13 @@ async fn switching_sections_keeps_an_open_recipe_editor() -> anyhow::Result<()> 
     f.render(command).await?;
     f.recipe_editor(RecipeEditorEvent::SetTitle("Pasta".into()))
         .await?;
-    let before = f.split().recipes;
+    let before = f.split()?.recipes;
 
     let command = f.split_event(SplitAppEvent::SelectSection(AppSection::Ingredients));
     f.render(command).await?;
     let command = f.split_event(SplitAppEvent::SelectSection(AppSection::Recipes));
     f.render(command).await?;
-    assert_eq!(f.split().recipes, before);
+    assert_eq!(f.split()?.recipes, before);
     Ok(())
 }
 
@@ -246,7 +246,7 @@ async fn shutdown_keeps_an_accepted_recipe_save() -> anyhow::Result<()> {
     f.render(command).await?;
     f.recipe_editor(RecipeEditorEvent::SetTitle("Pasta".into()))
         .await?;
-    let scope = f.split().recipes.pane.scope;
+    let scope = f.split()?.recipes.pane.scope;
     let save = f.recipes(RecipeSectionEvent::Editor(Scoped::new(
         scope,
         RecipeEditorEvent::Save,
@@ -280,7 +280,7 @@ async fn shutdown_keeps_an_accepted_recipe_save() -> anyhow::Result<()> {
     f.drive_initialization(command).await?;
     // The saved recipe's read view opens (REC-03).
     assert_eq!(
-        f.split().recipes.pane.value,
+        f.split()?.recipes.pane.value,
         RecipePaneView::Detail(RecipeDetailView {
             id: pasta().id,
             status: RecipeDetailStatus::Ready {
@@ -289,7 +289,7 @@ async fn shutdown_keeps_an_accepted_recipe_save() -> anyhow::Result<()> {
         })
     );
     assert!(matches!(
-        f.split().recipes.list.status,
+        f.split()?.recipes.list.status,
         RecipeListStatus::Ready { ref rows } if rows.len() == 2
     ));
     Ok(())
@@ -311,7 +311,7 @@ async fn an_event_for_the_other_layout_is_ignored() -> anyhow::Result<()> {
     let mut split = Fixture::with(AppLayout::Split);
     split.initialize().await?;
     let before = split.app.view();
-    let scope = split.split().ingredients.list.scope;
+    let scope = split.split()?.ingredients.list.scope;
     empty(split.app.update(Message::Event(AppEvent::Stack(
         IngredientCatalogEvent::List(Scoped::new(scope, IngredientListEvent::CreateRequested)),
     ))))
@@ -336,16 +336,16 @@ async fn a_failed_recipe_load_can_be_retried_through_the_app() -> anyhow::Result
     f.recipes = Err(RecipeLoadError::Storage);
     f.initialize().await?;
     assert_eq!(
-        f.split().recipes.list.status,
+        f.split()?.recipes.list.status,
         RecipeListStatus::Failed(RecipeLoadError::Storage)
     );
 
     f.recipes = Ok(vec![shakshuka()]);
     let command = f.recipes(RecipeSectionEvent::List(RecipeListEvent::Refresh));
-    assert_eq!(f.split().recipes.list.status, RecipeListStatus::Loading);
+    assert_eq!(f.split()?.recipes.list.status, RecipeListStatus::Loading);
     f.drive_initialization(command).await?;
     assert!(matches!(
-        f.split().recipes.list.status,
+        f.split()?.recipes.list.status,
         RecipeListStatus::Ready { ref rows } if rows.len() == 1
     ));
     Ok(())
@@ -383,11 +383,12 @@ fn pasta() -> Recipe {
     }
 }
 
-fn first_ingredient(list: &IngredientListView) -> IngredientId {
+fn first_ingredient(list: &IngredientListView) -> anyhow::Result<IngredientId> {
     let IngredientListStatus::Ready { rows, .. } = &list.status else {
-        panic!("expected a ready list");
+        anyhow::bail!("expected a ready list, got {:?}", list.status);
     };
-    rows[0].id
+    let first = rows.first().context("the list has no rows")?;
+    Ok(first.id)
 }
 
 async fn empty(command: Command<AppOutcome>) {
@@ -415,18 +416,20 @@ impl Fixture {
         }
     }
 
-    fn stack(&self) -> IngredientCatalogView {
-        let AppView::Stack(catalog) = self.app.view() else {
-            panic!("expected the stack layout");
+    fn stack(&self) -> anyhow::Result<IngredientCatalogView> {
+        let view = self.app.view();
+        let AppView::Stack(catalog) = view else {
+            anyhow::bail!("expected the stack layout, got {view:?}");
         };
-        catalog
+        Ok(catalog)
     }
 
-    fn split(&self) -> SplitAppView {
-        let AppView::Split(app) = self.app.view() else {
-            panic!("expected the split layout");
+    fn split(&self) -> anyhow::Result<SplitAppView> {
+        let view = self.app.view();
+        let AppView::Split(app) = view else {
+            anyhow::bail!("expected the split layout, got {view:?}");
         };
-        app
+        Ok(app)
     }
 
     fn split_event(&mut self, event: SplitAppEvent) -> Command<AppOutcome> {
@@ -439,7 +442,7 @@ impl Fixture {
 
     /// Sends an editor event with the pane's scope and runs its render.
     async fn recipe_editor(&mut self, event: RecipeEditorEvent) -> anyhow::Result<()> {
-        let scope = self.split().recipes.pane.scope;
+        let scope = self.split()?.recipes.pane.scope;
         let command = self.recipes(RecipeSectionEvent::Editor(Scoped::new(scope, event)));
         self.render(command).await
     }
@@ -465,14 +468,14 @@ impl Fixture {
         self.app.update(Message::Event(AppEvent::Stack(event)))
     }
 
-    fn list(&mut self, event: IngredientListEvent) -> Command<AppOutcome> {
-        let scope = self.stack().scope;
-        self.stack_event(IngredientCatalogEvent::List(Scoped::new(scope, event)))
+    fn list(&mut self, event: IngredientListEvent) -> anyhow::Result<Command<AppOutcome>> {
+        let scope = self.stack()?.scope;
+        Ok(self.stack_event(IngredientCatalogEvent::List(Scoped::new(scope, event))))
     }
 
-    fn form(&mut self, event: IngredientFormEvent) -> Command<AppOutcome> {
-        let scope = self.stack().scope;
-        self.stack_event(IngredientCatalogEvent::Form(Scoped::new(scope, event)))
+    fn form(&mut self, event: IngredientFormEvent) -> anyhow::Result<Command<AppOutcome>> {
+        let scope = self.stack()?.scope;
+        Ok(self.stack_event(IngredientCatalogEvent::Form(Scoped::new(scope, event))))
     }
 
     async fn render(&mut self, command: Command<AppOutcome>) -> anyhow::Result<()> {
@@ -494,7 +497,7 @@ impl Fixture {
     }
 
     async fn create(&mut self) -> anyhow::Result<()> {
-        let command = self.list(IngredientListEvent::CreateRequested);
+        let command = self.list(IngredientListEvent::CreateRequested)?;
         let outcome = command
             .into_stream()
             .next()

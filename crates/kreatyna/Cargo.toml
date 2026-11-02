@@ -11,7 +11,7 @@ futures = "0.3.34"
 rust_decimal = { version = "1.43.0", default-features = false, features = ["std"] }
 unicode-casefold = "0.2.0"
 uuid = { version = "1.26.1", features = ["v4"] }
-nutype = "0.8.0"
+nutype = { version = "0.8.0", features = ["rust_decimal"] }
 
 [dev-dependencies]
 anyhow = "1.0.104"

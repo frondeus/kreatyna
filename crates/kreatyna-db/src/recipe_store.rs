@@ -63,7 +63,7 @@ fn create_in_transaction(
     connection: &mut SqliteConnection,
     recipe: NewRecipe,
 ) -> Result<Recipe, StoreFailure> {
-    let row = NewRecipeRow::new(RecipeId::new(), &recipe.title);
+    let row = NewRecipeRow::new(RecipeId::generate(), &recipe.title);
     let taken = recipes::table
         .filter(recipes::title_key.eq(&row.title_key))
         .select(recipes::local_id)

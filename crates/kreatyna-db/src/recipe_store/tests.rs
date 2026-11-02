@@ -144,7 +144,7 @@ async fn a_taken_title_is_refused_and_changes_nothing(title: &str) -> anyhow::Re
 #[test]
 fn a_title_key_caught_by_the_unique_index_is_a_duplicate() -> anyhow::Result<()> {
     let mut db = migrated_connection()?;
-    let row = NewRecipeRow::new(RecipeId::new(), &RecipeTitle::try_new("shakshuka")?);
+    let row = NewRecipeRow::new(RecipeId::generate(), &RecipeTitle::try_new("shakshuka")?);
     assert!(matches!(
         insert(&mut db, &row),
         Err(StoreFailure::DuplicateTitle)
@@ -168,7 +168,7 @@ async fn get_of_an_unknown_id_is_none() -> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
     execute(&mut db, TWO_RECIPES).await?;
     assert_eq!(
-        RecipeStoreMut::get(&mut db, RecipeId::new()).await,
+        RecipeStoreMut::get(&mut db, RecipeId::generate()).await,
         Ok(None)
     );
     Ok(())

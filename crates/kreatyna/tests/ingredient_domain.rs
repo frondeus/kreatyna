@@ -10,8 +10,8 @@ use uuid::{Variant, Version};
 
 #[test]
 fn ingredient_identity_is_stable_and_explicit() {
-    let first = IngredientId::new();
-    let second = IngredientId::new();
+    let first = IngredientId::generate();
+    let second = IngredientId::generate();
     assert_ne!(first, second);
     let uuid: uuid::Uuid = first.into();
     assert_eq!(uuid.get_version(), Some(Version::Random));
@@ -48,7 +48,7 @@ fn quantities_preserve_decimal_value_and_scale(text: &str) {
 fn ingredient_keeps_unknown_and_known_zero_distinct_and_units_ordered() {
     let zero = Decimal::ZERO;
     let item = Ingredient {
-        id: IngredientId::new(),
+        id: IngredientId::generate(),
         name: "Canned tomatoes".into(),
         notes: None,
         nutrition: Nutrition {

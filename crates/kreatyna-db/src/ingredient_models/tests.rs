@@ -92,7 +92,7 @@ fn counter_database_upgrades_and_keeps_ingredients() {
             .unwrap();
         let data = write_data(NutritionBasis::Per100Grams, "1.2300", "2");
         diesel::insert_into(i::table)
-            .values(NewIngredientRow::from_write(IngredientId::new(), &data).unwrap())
+            .values(NewIngredientRow::from_write(IngredientId::generate(), &data).unwrap())
             .execute(&mut db)
             .unwrap();
 
@@ -118,7 +118,7 @@ fn counter_database_upgrades_and_keeps_ingredients() {
 #[test_case(NutritionBasis::Per100Millilitres, "12.345678", "2.500"; "volume basis and fractions")]
 fn typed_rows_round_trip_domain_and_order(basis: NutritionBasis, calories: &str, grams: &str) {
     let mut db = connection();
-    let id = IngredientId::new();
+    let id = IngredientId::generate();
     let data = write_data(basis, calories, grams);
     let row = NewIngredientRow::from_write(id, &data).unwrap();
     assert_eq!(row.name, "Canned tomatoes");
@@ -197,7 +197,7 @@ fn typed_rows_round_trip_domain_and_order(basis: NutritionBasis, calories: &str,
 #[test]
 fn full_decimal_range_and_nullable_values_round_trip() {
     let mut db = connection();
-    let id = IngredientId::new();
+    let id = IngredientId::generate();
     let row = NewIngredientRow {
         remote_id: id.into(),
         name: "Garlic".into(),
@@ -241,7 +241,7 @@ fn full_decimal_range_and_nullable_values_round_trip() {
 #[test_case("bad", true; "malformed measurement")]
 fn stored_reference_measurements_are_checked(raw: &str, rejects_during_read: bool) {
     let mut db = connection();
-    let parent = insert_parent(&mut db, IngredientId::new(), "Garlic");
+    let parent = insert_parent(&mut db, IngredientId::generate(), "Garlic");
     diesel::insert_into(u::table)
         .values((
             u::ingredient_local_id.eq(parent),
@@ -296,7 +296,7 @@ fn invalid_basis_is_rejected(value: i32) {
         Err(ModelError::Basis(value))
     );
     let mut db = connection();
-    let id = IngredientId::new().to_string();
+    let id = IngredientId::generate().to_string();
     assert!(
         diesel::insert_into(i::table)
             .values((
@@ -353,7 +353,7 @@ fn invalid_unit_values_are_rejected_by_row_mapping() {
 #[test]
 fn constraints_and_cascade_work_in_sqlite() {
     let mut db = connection();
-    let id = IngredientId::new();
+    let id = IngredientId::generate();
     let parent = insert_parent(&mut db, id, "Garlic");
     let duplicate_id =
         NewIngredientRow::from_write(id, &write_data(NutritionBasis::Per100Grams, "0", "1"))
@@ -364,7 +364,7 @@ fn constraints_and_cascade_work_in_sqlite() {
             .execute(&mut db)
             .is_err()
     );
-    let other_id = IngredientId::new();
+    let other_id = IngredientId::generate();
     let mut duplicate_key =
         NewIngredientRow::from_write(other_id, &write_data(NutritionBasis::Per100Grams, "0", "1"))
             .unwrap();

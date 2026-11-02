@@ -928,6 +928,7 @@ dependencies = [
  "kinded",
  "proc-macro2",
  "quote",
+ "rust_decimal",
  "rustc_version",
  "syn 2.0.119",
  "urlencoding",

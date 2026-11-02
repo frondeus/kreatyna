@@ -1,80 +1,51 @@
-use std::{fmt, str::FromStr};
-
-use rust_decimal::Decimal;
+use nutype::nutype;
 use unicode_casefold::UnicodeCaseFold;
 use uuid::Uuid;
 
-/// Stable ingredient identity. Creation is explicit and does not use a nil sentinel.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+/// Stable ingredient identity. Creation is explicit and does not use a nil sentinel:
+/// `generate` makes a version 4 identifier, and `new` wraps a known one.
+#[nutype(derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Display, FromStr, From, Into
+))]
 pub struct IngredientId(Uuid);
 
-#[allow(clippy::new_without_default)] // Identity generation must be an explicit action.
 impl IngredientId {
     /// Generate a new version 4 identifier.
-    pub fn new() -> Self {
-        Self(Uuid::new_v4())
-    }
-}
-
-impl From<Uuid> for IngredientId {
-    fn from(value: Uuid) -> Self {
-        Self(value)
-    }
-}
-
-impl From<IngredientId> for Uuid {
-    fn from(value: IngredientId) -> Self {
-        value.0
-    }
-}
-
-impl FromStr for IngredientId {
-    type Err = uuid::Error;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        value.parse::<Uuid>().map(Self::from)
-    }
-}
-
-impl fmt::Display for IngredientId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
+    pub fn generate() -> Self {
+        Self::new(Uuid::new_v4())
     }
 }
 
 macro_rules! quantity {
-    ($name:ident, $unit:literal, $example:literal) => {
-        #[doc = concat!("Exact quantity measured in ", $unit, ". Semantic validation belongs to the draft layer.\n", $example)]
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    ($(#[$doc:meta])* $name:ident) => {
+        $(#[$doc])*
+        #[nutype(derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Display, From, Into))]
         pub struct $name(Decimal);
-
-        impl From<Decimal> for $name {
-            fn from(value: Decimal) -> Self {
-                Self(value)
-            }
-        }
-
-        impl From<$name> for Decimal {
-            fn from(value: $name) -> Self {
-                value.0
-            }
-        }
-
-        impl fmt::Display for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.0.fmt(f)
-            }
-        }
     };
 }
 
 quantity!(
-    Grams,
-    "grams",
-    "\n```compile_fail\nuse kreatyna::ingredients::{Grams, Millilitres};\nuse rust_decimal::Decimal;\nlet mass: Grams = Decimal::ONE.into();\nlet volume: Millilitres = mass;\n```"
+    /// Exact quantity in grams. The draft layer checks the sign: nutrition
+    /// accepts zero, and a reference unit needs more than zero.
+    ///
+    /// Grams and millilitres do not mix:
+    ///
+    /// ```compile_fail
+    /// use kreatyna::ingredients::{Grams, Millilitres};
+    /// use rust_decimal::Decimal;
+    /// let mass = Grams::new(Decimal::ONE);
+    /// let volume: Millilitres = mass;
+    /// ```
+    Grams
 );
-quantity!(Millilitres, "millilitres", "");
-quantity!(Kilocalories, "kilocalories", "");
+quantity!(
+    /// Exact quantity in millilitres. The draft layer checks the sign.
+    Millilitres
+);
+quantity!(
+    /// Exact energy in kilocalories. The draft layer checks the sign.
+    Kilocalories
+);
 
 /// Interpretation of nutrition values. Switching basis does not convert them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

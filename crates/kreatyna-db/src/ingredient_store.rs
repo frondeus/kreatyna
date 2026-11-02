@@ -111,7 +111,7 @@ fn save_in_transaction(
     write: IngredientWrite,
 ) -> Result<Ingredient, StoreFailure> {
     let (id, data, existing) = match write {
-        IngredientWrite::Create { data } => (IngredientId::new(), data, None),
+        IngredientWrite::Create { data } => (IngredientId::generate(), data, None),
         IngredientWrite::Update { id, data } => {
             let local_id = ingredients::table
                 .filter(ingredients::remote_id.eq(RemoteIngredientId::from(id)))

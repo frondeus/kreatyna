@@ -33,8 +33,10 @@ compiler then checks the rule, and Swift's exhaustive `switch` checks it again.
    `#[nutype(sanitize(trim), validate(not_empty), derive(...))]` gives
    `try_new` and a typed error such as `RecipeTitleError::NotEmptyViolated`.
    Rust code and the FFI use that error; do not wrap it in a second enum
-   (the user, REC-02/Q2, 2026-11-01). Bead `vibetyna-nci` moves the older
-   newtypes (`IngredientId`, `RecipeId`, `Grams`, …) to nutype.
+   (the user, REC-02/Q2, 2026-11-01). A newtype without a rule uses nutype
+   too, for one pattern: `IngredientId`, `RecipeId`, `Grams`, `Millilitres`
+   and `Kilocalories` derive `From` and `Into`. An id type adds a
+   `generate()` that makes a new version 4 id, because nutype owns `new`.
 7. **Match exhaustively.** Avoid `_ =>` over your own enums, so a new variant
    makes the compiler list every place to update. A catch-all is fine for
    "ignore every other event", and its comment says so.

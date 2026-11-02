@@ -355,7 +355,7 @@ async fn a_failed_recipe_load_can_be_retried_through_the_app() -> anyhow::Result
 
 fn garlic() -> Ingredient {
     Ingredient {
-        id: IngredientId::new(),
+        id: IngredientId::generate(),
         name: "Garlic".into(),
         notes: None,
         nutrition: Nutrition {

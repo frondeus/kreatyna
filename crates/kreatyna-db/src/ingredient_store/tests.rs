@@ -158,7 +158,7 @@ fn missing_update_does_not_insert() {
         let mut db = SqliteDatabase::new(":memory:").await.unwrap();
         let mut edit = draft("Absent", NutritionBasis::Per100Grams);
         edit.mode = DraftMode::Edit {
-            id: IngredientId::new(),
+            id: IngredientId::generate(),
         };
         assert_eq!(
             db.save(write(&edit)).await,

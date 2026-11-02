@@ -105,7 +105,7 @@ fn split_event_conversion_preserves_the_scopes() {
 
 #[test]
 fn split_view_conversion_keeps_the_selection_and_the_detail() {
-    let id = ingredient::IngredientId::new();
+    let id = ingredient::IngredientId::generate();
     let garlic = ingredient::Ingredient {
         id,
         name: "Garlic".into(),
@@ -211,7 +211,7 @@ fn split_view_conversion_carries_the_create_form_and_the_draft_row() {
 
 #[test]
 fn split_view_conversion_carries_the_edit_form_and_its_saved_name() {
-    let id = ingredient::IngredientId::new();
+    let id = ingredient::IngredientId::generate();
     let mut draft = ingredient::IngredientDraft::new(ingredient::NutritionBasis::Per100Grams);
     draft.set_field(
         ingredient::IngredientDraftField::Name,
@@ -321,7 +321,7 @@ fn recipe_section_events_keep_their_pane_scope() {
 
 #[test]
 fn a_recipe_row_click_carries_the_recipe_id() {
-    let id = kreatyna::recipes::RecipeId::new();
+    let id = kreatyna::recipes::RecipeId::generate();
     assert_eq!(
         kreatyna::recipes::RecipeSectionEvent::from(RecipeSectionEvent::Select { id }),
         kreatyna::recipes::RecipeSectionEvent::Select(id)
@@ -330,7 +330,7 @@ fn a_recipe_row_click_carries_the_recipe_id() {
 
 #[test]
 fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
-    let id = kreatyna::recipes::RecipeId::new();
+    let id = kreatyna::recipes::RecipeId::generate();
     assert_eq!(support::lift_recipe_id(id.to_string())?, id);
     Ok(())
 }
@@ -364,7 +364,7 @@ fn a_read_view_pane_keeps_the_id_and_the_status(
     status: kreatyna::recipes::RecipeDetailStatus,
     expected: RecipeDetailStatus,
 ) {
-    let id = kreatyna::recipes::RecipeId::new();
+    let id = kreatyna::recipes::RecipeId::generate();
     let pane = kreatyna::recipes::RecipePaneView::Detail(kreatyna::recipes::RecipeDetailView {
         id,
         status,
@@ -416,7 +416,7 @@ fn split_app_view_conversion_keeps_the_section_and_the_recipe_rows() -> anyhow::
     let core::AppView::Split(mut view) = app.view() else {
         anyhow::bail!("expected the split layout")
     };
-    let id = kreatyna::recipes::RecipeId::new();
+    let id = kreatyna::recipes::RecipeId::generate();
     view.recipes.list.status = kreatyna::recipes::RecipeListStatus::Ready {
         rows: vec![kreatyna::recipes::RecipeListRow {
             id,
@@ -475,7 +475,7 @@ fn stack(view: RunningAppView) -> IngredientCatalogView {
 
 #[test]
 fn list_events_carry_the_ingredient_id() {
-    let id = ingredient::IngredientId::new();
+    let id = ingredient::IngredientId::generate();
     assert_eq!(
         ingredient::IngredientListEvent::from(IngredientListEvent::Select { id }),
         ingredient::IngredientListEvent::Select(id)
@@ -488,7 +488,7 @@ fn list_events_carry_the_ingredient_id() {
 
 #[test]
 fn an_ingredient_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
-    let id = ingredient::IngredientId::new();
+    let id = ingredient::IngredientId::generate();
     assert_eq!(support::lift_ingredient_id(id.to_string())?, id);
     Ok(())
 }
@@ -527,7 +527,7 @@ fn index_conversion_is_checked_but_out_of_bounds_values_remain_events() {
 
 #[test]
 fn list_statuses_and_typed_errors_are_preserved() {
-    let id = ingredient::IngredientId::new();
+    let id = ingredient::IngredientId::generate();
     for (source, expected) in [
         (
             ingredient::IngredientListStatus::Loading,
@@ -664,7 +664,7 @@ fn every_form_status_is_representable() {
 
 #[test]
 fn draft_conversion_preserves_raw_invalid_text_and_validation_indices() {
-    let id = ingredient::IngredientId::new();
+    let id = ingredient::IngredientId::generate();
     let source = ingredient::IngredientFormView {
         draft: ingredient::IngredientDraft {
             mode: ingredient::DraftMode::Edit { id },
@@ -790,7 +790,7 @@ fn every_catalog_screen_and_both_edit_origins_are_representable() {
 
 fn sample_ingredient() -> ingredient::Ingredient {
     ingredient::Ingredient {
-        id: ingredient::IngredientId::new(),
+        id: ingredient::IngredientId::generate(),
         name: "Garlic".into(),
         notes: Some("Fresh".into()),
         nutrition: ingredient::Nutrition {

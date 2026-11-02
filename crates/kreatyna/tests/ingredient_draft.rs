@@ -201,7 +201,7 @@ fn creation_trims_only_surrounding_whitespace(notes: &str, expected: Option<&str
 #[test_case(NutritionBasis::Per100Millilitres; "volume basis")]
 fn edit_round_trip_preserves_identity_and_exact_fields(basis: NutritionBasis) {
     let item = Ingredient {
-        id: IngredientId::new(),
+        id: IngredientId::generate(),
         name: "Garlic".into(),
         notes: Some("Fresh".into()),
         nutrition: Nutrition {
@@ -245,7 +245,7 @@ fn edit_preserves_excess_precision_until_corrected() {
     let mut nutrition = data(&draft).nutrition().clone();
     nutrition.calories = Some(Decimal::from_str_exact("1.0000000").unwrap().into());
     let item = Ingredient {
-        id: IngredientId::new(),
+        id: IngredientId::generate(),
         name: "Garlic".into(),
         notes: None,
         nutrition,

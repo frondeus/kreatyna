@@ -89,6 +89,7 @@ impl From<core::RecipeListView> for RecipeListView {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum RecipeSaveError {
     DuplicateTitle,
+    NotFound,
     Storage,
     Transport,
 }
@@ -97,6 +98,7 @@ impl From<core::capabilities::RecipeSaveError> for RecipeSaveError {
     fn from(value: core::capabilities::RecipeSaveError) -> Self {
         match value {
             core::capabilities::RecipeSaveError::DuplicateTitle => Self::DuplicateTitle,
+            core::capabilities::RecipeSaveError::NotFound => Self::NotFound,
             core::capabilities::RecipeSaveError::Storage => Self::Storage,
             core::capabilities::RecipeSaveError::Transport => Self::Transport,
         }

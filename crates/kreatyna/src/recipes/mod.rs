@@ -17,7 +17,9 @@ pub use editor::{
 pub use list::{
     RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListRow, RecipeListStatus, RecipeListView,
 };
-pub use model::{NewRecipe, Recipe, RecipeId, RecipeIdParseError, RecipeTitle, RecipeTitleError};
+pub use model::{
+    NewRecipe, Recipe, RecipeId, RecipeIdParseError, RecipeTitle, RecipeTitleError, RecipeUpdate,
+};
 pub use section::{
     RecipePaneOutcome, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
     RecipeSectionView,

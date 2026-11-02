@@ -497,6 +497,7 @@ async fn answer_store(
             effect.resolve_get(|_| async { found }).await?
         }
         RecipeStoreRequest::Create { .. } => anyhow::bail!("an unexpected create"),
+        RecipeStoreRequest::Update { .. } => anyhow::bail!("an unexpected update"),
     }
     Ok(())
 }

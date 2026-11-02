@@ -7,7 +7,7 @@ use diesel::{
 use kreatyna::{
     ingredients::name_key,
     recipes::{
-        NewRecipe, Recipe, RecipeId,
+        NewRecipe, Recipe, RecipeId, RecipeUpdate,
         capabilities::{RecipeLoadError, RecipeSaveError, RecipeStoreMut},
     },
 };
@@ -26,6 +26,8 @@ enum StoreFailure {
     InvalidTitleKey,
     #[error("recipe title already exists")]
     DuplicateTitle,
+    #[error("recipe to update was not found")]
+    NotFound,
 }
 
 fn records(connection: &mut SqliteConnection) -> Result<Vec<Recipe>, StoreFailure> {
@@ -76,13 +78,54 @@ fn create_in_transaction(
     Ok(row.into_domain())
 }
 
+/// Runs inside an immediate transaction, like `create_in_transaction`. The
+/// recipe's own title key is not a conflict, so "Shakshuka" can become
+/// "shakshuka".
+fn update_in_transaction(
+    connection: &mut SqliteConnection,
+    id: RecipeId,
+    recipe: RecipeUpdate,
+) -> Result<Recipe, StoreFailure> {
+    let row = NewRecipeRow::new(id, &recipe.title);
+    let Some(local_id) = recipes::table
+        .filter(recipes::remote_id.eq(&row.remote_id))
+        .select(recipes::local_id)
+        .first::<i64>(connection)
+        .optional()?
+    else {
+        return Err(StoreFailure::NotFound);
+    };
+    let taken = recipes::table
+        .filter(recipes::title_key.eq(&row.title_key))
+        .filter(recipes::local_id.ne(local_id))
+        .select(recipes::local_id)
+        .first::<i64>(connection)
+        .optional()?;
+    if taken.is_some() {
+        return Err(StoreFailure::DuplicateTitle);
+    }
+    let write = diesel::update(recipes::table.filter(recipes::local_id.eq(local_id)))
+        .set((
+            recipes::title.eq(&row.title),
+            recipes::title_key.eq(&row.title_key),
+        ))
+        .execute(connection);
+    duplicate_title(write)?;
+    Ok(row.into_domain())
+}
+
 /// A taken title key fails with `DuplicateTitle`, also when the unique index
 /// finds it and not the check before.
 fn insert(connection: &mut SqliteConnection, row: &NewRecipeRow) -> Result<(), StoreFailure> {
-    match diesel::insert_into(recipes::table)
+    let write = diesel::insert_into(recipes::table)
         .values(row)
-        .execute(connection)
-    {
+        .execute(connection);
+    duplicate_title(write)
+}
+
+/// Maps a unique-index failure on `title_key` to `DuplicateTitle`.
+fn duplicate_title(write: Result<usize, DieselError>) -> Result<(), StoreFailure> {
+    match write {
         Ok(_) => Ok(()),
         Err(DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, info))
             if info.message().contains("recipes.title_key") =>
@@ -142,6 +185,31 @@ impl RecipeStoreMut for SqliteDatabase {
             Ok(Err(StoreFailure::DuplicateTitle)) => Err(RecipeSaveError::DuplicateTitle),
             error => {
                 tracing::error!(?error, "Recipe create failed");
+                Err(RecipeSaveError::Storage)
+            }
+        }
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn update(
+        &mut self,
+        id: RecipeId,
+        recipe: RecipeUpdate,
+    ) -> Result<Recipe, RecipeSaveError> {
+        let result = self
+            .connection
+            .spawn_blocking(move |connection| {
+                Ok(connection.immediate_transaction(|connection| {
+                    update_in_transaction(connection, id, recipe)
+                }))
+            })
+            .await;
+        match result {
+            Ok(Ok(recipe)) => Ok(recipe),
+            Ok(Err(StoreFailure::DuplicateTitle)) => Err(RecipeSaveError::DuplicateTitle),
+            Ok(Err(StoreFailure::NotFound)) => Err(RecipeSaveError::NotFound),
+            error => {
+                tracing::error!(?error, "Recipe update failed");
                 Err(RecipeSaveError::Storage)
             }
         }

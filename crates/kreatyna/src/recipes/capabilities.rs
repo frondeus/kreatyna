@@ -6,7 +6,7 @@ use futures::{
 };
 use krucyfiks::effects::{Envelope, TransportError};
 
-use super::{NewRecipe, Recipe, RecipeId};
+use super::{NewRecipe, Recipe, RecipeId, RecipeUpdate};
 use crate::{
     CLIENT_CAPABILITY,
     capabilities::{Render, RenderClient, RenderRequest},
@@ -30,6 +30,9 @@ impl From<TransportError> for RecipeLoadError {
 pub enum RecipeSaveError {
     #[error("Recipe title already exists")]
     DuplicateTitle,
+    /// Only `update`: no recipe has this id any more.
+    #[error("Recipe to update was not found")]
+    NotFound,
     #[error("Recipe storage failed")]
     Storage,
     #[error("Recipe store transport failed")]
@@ -54,6 +57,10 @@ pub trait RecipeStore: Send + Sync {
     /// Saves a new recipe with a new id. Fails with `DuplicateTitle` when
     /// another recipe has the same title key.
     async fn create(&self, recipe: NewRecipe) -> Result<Recipe, RecipeSaveError>;
+    /// Saves new data for the recipe with this id. Fails with `NotFound` when
+    /// no recipe has the id (it never inserts one), and with `DuplicateTitle`
+    /// when another recipe has the same title key.
+    async fn update(&self, id: RecipeId, recipe: RecipeUpdate) -> Result<Recipe, RecipeSaveError>;
 }
 
 #[derive(Clone)]

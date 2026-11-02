@@ -12,6 +12,19 @@ accept the plan.
 
 ## Decisions
 
+### REC-04/Q1 — The type that `update` writes
+
+*Context:* the review of change 2 asked whether create and update should share
+one type, and whether update could be a patch with every field optional. A
+patch needs the editor to compute the changed fields and the store to merge
+them, and REC-22 checks the whole recipe. Lines and steps (REC-07, REC-14) are
+collections, so a real patch needs add, remove and move operations.
+
+*Decision:* **two full types** (not the recommendation, which was one shared
+type). `create` takes `NewRecipe`, and `update` takes `RecipeUpdate`. Both
+carry every field of the recipe; they have the same fields for now, and they
+can differ later without a rename. Update is not a patch.
+
 ### Decided in the plan (each one follows an earlier decision)
 
 | Rule | Follows from |
@@ -85,7 +98,7 @@ demo shows the result.
 | File | Change |
 |---|---|
 | `src/recipe_store.rs` | `update(id, data)` in an immediate transaction. No row with this `remote_id` gives `NotFound`, and nothing is inserted. A title key that another recipe has gives `DuplicateTitle`. The recipe's own key is not a conflict, so "Shakshuka" can become "shakshuka". The unique index on `title_key` still guards the write. |
-| `src/recipe_models.rs` | `NewRecipeRow::new` takes `&RecipeWriteData`'s title, as today. No migration. |
+| `src/recipe_models.rs` | No change: `NewRecipeRow::new(id, &title)` builds the row for both writes. No migration. |
 | `src/recipe_store/tests.rs` | See Tests. |
 
 *sketch:*
@@ -94,7 +107,7 @@ demo shows the result.
 fn update_in_transaction(
     connection: &mut SqliteConnection,
     id: RecipeId,
-    data: RecipeWriteData,
+    data: RecipeUpdate,
 ) -> Result<Recipe, StoreFailure> {
     let row = NewRecipeRow::new(id, &data.title);
     let Some(local_id) = local_id(connection, id)? else {
@@ -116,13 +129,14 @@ fn update_in_transaction(
 
 ### rust (`crates/kreatyna/src/recipes/`)
 
-**`model.rs`** — `NewRecipe` becomes `RecipeWriteData`, because update
-writes it too (*sketch*):
+**`model.rs`** — a new type for update, beside `NewRecipe` (REC-04/Q1,
+*real*):
 
 ```rust
-/// What `RecipeStore::create` and `RecipeStore::update` write. REC-07 and
-/// REC-14 add lines and steps.
-pub struct RecipeWriteData {
+/// What `RecipeStore::update` writes: every field of the recipe, not a
+/// patch. It has the same fields as `NewRecipe` for now, as its own type so
+/// the two can differ later (REC-04/Q1).
+pub struct RecipeUpdate {
     pub title: RecipeTitle,
 }
 ```
@@ -143,7 +157,7 @@ pub trait RecipeStore: Send + Sync {
     /// Saves new data for the recipe with this id. Fails with `NotFound` when
     /// no recipe has the id (never an insert), and with `DuplicateTitle` when
     /// another recipe has the same title key.
-    async fn update(&self, id: RecipeId, data: RecipeWriteData) -> Result<Recipe, RecipeSaveError>;
+    async fn update(&self, id: RecipeId, recipe: RecipeUpdate) -> Result<Recipe, RecipeSaveError>;
 }
 ```
 
@@ -198,7 +212,8 @@ impl RecipeEditor {
 }
 ```
 
-Save calls `store.create(data)` for `New` and `store.update(id, data)` for
+Save calls `store.create(NewRecipe { title })` for `New` and
+`store.update(id, RecipeUpdate { title })` for
 `Saved`. Everything else in the editor stays: the title rule, the problems,
 "Discard changes?" and the outcomes. `RecipeEditorView` does not change.
 
@@ -248,12 +263,13 @@ The Create rows of the REC-03 table do not change.
 
 References to update:
 
-- `rg -l 'NewRecipe\b'`: `crates/kreatyna/src/recipes/{model,mod,capabilities,editor,section}.rs`,
-  `crates/kreatyna/tests/{recipe_section,app}.rs`,
+- `RecipeUpdate` (new): `crates/kreatyna/src/recipes/{model,mod,capabilities,editor}.rs`,
+  `crates/kreatyna-db/src/{recipe_store,recipe_store/tests}.rs`.
+- `rg -l 'RecipeSaveError'` (the new `NotFound`):
+  `crates/kreatyna/src/recipes/{capabilities,editor}.rs`,
   `crates/kreatyna-db/src/{recipe_store,recipe_store/tests}.rs`,
-  `crates/kreatyna-ffi/src/{app_types/recipes,app_runtime_tests}.rs`.
-- `rg -l 'RecipeSaveError'` (the new `NotFound`): the files above, plus
-  `crates/kreatyna/tests/recipe_editor.rs`, `crates/kreatyna-ffi/src/app_types/tests.rs`,
+  `crates/kreatyna-ffi/src/{app_types/recipes,app_runtime_tests}.rs`,
+  `crates/kreatyna/tests/{recipe_section,recipe_editor}.rs`, `crates/kreatyna-ffi/src/app_types/tests.rs`,
   `apple/Kreatyna/Shared/ErrorText.swift`.
 - `rg -l 'RecipePaneView|RecipeDetailEvent|RecipeDetailOutcome'` (the new
   cases): `crates/kreatyna/src/recipes/{detail,section,mod}.rs`,
@@ -325,7 +341,7 @@ This plan, the REC-04 card on `epic.html`, and the beads.
 
 ### Change 2 — REC-04: update a recipe in the store (about 400 lines, review)
 
-1. Rename `NewRecipe` to `RecipeWriteData`.
+1. Add `RecipeUpdate` (REC-04/Q1).
 2. Add `RecipeSaveError::NotFound` and `RecipeStore::update`.
 3. Add `update` to the SQLite store, with its tests.
 4. Map `NotFound` in the FFI error and in `ErrorText.swift`, so the build stays green.

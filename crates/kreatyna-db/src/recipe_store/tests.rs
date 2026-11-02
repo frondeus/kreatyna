@@ -3,7 +3,7 @@ use diesel::{Connection, RunQueryDsl, SqliteConnection, connection::SimpleConnec
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use kreatyna::{
     ingredients::capabilities::IngredientStoreMut,
-    recipes::{NewRecipe, Recipe, RecipeId, RecipeTitle},
+    recipes::{NewRecipe, Recipe, RecipeId, RecipeTitle, RecipeUpdate},
 };
 use test_case::test_case;
 
@@ -75,6 +75,38 @@ async fn get_finds_the_recipe_by_id_among_others() -> anyhow::Result<()> {
         RecipeStoreMut::get(&mut db, PASTA.parse()?).await,
         Ok(Some(recipe(PASTA, "Roasted tomato pasta")?))
     );
+    Ok(())
+}
+
+#[tokio::test]
+async fn an_update_renames_the_recipe_and_keeps_its_id() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    execute(&mut db, TWO_RECIPES).await?;
+    let updated =
+        RecipeStoreMut::update(&mut db, SHAKSHUKA.parse()?, update(" Apple shakshuka ")?).await?;
+    assert_eq!(updated, recipe(SHAKSHUKA, "Apple shakshuka")?);
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, SHAKSHUKA.parse()?).await,
+        Ok(Some(updated.clone()))
+    );
+    // The new title key sorts it first.
+    assert_eq!(
+        RecipeStoreMut::list(&mut db).await,
+        Ok(vec![updated, recipe(PASTA, "Roasted tomato pasta")?])
+    );
+    Ok(())
+}
+
+#[test_case("Shakshuka"; "same title")]
+#[test_case("SHAKSHUKA"; "other case")]
+#[test_case("shakshuka "; "same title key")]
+#[tokio::test]
+async fn an_update_may_keep_the_recipes_own_title_key(title: &str) -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    execute(&mut db, TWO_RECIPES).await?;
+    let updated = RecipeStoreMut::update(&mut db, SHAKSHUKA.parse()?, update(title)?).await?;
+    assert_eq!(updated, recipe(SHAKSHUKA, title.trim())?);
+    assert_eq!(RecipeStoreMut::list(&mut db).await?.len(), 2);
     Ok(())
 }
 
@@ -163,6 +195,42 @@ fn a_taken_id_is_a_storage_failure_not_a_duplicate() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test_case("Roasted tomato pasta"; "same title")]
+#[test_case("roasted TOMATO pasta "; "same title key")]
+#[tokio::test]
+async fn an_update_to_another_recipes_title_is_refused_and_changes_nothing(
+    title: &str,
+) -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    execute(&mut db, TWO_RECIPES).await?;
+    assert_eq!(
+        RecipeStoreMut::update(&mut db, SHAKSHUKA.parse()?, update(title)?).await,
+        Err(RecipeSaveError::DuplicateTitle)
+    );
+    assert_eq!(
+        RecipeStoreMut::list(&mut db).await,
+        Ok(vec![
+            recipe(PASTA, "Roasted tomato pasta")?,
+            recipe(SHAKSHUKA, "Shakshuka")?,
+        ])
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn an_update_of_an_unknown_id_is_not_found_and_inserts_nothing() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    execute(&mut db, TWO_RECIPES).await?;
+    let unknown = RecipeId::generate();
+    assert_eq!(
+        RecipeStoreMut::update(&mut db, unknown, update("Pancakes")?).await,
+        Err(RecipeSaveError::NotFound)
+    );
+    assert_eq!(RecipeStoreMut::get(&mut db, unknown).await, Ok(None));
+    assert_eq!(RecipeStoreMut::list(&mut db).await?.len(), 2);
+    Ok(())
+}
+
 #[tokio::test]
 async fn get_of_an_unknown_id_is_none() -> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
@@ -234,6 +302,12 @@ fn recipe(id: &str, title: &str) -> anyhow::Result<Recipe> {
 
 fn new_recipe(title: &str) -> anyhow::Result<NewRecipe> {
     Ok(NewRecipe {
+        title: RecipeTitle::try_new(title)?,
+    })
+}
+
+fn update(title: &str) -> anyhow::Result<RecipeUpdate> {
+    Ok(RecipeUpdate {
         title: RecipeTitle::try_new(title)?,
     })
 }

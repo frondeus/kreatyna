@@ -40,3 +40,11 @@ pub struct RecipeTitle(String);
 pub struct NewRecipe {
     pub title: RecipeTitle,
 }
+
+/// What `RecipeStore::update` writes: every field of the recipe, not a
+/// patch. It has the same fields as `NewRecipe` for now, as its own type so
+/// the two can differ later (REC-04/Q1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecipeUpdate {
+    pub title: RecipeTitle,
+}

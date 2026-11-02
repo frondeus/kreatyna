@@ -57,6 +57,7 @@ extension RecipeSaveError {
     var message: String {
         switch self {
         case .duplicateTitle: "A recipe with this title already exists."
+        case .notFound: "This recipe no longer exists."
         case .storage: "The recipe could not be saved."
         case .transport: "Recipes are temporarily unavailable."
         }

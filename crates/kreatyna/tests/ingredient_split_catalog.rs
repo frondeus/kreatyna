@@ -16,14 +16,14 @@ use krucyfiks::{
 use test_case::test_case;
 use uuid::Uuid;
 
-// Ordinary behavior
+// Green path
 
 #[tokio::test]
 async fn the_catalog_starts_with_nothing_selected() -> anyhow::Result<()> {
     let fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
 
     let view = fixture.catalog.view();
-    assert_eq!(row_names(&view.list.value), ["Garlic"]);
+    assert_eq!(row_names(&view.list.value)?, ["Garlic"]);
     assert_eq!(view.selected, None);
     assert_eq!(view.pane.value, IngredientSplitPaneView::Empty);
     Ok(())
@@ -167,7 +167,7 @@ async fn the_list_stays_live_while_a_detail_is_open(
     assert_eq!(view.pane.value, before.pane.value);
     assert_eq!(view.pane.scope, before.pane.scope);
     if let IngredientListEvent::Search(_) = event {
-        assert_eq!(row_names(&view.list.value), ["Basil"]);
+        assert_eq!(row_names(&view.list.value)?, ["Basil"]);
     }
     Ok(())
 }
@@ -195,12 +195,460 @@ async fn deleting_the_selected_ingredient_removes_its_row_and_empties_the_pane()
     let view = fixture.catalog.view();
     assert_eq!(view.selected, None);
     assert_eq!(view.pane.value, IngredientSplitPaneView::Empty);
-    assert_eq!(row_names(&view.list.value), ["Basil"]);
+    assert_eq!(row_names(&view.list.value)?, ["Basil"]);
     // Only a render follows. The cache is updated without a reload.
     render_then_finish(&mut command).await
 }
 
-// Edge cases and guards
+#[tokio::test]
+async fn create_opens_the_form_in_a_new_pane_scope() -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    fixture.select(id(1)).await?;
+    let before = fixture.catalog.view();
+    assert!(before.can_create);
+
+    fixture.create().await?;
+
+    let view = fixture.catalog.view();
+    assert_ne!(view.pane.scope, before.pane.scope);
+    assert_eq!(view.list.scope, before.list.scope);
+    let form = fixture.form()?;
+    assert_eq!(form.draft.name, "");
+    assert_eq!(form.draft.basis, NutritionBasis::Per100Grams);
+    assert_eq!(form.status, IngredientFormStatus::Editing);
+    assert_eq!(view.selected, None);
+    assert_eq!(view.draft_row.as_deref(), Some(""));
+    assert!(!view.can_create);
+    assert_eq!(row_names(&view.list.value)?, ["Garlic"]);
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_draft_row_shows_the_typed_name() -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    fixture.create().await?;
+
+    fixture.type_name("  Paprika ").await?;
+    assert_eq!(fixture.catalog.view().draft_row.as_deref(), Some("Paprika"));
+
+    let saved = fixture.finish_save(ingredient(2, "Paprika")).await?;
+    fixture.apply_outcome(saved).await?;
+    assert_eq!(fixture.catalog.view().draft_row, None);
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_draft_row_ignores_the_search() -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(
+        vec![ingredient(1, "Tomato"), ingredient(2, "Garlic")],
+        "tom",
+    )
+    .await?;
+    fixture.create().await?;
+    fixture.type_name("Paprika").await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(row_names(&view.list.value)?, ["Tomato"]);
+    assert_eq!(view.draft_row.as_deref(), Some("Paprika"));
+    Ok(())
+}
+
+#[tokio::test]
+async fn saving_adds_the_row_and_shows_its_detail() -> anyhow::Result<()> {
+    let paprika = ingredient(3, "Paprika");
+    let mut fixture =
+        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
+    fixture.create().await?;
+    fixture.type_name("Paprika").await?;
+    let form_scope = fixture.catalog.view().pane.scope;
+
+    let saved = fixture.finish_save(paprika.clone()).await?;
+    fixture.apply_outcome(saved).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(
+        row_names(&view.list.value)?,
+        ["Garlic", "Paprika", "Tomato"]
+    );
+    assert_eq!(view.selected, Some(paprika.id));
+    assert_ne!(view.pane.scope, form_scope);
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&paprika))
+    );
+    assert!(view.can_create);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_saved_ingredient_hidden_by_the_search_still_opens() -> anyhow::Result<()> {
+    let paprika = ingredient(3, "Paprika");
+    let mut fixture = SplitFixture::ready(
+        vec![ingredient(1, "Tomato"), ingredient(2, "Garlic")],
+        "tom",
+    )
+    .await?;
+    fixture.create().await?;
+    fixture.type_name("Paprika").await?;
+
+    let saved = fixture.finish_save(paprika.clone()).await?;
+    fixture.apply_outcome(saved).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.list.value.search, "tom");
+    assert_eq!(row_names(&view.list.value)?, ["Tomato"]);
+    assert_eq!(view.selected, Some(paprika.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&paprika))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn cancel_on_a_clean_form_returns_to_the_previous_detail() -> anyhow::Result<()> {
+    let garlic = ingredient(1, "Garlic");
+    let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
+    fixture.select(garlic.id).await?;
+    fixture.create().await?;
+
+    let discarded = fixture.close_clean_form().await?;
+    fixture.apply_outcome(discarded).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(garlic.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&garlic))
+    );
+    assert_eq!(view.draft_row, None);
+    assert!(view.can_create);
+    Ok(())
+}
+
+#[tokio::test]
+async fn cancel_on_a_clean_form_with_nothing_before_empties_the_pane() -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    fixture.create().await?;
+
+    let discarded = fixture.close_clean_form().await?;
+    fixture.apply_outcome(discarded).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, None);
+    assert_eq!(view.pane.value, IngredientSplitPaneView::Empty);
+    assert_eq!(view.draft_row, None);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_row_click_on_a_clean_form_opens_the_row() -> anyhow::Result<()> {
+    let tomato = ingredient(2, "Tomato");
+    let mut fixture =
+        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
+    fixture.create().await?;
+
+    fixture.select(tomato.id).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(tomato.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&tomato))
+    );
+    assert_eq!(view.draft_row, None);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_row_click_on_a_dirty_form_asks_and_discard_opens_the_row() -> anyhow::Result<()> {
+    let tomato = ingredient(2, "Tomato");
+    let mut fixture =
+        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
+    fixture.select(id(1)).await?;
+    fixture.create().await?;
+    fixture.type_name("Pap").await?;
+    let form_scope = fixture.catalog.view().pane.scope;
+
+    fixture.select(tomato.id).await?;
+    let view = fixture.catalog.view();
+    assert_eq!(view.pane.scope, form_scope);
+    assert_eq!(
+        fixture.form()?.status,
+        IngredientFormStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
+    );
+    assert_eq!(view.draft_row.as_deref(), Some("Pap"));
+
+    let discarded = fixture.discard_after_question().await?;
+    fixture.apply_outcome(discarded).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(tomato.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&tomato))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn keep_editing_forgets_the_clicked_row() -> anyhow::Result<()> {
+    let garlic = ingredient(1, "Garlic");
+    let mut fixture =
+        SplitFixture::ready(vec![garlic.clone(), ingredient(2, "Tomato")], "").await?;
+    fixture.select(garlic.id).await?;
+    fixture.create().await?;
+    fixture.type_name("Pap").await?;
+    fixture.select(id(2)).await?;
+
+    let scope = fixture.catalog.view().pane.scope;
+    let kept = fixture
+        .choose(form_event(
+            scope,
+            IngredientFormEvent::Confirmation(ConfirmationEvent::Cancel),
+        ))
+        .await?;
+    fixture.apply_outcome(kept).await?;
+    assert_eq!(fixture.form()?.status, IngredientFormStatus::Editing);
+    assert_eq!(fixture.form()?.draft.name, "Pap");
+
+    // A later Cancel goes back to Garlic, not to the clicked Tomato.
+    fixture
+        .apply(form_event(scope, IngredientFormEvent::RequestClose))
+        .await?;
+    let discarded = fixture.discard_after_question().await?;
+    fixture.apply_outcome(discarded).await?;
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(garlic.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&garlic))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn edit_opens_the_form_in_a_new_pane_scope() -> anyhow::Result<()> {
+    let mut fixture =
+        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
+    fixture.select(id(1)).await?;
+    let before = fixture.catalog.view();
+
+    fixture.edit().await?;
+
+    let view = fixture.catalog.view();
+    assert_ne!(view.pane.scope, before.pane.scope);
+    assert_eq!(view.list.scope, before.list.scope);
+    assert_eq!(fixture.saved_name()?, "Garlic");
+    let form = fixture.form()?;
+    assert_eq!(form.draft.name, "Garlic");
+    assert_eq!(form.status, IngredientFormStatus::Editing);
+    assert!(!form.dirty);
+    assert_eq!(view.selected, Some(id(1)));
+    assert_eq!(view.draft_row, None);
+    assert!(!view.can_create);
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_edited_row_keeps_its_saved_name_until_save() -> anyhow::Result<()> {
+    let mut fixture =
+        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
+    fixture.select(id(1)).await?;
+    fixture.edit().await?;
+
+    fixture.type_name("Black Garlic").await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(fixture.form()?.draft.name, "Black Garlic");
+    assert_eq!(fixture.saved_name()?, "Garlic");
+    assert_eq!(row_names(&view.list.value)?, ["Garlic", "Tomato"]);
+    assert_eq!(view.selected, Some(id(1)));
+    assert_eq!(view.draft_row, None);
+    Ok(())
+}
+
+#[tokio::test]
+async fn saving_an_edit_updates_the_row_and_shows_its_detail() -> anyhow::Result<()> {
+    let renamed = ingredient(2, "Basil");
+    let mut fixture =
+        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
+    fixture.select(id(2)).await?;
+    fixture.edit().await?;
+    fixture.type_name("Basil").await?;
+    let form_scope = fixture.catalog.view().pane.scope;
+
+    let saved = fixture.finish_save(renamed.clone()).await?;
+    fixture.apply_outcome(saved).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(row_names(&view.list.value)?, ["Basil", "Garlic"]);
+    assert_eq!(view.selected, Some(renamed.id));
+    assert_ne!(view.pane.scope, form_scope);
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&renamed))
+    );
+    assert!(view.can_create);
+    Ok(())
+}
+
+#[tokio::test]
+async fn cancel_on_a_clean_edit_returns_to_the_detail() -> anyhow::Result<()> {
+    let garlic = ingredient(1, "Garlic");
+    let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
+    fixture.select(garlic.id).await?;
+    fixture.edit().await?;
+
+    let discarded = fixture.close_clean_form().await?;
+    fixture.apply_outcome(discarded).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(garlic.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&garlic))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn discard_on_a_dirty_edit_returns_to_the_saved_detail() -> anyhow::Result<()> {
+    let garlic = ingredient(1, "Garlic");
+    let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
+    fixture.select(garlic.id).await?;
+    fixture.edit().await?;
+    fixture.type_name("Black Garlic").await?;
+    let scope = fixture.catalog.view().pane.scope;
+
+    fixture
+        .apply(form_event(scope, IngredientFormEvent::RequestClose))
+        .await?;
+    assert_eq!(
+        fixture.form()?.status,
+        IngredientFormStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
+    );
+    let discarded = fixture.discard_after_question().await?;
+    fixture.apply_outcome(discarded).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(garlic.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&garlic))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_row_click_on_a_clean_edit_form_opens_the_row() -> anyhow::Result<()> {
+    let tomato = ingredient(2, "Tomato");
+    let mut fixture =
+        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
+    fixture.select(id(1)).await?;
+    fixture.edit().await?;
+
+    fixture.select(tomato.id).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(tomato.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&tomato))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_row_click_on_a_dirty_edit_form_asks_and_discard_opens_the_row() -> anyhow::Result<()> {
+    let tomato = ingredient(2, "Tomato");
+    let mut fixture =
+        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
+    fixture.select(id(1)).await?;
+    fixture.edit().await?;
+    fixture.type_name("Black Garlic").await?;
+    let form_scope = fixture.catalog.view().pane.scope;
+
+    fixture.select(tomato.id).await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(view.pane.scope, form_scope);
+    assert_eq!(view.selected, Some(id(1)));
+    assert_eq!(
+        fixture.form()?.status,
+        IngredientFormStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
+    );
+    let discarded = fixture.discard_after_question().await?;
+    fixture.apply_outcome(discarded).await?;
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(tomato.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&tomato))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn keep_editing_on_an_edit_forgets_the_clicked_row() -> anyhow::Result<()> {
+    let garlic = ingredient(1, "Garlic");
+    let mut fixture =
+        SplitFixture::ready(vec![garlic.clone(), ingredient(2, "Tomato")], "").await?;
+    fixture.select(garlic.id).await?;
+    fixture.edit().await?;
+    fixture.type_name("Black Garlic").await?;
+    fixture.select(id(2)).await?;
+
+    let scope = fixture.catalog.view().pane.scope;
+    let kept = fixture
+        .choose(form_event(
+            scope,
+            IngredientFormEvent::Confirmation(ConfirmationEvent::Cancel),
+        ))
+        .await?;
+    fixture.apply_outcome(kept).await?;
+    assert_eq!(fixture.form()?.status, IngredientFormStatus::Editing);
+    assert_eq!(fixture.form()?.draft.name, "Black Garlic");
+
+    // A later Cancel goes back to Garlic, not to the clicked Tomato.
+    fixture
+        .apply(form_event(scope, IngredientFormEvent::RequestClose))
+        .await?;
+    let discarded = fixture.discard_after_question().await?;
+    fixture.apply_outcome(discarded).await?;
+    let view = fixture.catalog.view();
+    assert_eq!(view.selected, Some(garlic.id));
+    assert_eq!(
+        view.pane.value,
+        IngredientSplitPaneView::Detail(idle_detail(&garlic))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_search_that_hides_the_edited_row_keeps_the_form() -> anyhow::Result<()> {
+    let mut fixture =
+        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
+    fixture.select(id(1)).await?;
+    fixture.edit().await?;
+    let form_scope = fixture.catalog.view().pane.scope;
+
+    let list_scope = fixture.catalog.view().list.scope;
+    fixture
+        .apply(list_event(
+            list_scope,
+            IngredientListEvent::Search("tom".into()),
+        ))
+        .await?;
+
+    let view = fixture.catalog.view();
+    assert_eq!(row_names(&view.list.value)?, ["Tomato"]);
+    assert_eq!(view.pane.scope, form_scope);
+    assert_eq!(fixture.saved_name()?, "Garlic");
+    Ok(())
+}
+
+// Validation
 
 #[tokio::test]
 async fn a_row_hidden_by_the_search_cannot_be_selected() -> anyhow::Result<()> {
@@ -352,123 +800,6 @@ async fn edit_from_the_list_is_ignored() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn a_failed_delete_keeps_the_selection() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
-    fixture.select(id(1)).await?;
-    let failed = fixture.delete(Err(IngredientDeleteError::Storage)).await?;
-    fixture.apply_outcome(failed).await?;
-
-    let view = fixture.catalog.view();
-    assert_eq!(view.selected, Some(id(1)));
-    assert_eq!(row_names(&view.list.value), ["Garlic"]);
-    Ok(())
-}
-
-// Create (MAC-05)
-
-#[tokio::test]
-async fn create_opens_the_form_in_a_new_pane_scope() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
-    fixture.select(id(1)).await?;
-    let before = fixture.catalog.view();
-    assert!(before.can_create);
-
-    fixture.create().await?;
-
-    let view = fixture.catalog.view();
-    assert_ne!(view.pane.scope, before.pane.scope);
-    assert_eq!(view.list.scope, before.list.scope);
-    let form = fixture.form();
-    assert_eq!(form.draft.name, "");
-    assert_eq!(form.draft.basis, NutritionBasis::Per100Grams);
-    assert_eq!(form.status, IngredientFormStatus::Editing);
-    assert_eq!(view.selected, None);
-    assert_eq!(view.draft_row.as_deref(), Some(""));
-    assert!(!view.can_create);
-    assert_eq!(row_names(&view.list.value), ["Garlic"]);
-    Ok(())
-}
-
-#[tokio::test]
-async fn the_draft_row_shows_the_typed_name() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
-    fixture.create().await?;
-
-    fixture.type_name("  Paprika ").await?;
-    assert_eq!(fixture.catalog.view().draft_row.as_deref(), Some("Paprika"));
-
-    let saved = fixture.finish_save(ingredient(2, "Paprika")).await?;
-    fixture.apply_outcome(saved).await?;
-    assert_eq!(fixture.catalog.view().draft_row, None);
-    Ok(())
-}
-
-#[tokio::test]
-async fn the_draft_row_ignores_the_search() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(
-        vec![ingredient(1, "Tomato"), ingredient(2, "Garlic")],
-        "tom",
-    )
-    .await?;
-    fixture.create().await?;
-    fixture.type_name("Paprika").await?;
-
-    let view = fixture.catalog.view();
-    assert_eq!(row_names(&view.list.value), ["Tomato"]);
-    assert_eq!(view.draft_row.as_deref(), Some("Paprika"));
-    Ok(())
-}
-
-#[tokio::test]
-async fn saving_adds_the_row_and_shows_its_detail() -> anyhow::Result<()> {
-    let paprika = ingredient(3, "Paprika");
-    let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
-    fixture.create().await?;
-    fixture.type_name("Paprika").await?;
-    let form_scope = fixture.catalog.view().pane.scope;
-
-    let saved = fixture.finish_save(paprika.clone()).await?;
-    fixture.apply_outcome(saved).await?;
-
-    let view = fixture.catalog.view();
-    assert_eq!(row_names(&view.list.value), ["Garlic", "Paprika", "Tomato"]);
-    assert_eq!(view.selected, Some(paprika.id));
-    assert_ne!(view.pane.scope, form_scope);
-    assert_eq!(
-        view.pane.value,
-        IngredientSplitPaneView::Detail(idle_detail(&paprika))
-    );
-    assert!(view.can_create);
-    Ok(())
-}
-
-#[tokio::test]
-async fn a_saved_ingredient_hidden_by_the_search_still_opens() -> anyhow::Result<()> {
-    let paprika = ingredient(3, "Paprika");
-    let mut fixture = SplitFixture::ready(
-        vec![ingredient(1, "Tomato"), ingredient(2, "Garlic")],
-        "tom",
-    )
-    .await?;
-    fixture.create().await?;
-    fixture.type_name("Paprika").await?;
-
-    let saved = fixture.finish_save(paprika.clone()).await?;
-    fixture.apply_outcome(saved).await?;
-
-    let view = fixture.catalog.view();
-    assert_eq!(view.list.value.search, "tom");
-    assert_eq!(row_names(&view.list.value), ["Tomato"]);
-    assert_eq!(view.selected, Some(paprika.id));
-    assert_eq!(
-        view.pane.value,
-        IngredientSplitPaneView::Detail(idle_detail(&paprika))
-    );
-    Ok(())
-}
-
-#[tokio::test]
 async fn a_duplicate_name_keeps_the_form_with_the_error() -> anyhow::Result<()> {
     let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
     fixture.create().await?;
@@ -482,133 +813,11 @@ async fn a_duplicate_name_keeps_the_form_with_the_error() -> anyhow::Result<()> 
 
     let view = fixture.catalog.view();
     assert_eq!(view.pane.scope, form_scope);
-    let form = fixture.form();
+    let form = fixture.form()?;
     assert_eq!(form.status, IngredientFormStatus::Editing);
     assert_eq!(form.save_error, Some(IngredientSaveError::DuplicateName));
     assert_eq!(view.draft_row.as_deref(), Some("garlic"));
-    assert_eq!(row_names(&view.list.value), ["Garlic"]);
-    Ok(())
-}
-
-#[tokio::test]
-async fn cancel_on_a_clean_form_returns_to_the_previous_detail() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
-    let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
-    fixture.select(garlic.id).await?;
-    fixture.create().await?;
-
-    let discarded = fixture.close_clean_form().await?;
-    fixture.apply_outcome(discarded).await?;
-
-    let view = fixture.catalog.view();
-    assert_eq!(view.selected, Some(garlic.id));
-    assert_eq!(
-        view.pane.value,
-        IngredientSplitPaneView::Detail(idle_detail(&garlic))
-    );
-    assert_eq!(view.draft_row, None);
-    assert!(view.can_create);
-    Ok(())
-}
-
-#[tokio::test]
-async fn cancel_on_a_clean_form_with_nothing_before_empties_the_pane() -> anyhow::Result<()> {
-    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
-    fixture.create().await?;
-
-    let discarded = fixture.close_clean_form().await?;
-    fixture.apply_outcome(discarded).await?;
-
-    let view = fixture.catalog.view();
-    assert_eq!(view.selected, None);
-    assert_eq!(view.pane.value, IngredientSplitPaneView::Empty);
-    assert_eq!(view.draft_row, None);
-    Ok(())
-}
-
-#[tokio::test]
-async fn a_row_click_on_a_clean_form_opens_the_row() -> anyhow::Result<()> {
-    let tomato = ingredient(2, "Tomato");
-    let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
-    fixture.create().await?;
-
-    fixture.select(tomato.id).await?;
-
-    let view = fixture.catalog.view();
-    assert_eq!(view.selected, Some(tomato.id));
-    assert_eq!(
-        view.pane.value,
-        IngredientSplitPaneView::Detail(idle_detail(&tomato))
-    );
-    assert_eq!(view.draft_row, None);
-    Ok(())
-}
-
-#[tokio::test]
-async fn a_row_click_on_a_dirty_form_asks_and_discard_opens_the_row() -> anyhow::Result<()> {
-    let tomato = ingredient(2, "Tomato");
-    let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
-    fixture.select(id(1)).await?;
-    fixture.create().await?;
-    fixture.type_name("Pap").await?;
-    let form_scope = fixture.catalog.view().pane.scope;
-
-    fixture.select(tomato.id).await?;
-    let view = fixture.catalog.view();
-    assert_eq!(view.pane.scope, form_scope);
-    assert_eq!(
-        fixture.form().status,
-        IngredientFormStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
-    );
-    assert_eq!(view.draft_row.as_deref(), Some("Pap"));
-
-    let discarded = fixture.discard_after_question().await?;
-    fixture.apply_outcome(discarded).await?;
-
-    let view = fixture.catalog.view();
-    assert_eq!(view.selected, Some(tomato.id));
-    assert_eq!(
-        view.pane.value,
-        IngredientSplitPaneView::Detail(idle_detail(&tomato))
-    );
-    Ok(())
-}
-
-#[tokio::test]
-async fn keep_editing_forgets_the_clicked_row() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
-    let mut fixture =
-        SplitFixture::ready(vec![garlic.clone(), ingredient(2, "Tomato")], "").await?;
-    fixture.select(garlic.id).await?;
-    fixture.create().await?;
-    fixture.type_name("Pap").await?;
-    fixture.select(id(2)).await?;
-
-    let scope = fixture.catalog.view().pane.scope;
-    let kept = fixture
-        .choose(form_event(
-            scope,
-            IngredientFormEvent::Confirmation(ConfirmationEvent::Cancel),
-        ))
-        .await?;
-    fixture.apply_outcome(kept).await?;
-    assert_eq!(fixture.form().status, IngredientFormStatus::Editing);
-    assert_eq!(fixture.form().draft.name, "Pap");
-
-    // A later Cancel goes back to Garlic, not to the clicked Tomato.
-    fixture
-        .apply(form_event(scope, IngredientFormEvent::RequestClose))
-        .await?;
-    let discarded = fixture.discard_after_question().await?;
-    fixture.apply_outcome(discarded).await?;
-    let view = fixture.catalog.view();
-    assert_eq!(view.selected, Some(garlic.id));
-    assert_eq!(
-        view.pane.value,
-        IngredientSplitPaneView::Detail(idle_detail(&garlic))
-    );
+    assert_eq!(row_names(&view.list.value)?, ["Garlic"]);
     Ok(())
 }
 
@@ -682,193 +891,6 @@ async fn clearing_the_selection_is_ignored_while_a_form_is_open() -> anyhow::Res
     Ok(())
 }
 
-// Edit (MAC-06)
-
-#[tokio::test]
-async fn edit_opens_the_form_in_a_new_pane_scope() -> anyhow::Result<()> {
-    let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
-    fixture.select(id(1)).await?;
-    let before = fixture.catalog.view();
-
-    fixture.edit().await?;
-
-    let view = fixture.catalog.view();
-    assert_ne!(view.pane.scope, before.pane.scope);
-    assert_eq!(view.list.scope, before.list.scope);
-    assert_eq!(fixture.saved_name(), "Garlic");
-    let form = fixture.form();
-    assert_eq!(form.draft.name, "Garlic");
-    assert_eq!(form.status, IngredientFormStatus::Editing);
-    assert!(!form.dirty);
-    assert_eq!(view.selected, Some(id(1)));
-    assert_eq!(view.draft_row, None);
-    assert!(!view.can_create);
-    Ok(())
-}
-
-#[tokio::test]
-async fn the_edited_row_keeps_its_saved_name_until_save() -> anyhow::Result<()> {
-    let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
-    fixture.select(id(1)).await?;
-    fixture.edit().await?;
-
-    fixture.type_name("Black Garlic").await?;
-
-    let view = fixture.catalog.view();
-    assert_eq!(fixture.form().draft.name, "Black Garlic");
-    assert_eq!(fixture.saved_name(), "Garlic");
-    assert_eq!(row_names(&view.list.value), ["Garlic", "Tomato"]);
-    assert_eq!(view.selected, Some(id(1)));
-    assert_eq!(view.draft_row, None);
-    Ok(())
-}
-
-#[tokio::test]
-async fn saving_an_edit_updates_the_row_and_shows_its_detail() -> anyhow::Result<()> {
-    let renamed = ingredient(2, "Basil");
-    let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
-    fixture.select(id(2)).await?;
-    fixture.edit().await?;
-    fixture.type_name("Basil").await?;
-    let form_scope = fixture.catalog.view().pane.scope;
-
-    let saved = fixture.finish_save(renamed.clone()).await?;
-    fixture.apply_outcome(saved).await?;
-
-    let view = fixture.catalog.view();
-    assert_eq!(row_names(&view.list.value), ["Basil", "Garlic"]);
-    assert_eq!(view.selected, Some(renamed.id));
-    assert_ne!(view.pane.scope, form_scope);
-    assert_eq!(
-        view.pane.value,
-        IngredientSplitPaneView::Detail(idle_detail(&renamed))
-    );
-    assert!(view.can_create);
-    Ok(())
-}
-
-#[tokio::test]
-async fn cancel_on_a_clean_edit_returns_to_the_detail() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
-    let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
-    fixture.select(garlic.id).await?;
-    fixture.edit().await?;
-
-    let discarded = fixture.close_clean_form().await?;
-    fixture.apply_outcome(discarded).await?;
-
-    let view = fixture.catalog.view();
-    assert_eq!(view.selected, Some(garlic.id));
-    assert_eq!(
-        view.pane.value,
-        IngredientSplitPaneView::Detail(idle_detail(&garlic))
-    );
-    Ok(())
-}
-
-#[tokio::test]
-async fn discard_on_a_dirty_edit_returns_to_the_saved_detail() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
-    let mut fixture = SplitFixture::ready(vec![garlic.clone()], "").await?;
-    fixture.select(garlic.id).await?;
-    fixture.edit().await?;
-    fixture.type_name("Black Garlic").await?;
-    let scope = fixture.catalog.view().pane.scope;
-
-    fixture
-        .apply(form_event(scope, IngredientFormEvent::RequestClose))
-        .await?;
-    assert_eq!(
-        fixture.form().status,
-        IngredientFormStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
-    );
-    let discarded = fixture.discard_after_question().await?;
-    fixture.apply_outcome(discarded).await?;
-
-    let view = fixture.catalog.view();
-    assert_eq!(view.selected, Some(garlic.id));
-    assert_eq!(
-        view.pane.value,
-        IngredientSplitPaneView::Detail(idle_detail(&garlic))
-    );
-    Ok(())
-}
-
-#[test_case(false; "a clean form opens the row at once")]
-#[test_case(true; "a dirty form asks first")]
-#[tokio::test]
-async fn a_row_click_on_an_edit_form(dirty: bool) -> anyhow::Result<()> {
-    let tomato = ingredient(2, "Tomato");
-    let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), tomato.clone()], "").await?;
-    fixture.select(id(1)).await?;
-    fixture.edit().await?;
-    if dirty {
-        fixture.type_name("Black Garlic").await?;
-    }
-    let form_scope = fixture.catalog.view().pane.scope;
-
-    fixture.select(tomato.id).await?;
-
-    if dirty {
-        let view = fixture.catalog.view();
-        assert_eq!(view.pane.scope, form_scope);
-        assert_eq!(view.selected, Some(id(1)));
-        assert_eq!(
-            fixture.form().status,
-            IngredientFormStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
-        );
-        let discarded = fixture.discard_after_question().await?;
-        fixture.apply_outcome(discarded).await?;
-    }
-    let view = fixture.catalog.view();
-    assert_eq!(view.selected, Some(tomato.id));
-    assert_eq!(
-        view.pane.value,
-        IngredientSplitPaneView::Detail(idle_detail(&tomato))
-    );
-    Ok(())
-}
-
-#[tokio::test]
-async fn keep_editing_on_an_edit_forgets_the_clicked_row() -> anyhow::Result<()> {
-    let garlic = ingredient(1, "Garlic");
-    let mut fixture =
-        SplitFixture::ready(vec![garlic.clone(), ingredient(2, "Tomato")], "").await?;
-    fixture.select(garlic.id).await?;
-    fixture.edit().await?;
-    fixture.type_name("Black Garlic").await?;
-    fixture.select(id(2)).await?;
-
-    let scope = fixture.catalog.view().pane.scope;
-    let kept = fixture
-        .choose(form_event(
-            scope,
-            IngredientFormEvent::Confirmation(ConfirmationEvent::Cancel),
-        ))
-        .await?;
-    fixture.apply_outcome(kept).await?;
-    assert_eq!(fixture.form().status, IngredientFormStatus::Editing);
-    assert_eq!(fixture.form().draft.name, "Black Garlic");
-
-    // A later Cancel goes back to Garlic, not to the clicked Tomato.
-    fixture
-        .apply(form_event(scope, IngredientFormEvent::RequestClose))
-        .await?;
-    let discarded = fixture.discard_after_question().await?;
-    fixture.apply_outcome(discarded).await?;
-    let view = fixture.catalog.view();
-    assert_eq!(view.selected, Some(garlic.id));
-    assert_eq!(
-        view.pane.value,
-        IngredientSplitPaneView::Detail(idle_detail(&garlic))
-    );
-    Ok(())
-}
-
 #[test_case(false; "clean")]
 #[test_case(true; "dirty")]
 #[tokio::test]
@@ -916,30 +938,22 @@ async fn edit_is_ignored_while_a_delete_is_being_confirmed() -> anyhow::Result<(
     Ok(())
 }
 
-#[tokio::test]
-async fn a_search_that_hides_the_edited_row_keeps_the_form() -> anyhow::Result<()> {
-    let mut fixture =
-        SplitFixture::ready(vec![ingredient(1, "Garlic"), ingredient(2, "Tomato")], "").await?;
-    fixture.select(id(1)).await?;
-    fixture.edit().await?;
-    let form_scope = fixture.catalog.view().pane.scope;
+// Red cases
 
-    let list_scope = fixture.catalog.view().list.scope;
-    fixture
-        .apply(list_event(
-            list_scope,
-            IngredientListEvent::Search("tom".into()),
-        ))
-        .await?;
+#[tokio::test]
+async fn a_failed_delete_keeps_the_selection() -> anyhow::Result<()> {
+    let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")], "").await?;
+    fixture.select(id(1)).await?;
+    let failed = fixture.delete(Err(IngredientDeleteError::Storage)).await?;
+    fixture.apply_outcome(failed).await?;
 
     let view = fixture.catalog.view();
-    assert_eq!(row_names(&view.list.value), ["Tomato"]);
-    assert_eq!(view.pane.scope, form_scope);
-    assert_eq!(fixture.saved_name(), "Garlic");
+    assert_eq!(view.selected, Some(id(1)));
+    assert_eq!(row_names(&view.list.value)?, ["Garlic"]);
     Ok(())
 }
 
-// Support
+// Test support
 
 #[derive(Debug, Clone, Copy)]
 enum Busy {
@@ -1060,19 +1074,19 @@ impl SplitFixture {
     }
 
     /// The create or the edit form.
-    fn form(&self) -> IngredientFormView {
+    fn form(&self) -> anyhow::Result<IngredientFormView> {
         match self.catalog.view().pane.value {
             IngredientSplitPaneView::Create(form) | IngredientSplitPaneView::Edit { form, .. } => {
-                form
+                Ok(form)
             }
-            pane => panic!("expected a form, got {pane:?}"),
+            pane => anyhow::bail!("expected a form, got {pane:?}"),
         }
     }
 
-    fn saved_name(&self) -> String {
+    fn saved_name(&self) -> anyhow::Result<String> {
         match self.catalog.view().pane.value {
-            IngredientSplitPaneView::Edit { saved_name, .. } => saved_name,
-            pane => panic!("expected the edit form, got {pane:?}"),
+            IngredientSplitPaneView::Edit { saved_name, .. } => Ok(saved_name),
+            pane => anyhow::bail!("expected the edit form, got {pane:?}"),
         }
     }
 
@@ -1265,11 +1279,11 @@ fn idle_detail(ingredient: &Ingredient) -> IngredientDetailView {
     }
 }
 
-fn row_names(view: &IngredientListView) -> Vec<&str> {
+fn row_names(view: &IngredientListView) -> anyhow::Result<Vec<&str>> {
     let IngredientListStatus::Ready { rows, .. } = &view.status else {
-        panic!("expected a ready list, got {:?}", view.status);
+        anyhow::bail!("expected a ready list, got {:?}", view.status);
     };
-    rows.iter().map(|row| row.name.as_str()).collect()
+    Ok(rows.iter().map(|row| row.name.as_str()).collect())
 }
 
 fn id(value: u128) -> IngredientId {

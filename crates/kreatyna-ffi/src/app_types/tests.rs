@@ -420,6 +420,7 @@ fn a_create_pane_keeps_the_draft_row_and_the_problem() {
     let pane = kreatyna::recipes::RecipePaneView::Create {
         editor: kreatyna::recipes::RecipeEditorView {
             title: "shakshuka ".into(),
+            canvas: kreatyna::recipes::StepCanvasView::Unselected { steps: vec![] },
             status: kreatyna::recipes::RecipeEditorStatus::Editing {
                 problem: Some(kreatyna::recipes::RecipeEditorProblem::SaveFailed(
                     kreatyna::recipes::capabilities::RecipeSaveError::DuplicateTitle,
@@ -449,6 +450,7 @@ fn an_edit_pane_keeps_the_saved_title_and_the_problem() {
     let pane = kreatyna::recipes::RecipePaneView::Edit {
         editor: kreatyna::recipes::RecipeEditorView {
             title: "Spicy shakshuka".into(),
+            canvas: kreatyna::recipes::StepCanvasView::Unselected { steps: vec![] },
             status: kreatyna::recipes::RecipeEditorStatus::Editing {
                 problem: Some(kreatyna::recipes::RecipeEditorProblem::SaveFailed(
                     kreatyna::recipes::capabilities::RecipeSaveError::NotFound,

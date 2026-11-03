@@ -6,6 +6,7 @@ mod editor;
 mod list;
 mod model;
 mod section;
+mod step_canvas;
 
 pub use detail::{
     RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome, RecipeDetailStatus,
@@ -27,3 +28,4 @@ pub use section::{
     RecipePaneOutcome, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
     RecipeSectionView,
 };
+pub use step_canvas::{StepCanvasEvent, StepCanvasView, StepNodeView};

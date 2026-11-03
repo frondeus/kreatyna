@@ -2,8 +2,10 @@ use kreatyna::{
     capabilities::ResolveRender,
     confirmation::{ConfirmationEvent, ConfirmationView},
     recipes::{
-        Recipe, RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem,
-        RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeTitleError,
+        CanvasPoint, Recipe, RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome,
+        RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeTitleError,
+        Step, StepCanvasEvent, StepCanvasView, StepId, StepNodeView, StepTitle, StepTitleError,
+        StepWrite,
         capabilities::{
             RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
         },
@@ -132,6 +134,109 @@ async fn cancel_after_changing_the_saved_title_asks() -> anyhow::Result<()> {
     f.request_close().await
 }
 
+#[tokio::test]
+async fn add_step_adds_an_untitled_step_at_the_point_and_selects_it() -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    let command = f.send(RecipeEditorEvent::Canvas(StepCanvasEvent::Add {
+        at: point(120, 80),
+    }));
+    let id = f.selected()?;
+    assert_eq!(
+        f.editor.view().canvas,
+        StepCanvasView::Selected {
+            selected: node(id, "", point(120, 80), None),
+            others: vec![],
+        }
+    );
+    f.render(command).await
+}
+
+#[tokio::test]
+async fn naming_a_step_keeps_the_raw_title_and_renders() -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    let id = f.add_step(point(120, 80)).await?;
+    let command = f.send(RecipeEditorEvent::Canvas(StepCanvasEvent::SetTitle {
+        id,
+        title: " Dice onion ".into(),
+    }));
+    assert_eq!(
+        f.editor.view().canvas,
+        StepCanvasView::Selected {
+            selected: node(id, " Dice onion ", point(120, 80), None),
+            others: vec![],
+        }
+    );
+    f.render(command).await
+}
+
+#[tokio::test]
+async fn a_click_on_a_node_selects_it_and_a_click_on_empty_canvas_clears_it() -> anyhow::Result<()>
+{
+    let mut f = Fixture::edit_recipe(&pasta());
+    f.canvas(StepCanvasEvent::Select(cook_pasta().id)).await?;
+    assert_eq!(
+        f.editor.view().canvas,
+        StepCanvasView::Selected {
+            selected: saved_node(&cook_pasta()),
+            others: vec![saved_node(&boil_water())],
+        }
+    );
+
+    f.canvas(StepCanvasEvent::ClearSelection).await?;
+    assert_eq!(f.editor.view().canvas, saved_canvas(&pasta()));
+    Ok(())
+}
+
+#[tokio::test]
+async fn save_writes_the_steps_with_trimmed_titles_in_the_order_added() -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    f.type_title("Shakshuka").await?;
+    let onion = f.add_step(point(40, 40)).await?;
+    f.name_step(onion, " Dice onion ").await?;
+    let eggs = f.add_step(point(240, 40)).await?;
+    f.name_step(eggs, "Crack eggs").await?;
+
+    let save = f.send(RecipeEditorEvent::Save);
+    assert_eq!(f.editor.view().status, RecipeEditorStatus::Saving);
+    f.save(save, Ok(shakshuka())).await?;
+    assert_eq!(f.writes, [Write::Created("Shakshuka".into())]);
+    assert_eq!(
+        f.written_steps,
+        [vec![
+            write(onion, "Dice onion", point(40, 40))?,
+            write(eggs, "Crack eggs", point(240, 40))?,
+        ]]
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn an_edit_editor_opens_with_the_saved_steps_and_no_selection() {
+    let f = Fixture::edit_recipe(&pasta());
+    assert_eq!(f.editor.view().canvas, saved_canvas(&pasta()));
+}
+
+#[tokio::test]
+async fn save_in_an_edit_editor_writes_the_changed_and_the_added_steps() -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&pasta());
+    f.name_step(boil_water().id, "Boil salted water").await?;
+    let drain = f.add_step(point(440, 40)).await?;
+    f.name_step(drain, "Drain").await?;
+
+    let save = f.send(RecipeEditorEvent::Save);
+    f.save(save, Ok(pasta())).await?;
+    assert_eq!(f.writes, [Write::Updated(pasta().id, "Pasta".into())]);
+    assert_eq!(
+        f.written_steps,
+        [vec![
+            write(boil_water().id, "Boil salted water", point(40, 40))?,
+            write(cook_pasta().id, "Cook pasta", point(240, 40))?,
+            write(drain, "Drain", point(440, 40))?,
+        ]]
+    );
+    Ok(())
+}
+
 // Validation
 
 #[tokio::test]
@@ -210,12 +315,13 @@ async fn keep_editing_returns_to_the_editor_with_its_problem() -> anyhow::Result
 }
 
 #[tokio::test]
-async fn edits_save_and_cancel_are_ignored_while_saving() -> anyhow::Result<()> {
+async fn edits_steps_save_and_cancel_are_ignored_while_saving() -> anyhow::Result<()> {
     let mut f = Fixture::new();
     f.type_title("Shakshuka").await?;
     let _save = f.send(RecipeEditorEvent::Save);
     for event in [
         RecipeEditorEvent::SetTitle("Pasta".into()),
+        RecipeEditorEvent::Canvas(StepCanvasEvent::Add { at: point(40, 40) }),
         RecipeEditorEvent::Save,
         RecipeEditorEvent::RequestClose,
     ] {
@@ -226,6 +332,7 @@ async fn edits_save_and_cancel_are_ignored_while_saving() -> anyhow::Result<()> 
         f.editor.view(),
         RecipeEditorView {
             title: "Shakshuka".into(),
+            canvas: no_steps(),
             status: RecipeEditorStatus::Saving,
         }
     );
@@ -245,6 +352,148 @@ async fn a_result_of_an_earlier_save_is_ignored() -> anyhow::Result<()> {
     let command = f.editor.update(Message::Outcome(failed));
     command.driver(&mut f.effects).step().await?.expect_done();
     assert_eq!(f.editor.view().status, RecipeEditorStatus::Saving);
+    Ok(())
+}
+
+#[test_case("Pasta", None; "a valid recipe title")]
+#[test_case("", Some(empty_title()); "a blank recipe title")]
+#[tokio::test]
+async fn save_with_an_untitled_step_selects_the_first_one_and_does_not_call_the_store(
+    title: &str,
+    problem: Option<RecipeEditorProblem>,
+) -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    if !title.is_empty() {
+        f.type_title(title).await?;
+    }
+    let boil = f.add_step(point(40, 40)).await?;
+    f.name_step(boil, "Boil water").await?;
+    let first = f.add_step(point(240, 40)).await?;
+    let second = f.add_step(point(440, 40)).await?;
+    f.canvas(StepCanvasEvent::Select(boil)).await?;
+
+    let command = f.send(RecipeEditorEvent::Save);
+    let untitled = Some(StepTitleError::NotEmptyViolated);
+    assert_eq!(
+        f.editor.view(),
+        RecipeEditorView {
+            title: title.into(),
+            canvas: StepCanvasView::Selected {
+                selected: node(first, "", point(240, 40), untitled.clone()),
+                others: vec![
+                    node(boil, "Boil water", point(40, 40), None),
+                    node(second, "", point(440, 40), untitled),
+                ],
+            },
+            status: RecipeEditorStatus::Editing { problem },
+        }
+    );
+    // One render and nothing else: no store call.
+    f.render(command).await
+}
+
+#[tokio::test]
+async fn after_the_first_save_naming_a_step_checks_its_title_again() -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    f.type_title("Shakshuka").await?;
+    let id = f.add_step(point(40, 40)).await?;
+    let command = f.send(RecipeEditorEvent::Save);
+    f.render(command).await?;
+
+    f.name_step(id, "Dice onion").await?;
+    assert_eq!(
+        f.editor.view().canvas,
+        StepCanvasView::Selected {
+            selected: node(id, "Dice onion", point(40, 40), None),
+            others: vec![],
+        }
+    );
+    f.name_step(id, "  ").await?;
+    assert_eq!(
+        f.editor.view().canvas,
+        StepCanvasView::Selected {
+            selected: node(
+                id,
+                "  ",
+                point(40, 40),
+                Some(StepTitleError::NotEmptyViolated)
+            ),
+            others: vec![],
+        }
+    );
+    Ok(())
+}
+
+#[test_case(None; "a new editor")]
+#[test_case(Some(pasta()); "an edit editor")]
+#[tokio::test]
+async fn cancel_after_adding_a_step_asks(recipe: Option<Recipe>) -> anyhow::Result<()> {
+    let mut f = match &recipe {
+        None => Fixture::new(),
+        Some(recipe) => Fixture::edit_recipe(recipe),
+    };
+    f.add_step(point(40, 40)).await?;
+    f.request_close().await
+}
+
+#[tokio::test]
+async fn cancel_after_renaming_a_saved_step_asks() -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&pasta());
+    f.name_step(cook_pasta().id, "Cook pasta al dente").await?;
+    f.request_close().await
+}
+
+#[tokio::test]
+async fn selecting_a_step_or_typing_its_saved_title_again_keeps_the_editor_unchanged()
+-> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&pasta());
+    f.canvas(StepCanvasEvent::Select(cook_pasta().id)).await?;
+    f.name_step(cook_pasta().id, "Cook").await?;
+    f.name_step(cook_pasta().id, "Cook pasta").await?;
+    let command = f.send(RecipeEditorEvent::RequestClose);
+    assert_eq!(
+        f.render_then_outcome(command).await?,
+        RecipeEditorOutcome::Discarded
+    );
+    Ok(())
+}
+
+#[test_case(StepCanvasEvent::Select(unknown_step()); "select an unknown step")]
+#[test_case(StepCanvasEvent::SetTitle { id: unknown_step(), title: "Drain".into() }; "name an unknown step")]
+#[test_case(StepCanvasEvent::Select(cook_pasta().id); "select the selected step")]
+#[test_case(StepCanvasEvent::SetTitle { id: cook_pasta().id, title: "Cook pasta".into() }; "type the same title")]
+#[tokio::test]
+async fn a_canvas_event_that_changes_nothing_does_nothing(
+    event: StepCanvasEvent,
+) -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&pasta());
+    f.canvas(StepCanvasEvent::Select(cook_pasta().id)).await?;
+    let before = f.editor.view();
+    let command = f.send(RecipeEditorEvent::Canvas(event));
+    command.driver(&mut f.effects).step().await?.expect_done();
+    assert_eq!(f.editor.view(), before);
+    Ok(())
+}
+
+#[tokio::test]
+async fn clearing_an_empty_selection_does_nothing() -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&pasta());
+    let command = f.send(RecipeEditorEvent::Canvas(StepCanvasEvent::ClearSelection));
+    command.driver(&mut f.effects).step().await?.expect_done();
+    assert_eq!(f.editor.view().canvas, saved_canvas(&pasta()));
+    Ok(())
+}
+
+#[tokio::test]
+async fn canvas_events_are_ignored_while_discard_is_asked() -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    f.type_title("Shakshuka").await?;
+    f.request_close().await?;
+    let command = f.send(RecipeEditorEvent::Canvas(StepCanvasEvent::Add {
+        at: point(40, 40),
+    }));
+    command.driver(&mut f.effects).step().await?.expect_done();
+    assert_eq!(f.editor.view().canvas, no_steps());
     Ok(())
 }
 
@@ -303,6 +552,77 @@ fn shakshuka() -> Recipe {
     }
 }
 
+/// A saved recipe with two steps.
+fn pasta() -> Recipe {
+    Recipe {
+        id: RecipeId::from(Uuid::from_u128(2)),
+        title: "Pasta".into(),
+        steps: vec![boil_water(), cook_pasta()],
+    }
+}
+
+fn boil_water() -> Step {
+    Step {
+        id: StepId::from(Uuid::from_u128(11)),
+        title: "Boil water".into(),
+        position: point(40, 40),
+    }
+}
+
+fn cook_pasta() -> Step {
+    Step {
+        id: StepId::from(Uuid::from_u128(12)),
+        title: "Cook pasta".into(),
+        position: point(240, 40),
+    }
+}
+
+/// An id that names no step.
+fn unknown_step() -> StepId {
+    StepId::from(Uuid::from_u128(99))
+}
+
+fn point(x: u32, y: u32) -> CanvasPoint {
+    CanvasPoint { x, y }
+}
+
+fn node(
+    id: StepId,
+    title: &str,
+    position: CanvasPoint,
+    problem: Option<StepTitleError>,
+) -> StepNodeView {
+    StepNodeView {
+        id,
+        title: title.into(),
+        position,
+        problem,
+    }
+}
+
+fn saved_node(step: &Step) -> StepNodeView {
+    node(step.id, &step.title, step.position, None)
+}
+
+/// The canvas of `recipe` as the edit editor opens it: no selection.
+fn saved_canvas(recipe: &Recipe) -> StepCanvasView {
+    StepCanvasView::Unselected {
+        steps: recipe.steps.iter().map(saved_node).collect(),
+    }
+}
+
+fn no_steps() -> StepCanvasView {
+    StepCanvasView::Unselected { steps: vec![] }
+}
+
+fn write(id: StepId, title: &str, position: CanvasPoint) -> anyhow::Result<StepWrite> {
+    Ok(StepWrite {
+        id,
+        title: StepTitle::try_new(title)?,
+        position,
+    })
+}
+
 fn empty_title() -> RecipeEditorProblem {
     RecipeEditorProblem::Invalid(RecipeTitleError::NotEmptyViolated)
 }
@@ -310,6 +630,7 @@ fn empty_title() -> RecipeEditorProblem {
 fn editing(title: &str, problem: Option<RecipeEditorProblem>) -> RecipeEditorView {
     RecipeEditorView {
         title: title.into(),
+        canvas: no_steps(),
         status: RecipeEditorStatus::Editing { problem },
     }
 }
@@ -326,26 +647,34 @@ struct Fixture {
     effects: RecipeEffectStream,
     /// The store calls of the saves, in order.
     writes: Vec<Write>,
+    /// The steps that each store call wrote, in the order of `writes`.
+    written_steps: Vec<Vec<StepWrite>>,
 }
 
 impl Fixture {
     /// An editor for a new recipe.
     fn new() -> Self {
         let (editor, effects) = RecipeEditor::test_fixture();
-        Self {
-            editor,
-            effects,
-            writes: vec![],
-        }
+        Self::with(editor, effects)
     }
 
     /// An editor for the saved `shakshuka()`.
     fn edit() -> Self {
-        let (editor, effects) = RecipeEditor::edit_test_fixture(&shakshuka());
+        Self::edit_recipe(&shakshuka())
+    }
+
+    /// An editor for the saved `recipe`.
+    fn edit_recipe(recipe: &Recipe) -> Self {
+        let (editor, effects) = RecipeEditor::edit_test_fixture(recipe);
+        Self::with(editor, effects)
+    }
+
+    fn with(editor: RecipeEditor, effects: RecipeEffectStream) -> Self {
         Self {
             editor,
             effects,
             writes: vec![],
+            written_steps: vec![],
         }
     }
 
@@ -390,6 +719,31 @@ impl Fixture {
         self.render(command).await
     }
 
+    /// Sends a canvas event that changes the canvas, and runs its render.
+    async fn canvas(&mut self, event: StepCanvasEvent) -> anyhow::Result<()> {
+        let command = self.send(RecipeEditorEvent::Canvas(event));
+        self.render(command).await
+    }
+
+    /// Right-click ▸ Add Step at `at`. Returns the new step's id.
+    async fn add_step(&mut self, at: CanvasPoint) -> anyhow::Result<StepId> {
+        self.canvas(StepCanvasEvent::Add { at }).await?;
+        self.selected()
+    }
+
+    async fn name_step(&mut self, id: StepId, title: &str) -> anyhow::Result<()> {
+        let title = title.into();
+        self.canvas(StepCanvasEvent::SetTitle { id, title }).await
+    }
+
+    /// The id of the selected step.
+    fn selected(&self) -> anyhow::Result<StepId> {
+        match self.editor.view().canvas {
+            StepCanvasView::Selected { selected, .. } => Ok(selected.id),
+            StepCanvasView::Unselected { .. } => anyhow::bail!("no step is selected"),
+        }
+    }
+
     /// Runs a save command: its render, then the store call (create or
     /// update) answered with `result`. Returns `SaveFinished`, not yet
     /// dispatched.
@@ -407,12 +761,14 @@ impl Fixture {
             .resolve_render(|| async {})
             .await?;
         let mut write = None;
+        let mut steps = None;
         let store = command.step().await?.expect_effect().expect_store();
         match store.request {
             RecipeStoreRequest::Create { .. } => {
                 store
                     .resolve_create(|recipe| {
                         write = Some(Write::Created(recipe.title.as_ref().to_owned()));
+                        steps = Some(recipe.steps);
                         async { result }
                     })
                     .await?
@@ -421,6 +777,7 @@ impl Fixture {
                 store
                     .resolve_update(|id, recipe| {
                         write = Some(Write::Updated(id, recipe.title.as_ref().to_owned()));
+                        steps = Some(recipe.steps);
                         async { result }
                     })
                     .await?
@@ -431,10 +788,12 @@ impl Fixture {
         command.step().await?.expect_done();
         drop(command);
         self.writes.extend(write);
+        self.written_steps.extend(steps);
         Ok(finished)
     }
 
-    /// Cancel on a changed title: the editor asks "Discard changes?".
+    /// Cancel on a changed title or step list: the editor asks "Discard
+    /// changes?".
     async fn request_close(&mut self) -> anyhow::Result<()> {
         let command = self.send(RecipeEditorEvent::RequestClose);
         assert_eq!(

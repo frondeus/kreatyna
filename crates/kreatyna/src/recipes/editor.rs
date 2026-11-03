@@ -1,20 +1,26 @@
 //! The recipe editor in the detail pane. It creates a recipe from a title
-//! (REC-02) or edits a saved recipe's title (REC-04).
+//! (REC-02) or edits a saved recipe's title (REC-04). It adds and names
+//! the recipe's steps on a canvas (REC-14).
 use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
 use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 
 use super::{
-    NewRecipe, Recipe, RecipeTitle, RecipeTitleError, RecipeUpdate,
+    NewRecipe, Recipe, RecipeTitle, RecipeTitleError, RecipeUpdate, Step, StepWrite,
     capabilities::{RecipeCapabilities, RecipeEffectStream, RecipeSaveError},
+    step_canvas::{CanvasChange, StepCanvas, StepCanvasEvent, StepCanvasView},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecipeEditorEvent {
     /// The raw text of the title field. Rust trims it only on Save.
     SetTitle(String),
+    /// The steps on the canvas and in the inspector (REC-14).
+    Canvas(StepCanvasEvent),
+    /// Checks the recipe title and every step title, then saves.
     Save,
-    /// Cancel. A changed title asks "Discard changes?" first (E-10).
+    /// Cancel. A changed title or step list asks "Discard changes?" first
+    /// (E-10).
     RequestClose,
     Confirmation(ConfirmationEvent),
 }
@@ -32,7 +38,8 @@ pub enum RecipeEditorOutcome {
     Discarded,
 }
 
-/// Why the last Save did not save.
+/// Why the last Save did not save. A step's problem lives on its node
+/// (`StepNodeView::problem`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecipeEditorProblem {
     Invalid(RecipeTitleError),
@@ -55,6 +62,7 @@ pub enum RecipeEditorStatus {
 pub struct RecipeEditorView {
     /// The title as typed.
     pub title: String,
+    pub canvas: StepCanvasView,
     pub status: RecipeEditorStatus,
 }
 
@@ -77,15 +85,38 @@ enum EditorTarget {
     /// Save creates a recipe. The editor opens with an empty title.
     New,
     /// Save updates this recipe. `recipe` is the recipe as stored: the editor
-    /// opens with its title, and compares the typed title with it.
+    /// opens with its title and steps, and compares the edits with them.
     Saved { recipe: Recipe },
+}
+
+/// The title and the steps the editor opens with. `is_dirty` compares the
+/// edits with them.
+struct OpenedWith<'a> {
+    title: &'a str,
+    steps: &'a [Step],
+}
+
+impl EditorTarget {
+    fn opened_with(&self) -> OpenedWith<'_> {
+        match self {
+            EditorTarget::New => OpenedWith {
+                title: "",
+                steps: &[],
+            },
+            EditorTarget::Saved { recipe } => OpenedWith {
+                title: &recipe.title,
+                steps: &recipe.steps,
+            },
+        }
+    }
 }
 
 pub struct RecipeEditor {
     caps: RecipeCapabilities,
     target: EditorTarget,
     title: String,
-    /// After the first Save, every change checks the title again.
+    canvas: StepCanvas,
+    /// After the first Save, every change checks the titles again.
     save_attempted: bool,
     state: EditorState,
     confirmation: LatestCommandSlot,
@@ -93,25 +124,29 @@ pub struct RecipeEditor {
 }
 
 impl RecipeEditor {
-    /// An editor for a new recipe, with an empty title.
+    /// An editor for a new recipe, with an empty title and no steps.
     pub fn new(caps: RecipeCapabilities) -> Self {
-        Self::open(caps, EditorTarget::New, String::new())
+        Self::open(caps, EditorTarget::New)
     }
 
-    /// An editor for a saved recipe, with its title (REC-04).
+    /// An editor for a saved recipe, with its title (REC-04) and steps
+    /// (REC-14).
     pub fn edit(caps: RecipeCapabilities, recipe: &Recipe) -> Self {
-        let title = recipe.title.clone();
         let target = EditorTarget::Saved {
             recipe: recipe.clone(),
         };
-        Self::open(caps, target, title)
+        Self::open(caps, target)
     }
 
-    fn open(caps: RecipeCapabilities, target: EditorTarget, title: String) -> Self {
+    fn open(caps: RecipeCapabilities, target: EditorTarget) -> Self {
+        let opened_with = target.opened_with();
+        let title = opened_with.title.to_owned();
+        let canvas = StepCanvas::new(opened_with.steps);
         Self {
             caps,
             target,
             title,
+            canvas,
             save_attempted: false,
             state: EditorState::Editing { problem: None },
             confirmation: LatestCommandSlot::new(),
@@ -129,13 +164,12 @@ impl RecipeEditor {
         (Self::edit(caps, recipe), effects)
     }
 
-    /// Whether the title differs from the one the editor opened with: any
-    /// text for a new recipe, the stored title for a saved one.
+    /// Whether the title or the steps differ from the ones the editor
+    /// opened with: an empty title and no steps for a new recipe, the stored
+    /// ones for a saved one.
     pub(crate) fn is_dirty(&self) -> bool {
-        match &self.target {
-            EditorTarget::New => !self.title.is_empty(),
-            EditorTarget::Saved { recipe } => self.title != recipe.title,
-        }
+        let opened_with = self.target.opened_with();
+        self.title != opened_with.title || self.canvas.differs_from(opened_with.steps)
     }
 
     fn render(&self) -> Command<RecipeEditorOutcome> {
@@ -153,24 +187,36 @@ impl RecipeEditor {
         })
     }
 
-    /// Save. A title that breaks the rule becomes the editor's problem.
+    /// Save. A recipe title that breaks the rule becomes the editor's
+    /// problem. A step title that breaks the rule selects the first such
+    /// step, so the inspector shows its problem (REC-14/Q2).
     fn save(&mut self) -> Command<RecipeEditorOutcome> {
         self.save_attempted = true;
-        match self.try_save() {
-            Ok(save) => save,
-            Err(error) => {
+        let title = RecipeTitle::try_new(self.title.as_str());
+        let steps = self.canvas.writes();
+        if let Err(untitled) = steps {
+            // The view shows the selection after the render below, changed
+            // or not.
+            let _ = self.canvas.select(untitled);
+        }
+        match (title, steps) {
+            (Ok(title), Ok(steps)) => self.start_save(title, steps),
+            (title, _) => {
                 self.state = EditorState::Editing {
-                    problem: Some(RecipeEditorProblem::Invalid(error)),
+                    problem: title.err().map(RecipeEditorProblem::Invalid),
                 };
                 self.render()
             }
         }
     }
 
-    /// Checks the title, then starts the save: render `Saving`, then create
-    /// a new recipe or update the saved one.
-    fn try_save(&mut self) -> Result<Command<RecipeEditorOutcome>, RecipeTitleError> {
-        let title = RecipeTitle::try_new(self.title.as_str())?;
+    /// Starts the save: render `Saving`, then create a new recipe or update
+    /// the saved one.
+    fn start_save(
+        &mut self,
+        title: RecipeTitle,
+        steps: Vec<StepWrite>,
+    ) -> Command<RecipeEditorOutcome> {
         self.state = EditorState::Saving;
         let render = self.caps.render.clone();
         let store = self.caps.store.clone();
@@ -178,9 +224,7 @@ impl RecipeEditor {
             EditorTarget::New => None,
             EditorTarget::Saved { recipe } => Some(recipe.id),
         };
-        // The editor adds steps in REC-14 change 4.
-        let steps = vec![];
-        Ok(Command::single(async move {
+        Command::single(async move {
             render.render().await;
             match saved_id {
                 None => store.create(NewRecipe { title, steps }).await,
@@ -188,7 +232,7 @@ impl RecipeEditor {
             }
         })
         .latest(&mut self.save)
-        .map(RecipeEditorOutcome::SaveFinished))
+        .map(RecipeEditorOutcome::SaveFinished)
     }
 
     fn set_title(&mut self, title: String) -> Command<RecipeEditorOutcome> {
@@ -207,6 +251,15 @@ impl RecipeEditor {
         };
         self.state = EditorState::Editing { problem };
         self.render()
+    }
+
+    /// A step change keeps the problem: a save error or a bad recipe title
+    /// does not depend on the steps. A step's own problem is on its node.
+    fn change_canvas(&mut self, event: StepCanvasEvent) -> Command<RecipeEditorOutcome> {
+        match self.canvas.apply(event) {
+            CanvasChange::Changed => self.render(),
+            CanvasChange::Unchanged => Command::empty(),
+        }
     }
 
     fn request_close(&mut self) -> Command<RecipeEditorOutcome> {
@@ -236,6 +289,9 @@ impl Widget for RecipeEditor {
             Message::Event(event) => match (&mut self.state, event) {
                 (EditorState::Editing { .. }, RecipeEditorEvent::SetTitle(title)) => {
                     self.set_title(title)
+                }
+                (EditorState::Editing { .. }, RecipeEditorEvent::Canvas(event)) => {
+                    self.change_canvas(event)
                 }
                 (EditorState::Editing { .. }, RecipeEditorEvent::Save) => self.save(),
                 (EditorState::Editing { .. }, RecipeEditorEvent::RequestClose) => {
@@ -313,6 +369,7 @@ impl Widget for RecipeEditor {
         };
         RecipeEditorView {
             title: self.title.clone(),
+            canvas: self.canvas.view(self.save_attempted),
             status,
         }
     }

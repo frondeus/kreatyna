@@ -6,7 +6,7 @@ use kreatyna::{
         RecipeDetailStep, RecipeDetailView, RecipeEditorEvent, RecipeEditorProblem,
         RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeListEvent, RecipeListRow,
         RecipeListStatus, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
-        RecipeSectionView, RecipeSummary, Step, StepId,
+        RecipeSectionView, RecipeSummary, Step, StepCanvasView, StepId, StepNodeView,
         capabilities::{
             RecipeDeleteError, RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError,
             RecipeStoreRequest, ResolveRecipeStore,
@@ -861,17 +861,30 @@ fn create(title: &str, draft_row: &str) -> RecipePaneView {
     RecipePaneView::Create {
         editor: RecipeEditorView {
             title: title.into(),
+            canvas: StepCanvasView::Unselected { steps: vec![] },
             status: RecipeEditorStatus::Editing { problem: None },
         },
         draft_row: draft_row.into(),
     }
 }
 
-/// The edit editor of `saved`, with `title` typed.
+/// The edit editor of `saved`, with `title` typed. It opens with the saved
+/// steps and no selection.
 fn editing(saved: &Recipe, title: &str) -> RecipePaneView {
+    let steps = saved
+        .steps
+        .iter()
+        .map(|step| StepNodeView {
+            id: step.id,
+            title: step.title.clone(),
+            position: step.position,
+            problem: None,
+        })
+        .collect();
     RecipePaneView::Edit {
         editor: RecipeEditorView {
             title: title.into(),
+            canvas: StepCanvasView::Unselected { steps },
             status: RecipeEditorStatus::Editing { problem: None },
         },
         saved_title: saved.title.clone(),

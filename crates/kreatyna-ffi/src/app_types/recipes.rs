@@ -243,7 +243,8 @@ impl From<core::RecipeDetailStatus> for RecipeDetailStatus {
                 error: error.into(),
             },
             core::RecipeDetailStatus::Missing => Self::Missing,
-            core::RecipeDetailStatus::Ready { title } => Self::Ready { title },
+            // Change 5 of REC-05 adds the deletion to the FFI view.
+            core::RecipeDetailStatus::Ready { title, .. } => Self::Ready { title },
         }
     }
 }

@@ -2,10 +2,10 @@ use kreatyna::{
     capabilities::ResolveRender,
     confirmation::{ConfirmationEvent, ConfirmationView},
     recipes::{
-        Recipe, RecipeDetailEvent, RecipeDetailStatus, RecipeDetailView, RecipeEditorEvent,
-        RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeListRow,
-        RecipeListStatus, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
-        RecipeSectionView,
+        Recipe, RecipeDeletion, RecipeDetailEvent, RecipeDetailStatus, RecipeDetailView,
+        RecipeEditorEvent, RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, RecipeId,
+        RecipeListRow, RecipeListStatus, RecipePaneView, RecipeSection, RecipeSectionEvent,
+        RecipeSectionOutcome, RecipeSectionView,
         capabilities::{
             RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError, RecipeStoreRequest,
             ResolveRecipeStore,
@@ -637,6 +637,7 @@ fn read(recipe: &Recipe) -> RecipePaneView {
         recipe,
         RecipeDetailStatus::Ready {
             title: recipe.title.clone(),
+            deletion: RecipeDeletion::Idle,
         },
     )
 }

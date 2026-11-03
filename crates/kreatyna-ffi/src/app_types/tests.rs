@@ -319,7 +319,7 @@ fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
 )]
 #[test_case(kreatyna::recipes::RecipeDetailStatus::Missing, RecipeDetailStatus::Missing; "missing")]
 #[test_case(
-    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into() },
+    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: kreatyna::recipes::RecipeDeletion::Idle },
     RecipeDetailStatus::Ready { title: "Shakshuka".into() };
     "ready"
 )]

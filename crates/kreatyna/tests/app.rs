@@ -7,9 +7,9 @@ use kreatyna::{
         *,
     },
     recipes::{
-        Recipe, RecipeDetailEvent, RecipeDetailStatus, RecipeDetailView, RecipeEditorEvent,
-        RecipeId, RecipeListEvent, RecipeListRow, RecipeListStatus, RecipePaneView,
-        RecipeSectionEvent,
+        Recipe, RecipeDeletion, RecipeDetailEvent, RecipeDetailStatus, RecipeDetailView,
+        RecipeEditorEvent, RecipeId, RecipeListEvent, RecipeListRow, RecipeListStatus,
+        RecipePaneView, RecipeSectionEvent,
         capabilities::{RecipeEffect, RecipeLoadError, RecipeStoreRequest, ResolveRecipeStore},
     },
     *,
@@ -209,7 +209,8 @@ async fn a_recipe_row_click_opens_its_read_view_and_a_section_switch_keeps_it() 
         RecipePaneView::Detail(RecipeDetailView {
             id: shakshuka().id,
             status: RecipeDetailStatus::Ready {
-                title: "Shakshuka".into()
+                title: "Shakshuka".into(),
+                deletion: RecipeDeletion::Idle,
             },
         })
     );
@@ -287,7 +288,8 @@ async fn a_recipe_edit_and_its_save_route_through_the_app() -> anyhow::Result<()
         RecipePaneView::Detail(RecipeDetailView {
             id: spicy.id,
             status: RecipeDetailStatus::Ready {
-                title: "Spicy shakshuka".into()
+                title: "Spicy shakshuka".into(),
+                deletion: RecipeDeletion::Idle,
             },
         })
     );
@@ -358,7 +360,8 @@ async fn shutdown_keeps_an_accepted_recipe_save() -> anyhow::Result<()> {
         RecipePaneView::Detail(RecipeDetailView {
             id: pasta().id,
             status: RecipeDetailStatus::Ready {
-                title: "Pasta".into()
+                title: "Pasta".into(),
+                deletion: RecipeDeletion::Idle,
             },
         })
     );

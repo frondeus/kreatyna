@@ -8,7 +8,8 @@ mod model;
 mod section;
 
 pub use detail::{
-    RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome, RecipeDetailStatus, RecipeDetailView,
+    RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome, RecipeDetailStatus,
+    RecipeDetailView,
 };
 pub use editor::{
     RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus,

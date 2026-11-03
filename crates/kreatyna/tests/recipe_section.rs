@@ -3,8 +3,9 @@ use kreatyna::{
     confirmation::{ConfirmationEvent, ConfirmationView},
     recipes::{
         Recipe, RecipeDetailEvent, RecipeDetailStatus, RecipeDetailView, RecipeEditorEvent,
-        RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeListRow, RecipeListStatus,
-        RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome, RecipeSectionView,
+        RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeListRow,
+        RecipeListStatus, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
+        RecipeSectionView,
         capabilities::{
             RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError, RecipeStoreRequest,
             ResolveRecipeStore,
@@ -207,7 +208,154 @@ async fn keep_editing_forgets_the_clicked_row() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn edit_opens_the_editor_with_the_saved_title_and_keeps_the_row_selected()
+-> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    let read_scope = f.section.view().pane.scope;
+    f.edit().await?;
+    let view = f.section.view();
+    assert_ne!(view.pane.scope, read_scope);
+    assert_eq!(view.pane.value, editing(&shakshuka(), "Shakshuka"));
+    assert_eq!(view.selected, Some(shakshuka().id));
+    assert!(!view.can_create);
+    Ok(())
+}
+
+#[tokio::test]
+async fn saving_an_edit_shows_the_updated_read_view_and_loads_the_list_again() -> anyhow::Result<()>
+{
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.edit().await?;
+    f.type_title("Spicy shakshuka").await?;
+    let spicy = recipe(1, "Spicy shakshuka");
+    let saved = f.save(Ok(spicy.clone())).await?;
+
+    let command = f.section.update(Message::Outcome(saved));
+    let view = f.section.view();
+    assert_eq!(view.selected, Some(spicy.id));
+    assert_eq!(view.pane.value, detail(&spicy, RecipeDetailStatus::Loading));
+
+    f.stored = Ok(vec![pasta(), spicy.clone()]);
+    f.settle(command).await?;
+    let view = f.section.view();
+    assert_eq!(view.pane.value, read(&spicy));
+    assert_eq!(view.list.status, ready(&[pasta(), spicy]));
+    assert!(view.can_create);
+    Ok(())
+}
+
+#[tokio::test]
+async fn cancel_on_an_unchanged_edit_goes_back_to_the_read_view() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.edit().await?;
+    let command = f.editor(RecipeEditorEvent::RequestClose);
+    f.settle(command).await?;
+    assert_eq!(f.section.view().pane.value, read(&shakshuka()));
+    Ok(())
+}
+
+#[tokio::test]
+async fn discarding_a_changed_edit_goes_back_to_the_read_view() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.edit().await?;
+    f.type_title("Toast").await?;
+    let command = f.editor(RecipeEditorEvent::RequestClose);
+    f.settle(command).await?;
+    assert_eq!(f.editor_status()?, asking());
+
+    f.decide(ConfirmationEvent::Confirm).await?;
+    let view = f.section.view();
+    assert_eq!(view.selected, Some(shakshuka().id));
+    assert_eq!(view.pane.value, read(&shakshuka()));
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_row_click_on_an_unchanged_edit_opens_the_clicked_recipe() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.edit().await?;
+    f.select(&pasta()).await?;
+    let view = f.section.view();
+    assert_eq!(view.selected, Some(pasta().id));
+    assert_eq!(view.pane.value, read(&pasta()));
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_row_click_on_a_changed_edit_asks_first_then_discard_opens_the_clicked_recipe()
+-> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.edit().await?;
+    f.type_title("Toast").await?;
+    f.select(&pasta()).await?;
+    assert_eq!(f.editor_status()?, asking());
+
+    f.decide(ConfirmationEvent::Confirm).await?;
+    assert_eq!(f.section.view().pane.value, read(&pasta()));
+    Ok(())
+}
+
+#[tokio::test]
+async fn keep_editing_an_edit_forgets_the_clicked_row() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.edit().await?;
+    f.type_title("Toast").await?;
+    f.select(&pasta()).await?;
+    f.decide(ConfirmationEvent::Cancel).await?;
+    assert_eq!(f.section.view().pane.value, editing(&shakshuka(), "Toast"));
+
+    // Cancel now goes back to Shakshuka, not to the clicked Pasta.
+    let command = f.editor(RecipeEditorEvent::RequestClose);
+    f.settle(command).await?;
+    f.decide(ConfirmationEvent::Confirm).await?;
+    assert_eq!(f.section.view().pane.value, read(&shakshuka()));
+    Ok(())
+}
+
 // Validation
+
+#[tokio::test]
+async fn a_click_on_the_edited_row_is_ignored() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.edit().await?;
+    f.type_title("Toast").await?;
+    f.expect_ignored(RecipeSectionEvent::Select(shakshuka().id))
+        .await
+}
+
+#[tokio::test]
+async fn new_recipe_and_clear_selection_are_ignored_while_editing() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.edit().await?;
+    f.expect_ignored(RecipeSectionEvent::NewRecipe).await?;
+    let scope = f.section.view().pane.scope;
+    f.expect_ignored(RecipeSectionEvent::ClearSelection { scope })
+        .await
+}
+
+#[tokio::test]
+async fn an_edit_request_from_a_replaced_read_view_is_ignored() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    let request = f.detail(RecipeDetailEvent::Edit);
+    let open_edit = f.run_until_outcome(request).await?;
+    f.select(&pasta()).await?;
+
+    let before = f.section.view();
+    let command = f.section.update(Message::Outcome(open_edit));
+    assert_eq!(f.section.view(), before);
+    f.done(command).await
+}
 
 #[tokio::test]
 async fn new_recipe_is_ignored_while_the_editor_is_open() -> anyhow::Result<()> {
@@ -388,6 +536,30 @@ async fn a_failed_save_keeps_the_editor_open() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn a_failed_update_keeps_the_edit_editor_open_with_its_error() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.edit().await?;
+    f.type_title("Pasta").await?;
+    let finished = f
+        .save_finished(Err(RecipeSaveError::DuplicateTitle))
+        .await?;
+    let command = f.section.update(Message::Outcome(finished));
+    f.settle(command).await?;
+    let view = f.section.view();
+    assert_eq!(
+        f.editor_status()?,
+        RecipeEditorStatus::Editing {
+            problem: Some(RecipeEditorProblem::SaveFailed(
+                RecipeSaveError::DuplicateTitle
+            ))
+        }
+    );
+    assert_eq!(view.selected, Some(shakshuka().id));
+    Ok(())
+}
+
+#[tokio::test]
 async fn a_recipe_that_no_longer_exists_shows_missing_and_loads_the_list_again()
 -> anyhow::Result<()> {
     let mut f = Fixture::started().await?;
@@ -479,6 +651,17 @@ fn create(title: &str, draft_row: &str) -> RecipePaneView {
     }
 }
 
+/// The edit editor of `saved`, with `title` typed.
+fn editing(saved: &Recipe, title: &str) -> RecipePaneView {
+    RecipePaneView::Edit {
+        editor: RecipeEditorView {
+            title: title.into(),
+            status: RecipeEditorStatus::Editing { problem: None },
+        },
+        saved_title: saved.title.clone(),
+    }
+}
+
 /// The editor asks "Discard changes?".
 fn asking() -> RecipeEditorStatus {
     RecipeEditorStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
@@ -537,9 +720,17 @@ impl Fixture {
         self.send(RecipeSectionEvent::Editor(Scoped::new(pane.scope, event)))
     }
 
+    /// A read view event, sent with the pane's current scope.
+    fn detail(&mut self, event: RecipeDetailEvent) -> Command<RecipeSectionOutcome> {
+        let RecipeSectionView { pane, .. } = self.section.view();
+        self.send(RecipeSectionEvent::Detail(Scoped::new(pane.scope, event)))
+    }
+
     fn editor_status(&self) -> anyhow::Result<RecipeEditorStatus> {
         match self.section.view().pane.value {
-            RecipePaneView::Create { editor, .. } => Ok(editor.status),
+            RecipePaneView::Create { editor, .. } | RecipePaneView::Edit { editor, .. } => {
+                Ok(editor.status)
+            }
             pane => anyhow::bail!("expected the editor, found {pane:?}"),
         }
     }
@@ -619,6 +810,12 @@ impl Fixture {
         self.settle(command).await
     }
 
+    /// Edit in the open read view, and what follows.
+    async fn edit(&mut self) -> anyhow::Result<()> {
+        let command = self.detail(RecipeDetailEvent::Edit);
+        self.settle(command).await
+    }
+
     async fn type_title(&mut self, title: &str) -> anyhow::Result<()> {
         let command = self.editor(RecipeEditorEvent::SetTitle(title.into()));
         self.settle(command).await
@@ -630,8 +827,8 @@ impl Fixture {
         self.settle(command).await
     }
 
-    /// Runs a save command with `result`. Returns `SaveFinished`, not yet
-    /// dispatched.
+    /// Runs a save command with `result`, for a create or an update. Returns
+    /// `SaveFinished`, not yet dispatched.
     async fn run_save(
         &mut self,
         save: Command<RecipeSectionOutcome>,
@@ -645,16 +842,27 @@ impl Fixture {
             .expect_render()
             .resolve_render(|| async {})
             .await?;
-        command
-            .step()
-            .await?
-            .expect_effect()
-            .expect_store()
-            .resolve_create(|_| async { result })
-            .await?;
+        let store = command.step().await?.expect_effect().expect_store();
+        match store.request {
+            RecipeStoreRequest::Create { .. } => store.resolve_create(|_| async { result }).await?,
+            RecipeStoreRequest::Update { .. } => {
+                store.resolve_update(|_, _| async { result }).await?
+            }
+            _ => anyhow::bail!("expected a create or an update"),
+        }
         let outcome = command.step().await?.expect_outcome();
         command.step().await?.expect_done();
         Ok(outcome)
+    }
+
+    /// Saves the editor with `result`. Returns `SaveFinished`, not yet
+    /// dispatched.
+    async fn save_finished(
+        &mut self,
+        result: Result<Recipe, RecipeSaveError>,
+    ) -> anyhow::Result<RecipeSectionOutcome> {
+        let save = self.editor(RecipeEditorEvent::Save);
+        self.run_save(save, result).await
     }
 
     /// Saves the editor with `result`. Returns the editor's `Saved`, not yet
@@ -663,8 +871,7 @@ impl Fixture {
         &mut self,
         result: Result<Recipe, RecipeSaveError>,
     ) -> anyhow::Result<RecipeSectionOutcome> {
-        let save = self.editor(RecipeEditorEvent::Save);
-        let finished = self.run_save(save, result).await?;
+        let finished = self.save_finished(result).await?;
         let command = self.section.update(Message::Outcome(finished));
         self.run_until_outcome(command).await
     }

@@ -286,6 +286,9 @@ impl From<core::RecipePaneView> for RecipePaneView {
                 editor: editor.into(),
                 draft_row,
             },
+            // Temporary until REC-04 change 5 adds the FFI edit pane. Swift
+            // cannot send Edit before then, so this arm is not reached.
+            core::RecipePaneView::Edit { .. } => Self::Empty,
         }
     }
 }

@@ -7,8 +7,9 @@ use kreatyna::{
         *,
     },
     recipes::{
-        Recipe, RecipeDetailStatus, RecipeDetailView, RecipeEditorEvent, RecipeId, RecipeListEvent,
-        RecipeListRow, RecipeListStatus, RecipePaneView, RecipeSectionEvent,
+        Recipe, RecipeDetailEvent, RecipeDetailStatus, RecipeDetailView, RecipeEditorEvent,
+        RecipeId, RecipeListEvent, RecipeListRow, RecipeListStatus, RecipePaneView,
+        RecipeSectionEvent,
         capabilities::{RecipeEffect, RecipeLoadError, RecipeStoreRequest, ResolveRecipeStore},
     },
     *,
@@ -218,6 +219,78 @@ async fn a_recipe_row_click_opens_its_read_view_and_a_section_switch_keeps_it() 
     let command = f.split_event(SplitAppEvent::SelectSection(AppSection::Recipes));
     f.render(command).await?;
     assert_eq!(f.split()?.recipes, recipes);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_recipe_edit_and_its_save_route_through_the_app() -> anyhow::Result<()> {
+    let mut f = Fixture::with(AppLayout::Split);
+    f.initialize().await?;
+    let command = f.recipes(RecipeSectionEvent::Select(shakshuka().id));
+    f.drive_initialization(command).await?;
+    let scope = f.split()?.recipes.pane.scope;
+    let command = f.recipes(RecipeSectionEvent::Detail(Scoped::new(
+        scope,
+        RecipeDetailEvent::Edit,
+    )));
+    f.drive_initialization(command).await?;
+    assert!(matches!(
+        f.split()?.recipes.pane.value,
+        RecipePaneView::Edit { ref saved_title, .. } if saved_title == "Shakshuka"
+    ));
+
+    f.recipe_editor(RecipeEditorEvent::SetTitle("Spicy shakshuka".into()))
+        .await?;
+    let scope = f.split()?.recipes.pane.scope;
+    let save = f.recipes(RecipeSectionEvent::Editor(Scoped::new(
+        scope,
+        RecipeEditorEvent::Save,
+    )));
+    let spicy = Recipe {
+        title: "Spicy shakshuka".into(),
+        ..shakshuka()
+    };
+    let mut updated = None;
+    let mut save = save.driver(&mut f.effects);
+    save.step()
+        .await?
+        .expect_effect()
+        .expect_recipes()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    save.step()
+        .await?
+        .expect_effect()
+        .expect_recipes()
+        .expect_store()
+        .resolve_update(|id, recipe| {
+            updated = Some((id, recipe.title.as_ref().to_owned()));
+            async { Ok(spicy.clone()) }
+        })
+        .await?;
+    let finished = save.step().await?.expect_outcome();
+    save.step().await?.expect_done();
+    drop(save);
+    assert_eq!(
+        updated,
+        Some((shakshuka().id, "Spicy shakshuka".to_owned()))
+    );
+
+    let command = f.app.update(Message::Outcome(finished));
+    let saved = f.render_then_outcome(command).await?;
+    let command = f.app.update(Message::Outcome(saved));
+    f.recipes = Ok(vec![spicy.clone()]);
+    f.drive_initialization(command).await?;
+    assert_eq!(
+        f.split()?.recipes.pane.value,
+        RecipePaneView::Detail(RecipeDetailView {
+            id: spicy.id,
+            status: RecipeDetailStatus::Ready {
+                title: "Spicy shakshuka".into()
+            },
+        })
+    );
     Ok(())
 }
 

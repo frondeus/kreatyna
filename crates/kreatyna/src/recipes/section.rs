@@ -3,16 +3,16 @@
 //!
 //! The list lives as long as the section. The pane gets a new scope each time
 //! its content changes, so late events and results of old content are
-//! ignored (E-19). The pane is empty, a recipe's read view (REC-03), or the
-//! create editor (REC-02).
+//! ignored (E-19). The pane is empty, a recipe's read view (REC-03), the
+//! create editor (REC-02), or the edit editor (REC-04).
 use krucyfiks::{Command, CommandExt, CommandScopeId, Message, Scoped, Widget};
 
 use crate::scoped_child::ScopedChild;
 
 use super::{
-    RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome, RecipeDetailStatus, RecipeDetailView,
-    RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorStatus, RecipeEditorView,
-    RecipeId, RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListView,
+    Recipe, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome, RecipeDetailStatus,
+    RecipeDetailView, RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorStatus,
+    RecipeEditorView, RecipeId, RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListView,
     capabilities::{RecipeCapabilities, RecipeEffectStream},
 };
 
@@ -58,13 +58,19 @@ pub enum RecipePaneView {
         /// list. Empty shows "New Recipe" (REC-02/Q1).
         draft_row: String,
     },
+    /// The edit editor. `saved_title` is the title as stored: the heading
+    /// and the row show it until Save (MAC-06/Q1).
+    Edit {
+        editor: RecipeEditorView,
+        saved_title: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecipeSectionView {
     pub list: RecipeListView,
-    /// The highlighted row: the open recipe. `None` while the editor is
-    /// open; the draft row is highlighted then. REC-04 adds the edited recipe.
+    /// The highlighted row: the open or the edited recipe. `None` while the
+    /// create editor is open; the draft row is highlighted then.
     pub selected: Option<RecipeId>,
     /// The scope goes with read view and editor events.
     pub pane: Scoped<RecipePaneView>,
@@ -72,20 +78,19 @@ pub struct RecipeSectionView {
     pub can_create: bool,
 }
 
-/// The create editor, and where the pane goes when it is discarded. The
-/// ingredient catalog's `FormPane` explains the two fields with a table
-/// (REC-03/Q2).
-struct CreatePane {
+/// An editor, and where the pane goes when it is discarded. The ingredient
+/// catalog's `FormPane` explains the two fields with a table (REC-03/Q2).
+struct EditorPane {
     editor: RecipeEditor,
-    /// The recipe that was open when New Recipe was pressed. Cancel goes
-    /// back to it.
+    /// The recipe that was open when New Recipe was pressed, or the edited
+    /// recipe. Cancel goes back to it.
     return_to: Option<RecipeId>,
     /// The row clicked while "Discard changes?" is open (E-10). Keep Editing
     /// clears it.
     clicked_row: Option<RecipeId>,
 }
 
-impl CreatePane {
+impl EditorPane {
     /// Where Discard goes: the clicked row wins, then `return_to`, then nothing.
     fn discard_destination(&mut self) -> Option<RecipeId> {
         self.clicked_row.take().or_else(|| self.return_to.take())
@@ -95,10 +100,23 @@ impl CreatePane {
 enum Pane {
     Empty,
     Detail(RecipeDetail),
-    Create(CreatePane),
+    Create(EditorPane),
+    /// `saved` is the edited recipe as stored. The row and the heading show
+    /// it until Save (MAC-06/Q1).
+    Edit {
+        saved: Recipe,
+        pane: EditorPane,
+    },
 }
 
 impl Pane {
+    fn editor_pane(&mut self) -> Option<&mut EditorPane> {
+        match self {
+            Self::Create(pane) | Self::Edit { pane, .. } => Some(pane),
+            Self::Empty | Self::Detail(_) => None,
+        }
+    }
+
     fn view(&self) -> RecipePaneView {
         match self {
             Self::Empty => RecipePaneView::Empty,
@@ -110,6 +128,10 @@ impl Pane {
                     editor,
                 }
             }
+            Self::Edit { saved, pane } => RecipePaneView::Edit {
+                editor: pane.editor.view(),
+                saved_title: saved.title.clone(),
+            },
         }
     }
 }
@@ -137,13 +159,14 @@ impl RecipeSection {
     fn can_create(&self) -> bool {
         match self.pane.widget {
             Pane::Empty | Pane::Detail(_) => true,
-            Pane::Create(_) => false,
+            Pane::Create(_) | Pane::Edit { .. } => false,
         }
     }
 
     fn selected(&self) -> Option<RecipeId> {
         match &self.pane.widget {
             Pane::Detail(detail) => Some(detail.view().id),
+            Pane::Edit { saved, .. } => Some(saved.id),
             Pane::Empty | Pane::Create(_) => None,
         }
     }
@@ -188,7 +211,7 @@ impl RecipeSection {
                 let init = detail.init();
                 self.detail_command(init)
             }
-            Pane::Empty | Pane::Create(_) => self.render(),
+            Pane::Empty | Pane::Create(_) | Pane::Edit { .. } => self.render(),
         }
     }
 
@@ -205,18 +228,38 @@ impl RecipeSection {
         let return_to = match &self.pane.widget {
             Pane::Empty => None,
             Pane::Detail(detail) => Some(detail.view().id),
-            Pane::Create(_) => return Command::empty(),
+            Pane::Create(_) | Pane::Edit { .. } => return Command::empty(),
         };
         let editor = RecipeEditor::new(self.caps.clone());
-        self.show(Pane::Create(CreatePane {
+        self.show(Pane::Create(EditorPane {
             editor,
             return_to,
             clicked_row: None,
         }))
     }
 
-    /// A row click. An editor with a typed title asks "Discard changes?"
-    /// first (E-10, REC-03/Q2).
+    /// Edit in the read view (REC-04). The read view must still show that
+    /// recipe.
+    fn open_edit(&mut self, recipe: Recipe) -> Command<RecipeSectionOutcome> {
+        let Pane::Detail(detail) = &self.pane.widget else {
+            return Command::empty();
+        };
+        if detail.view().id != recipe.id {
+            return Command::empty();
+        }
+        let editor = RecipeEditor::edit(self.caps.clone(), &recipe);
+        self.show(Pane::Edit {
+            pane: EditorPane {
+                editor,
+                return_to: Some(recipe.id),
+                clicked_row: None,
+            },
+            saved: recipe,
+        })
+    }
+
+    /// A row click. A changed editor asks "Discard changes?" first (E-10,
+    /// REC-03/Q2).
     fn select(&mut self, id: RecipeId) -> Command<RecipeSectionOutcome> {
         if !self.list.contains(id) {
             return Command::empty();
@@ -228,7 +271,8 @@ impl RecipeSection {
                     return Command::empty();
                 }
             }
-            Pane::Create(pane) => {
+            Pane::Edit { saved, .. } if saved.id == id => return Command::empty(),
+            Pane::Create(pane) | Pane::Edit { pane, .. } => {
                 if !matches!(
                     pane.editor.view().status,
                     RecipeEditorStatus::Editing { .. }
@@ -261,6 +305,9 @@ impl RecipeSection {
         let Pane::Detail(detail) = &mut self.pane.widget else {
             return Command::empty();
         };
+        if let RecipeDetailOutcome::OpenEdit { recipe } = outcome {
+            return self.open_edit(recipe);
+        }
         let was_missing = detail.view().status == RecipeDetailStatus::Missing;
         let command = detail.update(Message::Outcome(outcome));
         let missing = detail.view().status == RecipeDetailStatus::Missing;
@@ -277,7 +324,7 @@ impl RecipeSection {
         &mut self,
         outcome: RecipeEditorOutcome,
     ) -> Command<RecipeSectionOutcome> {
-        let Pane::Create(pane) = &mut self.pane.widget else {
+        let Some(pane) = self.pane.widget.editor_pane() else {
             return Command::empty();
         };
         match outcome {
@@ -347,7 +394,7 @@ impl Widget for RecipeSection {
                 let Some(event) = self.pane.accept(scoped) else {
                     return Command::empty();
                 };
-                let Pane::Create(pane) = &mut self.pane.widget else {
+                let Some(pane) = self.pane.widget.editor_pane() else {
                     return Command::empty();
                 };
                 let command = pane.editor.update(Message::Event(event));

@@ -67,15 +67,16 @@ struct MacStepCanvas: View {
     }
 }
 
-/// One step on the canvas: its title, or "Untitled step". The selected node
-/// has the accent border; a node with a problem has a red border.
+/// One step on the canvas: the label Rust gives it, a title or "Untitled
+/// step". The selected node has the accent border; a node with a problem has
+/// a red border.
 struct MacStepNode: View {
     let node: StepNodeView
     let selected: Bool
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 10)
-        Text(untitled ? "Untitled step" : node.title)
+        Text(text)
             .font(.body.weight(.medium))
             .foregroundStyle(untitled ? .secondary : .primary)
             .lineLimit(2)
@@ -86,15 +87,20 @@ struct MacStepNode: View {
             .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
             .contentShape(shape)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(untitled ? "Untitled step" : node.title)
+            .accessibilityLabel(text)
             .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
             .accessibilityIdentifier("stepNode")
     }
 
-    /// Presentation only: a title of spaces draws as untitled too. Rust
-    /// decides whether it is a problem.
+    private var text: String {
+        switch node.label {
+        case .titled(let title): title
+        case .untitled: "Untitled step"
+        }
+    }
+
     private var untitled: Bool {
-        node.title.trimmingCharacters(in: .whitespaces).isEmpty
+        node.label == .untitled
     }
 
     private var border: Color {

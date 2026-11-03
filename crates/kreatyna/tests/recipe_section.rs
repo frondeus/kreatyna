@@ -6,7 +6,7 @@ use kreatyna::{
         RecipeDetailStep, RecipeDetailView, RecipeEditorEvent, RecipeEditorProblem,
         RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeListEvent, RecipeListRow,
         RecipeListStatus, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
-        RecipeSectionView, RecipeSummary, Step, StepCanvasView, StepId, StepNodeView,
+        RecipeSectionView, RecipeSummary, Step, StepCanvasView, StepId, StepLabel, StepNodeView,
         capabilities::{
             RecipeDeleteError, RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError,
             RecipeStoreRequest, ResolveRecipeStore,
@@ -877,6 +877,9 @@ fn editing(saved: &Recipe, title: &str) -> RecipePaneView {
         .map(|step| StepNodeView {
             id: step.id,
             title: step.title.clone(),
+            label: StepLabel::Titled {
+                title: step.title.clone(),
+            },
             position: step.position,
             problem: None,
         })

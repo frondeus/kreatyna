@@ -173,7 +173,9 @@ extension MainActorTests {
         @Test(arguments: Appearance.allCases)
         func untitledStep(appearance: Appearance) {
             let canvas = StepCanvasView.selected(
-                selected: Fixtures.stepNode("", x: 200, y: 110, problem: .notEmptyViolated, key: "new"),
+                selected: Fixtures.stepNode(
+                    "", x: 200, y: 110, label: .untitled, problem: .notEmptyViolated, key: "new"
+                ),
                 others: [Fixtures.stepNode("Dice onion", x: 20, y: 20)]
             )
             snapshot(

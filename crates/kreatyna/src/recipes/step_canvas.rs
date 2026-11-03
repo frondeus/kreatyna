@@ -31,11 +31,23 @@ pub enum StepCanvasView {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StepNodeView {
     pub id: StepId,
-    /// The title as typed.
+    /// The title as typed. The inspector's Title field edits it.
     pub title: String,
+    /// What the node shows.
+    pub label: StepLabel,
     pub position: CanvasPoint,
     /// Only after the first Save: the title breaks the rule.
     pub problem: Option<StepTitleError>,
+}
+
+/// What a step node shows. The StepTitle rule decides it, so a title of
+/// spaces is untitled too.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StepLabel {
+    /// The title, trimmed.
+    Titled { title: String },
+    /// "Untitled step".
+    Untitled,
 }
 
 /// Whether a canvas call changed the steps or the selection. The editor
@@ -57,14 +69,18 @@ struct DraftStep {
 
 impl DraftStep {
     fn node(&self, show_problems: bool) -> StepNodeView {
-        let problem = if show_problems {
-            StepTitle::try_new(self.title.as_str()).err()
-        } else {
-            None
+        let checked = StepTitle::try_new(self.title.as_str());
+        let label = match &checked {
+            Ok(title) => StepLabel::Titled {
+                title: title.clone().into_inner(),
+            },
+            Err(StepTitleError::NotEmptyViolated) => StepLabel::Untitled,
         };
+        let problem = if show_problems { checked.err() } else { None };
         StepNodeView {
             id: self.id,
             title: self.title.clone(),
+            label,
             position: self.position,
             problem,
         }

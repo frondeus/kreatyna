@@ -232,12 +232,32 @@ impl From<core::StepTitleError> for StepTitleError {
     }
 }
 
+/// What a step node shows. Rust's StepTitle rule decides it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum StepLabel {
+    /// The title, trimmed.
+    Titled { title: String },
+    /// "Untitled step".
+    Untitled,
+}
+
+impl From<core::StepLabel> for StepLabel {
+    fn from(value: core::StepLabel) -> Self {
+        match value {
+            core::StepLabel::Titled { title } => Self::Titled { title },
+            core::StepLabel::Untitled => Self::Untitled,
+        }
+    }
+}
+
 /// A step node on the canvas.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct StepNodeView {
     pub id: core::StepId,
-    /// The title as typed. Empty shows "Untitled step".
+    /// The title as typed. The inspector's Title field edits it.
     pub title: String,
+    /// What the node shows.
+    pub label: StepLabel,
     pub position: CanvasPoint,
     /// Only after the first Save: the title breaks the rule.
     pub problem: Option<StepTitleError>,
@@ -248,6 +268,7 @@ impl From<core::StepNodeView> for StepNodeView {
         Self {
             id: value.id,
             title: value.title,
+            label: value.label.into(),
             position: value.position.into(),
             problem: value.problem.map(Into::into),
         }

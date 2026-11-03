@@ -397,12 +397,16 @@ fn an_editor_canvas_keeps_the_selection_the_positions_and_the_problems() {
     let untitled = kreatyna::recipes::StepNodeView {
         id: step_id(2),
         title: " ".into(),
+        label: kreatyna::recipes::StepLabel::Untitled,
         position: kreatyna::recipes::CanvasPoint { x: 240, y: 40 },
         problem: Some(kreatyna::recipes::StepTitleError::NotEmptyViolated),
     };
     let named = kreatyna::recipes::StepNodeView {
         id: step_id(1),
         title: "Dice onion".into(),
+        label: kreatyna::recipes::StepLabel::Titled {
+            title: "Dice onion".into(),
+        },
         position: kreatyna::recipes::CanvasPoint { x: 40, y: 40 },
         problem: None,
     };
@@ -422,12 +426,16 @@ fn an_editor_canvas_keeps_the_selection_the_positions_and_the_problems() {
                 selected: StepNodeView {
                     id: step_id(2),
                     title: " ".into(),
+                    label: StepLabel::Untitled,
                     position: CanvasPoint { x: 240, y: 40 },
                     problem: Some(StepTitleError::NotEmptyViolated),
                 },
                 others: vec![StepNodeView {
                     id: step_id(1),
                     title: "Dice onion".into(),
+                    label: StepLabel::Titled {
+                        title: "Dice onion".into(),
+                    },
                     position: CanvasPoint { x: 40, y: 40 },
                     problem: None,
                 }],
@@ -442,6 +450,9 @@ fn an_unselected_canvas_keeps_the_steps_in_the_order_added() -> anyhow::Result<(
     let node = |n: u128, x: u32| kreatyna::recipes::StepNodeView {
         id: step_id(n),
         title: format!("Step {n}"),
+        label: kreatyna::recipes::StepLabel::Titled {
+            title: format!("Step {n}"),
+        },
         position: kreatyna::recipes::CanvasPoint { x, y: 40 },
         problem: None,
     };

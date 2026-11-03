@@ -122,11 +122,15 @@ enum Fixtures {
 
     /// A step node on the editor's canvas. The ID only has to be unique in
     /// the recipe; `key` stands in for the title when it is empty.
+    /// A step node. The label is the title unless a test passes `.untitled`,
+    /// as Rust does for a title the StepTitle rule refuses.
     static func stepNode(
-        _ title: String, x: UInt32, y: UInt32, problem: StepTitleError? = nil, key: String? = nil
+        _ title: String, x: UInt32, y: UInt32, label: StepLabel? = nil,
+        problem: StepTitleError? = nil, key: String? = nil
     ) -> StepNodeView {
         StepNodeView(
             id: StepId(uuid: "step-\(key ?? title)"), title: title,
+            label: label ?? .titled(title: title),
             position: CanvasPoint(x: x, y: y), problem: problem
         )
     }

@@ -4,8 +4,8 @@ use kreatyna::{
     recipes::{
         CanvasPoint, Recipe, RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome,
         RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeTitleError,
-        Step, StepCanvasEvent, StepCanvasView, StepId, StepNodeView, StepTitle, StepTitleError,
-        StepWrite,
+        Step, StepCanvasEvent, StepCanvasView, StepId, StepLabel, StepNodeView, StepTitle,
+        StepTitleError, StepWrite,
         capabilities::{
             RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
         },
@@ -144,25 +144,30 @@ async fn add_step_adds_an_untitled_step_at_the_point_and_selects_it() -> anyhow:
     assert_eq!(
         f.editor.view().canvas,
         StepCanvasView::Selected {
-            selected: node(id, "", point(120, 80), None),
+            selected: node(id, "", StepLabel::Untitled, point(120, 80), None),
             others: vec![],
         }
     );
     f.render(command).await
 }
 
+#[test_case(" Dice onion ", titled("Dice onion") ; "a title shows trimmed")]
+#[test_case("   ", StepLabel::Untitled ; "a title of spaces shows untitled")]
 #[tokio::test]
-async fn naming_a_step_keeps_the_raw_title_and_renders() -> anyhow::Result<()> {
+async fn naming_a_step_keeps_the_raw_title_and_renders(
+    title: &str,
+    label: StepLabel,
+) -> anyhow::Result<()> {
     let mut f = Fixture::new();
     let id = f.add_step(point(120, 80)).await?;
     let command = f.send(RecipeEditorEvent::Canvas(StepCanvasEvent::SetTitle {
         id,
-        title: " Dice onion ".into(),
+        title: title.into(),
     }));
     assert_eq!(
         f.editor.view().canvas,
         StepCanvasView::Selected {
-            selected: node(id, " Dice onion ", point(120, 80), None),
+            selected: node(id, title, label, point(120, 80), None),
             others: vec![],
         }
     );
@@ -379,10 +384,22 @@ async fn save_with_an_untitled_step_selects_the_first_one_and_does_not_call_the_
         RecipeEditorView {
             title: title.into(),
             canvas: StepCanvasView::Selected {
-                selected: node(first, "", point(240, 40), untitled.clone()),
+                selected: node(
+                    first,
+                    "",
+                    StepLabel::Untitled,
+                    point(240, 40),
+                    untitled.clone()
+                ),
                 others: vec![
-                    node(boil, "Boil water", point(40, 40), None),
-                    node(second, "", point(440, 40), untitled),
+                    node(
+                        boil,
+                        "Boil water",
+                        titled("Boil water"),
+                        point(40, 40),
+                        None
+                    ),
+                    node(second, "", StepLabel::Untitled, point(440, 40), untitled),
                 ],
             },
             status: RecipeEditorStatus::Editing { problem },
@@ -404,7 +421,7 @@ async fn after_the_first_save_naming_a_step_checks_its_title_again() -> anyhow::
     assert_eq!(
         f.editor.view().canvas,
         StepCanvasView::Selected {
-            selected: node(id, "Dice onion", point(40, 40), None),
+            selected: node(id, "Dice onion", titled("Dice onion"), point(40, 40), None),
             others: vec![],
         }
     );
@@ -415,6 +432,7 @@ async fn after_the_first_save_naming_a_step_checks_its_title_again() -> anyhow::
             selected: node(
                 id,
                 "  ",
+                StepLabel::Untitled,
                 point(40, 40),
                 Some(StepTitleError::NotEmptyViolated)
             ),
@@ -589,19 +607,34 @@ fn point(x: u32, y: u32) -> CanvasPoint {
 fn node(
     id: StepId,
     title: &str,
+    label: StepLabel,
     position: CanvasPoint,
     problem: Option<StepTitleError>,
 ) -> StepNodeView {
     StepNodeView {
         id,
         title: title.into(),
+        label,
         position,
         problem,
     }
 }
 
+fn titled(title: &str) -> StepLabel {
+    StepLabel::Titled {
+        title: title.into(),
+    }
+}
+
+/// A saved step's node: saved titles always pass the rule.
 fn saved_node(step: &Step) -> StepNodeView {
-    node(step.id, &step.title, step.position, None)
+    node(
+        step.id,
+        &step.title,
+        titled(&step.title),
+        step.position,
+        None,
+    )
 }
 
 /// The canvas of `recipe` as the edit editor opens it: no selection.

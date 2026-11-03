@@ -138,6 +138,90 @@ fn a_created_recipe_is_listed_opens_its_read_view_and_its_title_cannot_be_taken_
 }
 
 #[test]
+fn an_edited_recipe_title_is_saved_and_shown_in_the_read_view_and_the_list() -> anyhow::Result<()> {
+    let database = TemporaryDatabase::new()?;
+    let (render, rendered) = TestRender::new();
+    let app = app(
+        AppCapabilities {
+            render: Arc::new(render),
+        },
+        database.path()?.into(),
+        AppLayout::Split,
+    );
+    app.start()?;
+    wait_until_ready(&app, &rendered)?;
+    let recipes = |event| AppEvent::Split {
+        event: SplitAppEvent::Recipes { event },
+    };
+
+    create_recipe(&app, &rendered, "Shakshuka")?;
+    wait_until(&app, &rendered, |view| {
+        split_of(view).is_some_and(|split| {
+            matches!(
+                &split.recipes.pane.value,
+                RecipePaneView::Detail {
+                    detail: RecipeDetailView {
+                        status: RecipeDetailStatus::Ready { .. },
+                        ..
+                    }
+                }
+            )
+        })
+    })?;
+    let scope = split_of(&app.view()?)
+        .context("expected the split layout")?
+        .recipes
+        .pane
+        .scope;
+    app.dispatch(recipes(RecipeSectionEvent::Detail {
+        scope,
+        event: RecipeDetailEvent::Edit,
+    }))?;
+    wait_until(&app, &rendered, |view| {
+        split_of(view).is_some_and(|split| {
+            matches!(
+                &split.recipes.pane.value,
+                RecipePaneView::Edit { saved_title, .. } if saved_title == "Shakshuka"
+            )
+        })
+    })?;
+    let scope = split_of(&app.view()?)
+        .context("expected the split layout")?
+        .recipes
+        .pane
+        .scope;
+    app.dispatch(recipes(RecipeSectionEvent::Editor {
+        scope,
+        event: RecipeEditorEvent::SetTitle {
+            title: "Spicy shakshuka".into(),
+        },
+    }))?;
+    app.dispatch(recipes(RecipeSectionEvent::Editor {
+        scope,
+        event: RecipeEditorEvent::Save,
+    }))?;
+    wait_until(&app, &rendered, |view| {
+        split_of(view).is_some_and(|split| {
+            matches!(
+                (&split.recipes.list.status, &split.recipes.pane.value),
+                (
+                    RecipeListStatus::Ready { rows },
+                    RecipePaneView::Detail {
+                        detail: RecipeDetailView {
+                            status: RecipeDetailStatus::Ready { title },
+                            ..
+                        }
+                    },
+                ) if rows.iter().map(|row| row.title.as_str()).eq(["Spicy shakshuka"])
+                    && title == "Spicy shakshuka"
+            )
+        })
+    })?;
+    app.shutdown();
+    Ok(())
+}
+
+#[test]
 fn graceful_shutdown_before_initialization_is_polled_drains_prepared_children() -> anyhow::Result<()>
 {
     let database = TemporaryDatabase::new()?;

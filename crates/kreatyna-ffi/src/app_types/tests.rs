@@ -276,6 +276,17 @@ fn recipe_section_events_keep_their_pane_scope() {
             kreatyna::recipes::RecipeDetailEvent::Retry
         ))
     );
+    let edit = RecipeSectionEvent::Detail {
+        scope,
+        event: RecipeDetailEvent::Edit,
+    };
+    assert_eq!(
+        kreatyna::recipes::RecipeSectionEvent::from(edit),
+        kreatyna::recipes::RecipeSectionEvent::Detail(Scoped::new(
+            CommandScopeId::from(7),
+            kreatyna::recipes::RecipeDetailEvent::Edit
+        ))
+    );
     assert_eq!(
         kreatyna::recipes::RecipeSectionEvent::from(RecipeSectionEvent::ClearSelection { scope }),
         kreatyna::recipes::RecipeSectionEvent::ClearSelection {
@@ -357,6 +368,35 @@ fn a_create_pane_keeps_the_draft_row_and_the_problem() {
                 },
             },
             draft_row: "shakshuka".into(),
+        }
+    );
+}
+
+#[test]
+fn an_edit_pane_keeps_the_saved_title_and_the_problem() {
+    let pane = kreatyna::recipes::RecipePaneView::Edit {
+        editor: kreatyna::recipes::RecipeEditorView {
+            title: "Spicy shakshuka".into(),
+            status: kreatyna::recipes::RecipeEditorStatus::Editing {
+                problem: Some(kreatyna::recipes::RecipeEditorProblem::SaveFailed(
+                    kreatyna::recipes::capabilities::RecipeSaveError::NotFound,
+                )),
+            },
+        },
+        saved_title: "Shakshuka".into(),
+    };
+    assert_eq!(
+        RecipePaneView::from(pane),
+        RecipePaneView::Edit {
+            editor: RecipeEditorView {
+                title: "Spicy shakshuka".into(),
+                status: RecipeEditorStatus::Editing {
+                    problem: Some(RecipeEditorProblem::SaveFailed {
+                        error: RecipeSaveError::NotFound
+                    }),
+                },
+            },
+            saved_title: "Shakshuka".into(),
         }
     );
 }
@@ -706,6 +746,7 @@ fn recipe_load_errors_keep_their_kind(
 }
 
 #[test_case(kreatyna::recipes::capabilities::RecipeSaveError::DuplicateTitle, RecipeSaveError::DuplicateTitle; "duplicate title")]
+#[test_case(kreatyna::recipes::capabilities::RecipeSaveError::NotFound, RecipeSaveError::NotFound; "not found")]
 #[test_case(kreatyna::recipes::capabilities::RecipeSaveError::Storage, RecipeSaveError::Storage; "storage")]
 #[test_case(kreatyna::recipes::capabilities::RecipeSaveError::Transport, RecipeSaveError::Transport; "transport")]
 fn recipe_save_errors_keep_their_kind(

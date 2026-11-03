@@ -209,12 +209,15 @@ impl From<RecipeEditorEvent> for core::RecipeEditorEvent {
 pub enum RecipeDetailEvent {
     /// Load again after a failure (the Retry button).
     Retry,
+    /// The Edit button: open the editor for the shown recipe.
+    Edit,
 }
 
 impl From<RecipeDetailEvent> for core::RecipeDetailEvent {
     fn from(value: RecipeDetailEvent) -> Self {
         match value {
             RecipeDetailEvent::Retry => Self::Retry,
+            RecipeDetailEvent::Edit => Self::Edit,
         }
     }
 }
@@ -273,6 +276,12 @@ pub enum RecipePaneView {
         /// list. Empty shows "New Recipe".
         draft_row: String,
     },
+    /// The edit editor. `saved_title` is the title as stored: the heading
+    /// shows it until Save.
+    Edit {
+        editor: RecipeEditorView,
+        saved_title: String,
+    },
 }
 
 impl From<core::RecipePaneView> for RecipePaneView {
@@ -286,9 +295,13 @@ impl From<core::RecipePaneView> for RecipePaneView {
                 editor: editor.into(),
                 draft_row,
             },
-            // Temporary until REC-04 change 5 adds the FFI edit pane. Swift
-            // cannot send Edit before then, so this arm is not reached.
-            core::RecipePaneView::Edit { .. } => Self::Empty,
+            core::RecipePaneView::Edit {
+                editor,
+                saved_title,
+            } => Self::Edit {
+                editor: editor.into(),
+                saved_title,
+            },
         }
     }
 }

@@ -18,6 +18,9 @@ struct MacRecipePane: View {
             // A new pane scope is new content, so the title field starts fresh.
             MacRecipeEditor(view: editor) { send(section.editor($0)) }
                 .id(section.pane.scope)
+        case .edit:
+            // REC-04 change 6 shows the editor here. Edit is still disabled.
+            EmptyView()
         }
     }
 }

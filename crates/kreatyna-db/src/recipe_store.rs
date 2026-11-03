@@ -8,7 +8,7 @@ use kreatyna::{
     ingredients::name_key,
     recipes::{
         NewRecipe, Recipe, RecipeId, RecipeUpdate,
-        capabilities::{RecipeLoadError, RecipeSaveError, RecipeStoreMut},
+        capabilities::{RecipeDeleteError, RecipeLoadError, RecipeSaveError, RecipeStoreMut},
     },
 };
 
@@ -211,6 +211,33 @@ impl RecipeStoreMut for SqliteDatabase {
             error => {
                 tracing::error!(?error, "Recipe update failed");
                 Err(RecipeSaveError::Storage)
+            }
+        }
+    }
+
+    /// One `DELETE` by id. Zero deleted rows is a success. Rows that a recipe
+    /// owns (REC-07, REC-14) go with it through `ON DELETE CASCADE`.
+    #[tracing::instrument(skip_all)]
+    async fn delete(&mut self, id: RecipeId) -> Result<(), RecipeDeleteError> {
+        let result = self
+            .connection
+            .spawn_blocking(move |connection| {
+                Ok(
+                    connection.immediate_transaction::<_, DieselError, _>(|connection| {
+                        diesel::delete(
+                            recipes::table.filter(recipes::remote_id.eq(RemoteRecipeId(id))),
+                        )
+                        .execute(connection)?;
+                        Ok(())
+                    }),
+                )
+            })
+            .await;
+        match result {
+            Ok(Ok(())) => Ok(()),
+            error => {
+                tracing::error!(?error, "Recipe delete failed");
+                Err(RecipeDeleteError::Storage)
             }
         }
     }

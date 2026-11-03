@@ -232,6 +232,45 @@ async fn an_update_of_an_unknown_id_is_not_found_and_inserts_nothing() -> anyhow
 }
 
 #[tokio::test]
+async fn a_deleted_recipe_is_gone_and_the_others_stay() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    execute(&mut db, TWO_RECIPES).await?;
+    RecipeStoreMut::delete(&mut db, SHAKSHUKA.parse()?).await?;
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, SHAKSHUKA.parse()?).await,
+        Ok(None)
+    );
+    assert_eq!(
+        RecipeStoreMut::list(&mut db).await,
+        Ok(vec![recipe(PASTA, "Roasted tomato pasta")?])
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_delete_of_an_unknown_id_succeeds_and_changes_nothing() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    execute(&mut db, TWO_RECIPES).await?;
+    assert_eq!(
+        RecipeStoreMut::delete(&mut db, RecipeId::generate()).await,
+        Ok(())
+    );
+    assert_eq!(RecipeStoreMut::list(&mut db).await?.len(), 2);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_deleted_recipes_title_is_free_for_a_new_recipe() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    execute(&mut db, TWO_RECIPES).await?;
+    RecipeStoreMut::delete(&mut db, SHAKSHUKA.parse()?).await?;
+    let created = RecipeStoreMut::create(&mut db, new_recipe("shakshuka")?).await?;
+    assert_ne!(created.id, SHAKSHUKA.parse()?);
+    assert_eq!(created.title, "shakshuka");
+    Ok(())
+}
+
+#[tokio::test]
 async fn get_of_an_unknown_id_is_none() -> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
     execute(&mut db, TWO_RECIPES).await?;

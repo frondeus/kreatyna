@@ -45,8 +45,22 @@ impl From<TransportError> for RecipeSaveError {
     }
 }
 
-/// Persistence boundary for recipes. Its implementation owns identity and
-/// title uniqueness.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum RecipeDeleteError {
+    #[error("Recipe storage failed")]
+    Storage,
+    #[error("Recipe store transport failed")]
+    Transport,
+}
+
+impl From<TransportError> for RecipeDeleteError {
+    fn from(_: TransportError) -> Self {
+        Self::Transport
+    }
+}
+
+/// Persistence boundary for recipes. Its implementation owns identity, title
+/// uniqueness, and idempotent deletion.
 #[krucyfiks::capability]
 pub trait RecipeStore: Send + Sync {
     /// All recipes, sorted by title key (`ingredients::name_key` of the
@@ -61,6 +75,9 @@ pub trait RecipeStore: Send + Sync {
     /// no recipe has the id (it never inserts one), and with `DuplicateTitle`
     /// when another recipe has the same title key.
     async fn update(&self, id: RecipeId, recipe: RecipeUpdate) -> Result<Recipe, RecipeSaveError>;
+    /// Deletes the recipe with this id and every row that it owns. Deleting
+    /// a recipe that does not exist succeeds (idempotent).
+    async fn delete(&self, id: RecipeId) -> Result<(), RecipeDeleteError>;
 }
 
 #[derive(Clone)]

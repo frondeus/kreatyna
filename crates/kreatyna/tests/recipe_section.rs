@@ -681,6 +681,7 @@ async fn answer_store(
         }
         RecipeStoreRequest::Create { .. } => anyhow::bail!("an unexpected create"),
         RecipeStoreRequest::Update { .. } => anyhow::bail!("an unexpected update"),
+        RecipeStoreRequest::Delete { .. } => anyhow::bail!("an unexpected delete"),
     }
     Ok(())
 }

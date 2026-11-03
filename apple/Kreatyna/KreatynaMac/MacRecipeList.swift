@@ -95,9 +95,18 @@ struct MacRecipeList: View {
                     .accessibilityIdentifier("recipeDraftRow")
             }
             ForEach(rows, id: \.id) { row in
-                Text(row.title)
-                    .tag(MacListTag.item(row.id))
-                    .accessibilityIdentifier("recipeRow")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(row.title)
+                        .accessibilityIdentifier("recipeRow")
+                    // Nothing for a recipe with no steps (REC-14).
+                    if row.stepCount > 0 {
+                        Text(row.stepCount == 1 ? "1 step" : "\(row.stepCount) steps")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("recipeStepCount")
+                    }
+                }
+                .tag(MacListTag.item(row.id))
             }
         }
         .accessibilityIdentifier("recipeList")

@@ -116,8 +116,13 @@ enum Fixtures {
     }
 
     /// A saved recipe's row. The ID only has to be unique in the list.
-    static func recipeRow(_ title: String) -> RecipeListRow {
-        RecipeListRow(id: RecipeId(uuid: "recipe-\(title)"), title: title, stepCount: 0)
+    static func recipeRow(_ title: String, stepCount: UInt32 = 0) -> RecipeListRow {
+        RecipeListRow(id: RecipeId(uuid: "recipe-\(title)"), title: title, stepCount: stepCount)
+    }
+
+    /// A step of the read view. The ID only has to be unique in the recipe.
+    static func detailStep(_ title: String) -> RecipeDetailStep {
+        RecipeDetailStep(id: StepId(uuid: "step-\(title)"), title: title)
     }
 
     static func recipeList(_ status: RecipeListStatus, search: String = "") -> RecipeListView {

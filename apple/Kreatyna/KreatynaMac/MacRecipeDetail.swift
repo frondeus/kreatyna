@@ -98,11 +98,21 @@ struct MacRecipeDetail: View {
                 Text("This recipe no longer exists.")
             }
             .accessibilityIdentifier("recipeDetailMissing")
-        case .ready(let title, _, _):
+        case .ready(let title, let steps, _):
             Form {
-                // Lines arrive with REC-07, steps with REC-14 (stages: REC-19).
+                // Lines arrive with REC-07 (stages: REC-19).
                 noneYet("Ingredients")
-                noneYet("Steps")
+                if steps.isEmpty {
+                    noneYet("Steps")
+                } else {
+                    // In the order added (REC-14).
+                    Section("Steps") {
+                        ForEach(steps, id: \.id) { step in
+                            Text(step.title)
+                                .accessibilityIdentifier("recipeStep")
+                        }
+                    }
+                }
             }
             .formStyle(.grouped)
             // On the form only: on the whole view it would replace the title's identifier.

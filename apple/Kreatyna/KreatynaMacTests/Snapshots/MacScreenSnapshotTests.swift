@@ -150,17 +150,20 @@ extension MainActorTests {
             )
         }
 
-        /// Shakshuka's read view: its row selected, "None yet" sections, Edit and Delete enabled (REC-03 to REC-05).
+        /// Shakshuka's read view: its row selected, its three steps in the order
+        /// added, "None yet" ingredients, Edit and Delete enabled (REC-03 to
+        /// REC-05). The rows show "1 step" and "3 steps" (REC-14).
         @Test(arguments: Appearance.allCases)
         func recipeReadView(appearance: Appearance) {
-            let shakshuka = Fixtures.recipeRow("Shakshuka")
-            let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: shakshuka.title, steps: [], deletion: .idle))
+            let shakshuka = Fixtures.recipeRow("Shakshuka", stepCount: 3)
+            let steps = ["Fry onion", "Dice onion", "Crack eggs"].map(Fixtures.detailStep)
+            let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: shakshuka.title, steps: steps, deletion: .idle))
             snapshot(
                 MacMainView(
                     app: Fixtures.splitApp(
                         section: .recipes,
                         recipes: Fixtures.recipeSection(
-                            .ready(rows: [Fixtures.recipeRow("Pasta"), shakshuka]),
+                            .ready(rows: [Fixtures.recipeRow("Pasta", stepCount: 1), shakshuka]),
                             pane: .detail(detail: detail)
                         )
                     ),

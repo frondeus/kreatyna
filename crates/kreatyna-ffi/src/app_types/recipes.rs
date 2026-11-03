@@ -22,12 +22,15 @@ impl From<core::capabilities::RecipeLoadError> for RecipeLoadError {
 pub enum RecipeListEvent {
     /// Load again after a failure (the Retry button).
     Refresh,
+    /// The search text as typed. Rust filters the rows by its key.
+    Search { query: String },
 }
 
 impl From<RecipeListEvent> for core::RecipeListEvent {
     fn from(value: RecipeListEvent) -> Self {
         match value {
             RecipeListEvent::Refresh => Self::Refresh,
+            RecipeListEvent::Search { query } => Self::Search(query),
         }
     }
 }
@@ -53,10 +56,13 @@ pub enum RecipeListStatus {
     Failed {
         error: RecipeLoadError,
     },
-    /// Rows sorted by title. Empty means "No recipes yet".
+    /// The recipes that match the search, sorted by title. Empty only when
+    /// no recipe is saved: "No recipes yet".
     Ready {
         rows: Vec<RecipeListRow>,
     },
+    /// Recipes are saved, but none matches the search: "No matches".
+    NoMatches,
 }
 
 impl From<core::RecipeListStatus> for RecipeListStatus {
@@ -69,22 +75,22 @@ impl From<core::RecipeListStatus> for RecipeListStatus {
             core::RecipeListStatus::Ready { rows } => Self::Ready {
                 rows: rows.into_iter().map(Into::into).collect(),
             },
-            // Swift cannot send a search yet, so this does not happen. The
-            // next change gives the FFI its own `NoMatches`.
-            core::RecipeListStatus::NoMatches => Self::Ready { rows: vec![] },
+            core::RecipeListStatus::NoMatches => Self::NoMatches,
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct RecipeListView {
+    /// The search text as typed.
+    pub search: String,
     pub status: RecipeListStatus,
 }
 
 impl From<core::RecipeListView> for RecipeListView {
     fn from(value: core::RecipeListView) -> Self {
-        // The search goes to Swift in the next change.
         Self {
+            search: value.search,
             status: value.status.into(),
         }
     }

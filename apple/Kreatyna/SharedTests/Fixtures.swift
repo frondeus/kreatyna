@@ -121,7 +121,7 @@ enum Fixtures {
     }
 
     static func recipeList(_ status: RecipeListStatus) -> RecipeListView {
-        RecipeListView(status: status)
+        RecipeListView(search: "", status: status)
     }
 
     /// The Recipes section: a list and an empty pane, a read view with its

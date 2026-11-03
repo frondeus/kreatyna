@@ -82,6 +82,9 @@ struct MacRecipeList: View {
                     .accessibilityIdentifier("recipeListEmpty")
                 }
             }
+        case .noMatches:
+            // Swift does not send a search yet. The search field comes next.
+            EmptyView()
         }
     }
 }

@@ -247,6 +247,24 @@ fn split_app_event_conversion_reaches_the_sections() {
             )
         )))
     ));
+
+    let search = AppEvent::Split {
+        event: SplitAppEvent::Recipes {
+            event: RecipeSectionEvent::List {
+                event: RecipeListEvent::Search {
+                    query: "sha".into(),
+                },
+            },
+        },
+    };
+    assert!(matches!(
+        core::AppEvent::try_from(search),
+        Ok(core::AppEvent::Split(core::SplitAppEvent::Recipes(
+            kreatyna::recipes::RecipeSectionEvent::List(
+                kreatyna::recipes::RecipeListEvent::Search(query)
+            )
+        ))) if query == "sha"
+    ));
 }
 
 #[test]
@@ -462,6 +480,7 @@ fn split_app_view_conversion_keeps_the_section_and_the_recipe_rows() -> anyhow::
         anyhow::bail!("expected the split layout")
     };
     let id = kreatyna::recipes::RecipeId::generate();
+    view.recipes.list.search = "sha".into();
     view.recipes.list.status = kreatyna::recipes::RecipeListStatus::Ready {
         rows: vec![kreatyna::recipes::RecipeListRow {
             id,
@@ -474,6 +493,7 @@ fn split_app_view_conversion_keeps_the_section_and_the_recipe_rows() -> anyhow::
         anyhow::bail!("expected the split layout")
     };
     assert_eq!(app.section, AppSection::Recipes);
+    assert_eq!(app.recipes.list.search, "sha");
     assert_eq!(
         app.recipes.list.status,
         RecipeListStatus::Ready {
@@ -795,6 +815,14 @@ fn recipe_load_errors_keep_their_kind(
     assert_eq!(
         RecipeListStatus::from(kreatyna::recipes::RecipeListStatus::Failed(error)),
         RecipeListStatus::Failed { error: expected }
+    );
+}
+
+#[test]
+fn a_recipe_search_without_matches_stays_no_matches() {
+    assert_eq!(
+        RecipeListStatus::from(kreatyna::recipes::RecipeListStatus::NoMatches),
+        RecipeListStatus::NoMatches
     );
 }
 

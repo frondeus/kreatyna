@@ -1,7 +1,7 @@
 use kreatyna::capabilities::ResolveRender;
 use kreatyna::recipes::{
-    Recipe, RecipeId, RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListRow,
-    RecipeListStatus, RecipeListView,
+    RecipeId, RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListRow, RecipeListStatus,
+    RecipeListView, RecipeSummary,
     capabilities::{RecipeEffectStream, RecipeLoadError, ResolveRecipeStore},
 };
 use krucyfiks::{Command, Message, Widget, effects::CommandTestExt};
@@ -14,7 +14,7 @@ use uuid::Uuid;
 #[test_case(vec![recipe(2, "Roasted tomato pasta"), recipe(1, "Shakshuka")]; "two recipes")]
 #[tokio::test]
 async fn initialization_renders_then_reads_and_dispatching_its_result_shows_the_rows_in_store_order(
-    stored: Vec<Recipe>,
+    stored: Vec<RecipeSummary>,
 ) -> anyhow::Result<()> {
     let mut fixture = ListFixture::new();
     let mut command = fixture.list.init().driver(&mut fixture.effects);
@@ -65,7 +65,7 @@ async fn initialization_renders_then_reads_and_dispatching_its_result_shows_the_
 #[tokio::test]
 async fn a_search_shows_the_recipes_whose_title_key_contains_its_key(
     search: &str,
-    shown: &[Recipe],
+    shown: &[RecipeSummary],
 ) -> anyhow::Result<()> {
     let mut fixture = ListFixture::new();
     let load = fixture.list.init();
@@ -291,18 +291,19 @@ async fn refresh_after_a_failure_shows_loading_then_the_rows() -> anyhow::Result
 
 // Test support
 
-fn recipe(id: u128, title: &str) -> Recipe {
-    Recipe {
+fn recipe(id: u128, title: &str) -> RecipeSummary {
+    RecipeSummary {
         id: RecipeId::from(Uuid::from_u128(id)),
         title: title.into(),
+        step_count: 0,
     }
 }
 
-fn shakshuka() -> Recipe {
+fn shakshuka() -> RecipeSummary {
     recipe(1, "Shakshuka")
 }
 
-fn pasta() -> Recipe {
+fn pasta() -> RecipeSummary {
     recipe(2, "Roasted tomato pasta")
 }
 
@@ -319,11 +320,11 @@ fn loading() -> RecipeListView {
 }
 
 /// The view without a search, with these rows.
-fn ready(recipes: &[Recipe]) -> RecipeListView {
+fn ready(recipes: &[RecipeSummary]) -> RecipeListView {
     searched("", ready_status(recipes))
 }
 
-fn ready_status(recipes: &[Recipe]) -> RecipeListStatus {
+fn ready_status(recipes: &[RecipeSummary]) -> RecipeListStatus {
     RecipeListStatus::Ready {
         rows: recipes
             .iter()
@@ -351,7 +352,7 @@ impl ListFixture {
     async fn finish_load(
         &mut self,
         load: Command<RecipeListOutcome>,
-        result: Result<Vec<Recipe>, RecipeLoadError>,
+        result: Result<Vec<RecipeSummary>, RecipeLoadError>,
     ) -> anyhow::Result<()> {
         let outcome = self.run_load(load, result).await?;
         let command = self.list.update(Message::Outcome(outcome));
@@ -385,7 +386,7 @@ impl ListFixture {
     async fn run_load(
         &mut self,
         load: Command<RecipeListOutcome>,
-        result: Result<Vec<Recipe>, RecipeLoadError>,
+        result: Result<Vec<RecipeSummary>, RecipeLoadError>,
     ) -> anyhow::Result<RecipeListOutcome> {
         let mut command = load.driver(&mut self.effects);
         command

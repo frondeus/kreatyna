@@ -1,4 +1,6 @@
 //! Transactional SQLite implementation of the recipe capability.
+use std::collections::HashMap;
+
 use diesel::{
     Connection, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl, SelectableHelper,
     SqliteConnection,
@@ -7,14 +9,17 @@ use diesel::{
 use kreatyna::{
     ingredients::name_key,
     recipes::{
-        NewRecipe, Recipe, RecipeId, RecipeUpdate,
+        NewRecipe, Recipe, RecipeId, RecipeSummary, RecipeUpdate, Step, StepWrite,
         capabilities::{RecipeDeleteError, RecipeLoadError, RecipeSaveError, RecipeStoreMut},
     },
 };
 
 use super::{
-    recipe_models::{NewRecipeRow, RecipeRow, RemoteRecipeId},
-    schema::recipes,
+    recipe_models::{
+        LocalRecipeId, NewRecipeRow, NewStepRow, RecipeRow, RemoteRecipeId, StepOrdinal, StepRow,
+        saved_step,
+    },
+    schema::{recipe_steps, recipes},
     sqlite::SqliteDatabase,
 };
 
@@ -24,39 +29,96 @@ enum StoreFailure {
     Database(#[from] DieselError),
     #[error("stored recipe title key is inconsistent")]
     InvalidTitleKey,
+    #[error("stored step count does not fit")]
+    InvalidStepCount,
     #[error("recipe title already exists")]
     DuplicateTitle,
     #[error("recipe to update was not found")]
     NotFound,
 }
 
-fn records(connection: &mut SqliteConnection) -> Result<Vec<Recipe>, StoreFailure> {
-    recipes::table
+/// A summary of every recipe. One query reads the recipes, one counts the
+/// steps of each.
+fn summaries(connection: &mut SqliteConnection) -> Result<Vec<RecipeSummary>, StoreFailure> {
+    let rows = recipes::table
         // The unique index on `title_key` gives this order without a sort step.
         .order(recipes::title_key.asc())
         .select(RecipeRow::as_select())
-        .load::<RecipeRow>(connection)?
+        .load::<RecipeRow>(connection)?;
+    let counts: HashMap<LocalRecipeId, i64> = recipe_steps::table
+        .group_by(recipe_steps::recipe_local_id)
+        .select((recipe_steps::recipe_local_id, diesel::dsl::count_star()))
+        .load::<(LocalRecipeId, i64)>(connection)?
         .into_iter()
-        .map(checked)
+        .collect();
+    rows.into_iter()
+        .map(|row| {
+            let count = counts.get(&row.local_id).copied().unwrap_or(0);
+            let step_count = u32::try_from(count).map_err(|_| StoreFailure::InvalidStepCount)?;
+            let row = checked(row)?;
+            Ok(RecipeSummary {
+                id: row.remote_id.0,
+                title: row.title,
+                step_count,
+            })
+        })
         .collect()
 }
 
-fn checked(row: RecipeRow) -> Result<Recipe, StoreFailure> {
+fn checked(row: RecipeRow) -> Result<RecipeRow, StoreFailure> {
     if row.title_key != name_key(&row.title) {
         return Err(StoreFailure::InvalidTitleKey);
     }
-    Ok(row.into_domain())
+    Ok(row)
 }
 
-/// The recipe with this id. The unique index on `remote_id` finds at most one.
+/// The recipe with this id and its steps. The unique index on `remote_id`
+/// finds at most one.
 fn record(connection: &mut SqliteConnection, id: RecipeId) -> Result<Option<Recipe>, StoreFailure> {
-    recipes::table
+    let Some(row) = recipes::table
         .filter(recipes::remote_id.eq(RemoteRecipeId(id)))
         .select(RecipeRow::as_select())
         .first::<RecipeRow>(connection)
         .optional()?
-        .map(checked)
-        .transpose()
+    else {
+        return Ok(None);
+    };
+    let row = checked(row)?;
+    let steps = steps(connection, row.local_id)?;
+    Ok(Some(row.into_domain(steps)))
+}
+
+/// The steps of the recipe row `recipe_local_id`, in the order added.
+fn steps(
+    connection: &mut SqliteConnection,
+    recipe_local_id: LocalRecipeId,
+) -> Result<Vec<Step>, StoreFailure> {
+    // A coordinate that does not fit a `u32` fails the load (`DbCoordinate`).
+    Ok(recipe_steps::table
+        .filter(recipe_steps::recipe_local_id.eq(recipe_local_id))
+        .order(recipe_steps::ordinal.asc())
+        .select(StepRow::as_select())
+        .load::<StepRow>(connection)?
+        .into_iter()
+        .map(StepRow::into_domain)
+        .collect())
+}
+
+/// Inserts `steps` for the recipe row `recipe_local_id`, with their order
+/// added as `ordinal`. Returns them as saved.
+fn insert_steps(
+    connection: &mut SqliteConnection,
+    recipe_local_id: LocalRecipeId,
+    steps: &[StepWrite],
+) -> Result<Vec<Step>, StoreFailure> {
+    let rows: Vec<NewStepRow> = StepOrdinal::sequence()
+        .zip(steps)
+        .map(|(ordinal, step)| NewStepRow::new(recipe_local_id, ordinal, step))
+        .collect();
+    diesel::insert_into(recipe_steps::table)
+        .values(&rows)
+        .execute(connection)?;
+    Ok(steps.iter().map(saved_step).collect())
 }
 
 /// Runs inside an immediate transaction, so the check and the insert see the
@@ -69,18 +131,23 @@ fn create_in_transaction(
     let taken = recipes::table
         .filter(recipes::title_key.eq(&row.title_key))
         .select(recipes::local_id)
-        .first::<i64>(connection)
+        .first::<LocalRecipeId>(connection)
         .optional()?;
     if taken.is_some() {
         return Err(StoreFailure::DuplicateTitle);
     }
     insert(connection, &row)?;
-    Ok(row.into_domain())
+    let local_id = recipes::table
+        .filter(recipes::remote_id.eq(&row.remote_id))
+        .select(recipes::local_id)
+        .first::<LocalRecipeId>(connection)?;
+    let steps = insert_steps(connection, local_id, &recipe.steps)?;
+    Ok(row.into_domain(steps))
 }
 
 /// Runs inside an immediate transaction, like `create_in_transaction`. The
 /// recipe's own title key is not a conflict, so "Shakshuka" can become
-/// "shakshuka".
+/// "shakshuka". The new step list replaces the old one; a step keeps its id.
 fn update_in_transaction(
     connection: &mut SqliteConnection,
     id: RecipeId,
@@ -90,7 +157,7 @@ fn update_in_transaction(
     let Some(local_id) = recipes::table
         .filter(recipes::remote_id.eq(&row.remote_id))
         .select(recipes::local_id)
-        .first::<i64>(connection)
+        .first::<LocalRecipeId>(connection)
         .optional()?
     else {
         return Err(StoreFailure::NotFound);
@@ -99,7 +166,7 @@ fn update_in_transaction(
         .filter(recipes::title_key.eq(&row.title_key))
         .filter(recipes::local_id.ne(local_id))
         .select(recipes::local_id)
-        .first::<i64>(connection)
+        .first::<LocalRecipeId>(connection)
         .optional()?;
     if taken.is_some() {
         return Err(StoreFailure::DuplicateTitle);
@@ -111,7 +178,10 @@ fn update_in_transaction(
         ))
         .execute(connection);
     duplicate_title(write)?;
-    Ok(row.into_domain())
+    diesel::delete(recipe_steps::table.filter(recipe_steps::recipe_local_id.eq(local_id)))
+        .execute(connection)?;
+    let steps = insert_steps(connection, local_id, &recipe.steps)?;
+    Ok(row.into_domain(steps))
 }
 
 /// A taken title key fails with `DuplicateTitle`, also when the unique index
@@ -139,10 +209,12 @@ fn duplicate_title(write: Result<usize, DieselError>) -> Result<(), StoreFailure
 #[async_trait::async_trait]
 impl RecipeStoreMut for SqliteDatabase {
     #[tracing::instrument(skip_all)]
-    async fn list(&mut self) -> Result<Vec<Recipe>, RecipeLoadError> {
+    async fn list(&mut self) -> Result<Vec<RecipeSummary>, RecipeLoadError> {
         let result = self
             .connection
-            .spawn_blocking(|connection| Ok(connection.transaction::<_, StoreFailure, _>(records)))
+            .spawn_blocking(
+                |connection| Ok(connection.transaction::<_, StoreFailure, _>(summaries)),
+            )
             .await;
         match result {
             Ok(Ok(records)) => Ok(records),
@@ -216,7 +288,7 @@ impl RecipeStoreMut for SqliteDatabase {
     }
 
     /// One `DELETE` by id. Zero deleted rows is a success. Rows that a recipe
-    /// owns (REC-07, REC-14) go with it through `ON DELETE CASCADE`.
+    /// owns (its steps, REC-14) go with it through `ON DELETE CASCADE`.
     #[tracing::instrument(skip_all)]
     async fn delete(&mut self, id: RecipeId) -> Result<(), RecipeDeleteError> {
         let result = self

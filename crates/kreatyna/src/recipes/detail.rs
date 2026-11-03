@@ -255,9 +255,12 @@ impl Widget for RecipeDetail {
                 let Some(title) = self.idle_title() else {
                     return Command::empty();
                 };
+                // No step can exist before the editor adds them (REC-14
+                // change 4). Change 3 keeps the loaded steps here.
                 let recipe = Recipe {
                     id: self.id,
                     title: title.to_owned(),
+                    steps: vec![],
                 };
                 Command::single(async move { RecipeDetailOutcome::OpenEdit { recipe } })
             }

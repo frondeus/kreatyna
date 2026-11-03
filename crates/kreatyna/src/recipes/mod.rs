@@ -19,7 +19,9 @@ pub use list::{
     RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListRow, RecipeListStatus, RecipeListView,
 };
 pub use model::{
-    NewRecipe, Recipe, RecipeId, RecipeIdParseError, RecipeTitle, RecipeTitleError, RecipeUpdate,
+    CanvasPoint, NewRecipe, Recipe, RecipeId, RecipeIdParseError, RecipeSummary, RecipeTitle,
+    RecipeTitleError, RecipeUpdate, Step, StepId, StepIdParseError, StepTitle, StepTitleError,
+    StepWrite,
 };
 pub use section::{
     RecipePaneOutcome, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,

@@ -5,7 +5,7 @@ use kreatyna::{
         Recipe, RecipeDeletion, RecipeDetailEvent, RecipeDetailStatus, RecipeDetailView,
         RecipeEditorEvent, RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, RecipeId,
         RecipeListEvent, RecipeListRow, RecipeListStatus, RecipePaneView, RecipeSection,
-        RecipeSectionEvent, RecipeSectionOutcome, RecipeSectionView,
+        RecipeSectionEvent, RecipeSectionOutcome, RecipeSectionView, RecipeSummary,
         capabilities::{
             RecipeDeleteError, RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError,
             RecipeStoreRequest, ResolveRecipeStore,
@@ -764,6 +764,7 @@ fn recipe(id: u128, title: &str) -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(id)),
         title: title.into(),
+        steps: vec![],
     }
 }
 
@@ -851,6 +852,15 @@ fn asking() -> RecipeEditorStatus {
     RecipeEditorStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
 }
 
+/// What `RecipeStore::list` returns for `recipe`.
+fn summary(recipe: &Recipe) -> RecipeSummary {
+    RecipeSummary {
+        id: recipe.id,
+        title: recipe.title.clone(),
+        step_count: u32::try_from(recipe.steps.len()).unwrap_or(u32::MAX),
+    }
+}
+
 /// Answers a list or get request from `stored`, and a delete with `deleted`.
 /// A create or an update fails the test: saves go through
 /// `Fixture::run_save`.
@@ -860,7 +870,10 @@ async fn answer_store(
     effect: Envelope<RecipeStoreRequest>,
 ) -> anyhow::Result<()> {
     match effect.request {
-        RecipeStoreRequest::List => effect.resolve_list(|| async { stored }).await?,
+        RecipeStoreRequest::List => {
+            let summaries = stored.map(|recipes| recipes.iter().map(summary).collect());
+            effect.resolve_list(|| async { summaries }).await?
+        }
         RecipeStoreRequest::Get { id } => {
             let found = stored.map(|recipes| recipes.into_iter().find(|r| r.id == id));
             effect.resolve_get(|_| async { found }).await?

@@ -378,6 +378,7 @@ fn shakshuka() -> Recipe {
     Recipe {
         id: id(),
         title: "Shakshuka".into(),
+        steps: vec![],
     }
 }
 

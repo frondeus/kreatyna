@@ -178,11 +178,13 @@ impl RecipeEditor {
             EditorTarget::New => None,
             EditorTarget::Saved { recipe } => Some(recipe.id),
         };
+        // The editor adds steps in REC-14 change 4.
+        let steps = vec![];
         Ok(Command::single(async move {
             render.render().await;
             match saved_id {
-                None => store.create(NewRecipe { title }).await,
-                Some(id) => store.update(id, RecipeUpdate { title }).await,
+                None => store.create(NewRecipe { title, steps }).await,
+                Some(id) => store.update(id, RecipeUpdate { title, steps }).await,
             }
         })
         .latest(&mut self.save)

@@ -3,7 +3,7 @@ use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget}
 use crate::ingredients::name_key;
 
 use super::{
-    Recipe, RecipeId,
+    RecipeId, RecipeSummary,
     capabilities::{RecipeCapabilities, RecipeEffectStream, RecipeLoadError},
 };
 
@@ -19,7 +19,7 @@ pub enum RecipeListEvent {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecipeListOutcome {
     /// A new load replaces a running one, so only the newest result counts.
-    LoadFinished(Latest<Result<Vec<Recipe>, RecipeLoadError>>),
+    LoadFinished(Latest<Result<Vec<RecipeSummary>, RecipeLoadError>>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

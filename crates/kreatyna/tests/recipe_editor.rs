@@ -299,6 +299,7 @@ fn shakshuka() -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(1)),
         title: "Shakshuka".into(),
+        steps: vec![],
     }
 }
 

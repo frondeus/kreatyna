@@ -3,7 +3,10 @@ use diesel::{Connection, RunQueryDsl, SqliteConnection, connection::SimpleConnec
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use kreatyna::{
     ingredients::capabilities::IngredientStoreMut,
-    recipes::{NewRecipe, Recipe, RecipeId, RecipeTitle, RecipeUpdate},
+    recipes::{
+        CanvasPoint, NewRecipe, Recipe, RecipeId, RecipeSummary, RecipeTitle, RecipeUpdate, Step,
+        StepId, StepTitle, StepWrite,
+    },
 };
 use test_case::test_case;
 
@@ -27,8 +30,8 @@ async fn stored_recipes_are_listed_by_title_key_with_their_titles_as_written() -
     assert_eq!(
         RecipeStoreMut::list(&mut db).await,
         Ok(vec![
-            recipe(PASTA, "Roasted tomato pasta")?,
-            recipe(SHAKSHUKA, "Shakshuka")?,
+            summary(PASTA, "Roasted tomato pasta", 0)?,
+            summary(SHAKSHUKA, "Shakshuka", 0)?,
         ])
     );
     Ok(())
@@ -39,7 +42,10 @@ async fn a_created_recipe_has_a_new_id_and_its_trimmed_title() -> anyhow::Result
     let mut db = SqliteDatabase::new(":memory:").await?;
     let created = RecipeStoreMut::create(&mut db, new_recipe("  Shakshuka ")?).await?;
     assert_eq!(created.title, "Shakshuka");
-    assert_eq!(RecipeStoreMut::list(&mut db).await, Ok(vec![created]));
+    assert_eq!(
+        RecipeStoreMut::list(&mut db).await,
+        Ok(vec![summary_of(&created)])
+    );
     Ok(())
 }
 
@@ -51,7 +57,7 @@ async fn created_recipes_are_listed_by_title_key() -> anyhow::Result<()> {
     assert_ne!(shakshuka.id, pasta.id);
     assert_eq!(
         RecipeStoreMut::list(&mut db).await,
-        Ok(vec![pasta, shakshuka])
+        Ok(vec![summary_of(&pasta), summary_of(&shakshuka)])
     );
     Ok(())
 }
@@ -92,7 +98,10 @@ async fn an_update_renames_the_recipe_and_keeps_its_id() -> anyhow::Result<()> {
     // The new title key sorts it first.
     assert_eq!(
         RecipeStoreMut::list(&mut db).await,
-        Ok(vec![updated, recipe(PASTA, "Roasted tomato pasta")?])
+        Ok(vec![
+            summary_of(&updated),
+            summary(PASTA, "Roasted tomato pasta", 0)?
+        ])
     );
     Ok(())
 }
@@ -107,6 +116,126 @@ async fn an_update_may_keep_the_recipes_own_title_key(title: &str) -> anyhow::Re
     let updated = RecipeStoreMut::update(&mut db, SHAKSHUKA.parse()?, update(title)?).await?;
     assert_eq!(updated, recipe(SHAKSHUKA, title.trim())?);
     assert_eq!(RecipeStoreMut::list(&mut db).await?.len(), 2);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_created_recipe_keeps_its_steps_in_the_order_added() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let steps = vec![
+        step(1, "Fry onion", 200, 40)?,
+        step(2, "Dice onion", 10, 20)?,
+    ];
+    let created = RecipeStoreMut::create(&mut db, with_steps("Shakshuka", steps.clone())?).await?;
+    assert_eq!(created.steps, saved(&steps));
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, created.id).await,
+        Ok(Some(created.clone()))
+    );
+    assert_eq!(
+        RecipeStoreMut::list(&mut db).await,
+        Ok(vec![summary_of(&created)])
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_list_counts_the_steps_of_each_recipe() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let three = vec![
+        step(1, "Boil water", 0, 0)?,
+        step(2, "Cook pasta", 0, 100)?,
+        step(3, "Drain", 0, 200)?,
+    ];
+    RecipeStoreMut::create(&mut db, with_steps("Pasta", three)?).await?;
+    RecipeStoreMut::create(
+        &mut db,
+        with_steps("Shakshuka", vec![step(4, "Fry", 0, 0)?])?,
+    )
+    .await?;
+    RecipeStoreMut::create(&mut db, new_recipe("Toast")?).await?;
+    let counts: Vec<_> = RecipeStoreMut::list(&mut db)
+        .await?
+        .into_iter()
+        .map(|summary| (summary.title, summary.step_count))
+        .collect();
+    assert_eq!(
+        counts,
+        [
+            ("Pasta".to_owned(), 3),
+            ("Shakshuka".to_owned(), 1),
+            ("Toast".to_owned(), 0)
+        ]
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn an_update_replaces_the_steps_and_a_kept_step_keeps_its_id() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let dice = step(1, "Dice onion", 10, 20)?;
+    let fry = step(2, "Fry onion", 200, 40)?;
+    let created =
+        RecipeStoreMut::create(&mut db, with_steps("Shakshuka", vec![dice, fry])?).await?;
+
+    // Dice goes, Fry gets a new title and place, Serve is new.
+    let fry = step(2, "Fry onion and garlic", 220, 60)?;
+    let serve = step(3, "Serve", 400, 60)?;
+    let steps = vec![fry, serve];
+    let update = RecipeUpdate {
+        title: RecipeTitle::try_new("Shakshuka")?,
+        steps: steps.clone(),
+    };
+    let updated = RecipeStoreMut::update(&mut db, created.id, update).await?;
+    assert_eq!(updated.steps, saved(&steps));
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, created.id).await,
+        Ok(Some(updated))
+    );
+    assert_eq!(step_rows(&mut db).await?, 2);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_deleted_recipe_takes_its_steps_with_it() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let shakshuka = RecipeStoreMut::create(
+        &mut db,
+        with_steps("Shakshuka", vec![step(1, "Fry", 0, 0)?])?,
+    )
+    .await?;
+    RecipeStoreMut::create(&mut db, with_steps("Pasta", vec![step(2, "Boil", 0, 0)?])?).await?;
+    RecipeStoreMut::delete(&mut db, shakshuka.id).await?;
+    assert_eq!(step_rows(&mut db).await?, 1);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_recipe_from_before_rec_14_upgrades_with_no_steps() -> anyhow::Result<()> {
+    let folder = tempfile::tempdir()?;
+    let path = folder.path().join("app.sqlite");
+    let path = path.to_str().context("the temporary path is not UTF-8")?;
+    {
+        let mut db = SqliteConnection::establish(path)?;
+        // The schema before REC-14: up to and with the recipes table.
+        for _ in 0..4 {
+            db.run_next_migration(MIGRATIONS)
+                .map_err(|error| anyhow!(error))?;
+        }
+        db.batch_execute(TWO_RECIPES)?;
+    }
+    let mut db = SqliteDatabase::new(path).await?;
+    assert_eq!(
+        RecipeStoreMut::list(&mut db).await,
+        Ok(vec![
+            summary(PASTA, "Roasted tomato pasta", 0)?,
+            summary(SHAKSHUKA, "Shakshuka", 0)?,
+        ])
+    );
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, SHAKSHUKA.parse()?).await,
+        Ok(Some(recipe(SHAKSHUKA, "Shakshuka")?))
+    );
     Ok(())
 }
 
@@ -153,6 +282,54 @@ async fn a_catalog_from_before_rec_01_upgrades_and_keeps_its_ingredients() -> an
 fn the_table_refuses_invalid_rows(sql: &str) -> anyhow::Result<()> {
     let mut db = migrated_connection()?;
     assert!(db.batch_execute(sql).is_err());
+    Ok(())
+}
+
+#[test_case("'  ', 0, 0, 0"; "blank title")]
+#[test_case("'Fry', 0, -1, 0"; "negative x")]
+#[test_case("'Fry', 0, 0, -1"; "negative y")]
+#[test_case("'Fry', -1, 0, 0"; "negative ordinal")]
+fn the_step_table_refuses_invalid_rows(values: &str) -> anyhow::Result<()> {
+    let mut db = migrated_connection()?;
+    let sql = format!(
+        "INSERT INTO recipe_steps (remote_id, recipe_local_id, title, ordinal, x, y)
+         VALUES ('{STEP}', (SELECT local_id FROM recipes WHERE title = 'Shakshuka'), {values})"
+    );
+    assert!(db.batch_execute(&sql).is_err());
+    Ok(())
+}
+
+#[test_case("'6f1c1d3e-0000-4000-8000-0000000000ff', 0"; "same ordinal")]
+#[test_case("'6f1c1d3e-0000-4000-8000-0000000000f1', 1"; "same id")]
+fn the_step_table_refuses_a_second_step_with_the_same(values: &str) -> anyhow::Result<()> {
+    let mut db = migrated_connection()?;
+    let insert = |id_and_ordinal: &str| {
+        format!(
+            "INSERT INTO recipe_steps (remote_id, ordinal, recipe_local_id, title, x, y)
+             VALUES ({id_and_ordinal},
+                     (SELECT local_id FROM recipes WHERE title = 'Shakshuka'), 'Fry', 0, 0)"
+        )
+    };
+    db.batch_execute(&insert("'6f1c1d3e-0000-4000-8000-0000000000f1', 0"))?;
+    assert!(db.batch_execute(&insert(values)).is_err());
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_step_id_of_another_recipe_fails_the_save_and_changes_nothing() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    RecipeStoreMut::create(
+        &mut db,
+        with_steps("Shakshuka", vec![step(1, "Fry", 0, 0)?])?,
+    )
+    .await?;
+    assert_eq!(
+        RecipeStoreMut::create(&mut db, with_steps("Pasta", vec![step(1, "Boil", 0, 0)?])?).await,
+        Err(RecipeSaveError::Storage)
+    );
+    // The transaction rolled back the recipe row too.
+    assert_eq!(RecipeStoreMut::list(&mut db).await?.len(), 1);
+    assert_eq!(step_rows(&mut db).await?, 1);
     Ok(())
 }
 
@@ -210,8 +387,8 @@ async fn an_update_to_another_recipes_title_is_refused_and_changes_nothing(
     assert_eq!(
         RecipeStoreMut::list(&mut db).await,
         Ok(vec![
-            recipe(PASTA, "Roasted tomato pasta")?,
-            recipe(SHAKSHUKA, "Shakshuka")?,
+            summary(PASTA, "Roasted tomato pasta", 0)?,
+            summary(SHAKSHUKA, "Shakshuka", 0)?,
         ])
     );
     Ok(())
@@ -242,7 +419,7 @@ async fn a_deleted_recipe_is_gone_and_the_others_stay() -> anyhow::Result<()> {
     );
     assert_eq!(
         RecipeStoreMut::list(&mut db).await,
-        Ok(vec![recipe(PASTA, "Roasted tomato pasta")?])
+        Ok(vec![summary(PASTA, "Roasted tomato pasta", 0)?])
     );
     Ok(())
 }
@@ -320,6 +497,30 @@ async fn get_of_a_recipe_with_an_inconsistent_title_key_is_a_storage_failure() -
     Ok(())
 }
 
+#[test_case("x", 4_294_967_296; "x over u32")]
+#[test_case("y", 4_294_967_296; "y over u32")]
+#[tokio::test]
+async fn a_step_position_that_does_not_fit_the_canvas_fails_get(
+    axis: &str,
+    value: i64,
+) -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let created = RecipeStoreMut::create(
+        &mut db,
+        with_steps("Shakshuka", vec![step(1, "Fry", 0, 0)?])?,
+    )
+    .await?;
+    let sql = format!("UPDATE recipe_steps SET {axis} = {value}");
+    db.connection
+        .spawn_blocking(move |conn| diesel::sql_query(sql).execute(conn).map(|_| ()))
+        .await?;
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, created.id).await,
+        Err(RecipeLoadError::Storage)
+    );
+    Ok(())
+}
+
 // Test support
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
@@ -332,22 +533,76 @@ const TWO_RECIPES: &str = "INSERT INTO recipes (remote_id, title, title_key) VAL
     ('6f1c1d3e-0000-4000-8000-000000000001', 'Shakshuka', 'shakshuka'),
     ('6f1c1d3e-0000-4000-8000-000000000002', 'Roasted tomato pasta', 'roasted tomato pasta')";
 
+/// A step id no test row uses.
+const STEP: &str = "6f1c1d3e-0000-4000-8000-0000000000ee";
+
+fn summary(id: &str, title: &str, step_count: u32) -> anyhow::Result<RecipeSummary> {
+    Ok(RecipeSummary {
+        id: id.parse()?,
+        title: title.into(),
+        step_count,
+    })
+}
+
+fn summary_of(recipe: &Recipe) -> RecipeSummary {
+    RecipeSummary {
+        id: recipe.id,
+        title: recipe.title.clone(),
+        step_count: u32::try_from(recipe.steps.len()).unwrap_or(u32::MAX),
+    }
+}
+
+fn step(id: u128, title: &str, x: u32, y: u32) -> anyhow::Result<StepWrite> {
+    Ok(StepWrite {
+        id: format!("6f1c1d3e-0000-4000-8000-{id:012x}").parse::<StepId>()?,
+        title: StepTitle::try_new(title)?,
+        position: CanvasPoint { x, y },
+    })
+}
+
+/// The steps as `get` returns them after a save of `steps`.
+fn saved(steps: &[StepWrite]) -> Vec<Step> {
+    steps
+        .iter()
+        .map(|step| Step {
+            id: step.id,
+            title: step.title.as_ref().to_owned(),
+            position: step.position,
+        })
+        .collect()
+}
+
+fn with_steps(title: &str, steps: Vec<StepWrite>) -> anyhow::Result<NewRecipe> {
+    Ok(NewRecipe {
+        title: RecipeTitle::try_new(title)?,
+        steps,
+    })
+}
+
+/// How many step rows the database has, over all recipes.
+async fn step_rows(db: &mut SqliteDatabase) -> anyhow::Result<i64> {
+    Ok(db
+        .connection
+        .spawn_blocking(|conn| recipe_steps::table.count().get_result::<i64>(conn))
+        .await?)
+}
+
 fn recipe(id: &str, title: &str) -> anyhow::Result<Recipe> {
     Ok(Recipe {
         id: id.parse()?,
         title: title.into(),
+        steps: vec![],
     })
 }
 
 fn new_recipe(title: &str) -> anyhow::Result<NewRecipe> {
-    Ok(NewRecipe {
-        title: RecipeTitle::try_new(title)?,
-    })
+    with_steps(title, vec![])
 }
 
 fn update(title: &str) -> anyhow::Result<RecipeUpdate> {
     Ok(RecipeUpdate {
         title: RecipeTitle::try_new(title)?,
+        steps: vec![],
     })
 }
 

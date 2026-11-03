@@ -10,7 +10,7 @@ use kreatyna::{
     recipes::{
         Recipe, RecipeDeletion, RecipeDetailEvent, RecipeDetailStatus, RecipeDetailView,
         RecipeEditorEvent, RecipeId, RecipeListEvent, RecipeListRow, RecipeListStatus,
-        RecipePaneView, RecipeSectionEvent,
+        RecipePaneView, RecipeSectionEvent, RecipeSummary,
         capabilities::{RecipeEffect, RecipeLoadError, RecipeStoreRequest, ResolveRecipeStore},
     },
     *,
@@ -512,6 +512,7 @@ fn shakshuka() -> Recipe {
     Recipe {
         id: RecipeId::from(uuid::Uuid::from_u128(1)),
         title: "Shakshuka".into(),
+        steps: vec![],
     }
 }
 
@@ -519,6 +520,7 @@ fn pasta() -> Recipe {
     Recipe {
         id: RecipeId::from(uuid::Uuid::from_u128(2)),
         title: "Pasta".into(),
+        steps: vec![],
     }
 }
 
@@ -673,7 +675,19 @@ impl Fixture {
                                 .map(|recipes| recipes.into_iter().find(|recipe| recipe.id == id));
                             e.resolve_get(|_| async { found }).await?;
                         }
-                        _ => e.resolve_list(|| async { recipes }).await?,
+                        _ => {
+                            let summaries = recipes.map(|recipes| {
+                                recipes
+                                    .into_iter()
+                                    .map(|recipe| RecipeSummary {
+                                        id: recipe.id,
+                                        title: recipe.title,
+                                        step_count: 0,
+                                    })
+                                    .collect()
+                            });
+                            e.resolve_list(|| async { summaries }).await?
+                        }
                     }
                 }
                 CommandEffect::Outcome(outcome) => outcomes.push(outcome),

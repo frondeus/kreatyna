@@ -105,6 +105,21 @@ impl From<core::capabilities::RecipeSaveError> for RecipeSaveError {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum RecipeDeleteError {
+    Storage,
+    Transport,
+}
+
+impl From<core::capabilities::RecipeDeleteError> for RecipeDeleteError {
+    fn from(value: core::capabilities::RecipeDeleteError) -> Self {
+        match value {
+            core::capabilities::RecipeDeleteError::Storage => Self::Storage,
+            core::capabilities::RecipeDeleteError::Transport => Self::Transport,
+        }
+    }
+}
+
 /// The save rule a title breaks (nutype's error in Rust).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum RecipeTitleError {
@@ -211,6 +226,10 @@ pub enum RecipeDetailEvent {
     Retry,
     /// The Edit button: open the editor for the shown recipe.
     Edit,
+    /// The Delete button: ask "Delete …?".
+    RequestDelete,
+    /// Delete or Cancel in the question.
+    Confirmation { event: ConfirmationEvent },
 }
 
 impl From<RecipeDetailEvent> for core::RecipeDetailEvent {
@@ -218,6 +237,8 @@ impl From<RecipeDetailEvent> for core::RecipeDetailEvent {
         match value {
             RecipeDetailEvent::Retry => Self::Retry,
             RecipeDetailEvent::Edit => Self::Edit,
+            RecipeDetailEvent::RequestDelete => Self::RequestDelete,
+            RecipeDetailEvent::Confirmation { event } => Self::Confirmation(event.into()),
         }
     }
 }
@@ -232,7 +253,39 @@ pub enum RecipeDetailStatus {
     Missing,
     Ready {
         title: String,
+        deletion: RecipeDeletion,
     },
+}
+
+/// The delete of the shown recipe. Swift shows the question while
+/// `Confirming` waits, and "Deleting…" while `Deleting` or `Deleted`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum RecipeDeletion {
+    Idle,
+    Confirming {
+        confirmation: ConfirmationView,
+        /// The last failed delete, if any.
+        error: Option<RecipeDeleteError>,
+    },
+    Deleting,
+    Deleted,
+}
+
+impl From<core::RecipeDeletion> for RecipeDeletion {
+    fn from(value: core::RecipeDeletion) -> Self {
+        match value {
+            core::RecipeDeletion::Idle => Self::Idle,
+            core::RecipeDeletion::Confirming {
+                confirmation,
+                error,
+            } => Self::Confirming {
+                confirmation: confirmation.into(),
+                error: error.map(Into::into),
+            },
+            core::RecipeDeletion::Deleting => Self::Deleting,
+            core::RecipeDeletion::Deleted => Self::Deleted,
+        }
+    }
 }
 
 impl From<core::RecipeDetailStatus> for RecipeDetailStatus {
@@ -243,8 +296,10 @@ impl From<core::RecipeDetailStatus> for RecipeDetailStatus {
                 error: error.into(),
             },
             core::RecipeDetailStatus::Missing => Self::Missing,
-            // Change 5 of REC-05 adds the deletion to the FFI view.
-            core::RecipeDetailStatus::Ready { title, .. } => Self::Ready { title },
+            core::RecipeDetailStatus::Ready { title, deletion } => Self::Ready {
+                title,
+                deletion: deletion.into(),
+            },
         }
     }
 }

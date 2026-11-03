@@ -58,7 +58,7 @@ struct EventCompositionTests {
     /// A row click carries the id; ⌘-click, Retry and Edit carry the pane scope.
     @Test func recipeReadViewEventsCarryTheIdAndThePaneScope() {
         let shakshuka = Fixtures.recipeRow("Shakshuka")
-        let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: "Shakshuka"))
+        let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: "Shakshuka", deletion: .idle))
         let reading = Fixtures.recipeSection(pane: .detail(detail: detail))
         #expect(reading.selected == shakshuka.id)
         #expect(reading.canCreate)

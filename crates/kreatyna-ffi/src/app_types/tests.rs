@@ -287,6 +287,32 @@ fn recipe_section_events_keep_their_pane_scope() {
             kreatyna::recipes::RecipeDetailEvent::Edit
         ))
     );
+    let delete = RecipeSectionEvent::Detail {
+        scope,
+        event: RecipeDetailEvent::RequestDelete,
+    };
+    assert_eq!(
+        kreatyna::recipes::RecipeSectionEvent::from(delete),
+        kreatyna::recipes::RecipeSectionEvent::Detail(Scoped::new(
+            CommandScopeId::from(7),
+            kreatyna::recipes::RecipeDetailEvent::RequestDelete
+        ))
+    );
+    let confirm = RecipeSectionEvent::Detail {
+        scope,
+        event: RecipeDetailEvent::Confirmation {
+            event: ConfirmationEvent::Confirm,
+        },
+    };
+    assert_eq!(
+        kreatyna::recipes::RecipeSectionEvent::from(confirm),
+        kreatyna::recipes::RecipeSectionEvent::Detail(Scoped::new(
+            CommandScopeId::from(7),
+            kreatyna::recipes::RecipeDetailEvent::Confirmation(
+                core::confirmation::ConfirmationEvent::Confirm
+            )
+        ))
+    );
     assert_eq!(
         kreatyna::recipes::RecipeSectionEvent::from(RecipeSectionEvent::ClearSelection { scope }),
         kreatyna::recipes::RecipeSectionEvent::ClearSelection {
@@ -320,8 +346,35 @@ fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
 #[test_case(kreatyna::recipes::RecipeDetailStatus::Missing, RecipeDetailStatus::Missing; "missing")]
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: kreatyna::recipes::RecipeDeletion::Idle },
-    RecipeDetailStatus::Ready { title: "Shakshuka".into() };
+    RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: RecipeDeletion::Idle };
     "ready"
+)]
+#[test_case(
+    kreatyna::recipes::RecipeDetailStatus::Ready {
+        title: "Shakshuka".into(),
+        deletion: kreatyna::recipes::RecipeDeletion::Confirming {
+            confirmation: core::confirmation::ConfirmationView::AwaitingDecision,
+            error: Some(kreatyna::recipes::capabilities::RecipeDeleteError::Storage),
+        },
+    },
+    RecipeDetailStatus::Ready {
+        title: "Shakshuka".into(),
+        deletion: RecipeDeletion::Confirming {
+            confirmation: ConfirmationView::AwaitingDecision,
+            error: Some(RecipeDeleteError::Storage),
+        },
+    };
+    "asking again after a failed delete"
+)]
+#[test_case(
+    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: kreatyna::recipes::RecipeDeletion::Deleting },
+    RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: RecipeDeletion::Deleting };
+    "deleting"
+)]
+#[test_case(
+    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: kreatyna::recipes::RecipeDeletion::Deleted },
+    RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: RecipeDeletion::Deleted };
+    "deleted"
 )]
 fn a_read_view_pane_keeps_the_id_and_the_status(
     status: kreatyna::recipes::RecipeDetailStatus,
@@ -754,6 +807,15 @@ fn recipe_save_errors_keep_their_kind(
     expected: RecipeSaveError,
 ) {
     assert_eq!(RecipeSaveError::from(error), expected);
+}
+
+#[test_case(kreatyna::recipes::capabilities::RecipeDeleteError::Storage, RecipeDeleteError::Storage; "storage")]
+#[test_case(kreatyna::recipes::capabilities::RecipeDeleteError::Transport, RecipeDeleteError::Transport; "transport")]
+fn recipe_delete_errors_keep_their_kind(
+    error: kreatyna::recipes::capabilities::RecipeDeleteError,
+    expected: RecipeDeleteError,
+) {
+    assert_eq!(RecipeDeleteError::from(error), expected);
 }
 
 #[test_case(ingredient::capabilities::IngredientSaveError::DuplicateName, IngredientSaveError::DuplicateName; "duplicate")]

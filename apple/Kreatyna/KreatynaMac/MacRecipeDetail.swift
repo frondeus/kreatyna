@@ -47,7 +47,7 @@ struct MacRecipeDetail: View {
                 Text("This recipe no longer exists.")
             }
             .accessibilityIdentifier("recipeDetailMissing")
-        case .ready(let title):
+        case .ready(let title, _):
             Form {
                 // Lines arrive with REC-07, steps with REC-14 (stages: REC-19).
                 noneYet("Ingredients")

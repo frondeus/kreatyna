@@ -136,7 +136,7 @@ extension MainActorTests {
         @Test(arguments: Appearance.allCases)
         func recipeReadView(appearance: Appearance) {
             let shakshuka = Fixtures.recipeRow("Shakshuka")
-            let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: shakshuka.title))
+            let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: shakshuka.title, deletion: .idle))
             snapshot(
                 MacMainView(
                     app: Fixtures.splitApp(

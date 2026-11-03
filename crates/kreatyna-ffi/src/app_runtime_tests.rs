@@ -102,7 +102,7 @@ fn a_created_recipe_is_listed_opens_its_read_view_and_its_title_cannot_be_taken_
                     RecipeListStatus::Ready { rows },
                     RecipePaneView::Detail {
                         detail: RecipeDetailView {
-                            status: RecipeDetailStatus::Ready { title },
+                            status: RecipeDetailStatus::Ready { title, .. },
                             id,
                         }
                     },
@@ -208,13 +208,86 @@ fn an_edited_recipe_title_is_saved_and_shown_in_the_read_view_and_the_list() -> 
                     RecipeListStatus::Ready { rows },
                     RecipePaneView::Detail {
                         detail: RecipeDetailView {
-                            status: RecipeDetailStatus::Ready { title },
+                            status: RecipeDetailStatus::Ready { title, .. },
                             ..
                         }
                     },
                 ) if rows.iter().map(|row| row.title.as_str()).eq(["Spicy shakshuka"])
                     && title == "Spicy shakshuka"
             )
+        })
+    })?;
+    app.shutdown();
+    Ok(())
+}
+
+#[test]
+fn a_deleted_recipe_leaves_the_list_and_empties_the_pane() -> anyhow::Result<()> {
+    let database = TemporaryDatabase::new()?;
+    let (render, rendered) = TestRender::new();
+    let app = app(
+        AppCapabilities {
+            render: Arc::new(render),
+        },
+        database.path()?.into(),
+        AppLayout::Split,
+    );
+    app.start()?;
+    wait_until_ready(&app, &rendered)?;
+    let recipes = |event| AppEvent::Split {
+        event: SplitAppEvent::Recipes { event },
+    };
+
+    create_recipe(&app, &rendered, "Shakshuka")?;
+    wait_until(&app, &rendered, |view| {
+        split_of(view).is_some_and(|split| {
+            matches!(
+                &split.recipes.pane.value,
+                RecipePaneView::Detail {
+                    detail: RecipeDetailView {
+                        status: RecipeDetailStatus::Ready { .. },
+                        ..
+                    }
+                }
+            )
+        })
+    })?;
+    let scope = split_of(&app.view()?)
+        .context("expected the split layout")?
+        .recipes
+        .pane
+        .scope;
+    app.dispatch(recipes(RecipeSectionEvent::Detail {
+        scope,
+        event: RecipeDetailEvent::RequestDelete,
+    }))?;
+    wait_until(&app, &rendered, |view| {
+        split_of(view).is_some_and(|split| {
+            matches!(
+                &split.recipes.pane.value,
+                RecipePaneView::Detail {
+                    detail: RecipeDetailView {
+                        status: RecipeDetailStatus::Ready {
+                            deletion: RecipeDeletion::Confirming { .. },
+                            ..
+                        },
+                        ..
+                    }
+                }
+            )
+        })
+    })?;
+    app.dispatch(recipes(RecipeSectionEvent::Detail {
+        scope,
+        event: RecipeDetailEvent::Confirmation {
+            event: ConfirmationEvent::Confirm,
+        },
+    }))?;
+    wait_until(&app, &rendered, |view| {
+        split_of(view).is_some_and(|split| {
+            split.recipes.pane.value == RecipePaneView::Empty
+                && split.recipes.selected.is_none()
+                && matches!(&split.recipes.list.status, RecipeListStatus::Ready { rows } if rows.is_empty())
         })
     })?;
     app.shutdown();

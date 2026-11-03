@@ -72,6 +72,14 @@ extension RecipeTitleError {
     }
 }
 
+extension StepTitleError {
+    var message: String {
+        switch self {
+        case .notEmptyViolated: "A step needs a title."
+        }
+    }
+}
+
 extension RecipeEditorProblem {
     var message: String {
         switch self {

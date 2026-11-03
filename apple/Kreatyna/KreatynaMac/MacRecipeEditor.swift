@@ -1,9 +1,12 @@
 import SwiftUI
 
 /// The recipe editor in the Recipes detail pane, for a new or a saved recipe.
-/// It shows Rust's editor view
-/// and sends the title, Save, and Cancel to Rust; Rust checks the title and
-/// decides what the pane shows next.
+/// It shows Rust's editor view and sends the title, the step canvas events,
+/// Save, and Cancel to Rust; Rust checks the titles and decides what the pane
+/// shows next.
+///
+/// The layout is REC-14/Q1: the Title field, the step canvas, and
+/// "Ingredients: Coming soon" on the left; the step inspector on the right.
 struct MacRecipeEditor: View {
     /// "New Recipe", or the saved title while it is edited.
     let heading: String
@@ -14,37 +17,33 @@ struct MacRecipeEditor: View {
     @FocusState private var titleFocused: Bool
 
     var body: some View {
-        Form {
-            Section {
-                VStack(alignment: .trailing, spacing: 4) {
-                    // A grouped form shows the title as the label, the field on the right.
-                    SyncedTextField("Title", value: view.title, prompt: "Required") { send(.setTitle(title: $0)) }
-                        .multilineTextAlignment(.trailing)
-                        .focused($titleFocused)
-                        .accessibilityIdentifier("recipeTitleField")
-                    if let problem {
-                        Text(problem.message)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                            .accessibilityIdentifier("recipeTitleProblem")
-                    }
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(heading)
+                    .font(.title2.bold())
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .accessibilityIdentifier("recipeEditorTitle")
+                titleField
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                Divider()
+                MacStepCanvas(canvas: view.canvas) { send(.canvas(event: $0)) }
+                Divider()
+                // Ingredient lines arrive with REC-07.
+                HStack {
+                    Text("Ingredients")
+                        .font(.headline)
+                    Text("Coming soon")
+                        .foregroundStyle(.secondary)
                 }
-            }
-            // Ingredient lines arrive with REC-07, steps with REC-14.
-            comingSoon("Ingredients")
-            comingSoon("Steps")
-        }
-        .formStyle(.grouped)
-        .disabled(isSaving)
-        .accessibilityIdentifier("recipeEditor")
-        .safeAreaInset(edge: .top, spacing: 0) {
-            Text(heading)
-                .font(.title2.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .accessibilityIdentifier("recipeEditorTitle")
+                .padding(.vertical, 12)
+            }
+            Divider()
+            MacStepInspector(canvas: view.canvas) { send(.canvas(event: $0)) }
         }
+        .disabled(isSaving)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("Cancel", systemImage: "xmark") { send(.requestClose) }
@@ -76,6 +75,25 @@ struct MacRecipeEditor: View {
         .onAppear { titleFocused = true }
     }
 
+    private var titleField: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Title")
+                SyncedTextField("Title", value: view.title, prompt: "Required") { send(.setTitle(title: $0)) }
+                    .labelsHidden()
+                    .textFieldStyle(.roundedBorder)
+                    .focused($titleFocused)
+                    .accessibilityIdentifier("recipeTitleField")
+            }
+            if let problem {
+                Text(problem.message)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("recipeTitleProblem")
+            }
+        }
+    }
+
     private var problem: RecipeEditorProblem? {
         if case .editing(let problem) = view.status { problem } else { nil }
     }
@@ -86,12 +104,5 @@ struct MacRecipeEditor: View {
 
     private var awaitingDiscardDecision: Bool {
         if case .confirmingDiscard(.awaitingDecision) = view.status { true } else { false }
-    }
-
-    private func comingSoon(_ title: String) -> some View {
-        Section(title) {
-            Text("Coming soon")
-                .foregroundStyle(.secondary)
-        }
     }
 }

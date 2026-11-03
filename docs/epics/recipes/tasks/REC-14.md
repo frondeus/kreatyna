@@ -360,4 +360,20 @@ tests, and the UI tests of the Recipes section only (`--ui MacRecipeUITests`).
 
 ## Validation
 
-Not run yet.
+| # | Check | Result |
+|---|---|---|
+| 1 | `cargo test --workspace` | 723 pass. New: 9 store tests (change 2), 2 read-view and list tests (change 3), 19 editor tests (change 4), 9 FFI conversion tests (change 5). |
+| 2 | `cargo clippy --workspace --all-targets -- -D warnings` | No warnings. |
+| 3 | `cargo fmt --check` | No diff. |
+| 4 | `devenv shell -- mac-test --ui MacRecipeUITests` | TEST SUCCEEDED. All unit and snapshot tests, and 9 recipe UI tests with the new `testAddStepAndSave`. New images: `recipeCanvas` and `untitledStep`. Recorded again: `recipeReadView` (change 6) and the three editor images (change 7). I checked each image by eye in light and dark. No ingredient image changed. |
+| 5 | `devenv shell -- ios-app-build` | Builds. |
+| 6 | `capture-demo.sh mac …/testCaptureREC14Demo docs/epics/recipes/tasks/REC-14-demo` | `01-context-menu.png`, `02-inspector.png`, `03-read-view.png`. |
+| 7 | `jj diff --stat` per change | Change 1: 364. Change 2: 752. Change 3: 206. Change 4: 714. Change 5: 370. Change 6: 51. Change 7: 476 (images count 0). |
+
+### Differences from the plan
+
+- **Change 4, after review:** `StepCanvas::apply` and `select` return `CanvasChange { Changed, Unchanged }`, not `bool`. `EditorTarget::opened_with` returns the struct `OpenedWith { title, steps }`, not a tuple.
+- **Change 5:** the FFI crate gets `uuid` as a dev-dependency, for fixed step ids in its tests.
+- **Add Step location:** `onContinuousHover` is reliable, so the AppKit fallback was not needed. The UI test and the demo right-click at chosen points, and the new node appears there.
+- **Editor heading:** the heading moved from the top inset into the left column, so the inspector runs the full height of the pane.
+- **Demo `01-context-menu`:** a window screenshot leaves out the open menu. The demo takes a screen screenshot and cuts it to the window.

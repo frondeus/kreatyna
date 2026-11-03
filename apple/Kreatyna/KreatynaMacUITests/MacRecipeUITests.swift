@@ -184,6 +184,48 @@ final class MacRecipeUITests: MacUITestCase {
         XCTAssertTrue(waitForNonExistence(recipeDraftRow(in: app), timeout: 5))
     }
 
+    /// Right-click ▸ Add Step adds an untitled step and selects it. Save
+    /// refuses it and shows the problem (REC-14/Q2). With a title, Save
+    /// keeps it: the read view lists it and the row says "1 step" (REC-14).
+    @MainActor
+    func testAddStepAndSave() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
+        app.typeText("Shakshuka")
+
+        addStep(at: CGVector(dx: 0.2, dy: 0.2), in: app)
+        let node = app.descendants(matching: .any).matching(identifier: "stepNode").firstMatch
+        XCTAssertTrue(node.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
+
+        app.typeKey("s", modifierFlags: .command)
+        let problem = app.staticTexts["stepTitleProblem"]
+        XCTAssertTrue(problem.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitFor(problem, value: "A step needs a title."))
+
+        // The new step's Title has the focus.
+        app.typeText("Dice onion")
+        XCTAssertTrue(waitForNonExistence(problem, timeout: 5))
+        app.typeKey("s", modifierFlags: .command)
+
+        XCTAssertTrue(waitForTitle(in: app, "Shakshuka"))
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStep"], value: "Dice onion"))
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStepCount"], value: "1 step"))
+    }
+
+    /// Right-clicks the step canvas at `offset` (0 to 1 of its size) and picks Add Step.
+    @MainActor
+    private func addStep(at offset: CGVector, in app: XCUIApplication) {
+        let canvas = app.scrollViews["stepCanvas"]
+        XCTAssertTrue(canvas.waitForExistence(timeout: 5))
+        canvas.coordinate(withNormalizedOffset: offset).rightClick()
+        let add = app.menuItems["Add Step"]
+        XCTAssertTrue(add.waitForExistence(timeout: 5))
+        add.click()
+    }
+
     /// ⌘N, `title`, ⌘S; waits until the saved recipe's read view shows.
     @MainActor
     private func create(_ title: String, in app: XCUIApplication) {

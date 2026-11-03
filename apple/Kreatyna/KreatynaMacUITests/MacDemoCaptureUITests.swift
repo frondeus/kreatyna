@@ -346,6 +346,45 @@ final class MacDemoCaptureUITests: MacUITestCase {
         app.terminate()
     }
 
+    /// REC-14: steps on the canvas. The context menu adds a third step; Save
+    /// refuses it untitled and selects it; with a title, the read view lists
+    /// the steps and the row counts them.
+    @MainActor
+    func testCaptureREC14Demo() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(app.textFields["recipeTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Shakshuka")
+
+        let canvas = app.scrollViews["stepCanvas"]
+        XCTAssertTrue(canvas.waitForExistence(timeout: 5))
+        let add = app.menuItems["Add Step"]
+        for (title, offset) in [("Dice onion", CGVector(dx: 0.08, dy: 0.08)), ("Fry onion", CGVector(dx: 0.35, dy: 0.3))] {
+            canvas.coordinate(withNormalizedOffset: offset).rightClick()
+            XCTAssertTrue(add.waitForExistence(timeout: 5))
+            add.click()
+            XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
+            app.typeText(title)
+        }
+
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.55)).rightClick()
+        XCTAssertTrue(add.waitForExistence(timeout: 5))
+        captureScreen("01-context-menu", around: app.windows.firstMatch)
+        add.click()
+
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitFor(app.staticTexts["stepTitleProblem"], value: "A step needs a title."))
+        capture("02-inspector", app)
+
+        app.typeText("Crack eggs")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitFor(app.staticTexts["recipeTitle"], value: "Shakshuka"))
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStepCount"], value: "3 steps"))
+        capture("03-read-view", app)
+        app.terminate()
+    }
+
     /// The ingredient list the demos start from (Garlic, Tomato, Basil, …).
     private func demoIngredients() throws -> String {
         let fixture = URL(fileURLWithPath: #filePath)
@@ -357,6 +396,33 @@ final class MacDemoCaptureUITests: MacUITestCase {
     @MainActor
     private func capture(_ name: String, _ app: XCUIApplication) {
         let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    /// A screenshot of the screen cut to `element`'s frame. A window
+    /// screenshot leaves out an open menu, which is a window of its own.
+    @MainActor
+    private func captureScreen(_ name: String, around element: XCUIElement) {
+        let shot = XCUIScreen.main.screenshot()
+        let frame = element.frame
+        guard let image = shot.image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            return XCTFail("The screenshot has no bitmap.")
+        }
+        // The element's frame is in screen points; the bitmap is in pixels.
+        guard let screen = NSScreen.main?.frame, screen.width > 0 else {
+            return XCTFail("There is no main screen.")
+        }
+        let scale = CGFloat(image.width) / screen.width
+        let pixels = CGRect(
+            x: frame.minX * scale, y: frame.minY * scale,
+            width: frame.width * scale, height: frame.height * scale
+        )
+        guard let cropped = image.cropping(to: pixels) else {
+            return XCTFail("The window lies outside the screenshot.")
+        }
+        let attachment = XCTAttachment(image: NSImage(cgImage: cropped, size: frame.size))
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)

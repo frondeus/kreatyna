@@ -120,6 +120,17 @@ enum Fixtures {
         RecipeListRow(id: RecipeId(uuid: "recipe-\(title)"), title: title, stepCount: stepCount)
     }
 
+    /// A step node on the editor's canvas. The ID only has to be unique in
+    /// the recipe; `key` stands in for the title when it is empty.
+    static func stepNode(
+        _ title: String, x: UInt32, y: UInt32, problem: StepTitleError? = nil, key: String? = nil
+    ) -> StepNodeView {
+        StepNodeView(
+            id: StepId(uuid: "step-\(key ?? title)"), title: title,
+            position: CanvasPoint(x: x, y: y), problem: problem
+        )
+    }
+
     /// A step of the read view. The ID only has to be unique in the recipe.
     static func detailStep(_ title: String) -> RecipeDetailStep {
         RecipeDetailStep(id: StepId(uuid: "step-\(title)"), title: title)

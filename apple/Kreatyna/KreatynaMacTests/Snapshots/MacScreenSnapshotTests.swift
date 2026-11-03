@@ -129,7 +129,8 @@ extension MainActorTests {
             )
         }
 
-        /// New Recipe: the draft row first, the editor with "Coming soon" areas (REC-02).
+        /// New Recipe: the draft row first, the Title field, an empty canvas,
+        /// "Select a step" in the inspector (REC-02, REC-14/Q1).
         @Test(arguments: Appearance.allCases)
         func emptyRecipeEditor(appearance: Appearance) {
             snapshot(
@@ -146,6 +147,37 @@ extension MainActorTests {
                     .ready(rows: [Fixtures.recipeRow("Shakshuka")]),
                     editor: ("shakshuka", .saveFailed(error: .duplicateTitle))
                 ),
+                appearance: appearance
+            )
+        }
+
+        /// Three steps on the canvas: Fry onion is selected, with the accent
+        /// border and its Title in the inspector (REC-14).
+        @Test(arguments: Appearance.allCases)
+        func recipeCanvas(appearance: Appearance) {
+            let canvas = StepCanvasView.selected(
+                selected: Fixtures.stepNode("Fry onion", x: 200, y: 110),
+                others: [
+                    Fixtures.stepNode("Dice onion", x: 20, y: 20),
+                    Fixtures.stepNode("Crack eggs", x: 40, y: 210),
+                ]
+            )
+            snapshot(
+                recipes(.ready(rows: []), editor: ("Shakshuka", nil), canvas: canvas),
+                appearance: appearance
+            )
+        }
+
+        /// Save refused an untitled step: Rust selected it, its node has the red
+        /// border, and the inspector shows the problem (REC-14/Q2).
+        @Test(arguments: Appearance.allCases)
+        func untitledStep(appearance: Appearance) {
+            let canvas = StepCanvasView.selected(
+                selected: Fixtures.stepNode("", x: 200, y: 110, problem: .notEmptyViolated, key: "new"),
+                others: [Fixtures.stepNode("Dice onion", x: 20, y: 20)]
+            )
+            snapshot(
+                recipes(.ready(rows: []), editor: ("Shakshuka", nil), canvas: canvas),
                 appearance: appearance
             )
         }
@@ -313,9 +345,10 @@ extension MainActorTests {
         /// The Recipes section with the create editor open.
         private func recipes(
             _ status: RecipeListStatus,
-            editor: (title: String, problem: RecipeEditorProblem?)
+            editor: (title: String, problem: RecipeEditorProblem?),
+            canvas: StepCanvasView = .unselected(steps: [])
         ) -> some View {
-            let view = RecipeEditorView(title: editor.title, canvas: .unselected(steps: []), status: .editing(problem: editor.problem))
+            let view = RecipeEditorView(title: editor.title, canvas: canvas, status: .editing(problem: editor.problem))
             let pane = RecipePaneView.create(
                 editor: view, draftRow: editor.title.trimmingCharacters(in: .whitespaces)
             )

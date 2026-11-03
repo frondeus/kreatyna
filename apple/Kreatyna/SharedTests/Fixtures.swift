@@ -117,7 +117,7 @@ enum Fixtures {
 
     /// A saved recipe's row. The ID only has to be unique in the list.
     static func recipeRow(_ title: String) -> RecipeListRow {
-        RecipeListRow(id: RecipeId(uuid: "recipe-\(title)"), title: title)
+        RecipeListRow(id: RecipeId(uuid: "recipe-\(title)"), title: title, stepCount: 0)
     }
 
     static func recipeList(_ status: RecipeListStatus, search: String = "") -> RecipeListView {
@@ -136,7 +136,7 @@ enum Fixtures {
         let canCreate = switch pane {
         case .empty: true
         case .detail(let detail):
-            if case .ready(_, let deletion) = detail.status, deletion != .idle { false } else { true }
+            if case .ready(_, _, let deletion) = detail.status, deletion != .idle { false } else { true }
         case .create, .edit: false
         }
         let selected = if case .detail(let detail) = pane { detail.id } else { nil as RecipeId? }

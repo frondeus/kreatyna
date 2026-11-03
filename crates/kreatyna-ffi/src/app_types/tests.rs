@@ -355,6 +355,116 @@ fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test_case(
+    StepCanvasEvent::Add { at: CanvasPoint { x: 120, y: 80 } },
+    kreatyna::recipes::StepCanvasEvent::Add { at: kreatyna::recipes::CanvasPoint { x: 120, y: 80 } };
+    "add a step at the point"
+)]
+#[test_case(
+    StepCanvasEvent::Select { id: step_id(1) },
+    kreatyna::recipes::StepCanvasEvent::Select(step_id(1));
+    "select a step"
+)]
+#[test_case(
+    StepCanvasEvent::ClearSelection,
+    kreatyna::recipes::StepCanvasEvent::ClearSelection;
+    "clear the selection"
+)]
+#[test_case(
+    StepCanvasEvent::SetTitle { id: step_id(1), title: " Dice onion ".into() },
+    kreatyna::recipes::StepCanvasEvent::SetTitle { id: step_id(1), title: " Dice onion ".into() };
+    "name a step with the raw text"
+)]
+fn canvas_events_reach_the_editor_in_their_pane_scope(
+    event: StepCanvasEvent,
+    expected: kreatyna::recipes::StepCanvasEvent,
+) {
+    let event = RecipeSectionEvent::Editor {
+        scope: ScopeId { value: 7 },
+        event: RecipeEditorEvent::Canvas { event },
+    };
+    assert_eq!(
+        kreatyna::recipes::RecipeSectionEvent::from(event),
+        kreatyna::recipes::RecipeSectionEvent::Editor(Scoped::new(
+            CommandScopeId::from(7),
+            kreatyna::recipes::RecipeEditorEvent::Canvas(expected)
+        ))
+    );
+}
+
+#[test]
+fn an_editor_canvas_keeps_the_selection_the_positions_and_the_problems() {
+    let untitled = kreatyna::recipes::StepNodeView {
+        id: step_id(2),
+        title: " ".into(),
+        position: kreatyna::recipes::CanvasPoint { x: 240, y: 40 },
+        problem: Some(kreatyna::recipes::StepTitleError::NotEmptyViolated),
+    };
+    let named = kreatyna::recipes::StepNodeView {
+        id: step_id(1),
+        title: "Dice onion".into(),
+        position: kreatyna::recipes::CanvasPoint { x: 40, y: 40 },
+        problem: None,
+    };
+    let editor = kreatyna::recipes::RecipeEditorView {
+        title: "Shakshuka".into(),
+        canvas: kreatyna::recipes::StepCanvasView::Selected {
+            selected: untitled,
+            others: vec![named],
+        },
+        status: kreatyna::recipes::RecipeEditorStatus::Editing { problem: None },
+    };
+    assert_eq!(
+        RecipeEditorView::from(editor),
+        RecipeEditorView {
+            title: "Shakshuka".into(),
+            canvas: StepCanvasView::Selected {
+                selected: StepNodeView {
+                    id: step_id(2),
+                    title: " ".into(),
+                    position: CanvasPoint { x: 240, y: 40 },
+                    problem: Some(StepTitleError::NotEmptyViolated),
+                },
+                others: vec![StepNodeView {
+                    id: step_id(1),
+                    title: "Dice onion".into(),
+                    position: CanvasPoint { x: 40, y: 40 },
+                    problem: None,
+                }],
+            },
+            status: RecipeEditorStatus::Editing { problem: None },
+        }
+    );
+}
+
+#[test]
+fn an_unselected_canvas_keeps_the_steps_in_the_order_added() -> anyhow::Result<()> {
+    let node = |n: u128, x: u32| kreatyna::recipes::StepNodeView {
+        id: step_id(n),
+        title: format!("Step {n}"),
+        position: kreatyna::recipes::CanvasPoint { x, y: 40 },
+        problem: None,
+    };
+    let canvas = kreatyna::recipes::StepCanvasView::Unselected {
+        steps: vec![node(2, 40), node(1, 240)],
+    };
+    let StepCanvasView::Unselected { steps } = StepCanvasView::from(canvas) else {
+        anyhow::bail!("expected an unselected canvas");
+    };
+    assert_eq!(
+        steps.iter().map(|step| step.id).collect::<Vec<_>>(),
+        [step_id(2), step_id(1)]
+    );
+    Ok(())
+}
+
+#[test]
+fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
+    let id = kreatyna::recipes::StepId::generate();
+    assert_eq!(support::lift_step_id(id.to_string())?, id);
+    Ok(())
+}
+
 #[test_case(kreatyna::recipes::RecipeDetailStatus::Loading, RecipeDetailStatus::Loading; "loading")]
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Failed(kreatyna::recipes::capabilities::RecipeLoadError::Transport),
@@ -363,9 +473,28 @@ fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
 )]
 #[test_case(kreatyna::recipes::RecipeDetailStatus::Missing, RecipeDetailStatus::Missing; "missing")]
 #[test_case(
+    kreatyna::recipes::RecipeDetailStatus::Ready {
+        title: "Shakshuka".into(),
+        steps: vec![
+            kreatyna::recipes::RecipeDetailStep { id: step_id(1), title: "Fry onion".into() },
+            kreatyna::recipes::RecipeDetailStep { id: step_id(2), title: "Dice onion".into() },
+        ],
+        deletion: kreatyna::recipes::RecipeDeletion::Idle,
+    },
+    RecipeDetailStatus::Ready {
+        title: "Shakshuka".into(),
+        steps: vec![
+            RecipeDetailStep { id: step_id(1), title: "Fry onion".into() },
+            RecipeDetailStep { id: step_id(2), title: "Dice onion".into() },
+        ],
+        deletion: RecipeDeletion::Idle,
+    };
+    "ready with steps in the order added"
+)]
+#[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Idle },
-    RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: RecipeDeletion::Idle };
-    "ready"
+    RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: RecipeDeletion::Idle };
+    "ready without steps"
 )]
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready {
@@ -378,6 +507,7 @@ fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     },
     RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
+        steps: vec![],
         deletion: RecipeDeletion::Confirming {
             confirmation: ConfirmationView::AwaitingDecision,
             error: Some(RecipeDeleteError::Storage),
@@ -387,12 +517,12 @@ fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
 )]
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Deleting },
-    RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: RecipeDeletion::Deleting };
+    RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: RecipeDeletion::Deleting };
     "deleting"
 )]
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Deleted },
-    RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: RecipeDeletion::Deleted };
+    RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: RecipeDeletion::Deleted };
     "deleted"
 )]
 fn a_read_view_pane_keeps_the_id_and_the_status(
@@ -434,6 +564,7 @@ fn a_create_pane_keeps_the_draft_row_and_the_problem() {
         RecipePaneView::Create {
             editor: RecipeEditorView {
                 title: "shakshuka ".into(),
+                canvas: StepCanvasView::Unselected { steps: vec![] },
                 status: RecipeEditorStatus::Editing {
                     problem: Some(RecipeEditorProblem::SaveFailed {
                         error: RecipeSaveError::DuplicateTitle
@@ -464,6 +595,7 @@ fn an_edit_pane_keeps_the_saved_title_and_the_problem() {
         RecipePaneView::Edit {
             editor: RecipeEditorView {
                 title: "Spicy shakshuka".into(),
+                canvas: StepCanvasView::Unselected { steps: vec![] },
                 status: RecipeEditorStatus::Editing {
                     problem: Some(RecipeEditorProblem::SaveFailed {
                         error: RecipeSaveError::NotFound
@@ -503,7 +635,8 @@ fn split_app_view_conversion_keeps_the_section_and_the_recipe_rows() -> anyhow::
         RecipeListStatus::Ready {
             rows: vec![RecipeListRow {
                 id,
-                title: "Shakshuka".into()
+                title: "Shakshuka".into(),
+                step_count: 3,
             }]
         }
     );
@@ -777,6 +910,19 @@ fn invalid_recipe_id_text_fails_the_call_with_a_conversion_error() {
 }
 
 #[test]
+fn invalid_step_id_text_fails_the_call_with_a_conversion_error() {
+    let error = support::lift_step_id("not-a-uuid".into())
+        .err()
+        .and_then(|error| error.downcast::<crate::AppFfiError>().ok());
+    assert!(matches!(
+        error,
+        Some(crate::AppFfiError::Conversion {
+            error: AppTypeConversionError::InvalidStepId { value }
+        }) if value == "not-a-uuid"
+    ));
+}
+
+#[test]
 fn invalid_ingredient_id_text_fails_the_call_with_a_conversion_error() {
     let error = support::lift_ingredient_id("not-a-uuid".into())
         .err()
@@ -905,6 +1051,11 @@ fn detail_and_confirmation_statuses_preserve_typed_delete_errors() {
 }
 
 // Test support
+
+/// A fixed step id, so a test can name it twice.
+fn step_id(n: u128) -> kreatyna::recipes::StepId {
+    kreatyna::recipes::StepId::from(uuid::Uuid::from_u128(n))
+}
 
 fn stack(view: RunningAppView) -> anyhow::Result<IngredientCatalogView> {
     let RunningAppView::Stack { catalog } = view else {

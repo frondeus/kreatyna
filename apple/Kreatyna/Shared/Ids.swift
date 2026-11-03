@@ -19,3 +19,12 @@ public struct IngredientId: Hashable, Sendable {
         self.uuid = uuid
     }
 }
+
+/// A step's id.
+public struct StepId: Hashable, Sendable {
+    public let uuid: String
+
+    public init(uuid: String) {
+        self.uuid = uuid
+    }
+}

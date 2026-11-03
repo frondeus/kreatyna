@@ -1,4 +1,7 @@
-use kreatyna::{ingredients::IngredientId, recipes::RecipeId};
+use kreatyna::{
+    ingredients::IngredientId,
+    recipes::{RecipeId, StepId},
+};
 
 use crate::AppFfiError;
 use krucyfiks::CommandScopeId;
@@ -28,6 +31,8 @@ pub enum AppTypeConversionError {
     InvalidIngredientId { value: String },
     #[error("invalid recipe ID: {value}")]
     InvalidRecipeId { value: String },
+    #[error("invalid step ID: {value}")]
+    InvalidStepId { value: String },
     #[error("integer cannot be represented on this platform")]
     IntegerOutOfRange,
 }
@@ -75,5 +80,21 @@ pub(crate) fn lift_recipe_id(value: String) -> uniffi::Result<RecipeId> {
         uniffi::deps::anyhow::Error::new(AppFfiError::from(
             AppTypeConversionError::InvalidRecipeId { value },
         ))
+    })
+}
+
+uniffi::custom_type!(StepId, String, {
+    remote,
+    lower: |id| id.to_string(),
+    try_lift: |value| lift_step_id(value),
+});
+
+/// Swift's id text as a `StepId`. Invalid text fails the call that carries
+/// it, for example `dispatch`, with `AppFfiError::Conversion`.
+pub(crate) fn lift_step_id(value: String) -> uniffi::Result<StepId> {
+    value.parse().map_err(|_| {
+        uniffi::deps::anyhow::Error::new(AppFfiError::from(AppTypeConversionError::InvalidStepId {
+            value,
+        }))
     })
 }

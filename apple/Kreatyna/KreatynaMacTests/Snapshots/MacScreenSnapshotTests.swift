@@ -154,7 +154,7 @@ extension MainActorTests {
         @Test(arguments: Appearance.allCases)
         func recipeReadView(appearance: Appearance) {
             let shakshuka = Fixtures.recipeRow("Shakshuka")
-            let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: shakshuka.title, deletion: .idle))
+            let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: shakshuka.title, steps: [], deletion: .idle))
             snapshot(
                 MacMainView(
                     app: Fixtures.splitApp(
@@ -177,7 +177,7 @@ extension MainActorTests {
         func deletingRecipe(appearance: Appearance) {
             let shakshuka = Fixtures.recipeRow("Shakshuka")
             let detail = RecipeDetailView(
-                id: shakshuka.id, status: .ready(title: shakshuka.title, deletion: .deleting)
+                id: shakshuka.id, status: .ready(title: shakshuka.title, steps: [], deletion: .deleting)
             )
             snapshot(
                 MacMainView(
@@ -200,7 +200,7 @@ extension MainActorTests {
         @Test(arguments: Appearance.allCases)
         func editRecipeEditor(appearance: Appearance) {
             let shakshuka = Fixtures.recipeRow("Shakshuka")
-            let editor = RecipeEditorView(title: "Spicy shakshuka", status: .editing(problem: nil))
+            let editor = RecipeEditorView(title: "Spicy shakshuka", canvas: .unselected(steps: []), status: .editing(problem: nil))
             snapshot(
                 MacMainView(
                     app: Fixtures.splitApp(
@@ -312,7 +312,7 @@ extension MainActorTests {
             _ status: RecipeListStatus,
             editor: (title: String, problem: RecipeEditorProblem?)
         ) -> some View {
-            let view = RecipeEditorView(title: editor.title, status: .editing(problem: editor.problem))
+            let view = RecipeEditorView(title: editor.title, canvas: .unselected(steps: []), status: .editing(problem: editor.problem))
             let pane = RecipePaneView.create(
                 editor: view, draftRow: editor.title.trimmingCharacters(in: .whitespaces)
             )

@@ -5,6 +5,10 @@
 lift = "RecipeId(uuid: {})"
 lower = "{}.uuid"
 
+[bindings.swift.custom_types.StepId]
+lift = "StepId(uuid: {})"
+lower = "{}.uuid"
+
 [bindings.swift.custom_types.IngredientId]
 lift = "IngredientId(uuid: {})"
 lower = "{}.uuid"

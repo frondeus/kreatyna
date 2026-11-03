@@ -46,11 +46,11 @@ struct MacRecipeDetail: View {
     }
 
     private var title: String? {
-        if case .ready(let title, _) = view.status { title } else { nil }
+        if case .ready(let title, _, _) = view.status { title } else { nil }
     }
 
     private var deletion: RecipeDeletion? {
-        if case .ready(_, let deletion) = view.status { deletion } else { nil }
+        if case .ready(_, _, let deletion) = view.status { deletion } else { nil }
     }
 
     /// Rust takes Edit and Delete only for a loaded recipe with no delete
@@ -98,7 +98,7 @@ struct MacRecipeDetail: View {
                 Text("This recipe no longer exists.")
             }
             .accessibilityIdentifier("recipeDetailMissing")
-        case .ready(let title, _):
+        case .ready(let title, _, _):
             Form {
                 // Lines arrive with REC-07, steps with REC-14 (stages: REC-19).
                 noneYet("Ingredients")

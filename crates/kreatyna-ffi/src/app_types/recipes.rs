@@ -39,6 +39,8 @@ impl From<RecipeListEvent> for core::RecipeListEvent {
 pub struct RecipeListRow {
     pub id: core::RecipeId,
     pub title: String,
+    /// Swift shows "1 step" or "N steps", and nothing for 0.
+    pub step_count: u32,
 }
 
 impl From<core::RecipeListRow> for RecipeListRow {
@@ -46,6 +48,7 @@ impl From<core::RecipeListRow> for RecipeListRow {
         Self {
             id: value.id,
             title: value.title,
+            step_count: value.step_count,
         }
     }
 }
@@ -190,10 +193,98 @@ impl From<core::RecipeEditorStatus> for RecipeEditorStatus {
     }
 }
 
+/// A position on the step canvas in whole points, from the top left corner.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct CanvasPoint {
+    pub x: u32,
+    pub y: u32,
+}
+
+impl From<core::CanvasPoint> for CanvasPoint {
+    fn from(value: core::CanvasPoint) -> Self {
+        Self {
+            x: value.x,
+            y: value.y,
+        }
+    }
+}
+
+impl From<CanvasPoint> for core::CanvasPoint {
+    fn from(value: CanvasPoint) -> Self {
+        Self {
+            x: value.x,
+            y: value.y,
+        }
+    }
+}
+
+/// The save rule a step title breaks (nutype's error in Rust).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum StepTitleError {
+    NotEmptyViolated,
+}
+
+impl From<core::StepTitleError> for StepTitleError {
+    fn from(value: core::StepTitleError) -> Self {
+        match value {
+            core::StepTitleError::NotEmptyViolated => Self::NotEmptyViolated,
+        }
+    }
+}
+
+/// A step node on the canvas.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct StepNodeView {
+    pub id: core::StepId,
+    /// The title as typed. Empty shows "Untitled step".
+    pub title: String,
+    pub position: CanvasPoint,
+    /// Only after the first Save: the title breaks the rule.
+    pub problem: Option<StepTitleError>,
+}
+
+impl From<core::StepNodeView> for StepNodeView {
+    fn from(value: core::StepNodeView) -> Self {
+        Self {
+            id: value.id,
+            title: value.title,
+            position: value.position.into(),
+            problem: value.problem.map(Into::into),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum StepCanvasView {
+    /// The inspector shows "Select a step". The steps are in the order added.
+    Unselected { steps: Vec<StepNodeView> },
+    /// The inspector shows `selected`. `others` are the other steps, in the
+    /// order added.
+    Selected {
+        selected: StepNodeView,
+        others: Vec<StepNodeView>,
+    },
+}
+
+impl From<core::StepCanvasView> for StepCanvasView {
+    fn from(value: core::StepCanvasView) -> Self {
+        match value {
+            core::StepCanvasView::Unselected { steps } => Self::Unselected {
+                steps: steps.into_iter().map(Into::into).collect(),
+            },
+            core::StepCanvasView::Selected { selected, others } => Self::Selected {
+                selected: selected.into(),
+                others: others.into_iter().map(Into::into).collect(),
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct RecipeEditorView {
     /// The title as typed.
     pub title: String,
+    pub canvas: StepCanvasView,
     pub status: RecipeEditorStatus,
 }
 
@@ -201,7 +292,31 @@ impl From<core::RecipeEditorView> for RecipeEditorView {
     fn from(value: core::RecipeEditorView) -> Self {
         Self {
             title: value.title,
+            canvas: value.canvas.into(),
             status: value.status.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum StepCanvasEvent {
+    /// Right-click ▸ Add Step. Adds an untitled step at `at` and selects it.
+    Add { at: CanvasPoint },
+    /// A click on a node.
+    Select { id: core::StepId },
+    /// A click on empty canvas.
+    ClearSelection,
+    /// The title field of the inspector, as typed.
+    SetTitle { id: core::StepId, title: String },
+}
+
+impl From<StepCanvasEvent> for core::StepCanvasEvent {
+    fn from(value: StepCanvasEvent) -> Self {
+        match value {
+            StepCanvasEvent::Add { at } => Self::Add { at: at.into() },
+            StepCanvasEvent::Select { id } => Self::Select(id),
+            StepCanvasEvent::ClearSelection => Self::ClearSelection,
+            StepCanvasEvent::SetTitle { id, title } => Self::SetTitle { id, title },
         }
     }
 }
@@ -211,8 +326,12 @@ pub enum RecipeEditorEvent {
     SetTitle {
         title: String,
     },
+    /// The steps on the canvas and in the inspector.
+    Canvas {
+        event: StepCanvasEvent,
+    },
     Save,
-    /// Cancel. A changed title asks "Discard changes?" first.
+    /// Cancel. A changed title or step list asks "Discard changes?" first.
     RequestClose,
     Confirmation {
         event: ConfirmationEvent,
@@ -223,6 +342,7 @@ impl From<RecipeEditorEvent> for core::RecipeEditorEvent {
     fn from(value: RecipeEditorEvent) -> Self {
         match value {
             RecipeEditorEvent::SetTitle { title } => Self::SetTitle(title),
+            RecipeEditorEvent::Canvas { event } => Self::Canvas(event.into()),
             RecipeEditorEvent::Save => Self::Save,
             RecipeEditorEvent::RequestClose => Self::RequestClose,
             RecipeEditorEvent::Confirmation { event } => Self::Confirmation(event.into()),
@@ -263,8 +383,26 @@ pub enum RecipeDetailStatus {
     Missing,
     Ready {
         title: String,
+        /// In the order added. Empty shows "None yet".
+        steps: Vec<RecipeDetailStep>,
         deletion: RecipeDeletion,
     },
+}
+
+/// A step in the read view.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct RecipeDetailStep {
+    pub id: core::StepId,
+    pub title: String,
+}
+
+impl From<core::RecipeDetailStep> for RecipeDetailStep {
+    fn from(value: core::RecipeDetailStep) -> Self {
+        Self {
+            id: value.id,
+            title: value.title,
+        }
+    }
 }
 
 /// The delete of the shown recipe. Swift shows the question while
@@ -306,11 +444,13 @@ impl From<core::RecipeDetailStatus> for RecipeDetailStatus {
                 error: error.into(),
             },
             core::RecipeDetailStatus::Missing => Self::Missing,
-            // The steps go to Swift in REC-14 change 5.
             core::RecipeDetailStatus::Ready {
-                title, deletion, ..
+                title,
+                steps,
+                deletion,
             } => Self::Ready {
                 title,
+                steps: steps.into_iter().map(Into::into).collect(),
                 deletion: deletion.into(),
             },
         }

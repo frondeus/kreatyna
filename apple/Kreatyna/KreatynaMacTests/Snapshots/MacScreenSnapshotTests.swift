@@ -407,6 +407,15 @@ extension MainActorTests {
             }
         }
 
+        /// Stops every spinning progress indicator ("Deleting…"), so the
+        /// snapshot does not depend on the frame the animation reached.
+        private func stopProgressIndicators(in view: NSView) {
+            (view as? NSProgressIndicator)?.stopAnimation(nil)
+            for subview in view.subviews {
+                stopProgressIndicators(in: subview)
+            }
+        }
+
         private func snapshot(
             _ view: some View,
             appearance: Appearance,
@@ -450,6 +459,7 @@ extension MainActorTests {
             RunLoop.main.run(until: Date().addingTimeInterval(0.1))
             let frameView = window.contentView!.superview!
             hideTitleText(in: frameView, title: window.title)
+            stopProgressIndicators(in: frameView)
             assertSnapshot(
                 of: frameView,
                 // Every pixel is compared; 0.99 allows only anti-aliasing noise.

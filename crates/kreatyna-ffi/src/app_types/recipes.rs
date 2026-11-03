@@ -306,7 +306,10 @@ impl From<core::RecipeDetailStatus> for RecipeDetailStatus {
                 error: error.into(),
             },
             core::RecipeDetailStatus::Missing => Self::Missing,
-            core::RecipeDetailStatus::Ready { title, deletion } => Self::Ready {
+            // The steps go to Swift in REC-14 change 5.
+            core::RecipeDetailStatus::Ready {
+                title, deletion, ..
+            } => Self::Ready {
                 title,
                 deletion: deletion.into(),
             },

@@ -2,10 +2,11 @@ use kreatyna::{
     capabilities::ResolveRender,
     confirmation::{ConfirmationEvent, ConfirmationView},
     recipes::{
-        Recipe, RecipeDeletion, RecipeDetailEvent, RecipeDetailStatus, RecipeDetailView,
-        RecipeEditorEvent, RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, RecipeId,
-        RecipeListEvent, RecipeListRow, RecipeListStatus, RecipePaneView, RecipeSection,
-        RecipeSectionEvent, RecipeSectionOutcome, RecipeSectionView, RecipeSummary,
+        CanvasPoint, Recipe, RecipeDeletion, RecipeDetailEvent, RecipeDetailStatus,
+        RecipeDetailStep, RecipeDetailView, RecipeEditorEvent, RecipeEditorProblem,
+        RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeListEvent, RecipeListRow,
+        RecipeListStatus, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
+        RecipeSectionView, RecipeSummary, Step, StepId,
         capabilities::{
             RecipeDeleteError, RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError,
             RecipeStoreRequest, ResolveRecipeStore,
@@ -768,8 +769,24 @@ fn recipe(id: u128, title: &str) -> Recipe {
     }
 }
 
+/// Shakshuka has two steps, so the list row counts them and the read view
+/// and the editor get them.
 fn shakshuka() -> Recipe {
-    recipe(1, "Shakshuka")
+    Recipe {
+        steps: vec![
+            Step {
+                id: StepId::from(Uuid::from_u128(11)),
+                title: "Dice onion".into(),
+                position: CanvasPoint { x: 10, y: 20 },
+            },
+            Step {
+                id: StepId::from(Uuid::from_u128(12)),
+                title: "Fry onion".into(),
+                position: CanvasPoint { x: 200, y: 40 },
+            },
+        ],
+        ..recipe(1, "Shakshuka")
+    }
 }
 
 fn pasta() -> Recipe {
@@ -787,6 +804,7 @@ fn ready(recipes: &[Recipe]) -> RecipeListStatus {
             .map(|recipe| RecipeListRow {
                 id: recipe.id,
                 title: recipe.title.clone(),
+                step_count: summary(recipe).step_count,
             })
             .collect(),
     }
@@ -805,15 +823,28 @@ fn read(recipe: &Recipe) -> RecipePaneView {
         recipe,
         RecipeDetailStatus::Ready {
             title: recipe.title.clone(),
+            steps: detail_steps(recipe),
             deletion: RecipeDeletion::Idle,
         },
     )
+}
+
+fn detail_steps(recipe: &Recipe) -> Vec<RecipeDetailStep> {
+    recipe
+        .steps
+        .iter()
+        .map(|step| RecipeDetailStep {
+            id: step.id,
+            title: step.title.clone(),
+        })
+        .collect()
 }
 
 /// The read view of `recipe` with this delete state.
 fn deletion(recipe: &Recipe, deletion: RecipeDeletion) -> RecipeDetailStatus {
     RecipeDetailStatus::Ready {
         title: recipe.title.clone(),
+        steps: detail_steps(recipe),
         deletion,
     }
 }

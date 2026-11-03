@@ -5,7 +5,7 @@
 use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
 use super::{
-    Recipe, RecipeId,
+    Recipe, RecipeId, StepId,
     capabilities::{RecipeCapabilities, RecipeDeleteError, RecipeEffectStream, RecipeLoadError},
 };
 use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
@@ -49,8 +49,17 @@ pub enum RecipeDetailStatus {
     Missing,
     Ready {
         title: String,
+        /// In the order added, until REC-19 shows stages (D-16).
+        steps: Vec<RecipeDetailStep>,
         deletion: RecipeDeletion,
     },
+}
+
+/// A step in the read view's flat list (REC-14).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecipeDetailStep {
+    pub id: StepId,
+    pub title: String,
 }
 
 /// The delete of the shown recipe (MAC-07).
@@ -77,7 +86,11 @@ enum State {
     Loading,
     Failed(RecipeLoadError),
     Missing,
-    Ready { title: String, deletion: Deletion },
+    /// The recipe as loaded, with its steps. Edit opens the editor with it.
+    Ready {
+        recipe: Recipe,
+        deletion: Deletion,
+    },
 }
 
 enum Deletion {
@@ -137,14 +150,13 @@ impl RecipeDetail {
         Command::without_outcome(async move { render.render().await })
     }
 
-    /// The shown title, when the recipe is shown and no delete is asked or
-    /// runs.
-    fn idle_title(&self) -> Option<&str> {
+    /// The shown recipe, when no delete is asked or runs.
+    fn idle_recipe(&self) -> Option<&Recipe> {
         match &self.state {
             State::Ready {
-                title,
+                recipe,
                 deletion: Deletion::Idle,
-            } => Some(title),
+            } => Some(recipe),
             State::Ready { .. } | State::Loading | State::Failed(_) | State::Missing => None,
         }
     }
@@ -252,20 +264,13 @@ impl Widget for RecipeDetail {
                 State::Loading | State::Missing | State::Ready { .. } => Command::empty(),
             },
             Message::Event(RecipeDetailEvent::Edit) => {
-                let Some(title) = self.idle_title() else {
+                let Some(recipe) = self.idle_recipe().cloned() else {
                     return Command::empty();
-                };
-                // No step can exist before the editor adds them (REC-14
-                // change 4). Change 3 keeps the loaded steps here.
-                let recipe = Recipe {
-                    id: self.id,
-                    title: title.to_owned(),
-                    steps: vec![],
                 };
                 Command::single(async move { RecipeDetailOutcome::OpenEdit { recipe } })
             }
             Message::Event(RecipeDetailEvent::RequestDelete) => {
-                if self.idle_title().is_none() {
+                if self.idle_recipe().is_none() {
                     return Command::empty();
                 }
                 self.open_confirmation(None);
@@ -294,7 +299,7 @@ impl Widget for RecipeDetail {
                 self.load.stop();
                 self.state = match result {
                     Ok(Some(recipe)) => State::Ready {
-                        title: recipe.title,
+                        recipe,
                         deletion: Deletion::Idle,
                     },
                     Ok(None) => State::Missing,
@@ -320,8 +325,16 @@ impl Widget for RecipeDetail {
             State::Loading => RecipeDetailStatus::Loading,
             State::Failed(error) => RecipeDetailStatus::Failed(error.clone()),
             State::Missing => RecipeDetailStatus::Missing,
-            State::Ready { title, deletion } => RecipeDetailStatus::Ready {
-                title: title.clone(),
+            State::Ready { recipe, deletion } => RecipeDetailStatus::Ready {
+                title: recipe.title.clone(),
+                steps: recipe
+                    .steps
+                    .iter()
+                    .map(|step| RecipeDetailStep {
+                        id: step.id,
+                        title: step.title.clone(),
+                    })
+                    .collect(),
                 deletion: match deletion {
                     Deletion::Idle => RecipeDeletion::Idle,
                     Deletion::Confirming {

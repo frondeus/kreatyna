@@ -363,13 +363,14 @@ fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
 )]
 #[test_case(kreatyna::recipes::RecipeDetailStatus::Missing, RecipeDetailStatus::Missing; "missing")]
 #[test_case(
-    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: kreatyna::recipes::RecipeDeletion::Idle },
+    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Idle },
     RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: RecipeDeletion::Idle };
     "ready"
 )]
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
+        steps: vec![],
         deletion: kreatyna::recipes::RecipeDeletion::Confirming {
             confirmation: core::confirmation::ConfirmationView::AwaitingDecision,
             error: Some(kreatyna::recipes::capabilities::RecipeDeleteError::Storage),
@@ -385,12 +386,12 @@ fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     "asking again after a failed delete"
 )]
 #[test_case(
-    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: kreatyna::recipes::RecipeDeletion::Deleting },
+    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Deleting },
     RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: RecipeDeletion::Deleting };
     "deleting"
 )]
 #[test_case(
-    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: kreatyna::recipes::RecipeDeletion::Deleted },
+    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Deleted },
     RecipeDetailStatus::Ready { title: "Shakshuka".into(), deletion: RecipeDeletion::Deleted };
     "deleted"
 )]
@@ -485,6 +486,7 @@ fn split_app_view_conversion_keeps_the_section_and_the_recipe_rows() -> anyhow::
         rows: vec![kreatyna::recipes::RecipeListRow {
             id,
             title: "Shakshuka".into(),
+            step_count: 3,
         }],
     };
 

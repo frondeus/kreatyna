@@ -9,7 +9,7 @@ mod section;
 
 pub use detail::{
     RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome, RecipeDetailStatus,
-    RecipeDetailView,
+    RecipeDetailStep, RecipeDetailView,
 };
 pub use editor::{
     RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus,

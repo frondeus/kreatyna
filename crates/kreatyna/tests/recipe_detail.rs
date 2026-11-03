@@ -1,8 +1,8 @@
 use kreatyna::capabilities::ResolveRender;
 use kreatyna::confirmation::{ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 use kreatyna::recipes::{
-    Recipe, RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome,
-    RecipeDetailStatus, RecipeDetailView, RecipeId,
+    CanvasPoint, Recipe, RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome,
+    RecipeDetailStatus, RecipeDetailStep, RecipeDetailView, RecipeId, Step, StepId,
     capabilities::{RecipeDeleteError, RecipeEffectStream, RecipeLoadError, ResolveRecipeStore},
 };
 use krucyfiks::{Command, Latest, Message, Widget, effects::CommandTestExt};
@@ -12,7 +12,7 @@ use uuid::Uuid;
 // Green path
 
 #[tokio::test]
-async fn opening_renders_loading_then_reads_the_recipe_by_id_and_shows_its_title()
+async fn opening_renders_loading_then_reads_the_recipe_by_id_and_shows_its_title_and_steps()
 -> anyhow::Result<()> {
     let mut f = Fixture::new();
     let mut command = f.detail.init().driver(&mut f.effects);
@@ -65,6 +65,27 @@ async fn edit_on_a_shown_recipe_opens_the_editor_with_it() -> anyhow::Result<()>
     edit.step().await?.expect_done();
     drop(edit);
     assert_eq!(f.detail.view(), view(ready("Shakshuka")));
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_recipe_without_steps_shows_an_empty_step_list() -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    let load = f.detail.init();
+    let toast = Recipe {
+        id: id(),
+        title: "Toast".into(),
+        steps: vec![],
+    };
+    f.finish_load(load, Ok(Some(toast))).await?;
+    assert_eq!(
+        f.detail.view(),
+        view(RecipeDetailStatus::Ready {
+            title: "Toast".into(),
+            steps: vec![],
+            deletion: RecipeDeletion::Idle,
+        })
+    );
     Ok(())
 }
 
@@ -374,17 +395,43 @@ fn id() -> RecipeId {
     RecipeId::from(Uuid::from_u128(1))
 }
 
+/// Shakshuka with two steps. Fry onion was added first, so the read view
+/// lists it first, although it is right of Dice onion on the canvas.
 fn shakshuka() -> Recipe {
     Recipe {
         id: id(),
         title: "Shakshuka".into(),
-        steps: vec![],
+        steps: vec![
+            step(11, "Fry onion", 200, 40),
+            step(12, "Dice onion", 10, 20),
+        ],
     }
+}
+
+fn step(id: u128, title: &str, x: u32, y: u32) -> Step {
+    Step {
+        id: StepId::from(Uuid::from_u128(id)),
+        title: title.into(),
+        position: CanvasPoint { x, y },
+    }
+}
+
+/// Shakshuka's steps as the read view lists them.
+fn shakshuka_steps() -> Vec<RecipeDetailStep> {
+    shakshuka()
+        .steps
+        .into_iter()
+        .map(|step| RecipeDetailStep {
+            id: step.id,
+            title: step.title,
+        })
+        .collect()
 }
 
 fn ready(title: &str) -> RecipeDetailStatus {
     RecipeDetailStatus::Ready {
         title: title.into(),
+        steps: shakshuka_steps(),
         deletion: RecipeDeletion::Idle,
     }
 }
@@ -392,6 +439,7 @@ fn ready(title: &str) -> RecipeDetailStatus {
 fn deletion(deletion: RecipeDeletion) -> RecipeDetailStatus {
     RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
+        steps: shakshuka_steps(),
         deletion,
     }
 }

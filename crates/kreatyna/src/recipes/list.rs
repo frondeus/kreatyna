@@ -26,6 +26,8 @@ pub enum RecipeListOutcome {
 pub struct RecipeListRow {
     pub id: RecipeId,
     pub title: String,
+    /// "3 steps" under the title (D-15). Swift shows nothing for 0.
+    pub step_count: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -164,14 +166,15 @@ impl Widget for RecipeList {
                 self.load.stop();
                 self.state = match result {
                     // The store returns the recipes sorted by title key.
-                    Ok(recipes) => ListState::Ready(
-                        recipes
+                    Ok(summaries) => ListState::Ready(
+                        summaries
                             .into_iter()
-                            .map(|recipe| Entry {
-                                key: name_key(&recipe.title),
+                            .map(|summary| Entry {
+                                key: name_key(&summary.title),
                                 row: RecipeListRow {
-                                    id: recipe.id,
-                                    title: recipe.title,
+                                    id: summary.id,
+                                    title: summary.title,
+                                    step_count: summary.step_count,
                                 },
                             })
                             .collect(),

@@ -121,7 +121,8 @@ async fn the_split_layout_starts_on_recipes_and_loads_both_sections() -> anyhow:
         RecipeListStatus::Ready {
             rows: vec![RecipeListRow {
                 id: shakshuka().id,
-                title: "Shakshuka".into()
+                title: "Shakshuka".into(),
+                step_count: 0,
             }]
         }
     );
@@ -211,6 +212,7 @@ async fn a_recipe_row_click_opens_its_read_view_and_a_section_switch_keeps_it() 
             id: shakshuka().id,
             status: RecipeDetailStatus::Ready {
                 title: "Shakshuka".into(),
+                steps: vec![],
                 deletion: RecipeDeletion::Idle,
             },
         })
@@ -290,6 +292,7 @@ async fn a_recipe_edit_and_its_save_route_through_the_app() -> anyhow::Result<()
             id: spicy.id,
             status: RecipeDetailStatus::Ready {
                 title: "Spicy shakshuka".into(),
+                steps: vec![],
                 deletion: RecipeDeletion::Idle,
             },
         })
@@ -423,6 +426,7 @@ async fn shutdown_keeps_an_accepted_recipe_save() -> anyhow::Result<()> {
             id: pasta().id,
             status: RecipeDetailStatus::Ready {
                 title: "Pasta".into(),
+                steps: vec![],
                 deletion: RecipeDeletion::Idle,
             },
         })

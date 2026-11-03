@@ -83,6 +83,25 @@ async fn a_search_shows_the_recipes_whose_title_key_contains_its_key(
 }
 
 #[tokio::test]
+async fn each_row_has_its_recipes_step_count() -> anyhow::Result<()> {
+    let mut fixture = ListFixture::new();
+    let load = fixture.list.init();
+    let pasta = RecipeSummary {
+        step_count: 3,
+        ..pasta()
+    };
+    fixture
+        .finish_load(load, Ok(vec![pasta, shakshuka()]))
+        .await?;
+    let RecipeListStatus::Ready { rows } = fixture.list.view().status else {
+        anyhow::bail!("expected the ready list");
+    };
+    let counts: Vec<_> = rows.iter().map(|row| row.step_count).collect();
+    assert_eq!(counts, [3, 0]);
+    Ok(())
+}
+
+#[tokio::test]
 async fn clearing_the_search_shows_every_recipe_again() -> anyhow::Result<()> {
     let mut fixture = ListFixture::new();
     let load = fixture.list.init();
@@ -331,6 +350,7 @@ fn ready_status(recipes: &[RecipeSummary]) -> RecipeListStatus {
             .map(|recipe| RecipeListRow {
                 id: recipe.id,
                 title: recipe.title.clone(),
+                step_count: recipe.step_count,
             })
             .collect(),
     }

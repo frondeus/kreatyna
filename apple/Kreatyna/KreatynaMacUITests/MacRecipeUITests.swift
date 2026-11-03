@@ -215,6 +215,66 @@ final class MacRecipeUITests: MacUITestCase {
         XCTAssertTrue(waitFor(app.staticTexts["recipeStepCount"], value: "1 step"))
     }
 
+    /// Edit on a recipe with steps opens the canvas with them and no
+    /// selection. A click on a node selects it and the inspector shows its
+    /// Title; a click on empty canvas clears it. A renamed step is saved
+    /// (REC-14).
+    @MainActor
+    func testSelectStepsOfSavedRecipe() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
+        app.typeText("Shakshuka")
+        addStep(at: CGVector(dx: 0.1, dy: 0.1), in: app)
+        XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Dice onion")
+        addStep(at: CGVector(dx: 0.5, dy: 0.5), in: app)
+        _ = stepNode("Untitled step", in: app)
+        app.typeText("Fry onion")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitForTitle(in: app, "Shakshuka"))
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStepCount"], value: "2 steps"))
+
+        app.buttons["editRecipe"].click()
+        let hint = app.staticTexts["selectStepHint"]
+        XCTAssertTrue(hint.waitForExistence(timeout: 5))
+        XCTAssertEqual(stepNodes(in: app).count, 2)
+
+        let title = app.textFields["stepTitleField"]
+        stepNode("Dice onion", in: app).click()
+        XCTAssertTrue(waitFor(title, value: "Dice onion"))
+        stepNode("Fry onion", in: app).click()
+        XCTAssertTrue(waitFor(title, value: "Fry onion"))
+
+        app.scrollViews["stepCanvas"].coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.9)).click()
+        XCTAssertTrue(hint.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForNonExistence(title, timeout: 5))
+
+        stepNode("Fry onion", in: app).click()
+        XCTAssertTrue(waitFor(title, value: "Fry onion"))
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText("Fry onion and peppers")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitForTitle(in: app, "Shakshuka"))
+        let saved = app.staticTexts.matching(identifier: "recipeStep")
+        XCTAssertTrue(waitFor(saved.element(boundBy: 0), value: "Dice onion"))
+        XCTAssertTrue(waitFor(saved.element(boundBy: 1), value: "Fry onion and peppers"))
+    }
+
+    @MainActor
+    private func stepNodes(in app: XCUIApplication) -> XCUIElementQuery {
+        app.descendants(matching: .any).matching(identifier: "stepNode")
+    }
+
+    /// The node that shows `label`.
+    @MainActor
+    private func stepNode(_ label: String, in app: XCUIApplication) -> XCUIElement {
+        let node = stepNodes(in: app).matching(NSPredicate(format: "label == %@", label)).firstMatch
+        XCTAssertTrue(node.waitForExistence(timeout: 5))
+        return node
+    }
+
     /// Right-clicks the step canvas at `offset` (0 to 1 of its size) and picks Add Step.
     @MainActor
     private func addStep(at offset: CGVector, in app: XCUIApplication) {

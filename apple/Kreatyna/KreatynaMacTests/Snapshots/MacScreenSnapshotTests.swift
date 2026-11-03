@@ -234,10 +234,17 @@ extension MainActorTests {
 
         /// Shakshuka's edit editor with a changed title: the heading and the row
         /// keep the saved title until Save, and the row stays selected (REC-04).
+        /// The canvas opens with the saved steps and no selection (REC-14).
         @Test(arguments: Appearance.allCases)
         func editRecipeEditor(appearance: Appearance) {
-            let shakshuka = Fixtures.recipeRow("Shakshuka")
-            let editor = RecipeEditorView(title: "Spicy shakshuka", canvas: .unselected(steps: []), status: .editing(problem: nil))
+            let shakshuka = Fixtures.recipeRow("Shakshuka", stepCount: 2)
+            let steps = [
+                Fixtures.stepNode("Dice onion", x: 20, y: 20),
+                Fixtures.stepNode("Fry onion", x: 200, y: 110),
+            ]
+            let editor = RecipeEditorView(
+                title: "Spicy shakshuka", canvas: .unselected(steps: steps), status: .editing(problem: nil)
+            )
             snapshot(
                 MacMainView(
                     app: Fixtures.splitApp(

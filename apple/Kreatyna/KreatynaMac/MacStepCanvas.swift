@@ -36,7 +36,7 @@ struct MacStepCanvas: View {
                     if case .active(let location) = phase { pointer = location }
                 }
                 .contextMenu {
-                    Button("Add Step", systemImage: "plus") { send(.add(at: canvasPoint(pointer))) }
+                    Button("Add Step", systemImage: "plus") { send(.add(at: Self.canvasPoint(pointer))) }
                         .accessibilityIdentifier("addStep")
                 }
             }
@@ -62,8 +62,18 @@ struct MacStepCanvas: View {
     }
 
     /// Rust takes whole points from the top left corner, never negative.
-    private func canvasPoint(_ location: CGPoint) -> CanvasPoint {
-        CanvasPoint(x: UInt32(max(0, location.x.rounded())), y: UInt32(max(0, location.y.rounded())))
+    static func canvasPoint(_ location: CGPoint) -> CanvasPoint {
+        CanvasPoint(x: coordinate(location.x), y: coordinate(location.y))
+    }
+
+    /// Rounds to a whole point in `0...UInt32.max`. A value that is not
+    /// finite gives 0, so a bad pointer location cannot stop the app.
+    private static func coordinate(_ value: CGFloat) -> UInt32 {
+        guard value.isFinite else { return 0 }
+        let rounded = value.rounded()
+        if rounded <= 0 { return 0 }
+        if rounded >= CGFloat(UInt32.max) { return .max }
+        return UInt32(rounded)
     }
 }
 

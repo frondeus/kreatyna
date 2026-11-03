@@ -69,6 +69,9 @@ impl From<core::RecipeListStatus> for RecipeListStatus {
             core::RecipeListStatus::Ready { rows } => Self::Ready {
                 rows: rows.into_iter().map(Into::into).collect(),
             },
+            // Swift cannot send a search yet, so this does not happen. The
+            // next change gives the FFI its own `NoMatches`.
+            core::RecipeListStatus::NoMatches => Self::Ready { rows: vec![] },
         }
     }
 }
@@ -80,6 +83,7 @@ pub struct RecipeListView {
 
 impl From<core::RecipeListView> for RecipeListView {
     fn from(value: core::RecipeListView) -> Self {
+        // The search goes to Swift in the next change.
         Self {
             status: value.status.into(),
         }

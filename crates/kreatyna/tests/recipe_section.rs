@@ -4,8 +4,8 @@ use kreatyna::{
     recipes::{
         Recipe, RecipeDeletion, RecipeDetailEvent, RecipeDetailStatus, RecipeDetailView,
         RecipeEditorEvent, RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, RecipeId,
-        RecipeListRow, RecipeListStatus, RecipePaneView, RecipeSection, RecipeSectionEvent,
-        RecipeSectionOutcome, RecipeSectionView,
+        RecipeListEvent, RecipeListRow, RecipeListStatus, RecipePaneView, RecipeSection,
+        RecipeSectionEvent, RecipeSectionOutcome, RecipeSectionView,
         capabilities::{
             RecipeDeleteError, RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError,
             RecipeStoreRequest, ResolveRecipeStore,
@@ -351,6 +351,50 @@ async fn cancel_keeps_the_read_view() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn a_search_keeps_the_open_read_view_and_its_selection() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    let read_scope = f.section.view().pane.scope;
+
+    // The search hides Shakshuka. Its read view stays, and Swift does not
+    // highlight the hidden row.
+    f.search("pas").await?;
+    let view = f.section.view();
+    assert_eq!(view.list.search, "pas");
+    assert_eq!(view.list.status, ready(&[pasta()]));
+    assert_eq!(view.pane.scope, read_scope);
+    assert_eq!(view.pane.value, read(&shakshuka()));
+    assert_eq!(view.selected, Some(shakshuka().id));
+
+    f.search("").await?;
+    let view = f.section.view();
+    assert_eq!(view.list.status, ready(&[pasta(), shakshuka()]));
+    assert_eq!(view.pane.value, read(&shakshuka()));
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_save_during_a_search_keeps_the_draft_row_and_the_search() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.new_recipe().await?;
+    f.type_title("Omelette").await?;
+    f.search("sha").await?;
+    // The search never hides the draft row.
+    assert_eq!(f.section.view().pane.value, create("Omelette", "Omelette"));
+
+    let saved = f.save(Ok(omelette())).await?;
+    f.stored = Ok(vec![omelette(), pasta(), shakshuka()]);
+    let command = f.section.update(Message::Outcome(saved));
+    f.settle(command).await?;
+    // The list loads again, and the search still applies to it.
+    let view = f.section.view();
+    assert_eq!(view.pane.value, read(&omelette()));
+    assert_eq!(view.list.search, "sha");
+    assert_eq!(view.list.status, ready(&[shakshuka()]));
+    Ok(())
+}
+
 // Validation
 
 #[tokio::test]
@@ -468,6 +512,14 @@ async fn selecting_the_open_recipe_is_ignored() -> anyhow::Result<()> {
 async fn selecting_a_recipe_the_list_does_not_show_is_ignored() -> anyhow::Result<()> {
     let mut f = Fixture::started().await?;
     f.expect_ignored(RecipeSectionEvent::Select(omelette().id))
+        .await
+}
+
+#[tokio::test]
+async fn selecting_a_recipe_the_search_hides_is_ignored() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.search("sha").await?;
+    f.expect_ignored(RecipeSectionEvent::Select(pasta().id))
         .await
 }
 
@@ -946,6 +998,14 @@ impl Fixture {
 
     async fn select(&mut self, recipe: &Recipe) -> anyhow::Result<()> {
         let command = self.send(RecipeSectionEvent::Select(recipe.id));
+        self.settle(command).await
+    }
+
+    /// Types `search` in the list's search field.
+    async fn search(&mut self, search: &str) -> anyhow::Result<()> {
+        let command = self.send(RecipeSectionEvent::List(RecipeListEvent::Search(
+            search.into(),
+        )));
         self.settle(command).await
     }
 

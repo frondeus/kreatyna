@@ -6,6 +6,8 @@ import SwiftUI
 ///
 /// A click on a node selects it; a click on empty canvas clears the selection.
 /// The context menu has Add Step, which adds a step where the pointer was.
+/// A drag moves a node: Swift draws the drag, and sends one Move on the drop
+/// (REC-15). Rust places and selects the step.
 struct MacStepCanvas: View {
     let canvas: StepCanvasView
     let send: (StepCanvasEvent) -> Void
@@ -13,10 +15,15 @@ struct MacStepCanvas: View {
     /// Presentation only: the last pointer location on the canvas. SwiftUI's
     /// context menu does not give the click location, so Add Step uses it.
     @State private var pointer: CGPoint = .zero
+    /// Presentation only: the node under a drag, and where Swift draws it.
+    @State private var drag: NodeDrag?
 
     static let nodeSize = CGSize(width: 150, height: 54)
     /// Room right of and below the last node, so a step can be added there.
     private static let margin: CGFloat = 120
+    /// A press must move this far before it is a drag, not a click.
+    private static let dragDistance: CGFloat = 4
+    private static let space = "stepCanvas"
 
     var body: some View {
         GeometryReader { proxy in
@@ -26,11 +33,16 @@ struct MacStepCanvas: View {
                         .contentShape(.rect)
                         .onTapGesture { send(.clearSelection) }
                     ForEach(nodes, id: \.node.id) { item in
+                        let origin = origin(of: item.node)
                         MacStepNode(node: item.node, selected: item.selected)
-                            .offset(x: CGFloat(item.node.position.x), y: CGFloat(item.node.position.y))
+                            .offset(x: origin.x, y: origin.y)
+                            // The dragged node draws above the others.
+                            .zIndex(drag?.id == item.node.id ? 1 : 0)
+                            .gesture(dragGesture(for: item.node))
                             .onTapGesture { send(.select(id: item.node.id)) }
                     }
                 }
+                .coordinateSpace(.named(Self.space))
                 .frame(width: contentSize(min: proxy.size).width, height: contentSize(min: proxy.size).height, alignment: .topLeading)
                 .onContinuousHover(coordinateSpace: .local) { phase in
                     if case .active(let location) = phase { pointer = location }
@@ -42,6 +54,10 @@ struct MacStepCanvas: View {
             }
             .accessibilityIdentifier("stepCanvas")
         }
+        .onChange(of: canvas) {
+            // The next view has the dropped node where Rust put it.
+            if case .dropped = drag { drag = nil }
+        }
     }
 
     /// Every node, the selected one last so it draws on top.
@@ -52,6 +68,41 @@ struct MacStepCanvas: View {
         case .selected(let selected, let others):
             others.map { ($0, false) } + [(selected, true)]
         }
+    }
+
+    /// Where the node draws: Rust's position, or the drag's while it runs.
+    private func origin(of node: StepNodeView) -> CGPoint {
+        switch drag {
+        case .moving(let id, let translation) where id == node.id:
+            Self.moved(node.position, by: translation)
+        case .dropped(let id, let point) where id == node.id:
+            CGPoint(x: CGFloat(point.x), y: CGFloat(point.y))
+        default:
+            CGPoint(x: CGFloat(node.position.x), y: CGFloat(node.position.y))
+        }
+    }
+
+    private func dragGesture(for node: StepNodeView) -> some Gesture {
+        DragGesture(minimumDistance: Self.dragDistance, coordinateSpace: .named(Self.space))
+            .onChanged { value in
+                drag = .moving(id: node.id, translation: value.translation)
+            }
+            .onEnded { value in
+                let to = Self.canvasPoint(Self.moved(node.position, by: value.translation))
+                // Swift draws the drop point until the next view arrives, so
+                // the node does not jump back for a frame.
+                drag = .dropped(id: node.id, at: to)
+                send(.move(id: node.id, to: to))
+            }
+    }
+
+    /// `position` plus `translation`. A drag stops at the left and the top
+    /// edge, as the drop does in `canvasPoint`.
+    static func moved(_ position: CanvasPoint, by translation: CGSize) -> CGPoint {
+        CGPoint(
+            x: max(0, CGFloat(position.x) + translation.width),
+            y: max(0, CGFloat(position.y) + translation.height)
+        )
     }
 
     /// The scrolled area: the visible size, or more when a node lies beyond it.
@@ -74,6 +125,20 @@ struct MacStepCanvas: View {
         if rounded <= 0 { return 0 }
         if rounded >= CGFloat(UInt32.max) { return .max }
         return UInt32(rounded)
+    }
+}
+
+/// A drag on a step node. Only Swift knows about it; Rust gets the drop.
+private enum NodeDrag: Equatable {
+    /// The pointer is down: the node follows it by `translation`.
+    case moving(id: StepId, translation: CGSize)
+    /// Swift sent Move; the node stays at the drop point until the next view.
+    case dropped(id: StepId, at: CanvasPoint)
+
+    var id: StepId {
+        switch self {
+        case .moving(let id, _), .dropped(let id, _): id
+        }
     }
 }
 

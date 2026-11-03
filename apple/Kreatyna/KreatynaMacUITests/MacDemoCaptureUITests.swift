@@ -385,6 +385,59 @@ final class MacDemoCaptureUITests: MacUITestCase {
         app.terminate()
     }
 
+    /// REC-15: a drag moves "Dice onion" below "Fry onion" and selects it.
+    /// After Save, another recipe, and Edit again, it is still there.
+    @MainActor
+    func testCaptureREC15Demo() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        let field = app.textFields["recipeTitleField"]
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        app.typeText("Pasta")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitFor(app.staticTexts["recipeTitle"], value: "Pasta"))
+
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        app.typeText("Shakshuka")
+        let canvas = app.scrollViews["stepCanvas"]
+        XCTAssertTrue(canvas.waitForExistence(timeout: 5))
+        let add = app.menuItems["Add Step"]
+        for (title, offset) in [("Dice onion", CGVector(dx: 0.08, dy: 0.08)), ("Fry onion", CGVector(dx: 0.35, dy: 0.3))] {
+            canvas.coordinate(withNormalizedOffset: offset).rightClick()
+            XCTAssertTrue(add.waitForExistence(timeout: 5))
+            add.click()
+            XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
+            app.typeText(title)
+        }
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStepCount"], value: "2 steps"))
+
+        app.buttons["editRecipe"].click()
+        XCTAssertTrue(app.staticTexts["selectStepHint"].waitForExistence(timeout: 5))
+        capture("01-before-drag", app)
+
+        let nodes = app.descendants(matching: .any).matching(identifier: "stepNode")
+        let onion = nodes.matching(NSPredicate(format: "label == 'Dice onion'")).firstMatch
+        let start = onion.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.click(forDuration: 0.2, thenDragTo: start.withOffset(CGVector(dx: 30, dy: 200)))
+        XCTAssertTrue(waitFor(app.textFields["stepTitleField"], value: "Dice onion"))
+        capture("02-after-drop", app)
+
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStepCount"], value: "2 steps"))
+        let rows = app.staticTexts.matching(identifier: "recipeRow")
+        rows["Pasta"].click()
+        XCTAssertTrue(waitFor(app.staticTexts["recipeTitle"], value: "Pasta"))
+        rows["Shakshuka"].click()
+        XCTAssertTrue(waitFor(app.staticTexts["recipeTitle"], value: "Shakshuka"))
+        app.buttons["editRecipe"].click()
+        XCTAssertTrue(app.staticTexts["selectStepHint"].waitForExistence(timeout: 5))
+        capture("03-reopened", app)
+        app.terminate()
+    }
+
     /// The ingredient list the demos start from (Garlic, Tomato, Basil, …).
     private func demoIngredients() throws -> String {
         let fixture = URL(fileURLWithPath: #filePath)

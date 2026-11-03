@@ -222,4 +222,25 @@ tests, and the UI tests of the Recipes section only (`--ui MacRecipeUITests`).
 
 ## Validation
 
-Not run yet.
+| # | Change | Result |
+|---|---|---|
+| 1 | 2 | `cargo test --workspace`: 735 tests pass. |
+| 2 | 2 | `cargo clippy --workspace --all-targets -- -D warnings`: no warnings. |
+| 3 | 2 | `cargo fmt --check`: no diff. |
+| 4 | 2 | `mac-test --ui none`: passes. No image changes. |
+| 4 | 3 | `mac-test --ui MacRecipeUITests`: unit and snapshot tests pass, and 11 UI tests pass, `testDragStepAndReopen` among them. No image changes. |
+| 5 | 3 | `ios-app-build`: builds. |
+| 6 | 3 | `capture-demo.sh`: `01-before-drag.png`, `02-after-drop.png`, `03-reopened.png` in `REC-15-demo/`. |
+| 7 | 2, 3 | Change 2: 161 insertions and 16 deletions. Change 3: 171 insertions and 1 deletion, before this section. |
+
+Two findings during change 3:
+
+- The first `testDragStepAndReopen` run failed: the drop did not select the
+  node. Two edits fixed it. The test drags with `click(forDuration:thenDragTo:)`,
+  the macOS call, not `press(forDuration:thenDragTo:)`. The dragged node draws
+  on top with `zIndex`, not by a new order in the `ForEach`. The run did not
+  show which of the two edits was necessary.
+- The demo's first drag put "Dice onion" at the right edge of the canvas,
+  where it was cut off. The demo now drags by (30, 200).
+
+All checks ran. No check was skipped.

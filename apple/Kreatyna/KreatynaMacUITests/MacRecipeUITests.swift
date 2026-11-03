@@ -262,6 +262,47 @@ final class MacRecipeUITests: MacUITestCase {
         XCTAssertTrue(waitFor(saved.element(boundBy: 1), value: "Fry onion and peppers"))
     }
 
+    /// A drag moves a node and selects it. Save keeps the new position: it is
+    /// there after opening another recipe and editing again (REC-15).
+    @MainActor
+    func testDragStepAndReopen() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        create("Pasta", in: app)
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
+        app.typeText("Shakshuka")
+        addStep(at: CGVector(dx: 0.1, dy: 0.1), in: app)
+        XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Dice onion")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitForTitle(in: app, "Shakshuka"))
+
+        app.buttons["editRecipe"].click()
+        XCTAssertTrue(app.staticTexts["selectStepHint"].waitForExistence(timeout: 5))
+        let before = stepNode("Dice onion", in: app).frame
+        drag(stepNode("Dice onion", in: app), by: CGVector(dx: 200, dy: 120))
+        XCTAssertTrue(waitFor(app.textFields["stepTitleField"], value: "Dice onion"))
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitForTitle(in: app, "Shakshuka"))
+
+        recipeRow(named: "Pasta", in: app).click()
+        XCTAssertTrue(waitForTitle(in: app, "Pasta"))
+        recipeRow(named: "Shakshuka", in: app).click()
+        XCTAssertTrue(waitForTitle(in: app, "Shakshuka"))
+        app.buttons["editRecipe"].click()
+        let after = stepNode("Dice onion", in: app).frame
+        XCTAssertEqual(after.minX - before.minX, 200, accuracy: 1)
+        XCTAssertEqual(after.minY - before.minY, 120, accuracy: 1)
+    }
+
+    /// Presses on `element`, moves the pointer by `offset` points, and releases.
+    @MainActor
+    private func drag(_ element: XCUIElement, by offset: CGVector) {
+        let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.click(forDuration: 0.2, thenDragTo: start.withOffset(offset))
+    }
+
     @MainActor
     private func stepNodes(in app: XCUIApplication) -> XCUIElementQuery {
         app.descendants(matching: .any).matching(identifier: "stepNode")

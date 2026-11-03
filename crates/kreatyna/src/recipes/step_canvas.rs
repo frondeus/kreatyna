@@ -14,6 +14,9 @@ pub enum StepCanvasEvent {
     /// The title field of the inspector, as typed. Rust trims it only on
     /// Save. Ignored for an id that names no step.
     SetTitle { id: StepId, title: String },
+    /// A drop after a drag. Puts the step at `to` and selects it
+    /// (REC-15/Q1). Ignored for an id that names no step.
+    Move { id: StepId, to: CanvasPoint },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,6 +62,16 @@ pub(crate) enum CanvasChange {
     Unchanged,
 }
 
+impl CanvasChange {
+    /// `Changed` when either is `Changed`.
+    fn or(self, other: CanvasChange) -> CanvasChange {
+        match (self, other) {
+            (CanvasChange::Unchanged, CanvasChange::Unchanged) => CanvasChange::Unchanged,
+            _ => CanvasChange::Changed,
+        }
+    }
+}
+
 /// A step as the editor keeps it: its title is the raw text of the field.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DraftStep {
@@ -84,6 +97,15 @@ impl DraftStep {
             position: self.position,
             problem,
         }
+    }
+
+    /// Puts the step at `to`, and says whether its position changed.
+    fn place(&mut self, to: CanvasPoint) -> CanvasChange {
+        if self.position == to {
+            return CanvasChange::Unchanged;
+        }
+        self.position = to;
+        CanvasChange::Changed
     }
 
     fn matches(&self, step: &Step) -> bool {
@@ -142,6 +164,14 @@ impl StepCanvas {
                 }
                 step.title = title;
                 CanvasChange::Changed
+            }
+            StepCanvasEvent::Move { id, to } => {
+                let Some(step) = self.steps.iter_mut().find(|step| step.id == id) else {
+                    return CanvasChange::Unchanged;
+                };
+                let placed = step.place(to);
+                // Both run: the position and the selection can each change.
+                placed.or(self.select(id))
             }
         }
     }

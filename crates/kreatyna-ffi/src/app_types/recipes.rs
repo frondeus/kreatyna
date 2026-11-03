@@ -329,6 +329,8 @@ pub enum StepCanvasEvent {
     ClearSelection,
     /// The title field of the inspector, as typed.
     SetTitle { id: core::StepId, title: String },
+    /// A drop after a drag: the step goes to `to` and becomes selected.
+    Move { id: core::StepId, to: CanvasPoint },
 }
 
 impl From<StepCanvasEvent> for core::StepCanvasEvent {
@@ -338,6 +340,7 @@ impl From<StepCanvasEvent> for core::StepCanvasEvent {
             StepCanvasEvent::Select { id } => Self::Select(id),
             StepCanvasEvent::ClearSelection => Self::ClearSelection,
             StepCanvasEvent::SetTitle { id, title } => Self::SetTitle { id, title },
+            StepCanvasEvent::Move { id, to } => Self::Move { id, to: to.into() },
         }
     }
 }

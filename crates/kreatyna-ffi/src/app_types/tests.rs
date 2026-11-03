@@ -375,6 +375,11 @@ fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     kreatyna::recipes::StepCanvasEvent::SetTitle { id: step_id(1), title: " Dice onion ".into() };
     "name a step with the raw text"
 )]
+#[test_case(
+    StepCanvasEvent::Move { id: step_id(1), to: CanvasPoint { x: 320, y: 200 } },
+    kreatyna::recipes::StepCanvasEvent::Move { id: step_id(1), to: kreatyna::recipes::CanvasPoint { x: 320, y: 200 } };
+    "move a step to the drop point"
+)]
 fn canvas_events_reach_the_editor_in_their_pane_scope(
     event: StepCanvasEvent,
     expected: kreatyna::recipes::StepCanvasEvent,

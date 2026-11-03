@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The read view of one recipe in the Recipes detail pane (REC-03). Rust loads
-/// the recipe by id and sends its state; Swift shows it and forwards Retry
-/// and Edit.
+/// the recipe by id and sends its state; Swift shows it and forwards Retry,
+/// Edit, and Delete with its answer (REC-05).
 struct MacRecipeDetail: View {
     let view: RecipeDetailView
     let send: (RecipeDetailEvent) -> Void
@@ -10,18 +10,69 @@ struct MacRecipeDetail: View {
     var body: some View {
         content
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
                     Button("Edit", systemImage: "pencil") { send(.edit) }
                         .help("Edit")
-                        .disabled(!isReady)
+                        .disabled(!isIdle)
                         .accessibilityIdentifier("editRecipe")
+                    Button("Delete", systemImage: "trash", role: .destructive) { send(.requestDelete) }
+                        .help("Delete")
+                        .disabled(!isIdle)
+                        .accessibilityIdentifier("deleteRecipe")
+                }
+            }
+            // The setter does nothing: Rust's view opens and closes the dialog.
+            // Esc runs the Cancel button.
+            .confirmationDialog(
+                DeleteText.title(title ?? ""),
+                isPresented: Binding(get: { awaitingDeleteDecision }, set: { _ in }),
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) { send(.confirmation(event: .confirm)) }
+                    .accessibilityIdentifier("confirmDelete")
+                Button("Cancel", role: .cancel) { send(.confirmation(event: .cancel)) }
+                    .accessibilityIdentifier("cancelDelete")
+            } message: {
+                Text(DeleteText.message(deleteError))
+            }
+            .overlay {
+                if isDeleting {
+                    ProgressView("Deleting…")
+                        .padding()
+                        .background(.regularMaterial, in: .rect(cornerRadius: 12))
+                        .accessibilityIdentifier("recipeDeleting")
                 }
             }
     }
 
-    /// Rust opens the editor only for a loaded recipe; the button says so.
-    private var isReady: Bool {
-        if case .ready = view.status { true } else { false }
+    private var title: String? {
+        if case .ready(let title, _) = view.status { title } else { nil }
+    }
+
+    private var deletion: RecipeDeletion? {
+        if case .ready(_, let deletion) = view.status { deletion } else { nil }
+    }
+
+    /// Rust takes Edit and Delete only for a loaded recipe with no delete
+    /// asked or running; the disabled buttons show it.
+    private var isIdle: Bool {
+        if case .idle = deletion { true } else { false }
+    }
+
+    private var awaitingDeleteDecision: Bool {
+        if case .confirming(.awaitingDecision, _) = deletion { true } else { false }
+    }
+
+    private var deleteError: RecipeDeleteError? {
+        if case .confirming(_, let error) = deletion { error } else { nil }
+    }
+
+    /// The pane empties right after `deleted`, so the overlay stays until then.
+    private var isDeleting: Bool {
+        switch deletion {
+        case .deleting, .deleted: true
+        case .idle, .confirming, nil: false
+        }
     }
 
     @ViewBuilder

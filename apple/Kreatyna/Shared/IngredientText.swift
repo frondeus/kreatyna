@@ -32,6 +32,12 @@ enum DeleteText {
     static func title(_ name: String) -> String { "Delete \(name)?" }
 
     static func message(_ error: IngredientDeleteError?) -> String {
-        error?.message ?? "This cannot be undone."
+        error?.message ?? undone
     }
+
+    static func message(_ error: RecipeDeleteError?) -> String {
+        error?.message ?? undone
+    }
+
+    private static let undone = "This cannot be undone."
 }

@@ -75,6 +75,32 @@ final class MacRecipeUITests: MacUITestCase {
         XCTAssertTrue(app.buttons["editRecipe"].isEnabled)
     }
 
+    /// Delete, Cancel: the recipe stays. Delete, Delete: the pane empties,
+    /// the row goes, and it stays gone after a relaunch (REC-05).
+    @MainActor
+    func testDeletedRecipeStaysGoneAfterRelaunch() throws {
+        let database = UUID().uuidString
+        var app = try launch(json: nil, database: database, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        create("Shakshuka", in: app)
+
+        app.buttons["deleteRecipe"].click()
+        XCTAssertTrue(app.buttons["cancelDelete"].waitForExistence(timeout: 5))
+        app.buttons["cancelDelete"].click()
+        XCTAssertTrue(waitForNonExistence(app.buttons["cancelDelete"], timeout: 5))
+        XCTAssertTrue(waitForTitle(in: app, "Shakshuka"))
+
+        app.buttons["deleteRecipe"].click()
+        XCTAssertTrue(app.buttons["confirmDelete"].waitForExistence(timeout: 5))
+        app.buttons["confirmDelete"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["recipeDetailPlaceholder"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["recipeListEmpty"].waitForExistence(timeout: 5))
+
+        app.terminate()
+        app = try launch(json: nil, database: database, openIngredients: false)
+        XCTAssertTrue(app.descendants(matching: .any)["recipeListEmpty"].waitForExistence(timeout: 5))
+    }
+
     /// Edit, a new title, ⌘S: the read view and the row show it (REC-04).
     /// The heading and the row keep the saved title until Save (MAC-06/Q1).
     @MainActor

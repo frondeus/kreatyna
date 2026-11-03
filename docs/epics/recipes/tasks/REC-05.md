@@ -330,4 +330,28 @@ The full suite runs once per cycle, in the cycle's full-suite step.
 
 ## Validation
 
-Not run yet.
+Run on 2026-11-03, on the last change of the slice.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `cargo test --workspace` | 662 passed, 0 failed. |
+| 2 | `cargo clippy --workspace --all-targets -- -D warnings` | No warnings (run on changes 2 to 5; change 6 has no Rust). |
+| 3 | `cargo fmt --check` | No diff. |
+| 4 | `devenv shell -- mac-test --ui MacRecipeUITests` | Passed: 83 Swift Testing cases (every Mac unit and snapshot test) and the 7 recipe UI tests. The 2 new images (`deletingRecipe`, light and dark) and 4 changed images were checked by eye: `recipeReadView` gains an enabled **Delete**, and `recipeReadViewFailed` gains a disabled **Delete**. No other image changed. |
+| 5 | `devenv shell -- ios-app-build` | Builds. |
+| 6 | `capture-demo.sh … testCaptureREC05Demo` | `REC-05-demo/01-delete-question.png`, `02-after-delete.png`. |
+| 7 | Change sizes (insertions + deletions) | Plan 334, store 90, read view 556, section 293, FFI 208, Mac 189 (without images). All under 1,000. |
+
+### Differences from the plan
+
+- **Change 3 dropped the new field in the FFI conversion** (`Ready { title, .. }`)
+  instead of adding an FFI field with a fixed `Idle`. The FFI type then
+  changed once, in change 5.
+- **`recipeReadViewFailed` changed too** (light and dark). The toolbar shows
+  **Delete** in every read view state, disabled unless the recipe is shown,
+  the same as **Edit**. The plan expected only `recipeReadView` to change.
+- **The transport error text** is "The recipe could not be deleted right
+  now.", the same wording as the ingredient delete, not "Recipes are
+  temporarily unavailable.".
+- **The Swift fixture's `canCreate`** now follows Rust: **New Recipe** is off
+  while a delete is asked or runs.

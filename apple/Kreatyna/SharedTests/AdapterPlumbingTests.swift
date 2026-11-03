@@ -55,7 +55,8 @@ struct EventCompositionTests {
         #expect(editing.editor(.save) == .editor(scope: ScopeId(value: 5), event: .save))
     }
 
-    /// A row click carries the id; ⌘-click, Retry and Edit carry the pane scope.
+    /// A row click carries the id; ⌘-click, Retry, Edit, Delete and its answer
+    /// carry the pane scope.
     @Test func recipeReadViewEventsCarryTheIdAndThePaneScope() {
         let shakshuka = Fixtures.recipeRow("Shakshuka")
         let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: "Shakshuka", deletion: .idle))
@@ -68,6 +69,11 @@ struct EventCompositionTests {
         #expect(reading.clearSelection == .clearSelection(scope: ScopeId(value: 5)))
         #expect(reading.detail(.retry) == .detail(scope: ScopeId(value: 5), event: .retry))
         #expect(reading.detail(.edit) == .detail(scope: ScopeId(value: 5), event: .edit))
+        #expect(reading.detail(.requestDelete) == .detail(scope: ScopeId(value: 5), event: .requestDelete))
+        #expect(
+            reading.detail(.confirmation(event: .confirm))
+                == .detail(scope: ScopeId(value: 5), event: .confirmation(event: .confirm))
+        )
     }
 
     @Test func platformLayoutMatchesTheTestHost() {

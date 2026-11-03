@@ -92,6 +92,15 @@ extension IngredientSaveError {
     }
 }
 
+extension RecipeDeleteError {
+    var message: String {
+        switch self {
+        case .storage: "The recipe could not be deleted from storage."
+        case .transport: "The recipe could not be deleted right now."
+        }
+    }
+}
+
 extension IngredientDeleteError {
     var message: String {
         switch self {

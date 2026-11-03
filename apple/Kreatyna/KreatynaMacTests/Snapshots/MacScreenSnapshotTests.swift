@@ -132,11 +132,35 @@ extension MainActorTests {
             )
         }
 
-        /// Shakshuka's read view: its row selected, "None yet" sections, Edit enabled (REC-03, REC-04).
+        /// Shakshuka's read view: its row selected, "None yet" sections, Edit and Delete enabled (REC-03 to REC-05).
         @Test(arguments: Appearance.allCases)
         func recipeReadView(appearance: Appearance) {
             let shakshuka = Fixtures.recipeRow("Shakshuka")
             let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: shakshuka.title, deletion: .idle))
+            snapshot(
+                MacMainView(
+                    app: Fixtures.splitApp(
+                        section: .recipes,
+                        recipes: Fixtures.recipeSection(
+                            .ready(rows: [Fixtures.recipeRow("Pasta"), shakshuka]),
+                            pane: .detail(detail: detail)
+                        )
+                    ),
+                    columnVisibility: .doubleColumn,
+                    send: { _ in }
+                ),
+                appearance: appearance
+            )
+        }
+
+        /// Rust is deleting Shakshuka: the overlay shows, Edit and Delete are off,
+        /// and New Recipe is off (REC-05).
+        @Test(arguments: Appearance.allCases)
+        func deletingRecipe(appearance: Appearance) {
+            let shakshuka = Fixtures.recipeRow("Shakshuka")
+            let detail = RecipeDetailView(
+                id: shakshuka.id, status: .ready(title: shakshuka.title, deletion: .deleting)
+            )
             snapshot(
                 MacMainView(
                     app: Fixtures.splitApp(

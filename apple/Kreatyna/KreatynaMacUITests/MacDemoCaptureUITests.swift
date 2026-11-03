@@ -291,6 +291,34 @@ final class MacDemoCaptureUITests: MacUITestCase {
         app.terminate()
     }
 
+    /// REC-05: Delete asks "Delete Shakshuka?"; confirming empties the pane
+    /// and removes the row.
+    @MainActor
+    func testCaptureREC05Demo() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        let field = app.textFields["recipeTitleField"]
+        let rows = app.staticTexts.matching(identifier: "recipeRow")
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        for recipe in ["Pasta", "Shakshuka"] {
+            app.typeKey("n", modifierFlags: .command)
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            app.typeText(recipe)
+            app.typeKey("s", modifierFlags: .command)
+            XCTAssertTrue(rows[recipe].waitForExistence(timeout: 5))
+        }
+        XCTAssertTrue(waitFor(app.staticTexts["recipeTitle"], value: "Shakshuka"))
+
+        app.buttons["deleteRecipe"].click()
+        XCTAssertTrue(app.buttons["confirmDelete"].waitForExistence(timeout: 5))
+        capture("01-delete-question", app)
+
+        app.buttons["confirmDelete"].click()
+        XCTAssertTrue(app.descendants(matching: .any)["recipeDetailPlaceholder"].waitForExistence(timeout: 5))
+        XCTAssertTrue(waitForNonExistence(rows["Shakshuka"]))
+        capture("02-after-delete", app)
+        app.terminate()
+    }
+
     /// The ingredient list the demos start from (Garlic, Tomato, Basil, …).
     private func demoIngredients() throws -> String {
         let fixture = URL(fileURLWithPath: #filePath)

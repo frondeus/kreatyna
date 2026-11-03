@@ -126,11 +126,18 @@ enum Fixtures {
 
     /// The Recipes section: a list and an empty pane, a read view with its
     /// row selected (REC-03), or the create editor with its draft row (REC-02).
+    /// As in Rust, New Recipe is off while the editor is open or a delete is
+    /// asked or runs (REC-05).
     static func recipeSection(
         _ status: RecipeListStatus = .ready(rows: []),
         pane: RecipePaneView = .empty
     ) -> RecipeSectionView {
-        let canCreate = if case .create = pane { false } else { true }
+        let canCreate = switch pane {
+        case .empty: true
+        case .detail(let detail):
+            if case .ready(_, let deletion) = detail.status, deletion != .idle { false } else { true }
+        case .create, .edit: false
+        }
         let selected = if case .detail(let detail) = pane { detail.id } else { nil as RecipeId? }
         return RecipeSectionView(
             list: recipeList(status),

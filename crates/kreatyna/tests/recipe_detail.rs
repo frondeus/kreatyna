@@ -45,7 +45,53 @@ async fn opening_renders_loading_then_reads_the_recipe_by_id_and_shows_its_title
     f.render(command).await
 }
 
+#[tokio::test]
+async fn edit_on_a_shown_recipe_opens_the_editor_with_it() -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    let load = f.detail.init();
+    f.finish_load(load, Ok(Some(shakshuka()))).await?;
+
+    let mut edit = f
+        .detail
+        .update(Message::Event(RecipeDetailEvent::Edit))
+        .driver(&mut f.effects);
+    assert_eq!(
+        edit.step().await?.expect_outcome(),
+        RecipeDetailOutcome::OpenEdit {
+            recipe: shakshuka()
+        }
+    );
+    edit.step().await?.expect_done();
+    drop(edit);
+    assert_eq!(f.detail.view(), view(ready("Shakshuka")));
+    Ok(())
+}
+
 // Validation
+
+/// `finished` is the result of the first load; `None` leaves it running.
+#[test_case(None, RecipeDetailStatus::Loading; "while loading")]
+#[test_case(Some(Ok(None)), RecipeDetailStatus::Missing; "when missing")]
+#[test_case(Some(Err(RecipeLoadError::Storage)), RecipeDetailStatus::Failed(RecipeLoadError::Storage); "after a failure")]
+#[tokio::test]
+async fn edit_is_ignored_unless_the_recipe_is_shown(
+    finished: Option<Result<Option<Recipe>, RecipeLoadError>>,
+    status: RecipeDetailStatus,
+) -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    let load = f.detail.init();
+    if let Some(result) = finished {
+        f.finish_load(load, result).await?;
+    }
+    let mut edit = f
+        .detail
+        .update(Message::Event(RecipeDetailEvent::Edit))
+        .driver(&mut f.effects);
+    edit.step().await?.expect_done();
+    drop(edit);
+    assert_eq!(f.detail.view(), view(status));
+    Ok(())
+}
 
 /// `finished` is the result of the first load; `None` leaves it running.
 #[test_case(None, RecipeDetailStatus::Loading; "while loading")]

@@ -12,12 +12,16 @@ use super::{
 pub enum RecipeDetailEvent {
     /// Load again after a failure (the Retry button). Ignored in other states.
     Retry,
+    /// The Edit button (REC-04). Ignored unless the recipe is shown.
+    Edit,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecipeDetailOutcome {
     /// `None`: no recipe has this id.
     LoadFinished(Latest<Result<Option<Recipe>, RecipeLoadError>>),
+    /// The section opens the editor for this recipe, as shown.
+    OpenEdit { recipe: Recipe },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -99,6 +103,16 @@ impl Widget for RecipeDetail {
                 | RecipeDetailStatus::Missing
                 | RecipeDetailStatus::Ready { .. } => Command::empty(),
             },
+            Message::Event(RecipeDetailEvent::Edit) => {
+                let RecipeDetailStatus::Ready { title } = &self.status else {
+                    return Command::empty();
+                };
+                let recipe = Recipe {
+                    id: self.id,
+                    title: title.clone(),
+                };
+                Command::single(async move { RecipeDetailOutcome::OpenEdit { recipe } })
+            }
             Message::Outcome(RecipeDetailOutcome::LoadFinished(finished)) => {
                 let Some(result) = self.load.accept(finished) else {
                     return Command::empty();
@@ -113,6 +127,8 @@ impl Widget for RecipeDetail {
                 };
                 self.render()
             }
+            // The section handles it; it comes back here only by mistake.
+            Message::Outcome(RecipeDetailOutcome::OpenEdit { .. }) => Command::empty(),
         }
     }
 

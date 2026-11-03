@@ -182,20 +182,23 @@ pub enum RecipeDetailOutcome {
 | `Edit` | Ready | `OpenEdit { recipe }`, with the shown id and title. No render. |
 | `Edit` | Loading, Failed, Missing | Ignored. |
 
-**`editor.rs`** — the editor knows what it edits (*sketch*):
+**`editor.rs`** — the editor knows what it edits. The stored recipe lives
+only in `Saved`, so a new editor cannot carry a saved title (review of
+change 3, *real*):
 
 ```rust
-/// What Save writes to. Private: `new` and `edit` choose it.
+/// What the editor edits. `new` and `edit` choose it.
 enum EditorTarget {
+    /// Save creates a recipe. The editor opens with an empty title.
     New,
-    Saved { id: RecipeId },
+    /// Save updates this recipe. `recipe` is the recipe as stored: the editor
+    /// opens with its title, and compares the typed title with it.
+    Saved { recipe: Recipe },
 }
 
 pub struct RecipeEditor {
     caps: RecipeCapabilities,
     target: EditorTarget,
-    /// The title the editor opened with: empty for a new recipe.
-    opened_with: String,
     title: String,
     // save_attempted, state and the two slots as today.
 }
@@ -205,9 +208,13 @@ impl RecipeEditor {
     pub fn new(caps: RecipeCapabilities) -> Self;
     /// An editor for a saved recipe, with its title.
     pub fn edit(caps: RecipeCapabilities, recipe: &Recipe) -> Self;
-    /// Whether the title differs from the one the editor opened with.
+    /// Whether the title differs from the one the editor opened with: any
+    /// text for a new recipe, the stored title for a saved one.
     pub(crate) fn is_dirty(&self) -> bool {
-        self.title != self.opened_with
+        match &self.target {
+            EditorTarget::New => !self.title.is_empty(),
+            EditorTarget::Saved { recipe } => self.title != recipe.title,
+        }
     }
 }
 ```
@@ -351,7 +358,7 @@ This plan, the REC-04 card on `epic.html`, and the beads.
 ### Change 3 — REC-04: the editor edits a saved recipe (about 450 lines, review)
 
 1. Add `RecipeDetailEvent::Edit` and `RecipeDetailOutcome::OpenEdit`.
-2. Add `EditorTarget`, `opened_with` and `RecipeEditor::edit`.
+2. Add `EditorTarget` (with the stored recipe in `Saved`) and `RecipeEditor::edit`.
 3. Extend `tests/recipe_detail.rs` and `tests/recipe_editor.rs`.
 4. Run checks 1 to 3 and check 7.
 5. Send the guided review.

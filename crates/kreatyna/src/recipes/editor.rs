@@ -1,11 +1,11 @@
-//! The recipe editor in the detail pane. In REC-02 it creates a recipe from a
-//! title; REC-04 adds editing a saved recipe.
+//! The recipe editor in the detail pane. It creates a recipe from a title
+//! (REC-02) or edits a saved recipe's title (REC-04).
 use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
 use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 
 use super::{
-    NewRecipe, Recipe, RecipeTitle, RecipeTitleError,
+    NewRecipe, Recipe, RecipeTitle, RecipeTitleError, RecipeUpdate,
     capabilities::{RecipeCapabilities, RecipeEffectStream, RecipeSaveError},
 };
 
@@ -72,8 +72,18 @@ enum EditorState {
     Finished,
 }
 
+/// What the editor edits. `new` and `edit` choose it.
+enum EditorTarget {
+    /// Save creates a recipe. The editor opens with an empty title.
+    New,
+    /// Save updates this recipe. `recipe` is the recipe as stored: the editor
+    /// opens with its title, and compares the typed title with it.
+    Saved { recipe: Recipe },
+}
+
 pub struct RecipeEditor {
     caps: RecipeCapabilities,
+    target: EditorTarget,
     title: String,
     /// After the first Save, every change checks the title again.
     save_attempted: bool,
@@ -85,9 +95,23 @@ pub struct RecipeEditor {
 impl RecipeEditor {
     /// An editor for a new recipe, with an empty title.
     pub fn new(caps: RecipeCapabilities) -> Self {
+        Self::open(caps, EditorTarget::New, String::new())
+    }
+
+    /// An editor for a saved recipe, with its title (REC-04).
+    pub fn edit(caps: RecipeCapabilities, recipe: &Recipe) -> Self {
+        let title = recipe.title.clone();
+        let target = EditorTarget::Saved {
+            recipe: recipe.clone(),
+        };
+        Self::open(caps, target, title)
+    }
+
+    fn open(caps: RecipeCapabilities, target: EditorTarget, title: String) -> Self {
         Self {
             caps,
-            title: String::new(),
+            target,
+            title,
             save_attempted: false,
             state: EditorState::Editing { problem: None },
             confirmation: LatestCommandSlot::new(),
@@ -100,9 +124,18 @@ impl RecipeEditor {
         (Self::new(caps), effects)
     }
 
-    /// Whether the title differs from the one the editor opened with.
+    pub fn edit_test_fixture(recipe: &Recipe) -> (Self, RecipeEffectStream) {
+        let (caps, effects) = RecipeCapabilities::testing();
+        (Self::edit(caps, recipe), effects)
+    }
+
+    /// Whether the title differs from the one the editor opened with: any
+    /// text for a new recipe, the stored title for a saved one.
     pub(crate) fn is_dirty(&self) -> bool {
-        !self.title.is_empty()
+        match &self.target {
+            EditorTarget::New => !self.title.is_empty(),
+            EditorTarget::Saved { recipe } => self.title != recipe.title,
+        }
     }
 
     fn render(&self) -> Command<RecipeEditorOutcome> {
@@ -134,15 +167,23 @@ impl RecipeEditor {
         }
     }
 
-    /// Checks the title, then starts the save: render `Saving`, then create.
+    /// Checks the title, then starts the save: render `Saving`, then create
+    /// a new recipe or update the saved one.
     fn try_save(&mut self) -> Result<Command<RecipeEditorOutcome>, RecipeTitleError> {
         let title = RecipeTitle::try_new(self.title.as_str())?;
         self.state = EditorState::Saving;
         let render = self.caps.render.clone();
         let store = self.caps.store.clone();
+        let saved_id = match &self.target {
+            EditorTarget::New => None,
+            EditorTarget::Saved { recipe } => Some(recipe.id),
+        };
         Ok(Command::single(async move {
             render.render().await;
-            store.create(NewRecipe { title }).await
+            match saved_id {
+                None => store.create(NewRecipe { title }).await,
+                Some(id) => store.update(id, RecipeUpdate { title }).await,
+            }
         })
         .latest(&mut self.save)
         .map(RecipeEditorOutcome::SaveFinished))

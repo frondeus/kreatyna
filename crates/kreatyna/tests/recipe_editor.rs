@@ -4,7 +4,9 @@ use kreatyna::{
     recipes::{
         Recipe, RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem,
         RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeTitleError,
-        capabilities::{RecipeEffectStream, RecipeSaveError, ResolveRecipeStore},
+        capabilities::{
+            RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
+        },
     },
 };
 use krucyfiks::{Command, Message, Widget, effects::CommandTestExt, test_utils::EmptyInitTest};
@@ -36,7 +38,7 @@ async fn save_creates_the_trimmed_title_then_reports_saved() -> anyhow::Result<(
     let save = f.send(RecipeEditorEvent::Save);
     assert_eq!(f.editor.view().status, RecipeEditorStatus::Saving);
     let finished = f.save(save, Ok(shakshuka())).await?;
-    assert_eq!(f.created, ["Shakshuka"]);
+    assert_eq!(f.writes, [Write::Created("Shakshuka".into())]);
 
     let command = f.editor.update(Message::Outcome(finished));
     assert_eq!(f.editor.view().status, RecipeEditorStatus::Finished);
@@ -77,7 +79,73 @@ async fn cancel_after_typing_asks_and_confirming_discards() -> anyhow::Result<()
     Ok(())
 }
 
+#[tokio::test]
+async fn an_edit_editor_opens_with_the_saved_title_and_starts_nothing() {
+    let mut f = Fixture::edit();
+    assert_eq!(f.editor.view(), editing("Shakshuka", None));
+    f.editor.expect_noop_init().await;
+}
+
+#[test_case(Some(" Spicy shakshuka "), "Spicy shakshuka"; "a new title")]
+#[test_case(None, "Shakshuka"; "the saved title")]
+#[tokio::test]
+async fn save_in_an_edit_editor_updates_the_recipe_by_id_then_reports_saved(
+    typed: Option<&str>,
+    title: &str,
+) -> anyhow::Result<()> {
+    let mut f = Fixture::edit();
+    if let Some(text) = typed {
+        f.type_title(text).await?;
+    }
+    let saved = Recipe {
+        title: title.into(),
+        ..shakshuka()
+    };
+
+    let save = f.send(RecipeEditorEvent::Save);
+    let finished = f.save(save, Ok(saved.clone())).await?;
+    assert_eq!(f.writes, [Write::Updated(shakshuka().id, title.into())]);
+
+    let command = f.editor.update(Message::Outcome(finished));
+    assert_eq!(
+        f.render_then_outcome(command).await?,
+        RecipeEditorOutcome::Saved { recipe: saved }
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn cancel_on_an_unchanged_edit_editor_discards_at_once() -> anyhow::Result<()> {
+    let mut f = Fixture::edit();
+    let command = f.send(RecipeEditorEvent::RequestClose);
+    assert_eq!(
+        f.render_then_outcome(command).await?,
+        RecipeEditorOutcome::Discarded
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn cancel_after_changing_the_saved_title_asks() -> anyhow::Result<()> {
+    let mut f = Fixture::edit();
+    f.type_title("Spicy shakshuka").await?;
+    f.request_close().await
+}
+
 // Validation
+
+#[tokio::test]
+async fn typing_the_saved_title_again_makes_the_edit_editor_unchanged() -> anyhow::Result<()> {
+    let mut f = Fixture::edit();
+    f.type_title("Pasta").await?;
+    f.type_title("Shakshuka").await?;
+    let command = f.send(RecipeEditorEvent::RequestClose);
+    assert_eq!(
+        f.render_then_outcome(command).await?,
+        RecipeEditorOutcome::Discarded
+    );
+    Ok(())
+}
 
 #[test_case(&[], ""; "nothing typed")]
 #[test_case(&["   "], "   "; "spaces only")]
@@ -206,6 +274,25 @@ async fn a_failed_save_shows_its_error_until_the_title_changes(
     Ok(())
 }
 
+#[test_case(RecipeSaveError::NotFound; "recipe no longer exists")]
+#[test_case(RecipeSaveError::DuplicateTitle; "duplicate title")]
+#[tokio::test]
+async fn a_failed_update_keeps_the_edit_editor_open_with_its_error(
+    error: RecipeSaveError,
+) -> anyhow::Result<()> {
+    let mut f = Fixture::edit();
+    f.type_title("Pasta").await?;
+    let save = f.send(RecipeEditorEvent::Save);
+    let failed = f.save(save, Err(error.clone())).await?;
+
+    let command = f.editor.update(Message::Outcome(failed));
+    assert_eq!(
+        f.editor.view(),
+        editing("Pasta", Some(RecipeEditorProblem::SaveFailed(error)))
+    );
+    f.render(command).await
+}
+
 // Test support
 
 fn shakshuka() -> Recipe {
@@ -226,20 +313,38 @@ fn editing(title: &str, problem: Option<RecipeEditorProblem>) -> RecipeEditorVie
     }
 }
 
+/// A store call that Save made, with the title it wrote.
+#[derive(Debug, PartialEq, Eq)]
+enum Write {
+    Created(String),
+    Updated(RecipeId, String),
+}
+
 struct Fixture {
     editor: RecipeEditor,
     effects: RecipeEffectStream,
-    /// The titles the store was asked to create, in order.
-    created: Vec<String>,
+    /// The store calls of the saves, in order.
+    writes: Vec<Write>,
 }
 
 impl Fixture {
+    /// An editor for a new recipe.
     fn new() -> Self {
         let (editor, effects) = RecipeEditor::test_fixture();
         Self {
             editor,
             effects,
-            created: vec![],
+            writes: vec![],
+        }
+    }
+
+    /// An editor for the saved `shakshuka()`.
+    fn edit() -> Self {
+        let (editor, effects) = RecipeEditor::edit_test_fixture(&shakshuka());
+        Self {
+            editor,
+            effects,
+            writes: vec![],
         }
     }
 
@@ -284,8 +389,9 @@ impl Fixture {
         self.render(command).await
     }
 
-    /// Runs a save command: its render, then the store call answered with
-    /// `result`. Returns `SaveFinished`, not yet dispatched.
+    /// Runs a save command: its render, then the store call (create or
+    /// update) answered with `result`. Returns `SaveFinished`, not yet
+    /// dispatched.
     async fn save(
         &mut self,
         save: Command<RecipeEditorOutcome>,
@@ -299,21 +405,31 @@ impl Fixture {
             .expect_render()
             .resolve_render(|| async {})
             .await?;
-        let mut title = None;
-        command
-            .step()
-            .await?
-            .expect_effect()
-            .expect_store()
-            .resolve_create(|recipe| {
-                title = Some(recipe.title.as_ref().to_owned());
-                async { result }
-            })
-            .await?;
+        let mut write = None;
+        let store = command.step().await?.expect_effect().expect_store();
+        match store.request {
+            RecipeStoreRequest::Create { .. } => {
+                store
+                    .resolve_create(|recipe| {
+                        write = Some(Write::Created(recipe.title.as_ref().to_owned()));
+                        async { result }
+                    })
+                    .await?
+            }
+            RecipeStoreRequest::Update { .. } => {
+                store
+                    .resolve_update(|id, recipe| {
+                        write = Some(Write::Updated(id, recipe.title.as_ref().to_owned()));
+                        async { result }
+                    })
+                    .await?
+            }
+            _ => anyhow::bail!("expected a create or an update"),
+        }
         let finished = command.step().await?.expect_outcome();
         command.step().await?.expect_done();
         drop(command);
-        self.created.extend(title);
+        self.writes.extend(write);
         Ok(finished)
     }
 

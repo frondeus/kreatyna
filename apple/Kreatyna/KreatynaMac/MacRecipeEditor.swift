@@ -1,9 +1,12 @@
 import SwiftUI
 
-/// The create editor in the Recipes detail pane. It shows Rust's editor view
+/// The recipe editor in the Recipes detail pane, for a new or a saved recipe.
+/// It shows Rust's editor view
 /// and sends the title, Save, and Cancel to Rust; Rust checks the title and
 /// decides what the pane shows next.
 struct MacRecipeEditor: View {
+    /// "New Recipe", or the saved title while it is edited.
+    let heading: String
     let view: RecipeEditorView
     let send: (RecipeEditorEvent) -> Void
 
@@ -35,7 +38,7 @@ struct MacRecipeEditor: View {
         .disabled(isSaving)
         .accessibilityIdentifier("recipeEditor")
         .safeAreaInset(edge: .top, spacing: 0) {
-            Text("New Recipe")
+            Text(heading)
                 .font(.title2.bold())
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 20)

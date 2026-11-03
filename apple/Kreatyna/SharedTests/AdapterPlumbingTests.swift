@@ -46,7 +46,16 @@ struct EventCompositionTests {
         #expect(!creating.canCreate)
     }
 
-    /// A row click carries the id; ⌘-click and Retry carry the pane scope.
+    /// The edit editor has no draft row, and its events carry the pane scope.
+    @Test func recipeEditPaneEventsCarryThePaneScope() {
+        let shakshuka = Fixtures.recipeRow("Shakshuka")
+        let editor = RecipeEditorView(title: "Spicy shakshuka", status: .editing(problem: nil))
+        let editing = Fixtures.recipeSection(.ready(rows: [shakshuka]), editing: shakshuka, editor: editor)
+        #expect(editing.draftRow == nil)
+        #expect(editing.editor(.save) == .editor(scope: ScopeId(value: 5), event: .save))
+    }
+
+    /// A row click carries the id; ⌘-click, Retry and Edit carry the pane scope.
     @Test func recipeReadViewEventsCarryTheIdAndThePaneScope() {
         let shakshuka = Fixtures.recipeRow("Shakshuka")
         let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: "Shakshuka"))
@@ -58,6 +67,7 @@ struct EventCompositionTests {
         #expect(reading.select(pasta) == .select(id: pasta))
         #expect(reading.clearSelection == .clearSelection(scope: ScopeId(value: 5)))
         #expect(reading.detail(.retry) == .detail(scope: ScopeId(value: 5), event: .retry))
+        #expect(reading.detail(.edit) == .detail(scope: ScopeId(value: 5), event: .edit))
     }
 
     @Test func platformLayoutMatchesTheTestHost() {

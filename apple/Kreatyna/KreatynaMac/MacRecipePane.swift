@@ -16,11 +16,12 @@ struct MacRecipePane: View {
             MacRecipeDetail(view: detail) { send(section.detail($0)) }
         case .create(let editor, _):
             // A new pane scope is new content, so the title field starts fresh.
-            MacRecipeEditor(view: editor) { send(section.editor($0)) }
+            MacRecipeEditor(heading: "New Recipe", view: editor) { send(section.editor($0)) }
                 .id(section.pane.scope)
-        case .edit:
-            // REC-04 change 6 shows the editor here. Edit is still disabled.
-            EmptyView()
+        case .edit(let editor, let savedTitle):
+            // The heading keeps the saved title until Save (MAC-06/Q1).
+            MacRecipeEditor(heading: savedTitle, view: editor) { send(section.editor($0)) }
+                .id(section.pane.scope)
         }
     }
 }

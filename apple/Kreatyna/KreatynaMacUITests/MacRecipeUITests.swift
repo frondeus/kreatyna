@@ -72,7 +72,45 @@ final class MacRecipeUITests: MacUITestCase {
         recipeRow(named: "Shakshuka", in: app).click()
         XCTAssertTrue(waitForTitle(in: app, "Shakshuka"))
         XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "value == 'None yet'")).count, 2)
-        XCTAssertFalse(app.buttons["editRecipe"].isEnabled)
+        XCTAssertTrue(app.buttons["editRecipe"].isEnabled)
+    }
+
+    /// Edit, a new title, ⌘S: the read view and the row show it (REC-04).
+    /// The heading and the row keep the saved title until Save (MAC-06/Q1).
+    @MainActor
+    func testRenameRecipe() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        create("Shakshuka", in: app)
+
+        retitle(to: "Spicy Shakshuka", in: app)
+        XCTAssertTrue(waitFor(app.staticTexts["recipeEditorTitle"], value: "Shakshuka"))
+        XCTAssertTrue(recipeRow(named: "Shakshuka", in: app).exists)
+        XCTAssertFalse(app.buttons["newRecipe"].isEnabled)
+        app.typeKey("s", modifierFlags: .command)
+
+        XCTAssertTrue(waitForTitle(in: app, "Spicy Shakshuka"))
+        XCTAssertTrue(recipeRow(named: "Spicy Shakshuka", in: app).waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts.matching(identifier: "recipeRow").count, 1)
+        XCTAssertTrue(app.buttons["newRecipe"].isEnabled)
+    }
+
+    /// Edit, a changed title, Esc: "Discard changes?"; Discard goes back to
+    /// the read view with the saved title (REC-04).
+    @MainActor
+    func testCancelEditAsksToDiscard() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        create("Shakshuka", in: app)
+
+        retitle(to: "Toast", in: app)
+        app.typeKey(.escape, modifierFlags: [])
+        let discard = app.buttons["confirmDiscard"]
+        XCTAssertTrue(discard.waitForExistence(timeout: 5))
+        discard.click()
+
+        XCTAssertTrue(waitForTitle(in: app, "Shakshuka"))
+        XCTAssertTrue(recipeRow(named: "Shakshuka", in: app).exists)
     }
 
     /// A row click while a typed title is open asks "Discard changes?";
@@ -104,6 +142,17 @@ final class MacRecipeUITests: MacUITestCase {
         app.typeText(title)
         app.typeKey("s", modifierFlags: .command)
         XCTAssertTrue(waitForTitle(in: app, title))
+    }
+
+    /// Edit on the open recipe, then replaces the whole title with `title`.
+    @MainActor
+    private func retitle(to title: String, in app: XCUIApplication) {
+        app.buttons["editRecipe"].click()
+        let field = app.textFields["recipeTitleField"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.click()
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText(title)
     }
 
     /// Waits until the read view shows `title`.

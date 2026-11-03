@@ -132,7 +132,7 @@ extension MainActorTests {
             )
         }
 
-        /// Shakshuka's read view: its row selected, "None yet" sections, Edit disabled (REC-03).
+        /// Shakshuka's read view: its row selected, "None yet" sections, Edit enabled (REC-03, REC-04).
         @Test(arguments: Appearance.allCases)
         func recipeReadView(appearance: Appearance) {
             let shakshuka = Fixtures.recipeRow("Shakshuka")
@@ -144,6 +144,29 @@ extension MainActorTests {
                         recipes: Fixtures.recipeSection(
                             .ready(rows: [Fixtures.recipeRow("Pasta"), shakshuka]),
                             pane: .detail(detail: detail)
+                        )
+                    ),
+                    columnVisibility: .doubleColumn,
+                    send: { _ in }
+                ),
+                appearance: appearance
+            )
+        }
+
+        /// Shakshuka's edit editor with a changed title: the heading and the row
+        /// keep the saved title until Save, and the row stays selected (REC-04).
+        @Test(arguments: Appearance.allCases)
+        func editRecipeEditor(appearance: Appearance) {
+            let shakshuka = Fixtures.recipeRow("Shakshuka")
+            let editor = RecipeEditorView(title: "Spicy shakshuka", status: .editing(problem: nil))
+            snapshot(
+                MacMainView(
+                    app: Fixtures.splitApp(
+                        section: .recipes,
+                        recipes: Fixtures.recipeSection(
+                            .ready(rows: [Fixtures.recipeRow("Pasta"), shakshuka]),
+                            editing: shakshuka,
+                            editor: editor
                         )
                     ),
                     columnVisibility: .doubleColumn,

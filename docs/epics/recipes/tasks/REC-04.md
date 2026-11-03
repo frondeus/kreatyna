@@ -427,4 +427,28 @@ The full suite runs once per cycle, in the cycle's full-suite step.
 
 ## Validation
 
-Not run yet.
+Run on 2026-11-03, on the last change of the slice.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `cargo test --workspace` | 628 passed, 0 failed. |
+| 2 | `cargo clippy --workspace --all-targets -- -D warnings` | No warnings (run on changes 2 to 5; change 6 has no Rust). |
+| 3 | `cargo fmt --check` | No diff. |
+| 4 | `devenv shell -- mac-test --ui MacRecipeUITests` | Passed: 87 Swift Testing cases (every Mac unit and snapshot test) and the 6 recipe UI tests. The 2 new images (`editRecipeEditor`, light and dark) and the 2 changed images (`recipeReadView`, light and dark: only the Edit pencil, now enabled) were checked by eye. No other image changed. |
+| 5 | `devenv shell -- ios-app-build` | Builds. |
+| 6 | `capture-demo.sh … testCaptureREC04Demo` | `REC-04-demo/01-edit-recipe.png`, `02-discard-question.png`, `03-after-rename.png`. |
+| 7 | Change sizes (insertions + deletions) | Plan 408, store 223, editor 296, section 410, FFI 147, Mac 174 (without images). All under 1,000. |
+
+### Differences from the plan
+
+- **`RecipeUpdate` is its own type** (REC-04/Q1, review of change 2). `create`
+  takes `NewRecipe`, `update` takes `RecipeUpdate`, with the same fields for
+  now. `RecipeUpdate` is not a patch: every field is required.
+- **The editor keeps the stored recipe in its target** (review of change 3):
+  `EditorTarget::Saved { recipe }`, with no separate field for the opening
+  title.
+- **Change 4 had a temporary FFI arm** `Edit => Empty`, so it built alone;
+  change 5 replaced it. Change 5 had a temporary empty `.edit` case in
+  `MacRecipePane`; change 6 replaced it.
+- **Edit has no keyboard shortcut**, the same as Edit in the ingredient
+  detail.

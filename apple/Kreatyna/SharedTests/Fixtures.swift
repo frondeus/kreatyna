@@ -140,6 +140,23 @@ enum Fixtures {
         )
     }
 
+    /// The Recipes section with the edit editor open: the saved row stays
+    /// selected, and New Recipe is off (REC-04).
+    static func recipeSection(
+        _ status: RecipeListStatus,
+        editing saved: RecipeListRow,
+        editor: RecipeEditorView
+    ) -> RecipeSectionView {
+        RecipeSectionView(
+            list: recipeList(status),
+            selected: saved.id,
+            pane: ScopedRecipePaneView(
+                scope: ScopeId(value: 5), value: .edit(editor: editor, savedTitle: saved.title)
+            ),
+            canCreate: false
+        )
+    }
+
     /// The Mac catalog with the edit form open: the saved row stays
     /// highlighted, and there is no draft row (MAC-06/Q1).
     static func splitCatalog(editing saved: Ingredient, form: IngredientFormView) -> IngredientSplitCatalogView {

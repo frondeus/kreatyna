@@ -253,6 +253,44 @@ final class MacDemoCaptureUITests: MacUITestCase {
         app.terminate()
     }
 
+    /// REC-04: Edit opens the editor with the saved title; Cancel after a
+    /// change asks first; Save shows the new title in the read view and the list.
+    @MainActor
+    func testCaptureREC04Demo() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        let title = app.staticTexts["recipeTitle"]
+        let field = app.textFields["recipeTitleField"]
+        let rows = app.staticTexts.matching(identifier: "recipeRow")
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        for recipe in ["Pasta", "Shakshuka"] {
+            app.typeKey("n", modifierFlags: .command)
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            app.typeText(recipe)
+            app.typeKey("s", modifierFlags: .command)
+            XCTAssertTrue(rows[recipe].waitForExistence(timeout: 5))
+        }
+        XCTAssertTrue(waitFor(title, value: "Shakshuka"))
+
+        app.buttons["editRecipe"].click()
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        capture("01-edit-recipe", app)
+
+        field.click()
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText("Spicy Shakshuka")
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(app.buttons["confirmDiscard"].waitForExistence(timeout: 5))
+        capture("02-discard-question", app)
+        app.buttons["cancelDiscard"].click()
+        XCTAssertTrue(waitForNonExistence(app.buttons["cancelDiscard"]))
+
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(rows["Spicy Shakshuka"].waitForExistence(timeout: 5))
+        XCTAssertTrue(waitFor(title, value: "Spicy Shakshuka"))
+        capture("03-after-rename", app)
+        app.terminate()
+    }
+
     /// The ingredient list the demos start from (Garlic, Tomato, Basil, …).
     private func demoIngredients() throws -> String {
         let fixture = URL(fileURLWithPath: #filePath)

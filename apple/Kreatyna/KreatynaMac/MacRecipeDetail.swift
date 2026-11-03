@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// The read view of one recipe in the Recipes detail pane (REC-03). Rust loads
-/// the recipe by id and sends its state; Swift shows it and forwards Retry.
+/// the recipe by id and sends its state; Swift shows it and forwards Retry
+/// and Edit.
 struct MacRecipeDetail: View {
     let view: RecipeDetailView
     let send: (RecipeDetailEvent) -> Void
@@ -10,13 +11,17 @@ struct MacRecipeDetail: View {
         content
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    // Editing a saved recipe arrives with REC-04.
-                    Button("Edit", systemImage: "pencil") {}
+                    Button("Edit", systemImage: "pencil") { send(.edit) }
                         .help("Edit")
-                        .disabled(true)
+                        .disabled(!isReady)
                         .accessibilityIdentifier("editRecipe")
                 }
             }
+    }
+
+    /// Rust opens the editor only for a loaded recipe; the button says so.
+    private var isReady: Bool {
+        if case .ready = view.status { true } else { false }
     }
 
     @ViewBuilder

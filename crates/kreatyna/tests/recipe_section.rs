@@ -7,8 +7,8 @@ use kreatyna::{
         RecipeListRow, RecipeListStatus, RecipePaneView, RecipeSection, RecipeSectionEvent,
         RecipeSectionOutcome, RecipeSectionView,
         capabilities::{
-            RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError, RecipeStoreRequest,
-            ResolveRecipeStore,
+            RecipeDeleteError, RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError,
+            RecipeStoreRequest, ResolveRecipeStore,
         },
     },
 };
@@ -320,6 +320,37 @@ async fn keep_editing_an_edit_forgets_the_clicked_row() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn a_confirmed_delete_empties_the_pane_and_loads_the_list_again() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    let read_scope = f.section.view().pane.scope;
+    f.request_delete().await?;
+    f.delete_result = Some(Ok(()));
+    f.stored = Ok(vec![pasta()]);
+    f.answer_delete(ConfirmationEvent::Confirm).await?;
+
+    let view = f.section.view();
+    assert_ne!(view.pane.scope, read_scope);
+    assert_eq!(view.pane.value, RecipePaneView::Empty);
+    assert_eq!(view.selected, None);
+    assert_eq!(view.list.status, ready(&[pasta()]));
+    assert!(view.can_create);
+    Ok(())
+}
+
+#[tokio::test]
+async fn cancel_keeps_the_read_view() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.request_delete().await?;
+    f.answer_delete(ConfirmationEvent::Cancel).await?;
+    let view = f.section.view();
+    assert_eq!(view.pane.value, read(&shakshuka()));
+    assert!(view.can_create);
+    Ok(())
+}
+
 // Validation
 
 #[tokio::test]
@@ -353,6 +384,66 @@ async fn an_edit_request_from_a_replaced_read_view_is_ignored() -> anyhow::Resul
 
     let before = f.section.view();
     let command = f.section.update(Message::Outcome(open_edit));
+    assert_eq!(f.section.view(), before);
+    f.done(command).await
+}
+
+#[tokio::test]
+async fn the_pane_is_locked_while_the_delete_question_waits() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.request_delete().await?;
+    let view = f.section.view();
+    assert_eq!(
+        view.pane.value,
+        detail(&shakshuka(), deletion(&shakshuka(), asking_delete(None)))
+    );
+    assert_eq!(view.selected, Some(shakshuka().id));
+    assert!(!view.can_create);
+
+    f.expect_ignored(RecipeSectionEvent::Select(pasta().id))
+        .await?;
+    f.expect_ignored(RecipeSectionEvent::NewRecipe).await?;
+    let scope = view.pane.scope;
+    f.expect_ignored(RecipeSectionEvent::ClearSelection { scope })
+        .await
+}
+
+#[tokio::test]
+async fn an_edit_request_from_before_the_delete_question_is_ignored() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    let request = f.detail(RecipeDetailEvent::Edit);
+    let open_edit = f.run_until_outcome(request).await?;
+    f.request_delete().await?;
+
+    let before = f.section.view();
+    let command = f.section.update(Message::Outcome(open_edit));
+    assert_eq!(f.section.view(), before);
+    f.done(command).await
+}
+
+#[tokio::test]
+async fn a_deleted_report_delivered_twice_is_applied_once() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.request_delete().await?;
+    f.delete_result = Some(Ok(()));
+    let confirm = f.detail(RecipeDetailEvent::Confirmation(ConfirmationEvent::Confirm));
+    let decided = f.run_until_outcome(confirm).await?;
+    let delete = f.section.update(Message::Outcome(decided));
+    let finished = f.run_until_outcome(delete).await?;
+    let report = f.section.update(Message::Outcome(finished));
+    let deleted = f.run_until_outcome(report).await?;
+
+    f.stored = Ok(vec![pasta()]);
+    let command = f.section.update(Message::Outcome(deleted.clone()));
+    f.settle(command).await?;
+    let before = f.section.view();
+    assert_eq!(before.pane.value, RecipePaneView::Empty);
+
+    // The empty pane has a new scope, so the old report is dropped.
+    let command = f.section.update(Message::Outcome(deleted));
     assert_eq!(f.section.view(), before);
     f.done(command).await
 }
@@ -560,6 +651,30 @@ async fn a_failed_update_keeps_the_edit_editor_open_with_its_error() -> anyhow::
 }
 
 #[tokio::test]
+async fn a_failed_delete_keeps_the_read_view_and_asks_again() -> anyhow::Result<()> {
+    let mut f = Fixture::started().await?;
+    f.select(&shakshuka()).await?;
+    f.request_delete().await?;
+    f.delete_result = Some(Err(RecipeDeleteError::Storage));
+    f.answer_delete(ConfirmationEvent::Confirm).await?;
+
+    let view = f.section.view();
+    assert_eq!(
+        view.pane.value,
+        detail(
+            &shakshuka(),
+            deletion(
+                &shakshuka(),
+                asking_delete(Some(RecipeDeleteError::Storage))
+            )
+        )
+    );
+    assert_eq!(view.selected, Some(shakshuka().id));
+    assert_eq!(view.list.status, ready(&[pasta(), shakshuka()]));
+    Ok(())
+}
+
+#[tokio::test]
 async fn a_recipe_that_no_longer_exists_shows_missing_and_loads_the_list_again()
 -> anyhow::Result<()> {
     let mut f = Fixture::started().await?;
@@ -642,6 +757,22 @@ fn read(recipe: &Recipe) -> RecipePaneView {
     )
 }
 
+/// The read view of `recipe` with this delete state.
+fn deletion(recipe: &Recipe, deletion: RecipeDeletion) -> RecipeDetailStatus {
+    RecipeDetailStatus::Ready {
+        title: recipe.title.clone(),
+        deletion,
+    }
+}
+
+/// "Delete …?" waits, after the failed delete `error` if any.
+fn asking_delete(error: Option<RecipeDeleteError>) -> RecipeDeletion {
+    RecipeDeletion::Confirming {
+        confirmation: ConfirmationView::AwaitingDecision,
+        error,
+    }
+}
+
 fn create(title: &str, draft_row: &str) -> RecipePaneView {
     RecipePaneView::Create {
         editor: RecipeEditorView {
@@ -668,10 +799,12 @@ fn asking() -> RecipeEditorStatus {
     RecipeEditorStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
 }
 
-/// Answers a list or get request from `stored`. A create fails the test:
-/// saves go through `Fixture::run_save`.
+/// Answers a list or get request from `stored`, and a delete with `deleted`.
+/// A create or an update fails the test: saves go through
+/// `Fixture::run_save`.
 async fn answer_store(
     stored: Result<Vec<Recipe>, RecipeLoadError>,
+    deleted: Option<Result<(), RecipeDeleteError>>,
     effect: Envelope<RecipeStoreRequest>,
 ) -> anyhow::Result<()> {
     match effect.request {
@@ -682,7 +815,12 @@ async fn answer_store(
         }
         RecipeStoreRequest::Create { .. } => anyhow::bail!("an unexpected create"),
         RecipeStoreRequest::Update { .. } => anyhow::bail!("an unexpected update"),
-        RecipeStoreRequest::Delete { .. } => anyhow::bail!("an unexpected delete"),
+        RecipeStoreRequest::Delete { .. } => {
+            let Some(result) = deleted else {
+                anyhow::bail!("an unexpected delete")
+            };
+            effect.resolve_delete(|_| async { result }).await?
+        }
     }
     Ok(())
 }
@@ -692,6 +830,8 @@ struct Fixture {
     effects: RecipeEffectStream,
     /// What the store has: `list` returns it, `get` looks in it.
     stored: Result<Vec<Recipe>, RecipeLoadError>,
+    /// What `delete` answers. `None`: a delete fails the test.
+    delete_result: Option<Result<(), RecipeDeleteError>>,
 }
 
 impl Fixture {
@@ -701,6 +841,7 @@ impl Fixture {
             section,
             effects,
             stored: Ok(stored),
+            delete_result: None,
         }
     }
 
@@ -761,6 +902,7 @@ impl Fixture {
         command: Command<RecipeSectionOutcome>,
     ) -> anyhow::Result<Vec<RecipeSectionOutcome>> {
         let stored = self.stored.clone();
+        let deleted = self.delete_result.clone();
         let mut command = command.driver(&mut self.effects);
         let mut outcomes = vec![];
         loop {
@@ -769,7 +911,7 @@ impl Fixture {
                     render.resolve_render(|| async {}).await?
                 }
                 CommandEffect::Effect(RecipeEffect::Store(store)) => {
-                    answer_store(stored.clone(), store).await?
+                    answer_store(stored.clone(), deleted.clone(), store).await?
                 }
                 CommandEffect::Outcome(outcome) => outcomes.push(outcome),
                 CommandEffect::Done => break,
@@ -815,6 +957,19 @@ impl Fixture {
     /// Edit in the open read view, and what follows.
     async fn edit(&mut self) -> anyhow::Result<()> {
         let command = self.detail(RecipeDetailEvent::Edit);
+        self.settle(command).await
+    }
+
+    /// Delete in the open read view: the question opens.
+    async fn request_delete(&mut self) -> anyhow::Result<()> {
+        let command = self.detail(RecipeDetailEvent::RequestDelete);
+        self.settle(command).await
+    }
+
+    /// Answers "Delete …?" and runs what follows. The store answers a
+    /// delete with `delete_result`.
+    async fn answer_delete(&mut self, event: ConfirmationEvent) -> anyhow::Result<()> {
+        let command = self.detail(RecipeDetailEvent::Confirmation(event));
         self.settle(command).await
     }
 

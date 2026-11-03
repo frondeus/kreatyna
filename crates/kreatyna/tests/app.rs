@@ -2,6 +2,7 @@ use anyhow::Context;
 use futures::StreamExt;
 use kreatyna::{
     capabilities::ResolveRender,
+    confirmation::ConfirmationEvent,
     ingredients::{
         capabilities::{IngredientEffect, ResolveIngredientStore},
         *,
@@ -292,6 +293,67 @@ async fn a_recipe_edit_and_its_save_route_through_the_app() -> anyhow::Result<()
                 deletion: RecipeDeletion::Idle,
             },
         })
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_recipe_delete_routes_through_the_app() -> anyhow::Result<()> {
+    let mut f = Fixture::with(AppLayout::Split);
+    f.initialize().await?;
+    let command = f.recipes(RecipeSectionEvent::Select(shakshuka().id));
+    f.drive_initialization(command).await?;
+    let scope = f.split()?.recipes.pane.scope;
+    let detail = |event| RecipeSectionEvent::Detail(Scoped::new(scope, event));
+    let command = f.recipes(detail(RecipeDetailEvent::RequestDelete));
+    f.render(command).await?;
+
+    let confirm = f.recipes(detail(RecipeDetailEvent::Confirmation(
+        ConfirmationEvent::Confirm,
+    )));
+    let mut confirm = confirm.driver(&mut f.effects);
+    let decided = confirm.step().await?.expect_outcome();
+    confirm.step().await?.expect_done();
+    drop(confirm);
+
+    let delete = f.app.update(Message::Outcome(decided));
+    let mut deleted_id = None;
+    let mut delete = delete.driver(&mut f.effects);
+    delete
+        .step()
+        .await?
+        .expect_effect()
+        .expect_recipes()
+        .expect_render()
+        .resolve_render(|| async {})
+        .await?;
+    delete
+        .step()
+        .await?
+        .expect_effect()
+        .expect_recipes()
+        .expect_store()
+        .resolve_delete(|id| {
+            deleted_id = Some(id);
+            async { Ok(()) }
+        })
+        .await?;
+    let finished = delete.step().await?.expect_outcome();
+    delete.step().await?.expect_done();
+    drop(delete);
+    assert_eq!(deleted_id, Some(shakshuka().id));
+
+    let command = f.app.update(Message::Outcome(finished));
+    let deleted = f.render_then_outcome(command).await?;
+    let command = f.app.update(Message::Outcome(deleted));
+    f.recipes = Ok(vec![]);
+    f.drive_initialization(command).await?;
+    let recipes = f.split()?.recipes;
+    assert_eq!(recipes.pane.value, RecipePaneView::Empty);
+    assert_eq!(recipes.selected, None);
+    assert_eq!(
+        recipes.list.status,
+        RecipeListStatus::Ready { rows: vec![] }
     );
     Ok(())
 }

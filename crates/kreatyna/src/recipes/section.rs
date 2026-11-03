@@ -4,15 +4,17 @@
 //! The list lives as long as the section. The pane gets a new scope each time
 //! its content changes, so late events and results of old content are
 //! ignored (E-19). The pane is empty, a recipe's read view (REC-03), the
-//! create editor (REC-02), or the edit editor (REC-04).
+//! create editor (REC-02), or the edit editor (REC-04). A delete in the read
+//! view keeps the pane until it ends, then empties it (REC-05).
 use krucyfiks::{Command, CommandExt, CommandScopeId, Message, Scoped, Widget};
 
 use crate::scoped_child::ScopedChild;
 
 use super::{
-    Recipe, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome, RecipeDetailStatus,
-    RecipeDetailView, RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorStatus,
-    RecipeEditorView, RecipeId, RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListView,
+    Recipe, RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome,
+    RecipeDetailStatus, RecipeDetailView, RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome,
+    RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeList, RecipeListEvent, RecipeListOutcome,
+    RecipeListView,
     capabilities::{RecipeCapabilities, RecipeEffectStream},
 };
 
@@ -156,9 +158,21 @@ impl RecipeSection {
         (Self::new(caps), effects)
     }
 
+    /// The delete question is open, or a delete runs or has finished. The
+    /// read view keeps the pane until the delete ends (MAC-07).
+    fn detail_is_locked(detail: &RecipeDetail) -> bool {
+        match detail.view().status {
+            RecipeDetailStatus::Ready { deletion, .. } => deletion != RecipeDeletion::Idle,
+            RecipeDetailStatus::Loading
+            | RecipeDetailStatus::Failed(_)
+            | RecipeDetailStatus::Missing => false,
+        }
+    }
+
     fn can_create(&self) -> bool {
-        match self.pane.widget {
-            Pane::Empty | Pane::Detail(_) => true,
+        match &self.pane.widget {
+            Pane::Empty => true,
+            Pane::Detail(detail) => !Self::detail_is_locked(detail),
             Pane::Create(_) | Pane::Edit { .. } => false,
         }
     }
@@ -227,8 +241,8 @@ impl RecipeSection {
     fn new_recipe(&mut self) -> Command<RecipeSectionOutcome> {
         let return_to = match &self.pane.widget {
             Pane::Empty => None,
-            Pane::Detail(detail) => Some(detail.view().id),
-            Pane::Create(_) | Pane::Edit { .. } => return Command::empty(),
+            Pane::Detail(detail) if !Self::detail_is_locked(detail) => Some(detail.view().id),
+            Pane::Detail(_) | Pane::Create(_) | Pane::Edit { .. } => return Command::empty(),
         };
         let editor = RecipeEditor::new(self.caps.clone());
         self.show(Pane::Create(EditorPane {
@@ -239,12 +253,12 @@ impl RecipeSection {
     }
 
     /// Edit in the read view (REC-04). The read view must still show that
-    /// recipe.
+    /// recipe, with no delete asked or running.
     fn open_edit(&mut self, recipe: Recipe) -> Command<RecipeSectionOutcome> {
         let Pane::Detail(detail) = &self.pane.widget else {
             return Command::empty();
         };
-        if detail.view().id != recipe.id {
+        if detail.view().id != recipe.id || Self::detail_is_locked(detail) {
             return Command::empty();
         }
         let editor = RecipeEditor::edit(self.caps.clone(), &recipe);
@@ -267,7 +281,7 @@ impl RecipeSection {
         match &mut self.pane.widget {
             Pane::Empty => {}
             Pane::Detail(detail) => {
-                if detail.view().id == id {
+                if detail.view().id == id || Self::detail_is_locked(detail) {
                     return Command::empty();
                 }
             }
@@ -292,7 +306,10 @@ impl RecipeSection {
     }
 
     fn clear_selection(&mut self, scope: CommandScopeId) -> Command<RecipeSectionOutcome> {
-        if scope != self.pane.scope() || !matches!(self.pane.widget, Pane::Detail(_)) {
+        let Pane::Detail(detail) = &self.pane.widget else {
+            return Command::empty();
+        };
+        if scope != self.pane.scope() || Self::detail_is_locked(detail) {
             return Command::empty();
         }
         self.show(Pane::Empty)
@@ -305,8 +322,27 @@ impl RecipeSection {
         let Pane::Detail(detail) = &mut self.pane.widget else {
             return Command::empty();
         };
-        if let RecipeDetailOutcome::OpenEdit { recipe } = outcome {
-            return self.open_edit(recipe);
+        match outcome {
+            RecipeDetailOutcome::OpenEdit { recipe } => return self.open_edit(recipe),
+            RecipeDetailOutcome::Deleted { id } => {
+                let view = detail.view();
+                let deleted = matches!(
+                    view.status,
+                    RecipeDetailStatus::Ready {
+                        deletion: RecipeDeletion::Deleted,
+                        ..
+                    }
+                );
+                if !deleted || view.id != id {
+                    return Command::empty();
+                }
+                let reload = Self::list_command(self.list.reload());
+                let show = self.show(Pane::Empty);
+                return Command::select_all(vec![show, reload]);
+            }
+            RecipeDetailOutcome::LoadFinished(_)
+            | RecipeDetailOutcome::ConfirmationDecided(_)
+            | RecipeDetailOutcome::DeleteFinished(_) => {}
         }
         let was_missing = detail.view().status == RecipeDetailStatus::Missing;
         let command = detail.update(Message::Outcome(outcome));

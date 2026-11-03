@@ -29,6 +29,9 @@ struct EventCompositionTests {
         ))
         #expect(split.selectSection(.recipes) == .split(event: .selectSection(section: .recipes)))
         #expect(split.recipes(split.recipes.list(.refresh)) == .split(event: .recipes(event: .list(event: .refresh))))
+        #expect(split.recipes(split.recipes.list(.search(query: "sha"))) == .split(
+            event: .recipes(event: .list(event: .search(query: "sha")))
+        ))
         #expect(split.recipes.newRecipe == .newRecipe)
         #expect(split.recipes.editor(.save) == .editor(scope: ScopeId(value: 5), event: .save))
         #expect(catalog.detail(.edit) == .detail(scope: ScopeId(value: 4), event: .edit))

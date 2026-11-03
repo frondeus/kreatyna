@@ -319,6 +319,33 @@ final class MacDemoCaptureUITests: MacUITestCase {
         app.terminate()
     }
 
+    /// REC-06: Pasta is open; "sha" leaves only Shakshuka, "shax" matches nothing.
+    @MainActor
+    func testCaptureREC06Demo() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        let field = app.textFields["recipeTitleField"]
+        let rows = app.staticTexts.matching(identifier: "recipeRow")
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        for recipe in ["Shakshuka", "Roasted tomato pasta"] {
+            app.typeKey("n", modifierFlags: .command)
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            app.typeText(recipe)
+            app.typeKey("s", modifierFlags: .command)
+            XCTAssertTrue(rows[recipe].waitForExistence(timeout: 5))
+        }
+        XCTAssertTrue(waitFor(app.staticTexts["recipeTitle"], value: "Roasted tomato pasta"))
+
+        app.searchFields["recipeSearch"].click()
+        app.typeText("sha")
+        XCTAssertTrue(waitForNonExistence(rows["Roasted tomato pasta"]))
+        capture("01-search-sha", app)
+
+        app.typeText("x")
+        XCTAssertTrue(app.descendants(matching: .any)["recipeListNoMatches"].waitForExistence(timeout: 5))
+        capture("02-no-matches", app)
+        app.terminate()
+    }
+
     /// The ingredient list the demos start from (Garlic, Tomato, Basil, …).
     private func demoIngredients() throws -> String {
         let fixture = URL(fileURLWithPath: #filePath)

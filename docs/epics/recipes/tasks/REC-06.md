@@ -220,4 +220,18 @@ The full suite runs once per cycle, in the cycle's full-suite step.
 
 ## Validation
 
-Not run yet.
+| # | Check | Result |
+|---|---|---|
+| 1 | `cargo test --workspace` | 679 pass (19 new: 9 list tests with their cases, 3 section tests, 3 FFI checks). |
+| 2 | `cargo clippy --workspace --all-targets -- -D warnings` | No warnings. |
+| 3 | `cargo fmt --check` | No diff. |
+| 4 | `devenv shell -- mac-test --ui MacRecipeUITests` | TEST SUCCEEDED. All unit and snapshot tests, and 8 recipe UI tests with the new `testSearchNarrowsRecipes`. 4 new images; the 14 recipe images were deleted and recorded again. I compared each with its old image by eye: the only change is the search field and the rows below it. No ingredient image changed. |
+| 5 | `devenv shell -- ios-app-build` | Builds. |
+| 6 | `capture-demo.sh mac …/testCaptureREC06Demo …` | `REC-06-demo/01-search-sha.png`, `02-no-matches.png`. |
+| 7 | `jj diff --stat` per change | Change 1: 224. Change 2: 346. Change 3: 49. Change 4: 243 (images count 0). |
+
+### Differences from the plan
+
+- **Change 3:** the Mac drew nothing for `.noMatches` (`EmptyView`), not the empty state. Swift could not send a search in that change, so the state could not appear.
+- **"No matches" and the draft row:** during a search with no match, the list still shows the draft row, and "No matches for “…”" covers the rest. The Mac ingredient list does the same.
+- **Demo data:** the demo uses "Roasted tomato pasta" instead of "Pasta", and Pasta is the open recipe. The read view stays while its row is hidden (MAC-08/Q1).

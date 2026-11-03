@@ -19,7 +19,11 @@ struct MacIngredientList: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            MacSearchField(search: view.search, send: send)
+            MacSearchField(
+                search: view.search,
+                prompt: "Search ingredients",
+                identifier: "ingredientSearch"
+            ) { send(.search(query: $0)) }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
             content

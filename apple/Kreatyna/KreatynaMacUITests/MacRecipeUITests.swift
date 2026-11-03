@@ -101,6 +101,30 @@ final class MacRecipeUITests: MacUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["recipeListEmpty"].waitForExistence(timeout: 5))
     }
 
+    /// "sha" leaves only Shakshuka, and the open Pasta stays in the pane;
+    /// "shax" shows "No matches"; Esc brings both rows back (REC-06).
+    @MainActor
+    func testSearchNarrowsRecipes() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        create("Shakshuka", in: app)
+        create("Pasta", in: app)
+
+        // The search field has no ⌘F (MAC-08), so the test clicks it.
+        app.searchFields["recipeSearch"].click()
+        app.typeText("sha")
+        XCTAssertTrue(waitForNonExistence(recipeRow(named: "Pasta", in: app), timeout: 5))
+        XCTAssertTrue(recipeRow(named: "Shakshuka", in: app).exists)
+        XCTAssertTrue(waitForTitle(in: app, "Pasta"))
+
+        app.typeText("x")
+        XCTAssertTrue(app.descendants(matching: .any)["recipeListNoMatches"].waitForExistence(timeout: 5))
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(recipeRow(named: "Pasta", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(recipeRow(named: "Shakshuka", in: app).exists)
+    }
+
     /// Edit, a new title, ⌘S: the read view and the row show it (REC-04).
     /// The heading and the row keep the saved title until Save (MAC-06/Q1).
     @MainActor

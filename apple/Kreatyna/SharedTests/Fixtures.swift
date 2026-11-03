@@ -120,8 +120,8 @@ enum Fixtures {
         RecipeListRow(id: RecipeId(uuid: "recipe-\(title)"), title: title)
     }
 
-    static func recipeList(_ status: RecipeListStatus) -> RecipeListView {
-        RecipeListView(search: "", status: status)
+    static func recipeList(_ status: RecipeListStatus, search: String = "") -> RecipeListView {
+        RecipeListView(search: search, status: status)
     }
 
     /// The Recipes section: a list and an empty pane, a read view with its
@@ -130,6 +130,7 @@ enum Fixtures {
     /// asked or runs (REC-05).
     static func recipeSection(
         _ status: RecipeListStatus = .ready(rows: []),
+        search: String = "",
         pane: RecipePaneView = .empty
     ) -> RecipeSectionView {
         let canCreate = switch pane {
@@ -140,7 +141,7 @@ enum Fixtures {
         }
         let selected = if case .detail(let detail) = pane { detail.id } else { nil as RecipeId? }
         return RecipeSectionView(
-            list: recipeList(status),
+            list: recipeList(status, search: search),
             selected: selected,
             pane: ScopedRecipePaneView(scope: ScopeId(value: 5), value: pane),
             canCreate: canCreate

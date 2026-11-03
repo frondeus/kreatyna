@@ -11,12 +11,13 @@ extension View {
 
     /// Keeps a search field's `text` in step with Rust's `search`.
     ///
-    /// Typed text goes to Rust as `.search(query:)`. `TextEcho` keeps a render
-    /// that is one keystroke behind from erasing what the user typed.
+    /// Typed text goes to Rust through `send`, for example as the list's
+    /// `.search(query:)`. `TextEcho` keeps a render that is one keystroke
+    /// behind from erasing what the user typed.
     func rustSearchText(
         _ search: String,
         text: Binding<String>,
-        send: @escaping (IngredientListEvent) -> Void
+        send: @escaping (String) -> Void
     ) -> some View {
         modifier(RustSearchText(search: search, text: text, send: send))
     }
@@ -37,14 +38,14 @@ private struct RustSearchable: ViewModifier {
     func body(content: Content) -> some View {
         content
             .searchable(text: $text, prompt: "Search ingredients")
-            .rustSearchText(search, text: $text, send: send)
+            .rustSearchText(search, text: $text) { send(.search(query: $0)) }
     }
 }
 
 private struct RustSearchText: ViewModifier {
     let search: String
     @Binding var text: String
-    let send: (IngredientListEvent) -> Void
+    let send: (String) -> Void
 
     @State private var echo = TextEcho()
 
@@ -52,7 +53,7 @@ private struct RustSearchText: ViewModifier {
         content
             .onChange(of: text) { _, text in
                 if let query = echo.typed(text, displayed: search) {
-                    send(.search(query: query))
+                    send(query)
                 }
             }
             .onChange(of: search) { _, search in

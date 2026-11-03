@@ -111,6 +111,24 @@ extension MainActorTests {
             )
         }
 
+        /// "sha" in the search field: only Shakshuka is left (REC-06).
+        @Test(arguments: Appearance.allCases)
+        func searchedRecipeList(appearance: Appearance) {
+            snapshot(
+                recipeList(Fixtures.recipeSection(.ready(rows: [Fixtures.recipeRow("Shakshuka")]), search: "sha")),
+                appearance: appearance
+            )
+        }
+
+        /// No recipe title contains "shx" (REC-06).
+        @Test(arguments: Appearance.allCases)
+        func recipeListNoMatches(appearance: Appearance) {
+            snapshot(
+                recipeList(Fixtures.recipeSection(.noMatches, search: "shx")),
+                appearance: appearance
+            )
+        }
+
         /// New Recipe: the draft row first, the editor with "Coming soon" areas (REC-02).
         @Test(arguments: Appearance.allCases)
         func emptyRecipeEditor(appearance: Appearance) {
@@ -300,6 +318,15 @@ extension MainActorTests {
             )
             return MacMainView(
                 app: Fixtures.splitApp(section: .recipes, recipes: Fixtures.recipeSection(status, pane: pane)),
+                columnVisibility: .doubleColumn,
+                send: { _ in }
+            )
+        }
+
+        /// The Recipes section with an empty pane.
+        private func recipeList(_ section: RecipeSectionView) -> some View {
+            MacMainView(
+                app: Fixtures.splitApp(section: .recipes, recipes: section),
                 columnVisibility: .doubleColumn,
                 send: { _ in }
             )

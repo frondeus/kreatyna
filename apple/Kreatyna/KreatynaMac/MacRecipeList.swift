@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The Recipes section's list column. Rust sorts the rows by title. No
-/// search yet (REC-06).
+/// The Recipes section's list column, with the search field on top. Rust
+/// sorts the rows by title and filters them by the search (REC-06).
 ///
 /// Swift keeps no selection: the highlight is Rust's `selected`, and a click,
 /// an arrow key, or a ⌘-click only reports the new choice through `select`.
@@ -21,16 +21,25 @@ struct MacRecipeList: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        content
-            .navigationTitle("Recipes")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("New Recipe", systemImage: "plus", action: newRecipe)
-                        .keyboardShortcut("n", modifiers: .command)
-                        .disabled(!canCreate)
-                        .accessibilityIdentifier("newRecipe")
-                }
+        VStack(spacing: 0) {
+            MacSearchField(
+                search: view.search,
+                prompt: "Search recipes",
+                identifier: "recipeSearch"
+            ) { send(.search(query: $0)) }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+            content
+        }
+        .navigationTitle("Recipes")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("New Recipe", systemImage: "plus", action: newRecipe)
+                    .keyboardShortcut("n", modifiers: .command)
+                    .disabled(!canCreate)
+                    .accessibilityIdentifier("newRecipe")
             }
+        }
     }
 
     @ViewBuilder
@@ -52,39 +61,50 @@ struct MacRecipeList: View {
             }
             .accessibilityIdentifier("recipeListFailed")
         case .ready(let rows):
-            List(selection: MacListTag.selection(draftShown: draftRow != nil, selected: selected, select: select)) {
-                if let draftRow {
-                    Text(draftRow.isEmpty ? "New Recipe" : draftRow)
-                        .italic()
-                        .tag(MacListTag<RecipeId>.draft)
-                        .accessibilityIdentifier("recipeDraftRow")
-                }
-                ForEach(rows, id: \.id) { row in
-                    Text(row.title)
-                        .tag(MacListTag.item(row.id))
-                        .accessibilityIdentifier("recipeRow")
-                }
-            }
-            .accessibilityIdentifier("recipeList")
-            .focused($focused)
-            // A click selects through the binding but does not focus the list.
-            // Focusing it on each selection lets ↑ and ↓ work after a click.
-            // Not when the editor opens (`selected` becomes nil): Title has the focus then.
-            .onChange(of: selected) { if selected != nil { focused = true } }
-            .overlay {
-                // A draft row covers the empty state: something is being added.
-                if rows.isEmpty && draftRow == nil {
-                    ContentUnavailableView {
-                        Text("No recipes yet")
-                    } description: {
-                        Text("Recipes you add appear here.")
+            list(rows)
+                .overlay {
+                    // A draft row covers the empty state: something is being added.
+                    if rows.isEmpty && draftRow == nil {
+                        ContentUnavailableView {
+                            Text("No recipes yet")
+                        } description: {
+                            Text("Recipes you add appear here.")
+                        }
+                        .accessibilityIdentifier("recipeListEmpty")
                     }
-                    .accessibilityIdentifier("recipeListEmpty")
                 }
-            }
         case .noMatches:
-            // Swift does not send a search yet. The search field comes next.
-            EmptyView()
+            // The search never hides the draft row.
+            list([])
+                .overlay {
+                    ContentUnavailableView {
+                        Text("No matches for “\(view.search)”")
+                    }
+                    .accessibilityIdentifier("recipeListNoMatches")
+                }
         }
+    }
+
+    /// The draft row, if any, then `rows`.
+    private func list(_ rows: [RecipeListRow]) -> some View {
+        List(selection: MacListTag.selection(draftShown: draftRow != nil, selected: selected, select: select)) {
+            if let draftRow {
+                Text(draftRow.isEmpty ? "New Recipe" : draftRow)
+                    .italic()
+                    .tag(MacListTag<RecipeId>.draft)
+                    .accessibilityIdentifier("recipeDraftRow")
+            }
+            ForEach(rows, id: \.id) { row in
+                Text(row.title)
+                    .tag(MacListTag.item(row.id))
+                    .accessibilityIdentifier("recipeRow")
+            }
+        }
+        .accessibilityIdentifier("recipeList")
+        .focused($focused)
+        // A click selects through the binding but does not focus the list.
+        // Focusing it on each selection lets ↑ and ↓ work after a click.
+        // Not when the editor opens (`selected` becomes nil): Title has the focus then.
+        .onChange(of: selected) { if selected != nil { focused = true } }
     }
 }

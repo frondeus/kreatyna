@@ -1,19 +1,17 @@
+//! The recipe editor (REC-02, REC-04, REC-14): the title, Save, and
+//! "Discard changes?". The step canvas has its own file, `step_canvas.rs`.
 use kreatyna::{
-    capabilities::ResolveRender,
-    confirmation::{ConfirmationEvent, ConfirmationView},
+    confirmation::ConfirmationEvent,
     recipes::{
-        CanvasPoint, ConnectRefusal, DurationError, DurationInput, DurationParts, Recipe,
-        RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem,
-        RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeTitleError, Step, StepAfterView,
-        StepCanvasEvent, StepCanvasView, StepConnectionView, StepDurationS, StepDurationView,
-        StepEdge, StepEdges, StepId, StepInstructions, StepKind, StepLabel, StepNodeView,
-        StepNodesView, StepProblems, StepTitle, StepTitleError, StepWrite,
-        capabilities::{
-            RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
-        },
+        ConnectRefusal, DurationError, DurationInput, Recipe, RecipeEditorEvent,
+        RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView,
+        StepAfterView, StepCanvasEvent, StepCanvasView, StepConnectionView, StepDurationS,
+        StepDurationView, StepEdge, StepEdges, StepId, StepInstructions, StepKind, StepLabel,
+        StepNodeView, StepNodesView, StepProblems, StepTitle, StepTitleError, StepWrite,
+        capabilities::RecipeSaveError,
     },
 };
-use krucyfiks::{Command, Message, Widget, effects::CommandTestExt, test_utils::EmptyInitTest};
+use krucyfiks::{Message, Widget, effects::CommandTestExt, test_utils::EmptyInitTest};
 use test_case::test_case;
 use uuid::Uuid;
 
@@ -1184,33 +1182,9 @@ async fn a_failed_update_keeps_the_edit_editor_open_with_its_error(
 
 // Test support
 
-fn shakshuka() -> Recipe {
-    Recipe {
-        id: RecipeId::from(Uuid::from_u128(1)),
-        title: "Shakshuka".into(),
-        steps: vec![],
-        edges: StepEdges::default(),
-    }
-}
+mod recipe_editor_support;
 
-/// A saved recipe with two steps.
-fn pasta() -> Recipe {
-    Recipe {
-        id: RecipeId::from(Uuid::from_u128(2)),
-        title: "Pasta".into(),
-        steps: vec![boil_water(), cook_pasta()],
-        edges: StepEdges::default(),
-    }
-}
-
-/// `pasta()` with an arrow: Cook pasta comes after Boil water.
-/// `from_saved` cannot refuse this one edge.
-fn connected_pasta() -> Recipe {
-    Recipe {
-        edges: StepEdges::from_saved([boil_then_cook()]).unwrap_or_default(),
-        ..pasta()
-    }
-}
+use recipe_editor_support::*;
 
 /// The saved Cook pasta node, after Boil water shown as `label`.
 fn cook_after(label: StepLabel) -> StepNodeView {
@@ -1223,168 +1197,13 @@ fn cook_after(label: StepLabel) -> StepNodeView {
     }
 }
 
-fn boil_then_cook() -> StepEdge {
-    StepEdge {
-        from: boil_water().id,
-        to: cook_pasta().id,
-    }
-}
-
-fn boil_water() -> Step {
-    Step {
-        id: StepId::from(Uuid::from_u128(11)),
-        title: "Boil water".into(),
-        position: point(40, 40),
-        duration: None,
-        kind: StepKind::Active,
-        instructions: None,
-    }
-}
-
-fn cook_pasta() -> Step {
-    Step {
-        id: StepId::from(Uuid::from_u128(12)),
-        title: "Cook pasta".into(),
-        position: point(240, 40),
-        duration: None,
-        kind: StepKind::Active,
-        instructions: None,
-    }
-}
-
-/// A saved step with a duration, Waiting, and instructions.
-fn bake_sauce() -> Step {
-    Step {
-        id: StepId::from(Uuid::from_u128(13)),
-        title: "Bake sauce".into(),
-        position: point(440, 40),
-        duration: StepDurationS::try_new(1_200).ok(),
-        kind: StepKind::Waiting,
-        instructions: StepInstructions::try_new("Cover the dish.").ok(),
-    }
-}
-
-/// A saved recipe with `bake_sauce()` only.
-fn sauce() -> Recipe {
-    Recipe {
-        id: RecipeId::from(Uuid::from_u128(3)),
-        title: "Sauce".into(),
-        steps: vec![bake_sauce()],
-        edges: StepEdges::default(),
-    }
-}
-
 /// An id that names no step.
 fn unknown_step() -> StepId {
     StepId::from(Uuid::from_u128(99))
 }
 
-fn point(x: u32, y: u32) -> CanvasPoint {
-    CanvasPoint { x, y }
-}
-
-fn node(
-    id: StepId,
-    title: &str,
-    label: StepLabel,
-    position: CanvasPoint,
-    title_problem: Option<StepTitleError>,
-) -> StepNodeView {
-    StepNodeView {
-        id,
-        title: title.into(),
-        label,
-        position,
-        duration: StepDurationView::NotSet,
-        kind: StepKind::Active,
-        instructions: String::new(),
-        problems: StepProblems {
-            title: title_problem,
-            duration: None,
-        },
-        after: vec![],
-    }
-}
-
-fn set(text: &str, parts: DurationParts, whole_minutes: Option<u32>) -> StepDurationView {
-    StepDurationView::Set {
-        text: text.into(),
-        parts,
-        whole_minutes,
-    }
-}
-
-fn parts(days: u32, hours: u32, minutes: u32, seconds: u32) -> DurationParts {
-    DurationParts {
-        days,
-        hours,
-        minutes,
-        seconds,
-    }
-}
-
-fn titled(title: &str) -> StepLabel {
-    StepLabel::Titled {
-        title: title.into(),
-    }
-}
-
-/// A saved step's node: saved steps always pass the rules.
-fn saved_node(step: &Step) -> StepNodeView {
-    let duration = match step.duration {
-        None => StepDurationView::NotSet,
-        Some(duration) => set(&duration.text(), duration.parts(), duration.whole_minutes()),
-    };
-    StepNodeView {
-        duration,
-        kind: step.kind,
-        instructions: step
-            .instructions
-            .as_ref()
-            .map_or_else(String::new, |text| text.as_ref().to_owned()),
-        ..node(
-            step.id,
-            &step.title,
-            titled(&step.title),
-            step.position,
-            None,
-        )
-    }
-}
-
-/// The canvas of `recipe` as the edit editor opens it: no selection.
-fn saved_canvas(recipe: &Recipe) -> StepCanvasView {
-    canvas(StepNodesView::Unselected {
-        steps: recipe.steps.iter().map(saved_node).collect(),
-    })
-}
-
 fn no_steps() -> StepCanvasView {
     canvas(StepNodesView::Unselected { steps: vec![] })
-}
-
-/// `nodes` with no arrows and no refusal.
-fn canvas(nodes: StepNodesView) -> StepCanvasView {
-    StepCanvasView {
-        nodes,
-        connections: vec![],
-        refusal: None,
-    }
-}
-
-fn write(id: StepId, title: &str, position: CanvasPoint) -> anyhow::Result<StepWrite> {
-    Ok(StepWrite {
-        id,
-        title: StepTitle::try_new(title)?,
-        position,
-        duration: None,
-        kind: StepKind::Active,
-        instructions: None,
-    })
-}
-
-fn empty_title() -> RecipeEditorProblem {
-    RecipeEditorProblem::Invalid(RecipeTitleError::NotEmptyViolated)
 }
 
 fn editing(title: &str, problem: Option<RecipeEditorProblem>) -> RecipeEditorView {
@@ -1392,212 +1211,5 @@ fn editing(title: &str, problem: Option<RecipeEditorProblem>) -> RecipeEditorVie
         title: title.into(),
         canvas: no_steps(),
         status: RecipeEditorStatus::Editing { problem },
-    }
-}
-
-/// A store call that Save made, with the title it wrote.
-#[derive(Debug, PartialEq, Eq)]
-enum Write {
-    Created(String),
-    Updated(RecipeId, String),
-}
-
-struct Fixture {
-    editor: RecipeEditor,
-    effects: RecipeEffectStream,
-    /// The store calls of the saves, in order.
-    writes: Vec<Write>,
-    /// The steps that each store call wrote, in the order of `writes`.
-    written_steps: Vec<Vec<StepWrite>>,
-    /// The edges that each store call wrote, in the order of `writes`.
-    written_edges: Vec<StepEdges>,
-}
-
-impl Fixture {
-    /// An editor for a new recipe.
-    fn new() -> Self {
-        let (editor, effects) = RecipeEditor::test_fixture();
-        Self::with(editor, effects)
-    }
-
-    /// An editor for the saved `shakshuka()`.
-    fn edit() -> Self {
-        Self::edit_recipe(&shakshuka())
-    }
-
-    /// An editor for the saved `recipe`.
-    fn edit_recipe(recipe: &Recipe) -> Self {
-        let (editor, effects) = RecipeEditor::edit_test_fixture(recipe);
-        Self::with(editor, effects)
-    }
-
-    fn with(editor: RecipeEditor, effects: RecipeEffectStream) -> Self {
-        Self {
-            editor,
-            effects,
-            writes: vec![],
-            written_steps: vec![],
-            written_edges: vec![],
-        }
-    }
-
-    fn send(&mut self, event: RecipeEditorEvent) -> Command<RecipeEditorOutcome> {
-        self.editor.update(Message::Event(event))
-    }
-
-    /// Runs a command that only renders.
-    async fn render(&mut self, command: Command<RecipeEditorOutcome>) -> anyhow::Result<()> {
-        let mut command = command.driver(&mut self.effects);
-        command
-            .step()
-            .await?
-            .expect_effect()
-            .expect_render()
-            .resolve_render(|| async {})
-            .await?;
-        command.step().await?.expect_done();
-        Ok(())
-    }
-
-    /// Runs a command that renders, then reports one outcome.
-    async fn render_then_outcome(
-        &mut self,
-        command: Command<RecipeEditorOutcome>,
-    ) -> anyhow::Result<RecipeEditorOutcome> {
-        let mut command = command.driver(&mut self.effects);
-        command
-            .step()
-            .await?
-            .expect_effect()
-            .expect_render()
-            .resolve_render(|| async {})
-            .await?;
-        let outcome = command.step().await?.expect_outcome();
-        command.step().await?.expect_done();
-        Ok(outcome)
-    }
-
-    async fn type_title(&mut self, title: &str) -> anyhow::Result<()> {
-        let command = self.send(RecipeEditorEvent::SetTitle(title.into()));
-        self.render(command).await
-    }
-
-    /// Sends a canvas event that changes the canvas, and runs its render.
-    async fn canvas(&mut self, event: StepCanvasEvent) -> anyhow::Result<()> {
-        let command = self.send(RecipeEditorEvent::Canvas(event));
-        self.render(command).await
-    }
-
-    /// Right-click ▸ Add Step at `at`. Returns the new step's id.
-    async fn add_step(&mut self, at: CanvasPoint) -> anyhow::Result<StepId> {
-        self.canvas(StepCanvasEvent::Add { at }).await?;
-        self.selected()
-    }
-
-    async fn name_step(&mut self, id: StepId, title: &str) -> anyhow::Result<()> {
-        let title = title.into();
-        self.canvas(StepCanvasEvent::SetTitle { id, title }).await
-    }
-
-    /// A drop of the step `id` at `to`.
-    async fn move_step(&mut self, id: StepId, to: CanvasPoint) -> anyhow::Result<()> {
-        self.canvas(StepCanvasEvent::Move { id, to }).await
-    }
-
-    async fn set_duration(&mut self, id: StepId, input: DurationInput) -> anyhow::Result<()> {
-        self.canvas(StepCanvasEvent::SetDuration { id, input })
-            .await
-    }
-
-    /// A drop of a ● drag from `from` on the node `to`.
-    async fn connect(&mut self, from: StepId, to: StepId) -> anyhow::Result<()> {
-        self.canvas(StepCanvasEvent::Connect { from, to }).await
-    }
-
-    async fn delete_step(&mut self, id: StepId) -> anyhow::Result<()> {
-        self.canvas(StepCanvasEvent::Delete(id)).await
-    }
-
-    /// The id of the selected step.
-    fn selected(&self) -> anyhow::Result<StepId> {
-        match self.editor.view().canvas.nodes {
-            StepNodesView::Selected { selected, .. } => Ok(selected.id),
-            StepNodesView::Unselected { .. } | StepNodesView::ConnectionSelected { .. } => {
-                anyhow::bail!("no step is selected")
-            }
-        }
-    }
-
-    /// Runs a save command: its render, then the store call (create or
-    /// update) answered with `result`. Returns `SaveFinished`, not yet
-    /// dispatched.
-    async fn save(
-        &mut self,
-        save: Command<RecipeEditorOutcome>,
-        result: Result<Recipe, RecipeSaveError>,
-    ) -> anyhow::Result<RecipeEditorOutcome> {
-        let mut command = save.driver(&mut self.effects);
-        command
-            .step()
-            .await?
-            .expect_effect()
-            .expect_render()
-            .resolve_render(|| async {})
-            .await?;
-        let mut write = None;
-        let mut steps = None;
-        let mut edges = None;
-        let store = command.step().await?.expect_effect().expect_store();
-        match store.request {
-            RecipeStoreRequest::Create { .. } => {
-                store
-                    .resolve_create(|recipe| {
-                        write = Some(Write::Created(recipe.title.as_ref().to_owned()));
-                        steps = Some(recipe.steps);
-                        edges = Some(recipe.edges);
-                        async { result }
-                    })
-                    .await?
-            }
-            RecipeStoreRequest::Update { .. } => {
-                store
-                    .resolve_update(|id, recipe| {
-                        write = Some(Write::Updated(id, recipe.title.as_ref().to_owned()));
-                        steps = Some(recipe.steps);
-                        edges = Some(recipe.edges);
-                        async { result }
-                    })
-                    .await?
-            }
-            _ => anyhow::bail!("expected a create or an update"),
-        }
-        let finished = command.step().await?.expect_outcome();
-        command.step().await?.expect_done();
-        drop(command);
-        self.writes.extend(write);
-        self.written_steps.extend(steps);
-        self.written_edges.extend(edges);
-        Ok(finished)
-    }
-
-    /// Cancel on a changed title or step list: the editor asks "Discard
-    /// changes?".
-    async fn request_close(&mut self) -> anyhow::Result<()> {
-        let command = self.send(RecipeEditorEvent::RequestClose);
-        assert_eq!(
-            self.editor.view().status,
-            RecipeEditorStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
-        );
-        self.render(command).await
-    }
-
-    /// Answers "Discard changes?". Returns `ConfirmationDecided`, not yet
-    /// dispatched.
-    async fn decide(&mut self, event: ConfirmationEvent) -> anyhow::Result<RecipeEditorOutcome> {
-        let command = self.send(RecipeEditorEvent::Confirmation(event));
-        let mut command = command.driver(&mut self.effects);
-        let decided = command.step().await?.expect_outcome();
-        command.step().await?.expect_done();
-        Ok(decided)
     }
 }

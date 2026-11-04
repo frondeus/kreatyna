@@ -17,6 +17,10 @@ pub enum StepCanvasEvent {
     /// A drop after a drag. Puts the step at `to` and selects it
     /// (REC-15/Q1). Ignored for an id that names no step.
     Move { id: StepId, to: CanvasPoint },
+    /// Edit ▸ Delete Step (⌘⌫) on the selected node, or right-click ▸
+    /// Delete Step. Removes the step; a deleted selected step leaves nothing
+    /// selected. Ignored for an id that names no step.
+    Delete(StepId),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -156,7 +160,7 @@ impl StepCanvas {
                 None => CanvasChange::Unchanged,
             },
             StepCanvasEvent::SetTitle { id, title } => {
-                let Some(step) = self.steps.iter_mut().find(|step| step.id == id) else {
+                let Some(step) = self.step_mut(id) else {
                     return CanvasChange::Unchanged;
                 };
                 if step.title == title {
@@ -166,20 +170,46 @@ impl StepCanvas {
                 CanvasChange::Changed
             }
             StepCanvasEvent::Move { id, to } => {
-                let Some(step) = self.steps.iter_mut().find(|step| step.id == id) else {
+                let Some(step) = self.step_mut(id) else {
                     return CanvasChange::Unchanged;
                 };
                 let placed = step.place(to);
                 // Both run: the position and the selection can each change.
                 placed.or(self.select(id))
             }
+            StepCanvasEvent::Delete(id) => {
+                let Some(index) = self.index_of(id) else {
+                    return CanvasChange::Unchanged;
+                };
+                self.steps.remove(index);
+                // `selected` must always name a step in `steps`.
+                if self.selected == Some(id) {
+                    self.selected = None;
+                }
+                CanvasChange::Changed
+            }
         }
+    }
+
+    /// Where the step `id` is in `steps`. `None` for an id that names no
+    /// step.
+    fn index_of(&self, id: StepId) -> Option<usize> {
+        self.steps.iter().position(|step| step.id == id)
+    }
+
+    /// The step `id`. `None` for an id that names no step.
+    fn step(&self, id: StepId) -> Option<&DraftStep> {
+        self.steps.iter().find(|step| step.id == id)
+    }
+
+    fn step_mut(&mut self, id: StepId) -> Option<&mut DraftStep> {
+        self.steps.iter_mut().find(|step| step.id == id)
     }
 
     /// Selects the step `id`, and says whether the selection changed. An id
     /// that names no step changes nothing.
     pub(crate) fn select(&mut self, id: StepId) -> CanvasChange {
-        if self.selected == Some(id) || !self.steps.iter().any(|step| step.id == id) {
+        if self.selected == Some(id) || self.step(id).is_none() {
             return CanvasChange::Unchanged;
         }
         self.selected = Some(id);
@@ -216,9 +246,7 @@ impl StepCanvas {
     /// The canvas as Swift draws it. `show_problems` is true after the first
     /// Save.
     pub(crate) fn view(&self, show_problems: bool) -> StepCanvasView {
-        let selected = self
-            .selected
-            .and_then(|id| self.steps.iter().find(|step| step.id == id));
+        let selected = self.selected.and_then(|id| self.step(id));
         match selected {
             None => StepCanvasView::Unselected {
                 steps: self

@@ -331,6 +331,8 @@ pub enum StepCanvasEvent {
     SetTitle { id: core::StepId, title: String },
     /// A drop after a drag: the step goes to `to` and becomes selected.
     Move { id: core::StepId, to: CanvasPoint },
+    /// Edit ▸ Delete Step (⌘⌫) or right-click ▸ Delete Step.
+    Delete { id: core::StepId },
 }
 
 impl From<StepCanvasEvent> for core::StepCanvasEvent {
@@ -341,6 +343,7 @@ impl From<StepCanvasEvent> for core::StepCanvasEvent {
             StepCanvasEvent::ClearSelection => Self::ClearSelection,
             StepCanvasEvent::SetTitle { id, title } => Self::SetTitle { id, title },
             StepCanvasEvent::Move { id, to } => Self::Move { id, to: to.into() },
+            StepCanvasEvent::Delete { id } => Self::Delete(id),
         }
     }
 }

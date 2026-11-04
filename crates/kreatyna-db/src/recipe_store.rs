@@ -77,8 +77,8 @@ fn checked(row: RecipeRow) -> Result<RecipeRow, StoreFailure> {
     Ok(row)
 }
 
-/// The recipe with this id and its steps. The unique index on `remote_id`
-/// finds at most one.
+/// The recipe with this id, its steps, and their edges. The unique index on
+/// `remote_id` finds at most one.
 fn record(connection: &mut SqliteConnection, id: RecipeId) -> Result<Option<Recipe>, StoreFailure> {
     let Some(row) = recipes::table
         .filter(recipes::remote_id.eq(RemoteRecipeId(id)))
@@ -217,7 +217,8 @@ fn create_in_transaction(
 
 /// Runs inside an immediate transaction, like `create_in_transaction`. The
 /// recipe's own title key is not a conflict, so "Shakshuka" can become
-/// "shakshuka". The new step list replaces the old one; a step keeps its id.
+/// "shakshuka". The new steps and edges replace the old ones; a step keeps
+/// its id.
 fn update_in_transaction(
     connection: &mut SqliteConnection,
     id: RecipeId,

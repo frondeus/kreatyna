@@ -115,7 +115,8 @@ struct MacStepCanvas: View {
         }
     }
 
-    /// Every step, in the order added.
+    /// Every step, in the order added, but the selected one last: the
+    /// order Swift draws them, so the last step under a point is on top.
     private var steps: [StepNodeView] {
         switch canvas.nodes {
         case .unselected(let steps), .connectionSelected(_, let steps): steps
@@ -434,8 +435,8 @@ struct MacStepNode: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(text)
         .accessibilityValue(details)
-            .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-            .accessibilityIdentifier("stepNode")
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityIdentifier("stepNode")
     }
 
     private var text: String {

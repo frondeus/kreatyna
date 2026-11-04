@@ -67,13 +67,14 @@ pub trait RecipeStore: Send + Sync {
     /// (`ingredients::name_key` of the title). Title keys are unique, so the
     /// order is complete.
     async fn list(&self) -> Result<Vec<RecipeSummary>, RecipeLoadError>;
-    /// The recipe with this id and its steps, or `None` when no recipe has it.
+    /// The recipe with this id, its steps, and their arrows, or `None` when
+    /// no recipe has it.
     async fn get(&self, id: RecipeId) -> Result<Option<Recipe>, RecipeLoadError>;
-    /// Saves a new recipe with a new id, and its steps. Fails with
+    /// Saves a new recipe with a new id, its steps, and their arrows. Fails with
     /// `DuplicateTitle` when another recipe has the same title key.
     async fn create(&self, recipe: NewRecipe) -> Result<Recipe, RecipeSaveError>;
-    /// Saves new data for the recipe with this id: the title and the whole
-    /// step list, which replaces the old one. Fails with `NotFound` when
+    /// Saves new data for the recipe with this id: the title, and the whole
+    /// step list and arrows, which replace the old ones. Fails with `NotFound` when
     /// no recipe has the id (it never inserts one), and with `DuplicateTitle`
     /// when another recipe has the same title key.
     async fn update(&self, id: RecipeId, recipe: RecipeUpdate) -> Result<Recipe, RecipeSaveError>;

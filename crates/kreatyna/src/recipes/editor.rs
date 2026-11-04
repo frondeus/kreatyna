@@ -1,6 +1,7 @@
 //! The recipe editor in the detail pane. It creates a recipe from a title
-//! (REC-02) or edits a saved recipe's title (REC-04). It adds and names
-//! the recipe's steps on a canvas (REC-14).
+//! (REC-02) or edits a saved recipe's title (REC-04). On a canvas it adds
+//! and names the recipe's steps (REC-14), moves them (REC-15), deletes them
+//! (REC-16), sets their details (REC-17), and connects them (REC-18).
 use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
 use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
@@ -19,8 +20,8 @@ pub enum RecipeEditorEvent {
     Canvas(StepCanvasEvent),
     /// Checks the recipe title and every step title, then saves.
     Save,
-    /// Cancel. A changed title or step list asks "Discard changes?" first
-    /// (E-10).
+    /// Cancel. A changed title, step, or arrow asks "Discard changes?"
+    /// first (E-10).
     RequestClose,
     Confirmation(ConfirmationEvent),
 }
@@ -38,8 +39,8 @@ pub enum RecipeEditorOutcome {
     Discarded,
 }
 
-/// Why the last Save did not save. A step's problem lives on its node
-/// (`StepNodeView::problem`).
+/// Why the last Save did not save. A step's problems live on its node
+/// (`StepNodeView::problems`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecipeEditorProblem {
     Invalid(RecipeTitleError),
@@ -170,9 +171,9 @@ impl RecipeEditor {
         (Self::edit(caps, recipe), effects)
     }
 
-    /// Whether the title or the steps differ from the ones the editor
-    /// opened with: an empty title and no steps for a new recipe, the stored
-    /// ones for a saved one.
+    /// Whether the title, the steps, or the arrows differ from the ones the
+    /// editor opened with: an empty title, no steps, and no arrows for a new
+    /// recipe, the stored ones for a saved one.
     pub(crate) fn is_dirty(&self) -> bool {
         let opened_with = self.target.opened_with();
         self.title != opened_with.title

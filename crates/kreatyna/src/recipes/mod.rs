@@ -34,5 +34,6 @@ pub use section::{
     RecipeSectionView,
 };
 pub use step_canvas::{
-    StepCanvasEvent, StepCanvasView, StepDurationView, StepLabel, StepNodeView, StepProblems,
+    StepAfterView, StepCanvasEvent, StepCanvasView, StepDurationView, StepLabel, StepNodeView,
+    StepNodesView, StepProblems,
 };

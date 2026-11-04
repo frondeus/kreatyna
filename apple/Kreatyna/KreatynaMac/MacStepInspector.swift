@@ -12,7 +12,7 @@ struct MacStepInspector: View {
 
     var body: some View {
         Group {
-            switch canvas {
+            switch canvas.nodes {
             case .unselected:
                 Text("Select a step")
                     .foregroundStyle(.secondary)

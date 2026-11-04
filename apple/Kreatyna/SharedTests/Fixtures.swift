@@ -127,14 +127,22 @@ enum Fixtures {
     static func stepNode(
         _ title: String, x: UInt32, y: UInt32, label: StepLabel? = nil,
         duration: StepDurationView = .notSet, kind: StepKind = .active, instructions: String = "",
-        problem: StepTitleError? = nil, durationProblem: DurationError? = nil, key: String? = nil
+        problem: StepTitleError? = nil, durationProblem: DurationError? = nil, key: String? = nil,
+        after: [StepAfterView] = []
     ) -> StepNodeView {
         StepNodeView(
             id: StepId(uuid: "step-\(key ?? title)"), title: title,
             label: label ?? .titled(title: title),
             position: CanvasPoint(x: x, y: y), duration: duration, kind: kind,
-            instructions: instructions, problems: StepProblems(title: problem, duration: durationProblem)
+            instructions: instructions, problems: StepProblems(title: problem, duration: durationProblem),
+            after: after
         )
+    }
+
+    /// The editor's canvas: `nodes`, with `connections` as arrows and no
+    /// refusal.
+    static func canvas(_ nodes: StepNodesView, connections: [StepEdge] = []) -> StepCanvasView {
+        StepCanvasView(nodes: nodes, connections: connections, refusal: nil)
     }
 
     /// A duration as Rust shows it: `text` on the node, `parts` in the unit

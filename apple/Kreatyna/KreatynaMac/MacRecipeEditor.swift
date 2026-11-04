@@ -78,7 +78,7 @@ struct MacRecipeEditor: View {
 
     /// Edit ▸ Delete Step for the selected step; absent with no selection.
     private var deleteSelectedStep: DeleteStepAction? {
-        guard case .selected(let selected, _) = view.canvas else { return nil }
+        guard case .selected(let selected, _) = view.canvas.nodes else { return nil }
         let id = selected.id
         return DeleteStepAction(id: id) { send(.canvas(event: .delete(id: id))) }
     }

@@ -7,7 +7,7 @@ use kreatyna::{
         RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeListEvent, RecipeListRow,
         RecipeListStatus, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
         RecipeSectionView, RecipeSummary, Step, StepCanvasView, StepDurationView, StepEdges,
-        StepId, StepKind, StepLabel, StepNodeView, StepProblems,
+        StepId, StepKind, StepLabel, StepNodeView, StepNodesView, StepProblems,
         capabilities::{
             RecipeDeleteError, RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError,
             RecipeStoreRequest, ResolveRecipeStore,
@@ -873,7 +873,7 @@ fn create(title: &str, draft_row: &str) -> RecipePaneView {
     RecipePaneView::Create {
         editor: RecipeEditorView {
             title: title.into(),
-            canvas: StepCanvasView::Unselected { steps: vec![] },
+            canvas: canvas(StepNodesView::Unselected { steps: vec![] }),
             status: RecipeEditorStatus::Editing { problem: None },
         },
         draft_row: draft_row.into(),
@@ -898,12 +898,13 @@ fn editing(saved: &Recipe, title: &str) -> RecipePaneView {
             kind: step.kind,
             instructions: String::new(),
             problems: StepProblems::default(),
+            after: vec![],
         })
         .collect();
     RecipePaneView::Edit {
         editor: RecipeEditorView {
             title: title.into(),
-            canvas: StepCanvasView::Unselected { steps },
+            canvas: canvas(StepNodesView::Unselected { steps }),
             status: RecipeEditorStatus::Editing { problem: None },
         },
         saved_title: saved.title.clone(),
@@ -1167,5 +1168,14 @@ impl Fixture {
         let finished = self.save_finished(result).await?;
         let command = self.section.update(Message::Outcome(finished));
         self.run_until_outcome(command).await
+    }
+}
+
+/// `nodes` with no arrows and no refusal.
+fn canvas(nodes: StepNodesView) -> StepCanvasView {
+    StepCanvasView {
+        nodes,
+        connections: vec![],
+        refusal: None,
     }
 }

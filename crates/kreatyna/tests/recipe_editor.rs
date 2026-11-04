@@ -4,9 +4,10 @@ use kreatyna::{
     recipes::{
         CanvasPoint, DurationError, DurationInput, DurationParts, Recipe, RecipeEditor,
         RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus,
-        RecipeEditorView, RecipeId, RecipeTitleError, Step, StepCanvasEvent, StepCanvasView,
-        StepDurationS, StepDurationView, StepEdge, StepEdges, StepId, StepInstructions, StepKind,
-        StepLabel, StepNodeView, StepProblems, StepTitle, StepTitleError, StepWrite,
+        RecipeEditorView, RecipeId, RecipeTitleError, Step, StepAfterView, StepCanvasEvent,
+        StepCanvasView, StepDurationS, StepDurationView, StepEdge, StepEdges, StepId,
+        StepInstructions, StepKind, StepLabel, StepNodeView, StepNodesView, StepProblems,
+        StepTitle, StepTitleError, StepWrite,
         capabilities::{
             RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
         },
@@ -143,8 +144,8 @@ async fn add_step_adds_an_untitled_step_at_the_point_and_selects_it() -> anyhow:
     }));
     let id = f.selected()?;
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Selected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Selected {
             selected: node(id, "", StepLabel::Untitled, point(120, 80), None),
             others: vec![],
         }
@@ -166,8 +167,8 @@ async fn naming_a_step_keeps_the_raw_title_and_renders(
         title: title.into(),
     }));
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Selected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Selected {
             selected: node(id, title, label, point(120, 80), None),
             others: vec![],
         }
@@ -181,8 +182,8 @@ async fn a_click_on_a_node_selects_it_and_a_click_on_empty_canvas_clears_it() ->
     let mut f = Fixture::edit_recipe(&pasta());
     f.canvas(StepCanvasEvent::Select(cook_pasta().id)).await?;
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Selected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Selected {
             selected: saved_node(&cook_pasta()),
             others: vec![saved_node(&boil_water())],
         }
@@ -223,14 +224,49 @@ async fn an_edit_editor_opens_with_the_saved_steps_and_no_selection() {
 }
 
 #[tokio::test]
+async fn an_edit_editor_shows_the_saved_arrows_and_each_steps_after() {
+    let f = Fixture::edit_recipe(&connected_pasta());
+    assert_eq!(
+        f.editor.view().canvas,
+        StepCanvasView {
+            nodes: StepNodesView::Unselected {
+                steps: vec![saved_node(&boil_water()), cook_after(titled("Boil water"))],
+            },
+            connections: vec![boil_then_cook()],
+            refusal: None,
+        }
+    );
+}
+
+#[tokio::test]
+async fn after_shows_the_earlier_steps_label_as_typed() -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&connected_pasta());
+    f.name_step(boil_water().id, "  ").await?;
+    assert_eq!(
+        f.editor.view().canvas.nodes,
+        StepNodesView::Unselected {
+            steps: vec![
+                StepNodeView {
+                    title: "  ".into(),
+                    label: StepLabel::Untitled,
+                    ..saved_node(&boil_water())
+                },
+                cook_after(StepLabel::Untitled),
+            ],
+        }
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn save_in_an_edit_editor_writes_the_changed_and_the_added_steps() -> anyhow::Result<()> {
-    let mut f = Fixture::edit_recipe(&pasta());
+    let mut f = Fixture::edit_recipe(&connected_pasta());
     f.name_step(boil_water().id, "Boil salted water").await?;
     let drain = f.add_step(point(440, 40)).await?;
     f.name_step(drain, "Drain").await?;
 
     let save = f.send(RecipeEditorEvent::Save);
-    f.save(save, Ok(pasta())).await?;
+    f.save(save, Ok(connected_pasta())).await?;
     assert_eq!(f.writes, [Write::Updated(pasta().id, "Pasta".into())]);
     assert_eq!(
         f.written_steps,
@@ -265,8 +301,8 @@ async fn a_move_puts_the_step_at_the_point_and_selects_it(
         to: point(320, 200),
     }));
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Selected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Selected {
             selected: node(
                 boil_water().id,
                 "Boil water",
@@ -288,8 +324,8 @@ async fn a_move_to_the_same_point_selects_an_unselected_step() -> anyhow::Result
         to: boil_water().position,
     }));
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Selected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Selected {
             selected: saved_node(&boil_water()),
             others: vec![saved_node(&cook_pasta())],
         }
@@ -322,8 +358,8 @@ async fn deleting_the_selected_step_removes_it_and_clears_the_selection() -> any
         boil_water().id,
     )));
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Unselected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Unselected {
             steps: vec![saved_node(&cook_pasta())],
         }
     );
@@ -336,8 +372,8 @@ async fn deleting_an_unselected_step_keeps_the_selection() -> anyhow::Result<()>
     f.canvas(StepCanvasEvent::Select(cook_pasta().id)).await?;
     f.delete_step(boil_water().id).await?;
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Selected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Selected {
             selected: saved_node(&cook_pasta()),
             others: vec![],
         }
@@ -386,8 +422,8 @@ async fn an_edit_editor_shows_a_saved_steps_duration_kind_and_instructions() -> 
     let mut f = Fixture::edit_recipe(&sauce());
     f.canvas(StepCanvasEvent::Select(bake_sauce().id)).await?;
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Selected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Selected {
             selected: StepNodeView {
                 duration: set("20 min", parts(0, 0, 20, 0), Some(20)),
                 kind: StepKind::Waiting,
@@ -421,8 +457,8 @@ async fn setting_the_duration_renders_the_step_with_it(
     }));
     // No problem before the first Save, even past 365 days.
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Unselected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Unselected {
             steps: vec![StepNodeView {
                 duration: expected,
                 ..saved_node(&bake_sauce())
@@ -447,8 +483,8 @@ async fn the_kind_and_the_raw_instructions_render() -> anyhow::Result<()> {
     })
     .await?;
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Unselected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Unselected {
             steps: vec![
                 saved_node(&boil_water()),
                 StepNodeView {
@@ -633,7 +669,7 @@ async fn edits_steps_save_and_cancel_are_ignored_while_saving() -> anyhow::Resul
         f.editor.view(),
         RecipeEditorView {
             title: "Shakshuka".into(),
-            canvas: StepCanvasView::Selected {
+            canvas: canvas(StepNodesView::Selected {
                 selected: node(
                     onion,
                     "Dice onion",
@@ -642,7 +678,7 @@ async fn edits_steps_save_and_cancel_are_ignored_while_saving() -> anyhow::Resul
                     None
                 ),
                 others: vec![],
-            },
+            }),
             status: RecipeEditorStatus::Saving,
         }
     );
@@ -688,7 +724,7 @@ async fn save_with_an_untitled_step_selects_the_first_one_and_does_not_call_the_
         f.editor.view(),
         RecipeEditorView {
             title: title.into(),
-            canvas: StepCanvasView::Selected {
+            canvas: canvas(StepNodesView::Selected {
                 selected: node(
                     first,
                     "",
@@ -706,7 +742,7 @@ async fn save_with_an_untitled_step_selects_the_first_one_and_does_not_call_the_
                     ),
                     node(second, "", StepLabel::Untitled, point(440, 40), untitled),
                 ],
-            },
+            }),
             status: RecipeEditorStatus::Editing { problem },
         }
     );
@@ -728,7 +764,7 @@ async fn save_with_a_duration_past_365_days_selects_that_step_and_does_not_call_
         f.editor.view(),
         RecipeEditorView {
             title: "Pasta".into(),
-            canvas: StepCanvasView::Selected {
+            canvas: canvas(StepNodesView::Selected {
                 selected: StepNodeView {
                     duration: StepDurationView::TooLong { parts: too_long },
                     problems: StepProblems {
@@ -738,7 +774,7 @@ async fn save_with_a_duration_past_365_days_selects_that_step_and_does_not_call_
                     ..saved_node(&cook_pasta())
                 },
                 others: vec![saved_node(&boil_water())],
-            },
+            }),
             status: RecipeEditorStatus::Editing { problem: None },
         }
     );
@@ -748,8 +784,8 @@ async fn save_with_a_duration_past_365_days_selects_that_step_and_does_not_call_
     // A duration in range clears the problem at once.
     f.set_duration(id, DurationInput::Minutes(10)).await?;
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Selected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Selected {
             selected: StepNodeView {
                 duration: set("10 min", parts(0, 0, 10, 0), Some(10)),
                 ..saved_node(&cook_pasta())
@@ -770,16 +806,16 @@ async fn after_the_first_save_naming_a_step_checks_its_title_again() -> anyhow::
 
     f.name_step(id, "Dice onion").await?;
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Selected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Selected {
             selected: node(id, "Dice onion", titled("Dice onion"), point(40, 40), None),
             others: vec![],
         }
     );
     f.name_step(id, "  ").await?;
     assert_eq!(
-        f.editor.view().canvas,
-        StepCanvasView::Selected {
+        f.editor.view().canvas.nodes,
+        StepNodesView::Selected {
             selected: node(
                 id,
                 "  ",
@@ -998,14 +1034,33 @@ fn shakshuka() -> Recipe {
     }
 }
 
-/// A saved recipe with two steps: Cook pasta comes after Boil water.
-/// `from_saved` cannot refuse this one edge.
+/// A saved recipe with two steps.
 fn pasta() -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(2)),
         title: "Pasta".into(),
         steps: vec![boil_water(), cook_pasta()],
+        edges: StepEdges::default(),
+    }
+}
+
+/// `pasta()` with an arrow: Cook pasta comes after Boil water.
+/// `from_saved` cannot refuse this one edge.
+fn connected_pasta() -> Recipe {
+    Recipe {
         edges: StepEdges::from_saved([boil_then_cook()]).unwrap_or_default(),
+        ..pasta()
+    }
+}
+
+/// The saved Cook pasta node, after Boil water shown as `label`.
+fn cook_after(label: StepLabel) -> StepNodeView {
+    StepNodeView {
+        after: vec![StepAfterView {
+            id: boil_water().id,
+            label,
+        }],
+        ..saved_node(&cook_pasta())
     }
 }
 
@@ -1088,6 +1143,7 @@ fn node(
             title: title_problem,
             duration: None,
         },
+        after: vec![],
     }
 }
 
@@ -1139,13 +1195,22 @@ fn saved_node(step: &Step) -> StepNodeView {
 
 /// The canvas of `recipe` as the edit editor opens it: no selection.
 fn saved_canvas(recipe: &Recipe) -> StepCanvasView {
-    StepCanvasView::Unselected {
+    canvas(StepNodesView::Unselected {
         steps: recipe.steps.iter().map(saved_node).collect(),
-    }
+    })
 }
 
 fn no_steps() -> StepCanvasView {
-    StepCanvasView::Unselected { steps: vec![] }
+    canvas(StepNodesView::Unselected { steps: vec![] })
+}
+
+/// `nodes` with no arrows and no refusal.
+fn canvas(nodes: StepNodesView) -> StepCanvasView {
+    StepCanvasView {
+        nodes,
+        connections: vec![],
+        refusal: None,
+    }
 }
 
 fn write(id: StepId, title: &str, position: CanvasPoint) -> anyhow::Result<StepWrite> {
@@ -1291,9 +1356,9 @@ impl Fixture {
 
     /// The id of the selected step.
     fn selected(&self) -> anyhow::Result<StepId> {
-        match self.editor.view().canvas {
-            StepCanvasView::Selected { selected, .. } => Ok(selected.id),
-            StepCanvasView::Unselected { .. } => anyhow::bail!("no step is selected"),
+        match self.editor.view().canvas.nodes {
+            StepNodesView::Selected { selected, .. } => Ok(selected.id),
+            StepNodesView::Unselected { .. } => anyhow::bail!("no step is selected"),
         }
     }
 

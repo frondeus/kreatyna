@@ -419,6 +419,64 @@ pub struct StepNodeView {
     pub instructions: String,
     /// Only after the first Save: the rules this step breaks.
     pub problems: StepProblems,
+    /// The inspector's After: the steps with an arrow into this one, in the
+    /// order added (REC-18).
+    pub after: Vec<StepAfterView>,
+}
+
+/// One step of the inspector's After.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct StepAfterView {
+    pub id: core::StepId,
+    pub label: StepLabel,
+}
+
+impl From<core::StepAfterView> for StepAfterView {
+    fn from(value: core::StepAfterView) -> Self {
+        Self {
+            id: value.id,
+            label: value.label.into(),
+        }
+    }
+}
+
+/// "`to` comes after `from`": an arrow from the ● of `from` to the ○ of
+/// `to` (REC-18).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct StepEdge {
+    pub from: core::StepId,
+    pub to: core::StepId,
+}
+
+impl From<core::StepEdge> for StepEdge {
+    fn from(value: core::StepEdge) -> Self {
+        Self {
+            from: value.from,
+            to: value.to,
+        }
+    }
+}
+
+/// Why Rust refused a connection (REC-18/Q2). Swift shows the line under
+/// the canvas.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ConnectRefusal {
+    /// "A step cannot come after itself."
+    SameStep,
+    /// "These steps are already connected."
+    Duplicate,
+    /// "That would make a loop."
+    Loop,
+}
+
+impl From<core::ConnectRefusal> for ConnectRefusal {
+    fn from(value: core::ConnectRefusal) -> Self {
+        match value {
+            core::ConnectRefusal::SameStep => Self::SameStep,
+            core::ConnectRefusal::Duplicate => Self::Duplicate,
+            core::ConnectRefusal::Loop => Self::Loop,
+        }
+    }
 }
 
 impl From<core::StepNodeView> for StepNodeView {
@@ -432,12 +490,34 @@ impl From<core::StepNodeView> for StepNodeView {
             kind: value.kind.into(),
             instructions: value.instructions,
             problems: value.problems.into(),
+            after: value.after.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+/// The canvas as Swift draws it (REC-18): the nodes, the arrows under them,
+/// and the line under the canvas.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct StepCanvasView {
+    pub nodes: StepNodesView,
+    /// One arrow each, from the ● of `from` to the ○ of `to`.
+    pub connections: Vec<StepEdge>,
+    /// The last refused connection, until the next change.
+    pub refusal: Option<ConnectRefusal>,
+}
+
+impl From<core::StepCanvasView> for StepCanvasView {
+    fn from(value: core::StepCanvasView) -> Self {
+        Self {
+            nodes: value.nodes.into(),
+            connections: value.connections.into_iter().map(Into::into).collect(),
+            refusal: value.refusal.map(Into::into),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum StepCanvasView {
+pub enum StepNodesView {
     /// The inspector shows "Select a step". The steps are in the order added.
     Unselected { steps: Vec<StepNodeView> },
     /// The inspector shows `selected`. `others` are the other steps, in the
@@ -448,13 +528,13 @@ pub enum StepCanvasView {
     },
 }
 
-impl From<core::StepCanvasView> for StepCanvasView {
-    fn from(value: core::StepCanvasView) -> Self {
+impl From<core::StepNodesView> for StepNodesView {
+    fn from(value: core::StepNodesView) -> Self {
         match value {
-            core::StepCanvasView::Unselected { steps } => Self::Unselected {
+            core::StepNodesView::Unselected { steps } => Self::Unselected {
                 steps: steps.into_iter().map(Into::into).collect(),
             },
-            core::StepCanvasView::Selected { selected, others } => Self::Selected {
+            core::StepNodesView::Selected { selected, others } => Self::Selected {
                 selected: selected.into(),
                 others: others.into_iter().map(Into::into).collect(),
             },

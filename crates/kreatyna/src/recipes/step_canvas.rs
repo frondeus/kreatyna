@@ -2,8 +2,8 @@
 //! canvas has no effects, so it is a plain struct, not a widget: the editor
 //! renders after each change.
 use super::{
-    CanvasPoint, DurationError, DurationInput, DurationParts, Step, StepDurationS, StepEdges,
-    StepId, StepInstructions, StepKind, StepTitle, StepTitleError, StepWrite,
+    CanvasPoint, ConnectRefusal, DurationError, DurationInput, DurationParts, Step, StepDurationS,
+    StepEdge, StepEdges, StepId, StepInstructions, StepKind, StepTitle, StepTitleError, StepWrite,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,8 +36,21 @@ pub enum StepCanvasEvent {
     SetInstructions { id: StepId, text: String },
 }
 
+/// The canvas as Swift draws it (REC-18): the nodes, the arrows under them,
+/// and the line under the canvas.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum StepCanvasView {
+pub struct StepCanvasView {
+    pub nodes: StepNodesView,
+    /// One arrow each, from the ● of `from` to the ○ of `to`. In one fixed
+    /// order (by `from`, then `to`), not the order connected.
+    pub connections: Vec<StepEdge>,
+    /// The last refused connection, until the next change (REC-18/Q2).
+    /// Always `None` until the editor can connect steps.
+    pub refusal: Option<ConnectRefusal>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StepNodesView {
     /// The inspector shows "Select a step". The steps are in the order added.
     Unselected { steps: Vec<StepNodeView> },
     /// The inspector shows `selected`. `others` are the other steps, in the
@@ -64,6 +77,16 @@ pub struct StepNodeView {
     pub instructions: String,
     /// Only after the first Save: the rules this step breaks.
     pub problems: StepProblems,
+    /// The inspector's After: the steps with an arrow into this one, in the
+    /// order added (REC-18).
+    pub after: Vec<StepAfterView>,
+}
+
+/// One step of the inspector's After.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StepAfterView {
+    pub id: StepId,
+    pub label: StepLabel,
 }
 
 /// A step's duration as the node and the Duration field show it.
@@ -178,17 +201,11 @@ struct DraftStep {
 }
 
 impl DraftStep {
-    fn node(&self, show_problems: bool) -> StepNodeView {
-        let checked = StepTitle::try_new(self.title.as_str());
-        let label = match &checked {
-            Ok(title) => StepLabel::Titled {
-                title: title.clone().into_inner(),
-            },
-            Err(StepTitleError::NotEmptyViolated) => StepLabel::Untitled,
-        };
+    /// The node, with `after` the steps that come before this one.
+    fn node(&self, show_problems: bool, after: Vec<StepAfterView>) -> StepNodeView {
         let problems = if show_problems {
             StepProblems {
-                title: checked.err(),
+                title: StepTitle::try_new(self.title.as_str()).err(),
                 duration: self.duration.checked().err(),
             }
         } else {
@@ -197,12 +214,23 @@ impl DraftStep {
         StepNodeView {
             id: self.id,
             title: self.title.clone(),
-            label,
+            label: self.label(),
             position: self.position,
             duration: self.duration.view(),
             kind: self.kind,
             instructions: self.instructions.clone(),
             problems,
+            after,
+        }
+    }
+
+    /// What the node shows. The StepTitle rule decides it.
+    fn label(&self) -> StepLabel {
+        match StepTitle::try_new(self.title.as_str()) {
+            Ok(title) => StepLabel::Titled {
+                title: title.into_inner(),
+            },
+            Err(StepTitleError::NotEmptyViolated) => StepLabel::Untitled,
         }
     }
 
@@ -403,24 +431,43 @@ impl StepCanvas {
     /// The canvas as Swift draws it. `show_problems` is true after the first
     /// Save.
     pub(crate) fn view(&self, show_problems: bool) -> StepCanvasView {
+        let node = |step: &DraftStep| step.node(show_problems, self.after(step.id));
         let selected = self.selected.and_then(|id| self.step(id));
-        match selected {
-            None => StepCanvasView::Unselected {
-                steps: self
-                    .steps
-                    .iter()
-                    .map(|step| step.node(show_problems))
-                    .collect(),
+        let nodes = match selected {
+            None => StepNodesView::Unselected {
+                steps: self.steps.iter().map(node).collect(),
             },
-            Some(selected) => StepCanvasView::Selected {
-                selected: selected.node(show_problems),
+            Some(selected) => StepNodesView::Selected {
+                selected: node(selected),
                 others: self
                     .steps
                     .iter()
                     .filter(|step| step.id != selected.id)
-                    .map(|step| step.node(show_problems))
+                    .map(node)
                     .collect(),
             },
+        };
+        StepCanvasView {
+            nodes,
+            connections: self.edges.iter().copied().collect(),
+            refusal: None,
         }
+    }
+
+    /// The steps with an arrow into `step`, in the order added.
+    fn after(&self, step: StepId) -> Vec<StepAfterView> {
+        self.steps
+            .iter()
+            .filter(|before| {
+                self.edges.contains(StepEdge {
+                    from: before.id,
+                    to: step,
+                })
+            })
+            .map(|before| StepAfterView {
+                id: before.id,
+                label: before.label(),
+            })
+            .collect()
     }
 }

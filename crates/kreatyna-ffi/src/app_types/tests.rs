@@ -436,7 +436,7 @@ fn canvas_events_reach_the_editor_in_their_pane_scope(
 }
 
 #[test]
-fn an_editor_canvas_keeps_the_selection_the_positions_the_details_and_the_problems() {
+fn an_editor_canvas_keeps_the_selection_the_details_the_problems_and_the_arrows() {
     let untitled = kreatyna::recipes::StepNodeView {
         id: step_id(2),
         title: " ".into(),
@@ -454,6 +454,12 @@ fn an_editor_canvas_keeps_the_selection_the_positions_the_details_and_the_proble
             title: Some(kreatyna::recipes::StepTitleError::NotEmptyViolated),
             duration: Some(kreatyna::recipes::DurationError::TooLong),
         },
+        after: vec![kreatyna::recipes::StepAfterView {
+            id: step_id(1),
+            label: kreatyna::recipes::StepLabel::Titled {
+                title: "Dice onion".into(),
+            },
+        }],
     };
     let named = kreatyna::recipes::StepNodeView {
         id: step_id(1),
@@ -475,12 +481,20 @@ fn an_editor_canvas_keeps_the_selection_the_positions_the_details_and_the_proble
         kind: kreatyna::recipes::StepKind::Active,
         instructions: String::new(),
         problems: kreatyna::recipes::StepProblems::default(),
+        after: vec![],
     };
     let editor = kreatyna::recipes::RecipeEditorView {
         title: "Shakshuka".into(),
-        canvas: kreatyna::recipes::StepCanvasView::Selected {
-            selected: untitled,
-            others: vec![named],
+        canvas: kreatyna::recipes::StepCanvasView {
+            nodes: kreatyna::recipes::StepNodesView::Selected {
+                selected: untitled,
+                others: vec![named],
+            },
+            connections: vec![kreatyna::recipes::StepEdge {
+                from: step_id(1),
+                to: step_id(2),
+            }],
+            refusal: Some(kreatyna::recipes::ConnectRefusal::Loop),
         },
         status: kreatyna::recipes::RecipeEditorStatus::Editing { problem: None },
     };
@@ -488,51 +502,65 @@ fn an_editor_canvas_keeps_the_selection_the_positions_the_details_and_the_proble
         RecipeEditorView::from(editor),
         RecipeEditorView {
             title: "Shakshuka".into(),
-            canvas: StepCanvasView::Selected {
-                selected: StepNodeView {
-                    id: step_id(2),
-                    title: " ".into(),
-                    label: StepLabel::Untitled,
-                    position: CanvasPoint { x: 240, y: 40 },
-                    duration: StepDurationView::TooLong {
-                        parts: DurationParts {
-                            days: 400,
-                            hours: 0,
-                            minutes: 0,
-                            seconds: 0,
+            canvas: StepCanvasView {
+                nodes: StepNodesView::Selected {
+                    selected: StepNodeView {
+                        id: step_id(2),
+                        title: " ".into(),
+                        label: StepLabel::Untitled,
+                        position: CanvasPoint { x: 240, y: 40 },
+                        duration: StepDurationView::TooLong {
+                            parts: DurationParts {
+                                days: 400,
+                                hours: 0,
+                                minutes: 0,
+                                seconds: 0,
+                            },
                         },
+                        kind: StepKind::Waiting,
+                        instructions: " Stir. ".into(),
+                        problems: StepProblems {
+                            title: Some(StepTitleError::NotEmptyViolated),
+                            duration: Some(DurationError::TooLong),
+                        },
+                        after: vec![StepAfterView {
+                            id: step_id(1),
+                            label: StepLabel::Titled {
+                                title: "Dice onion".into(),
+                            },
+                        }],
                     },
-                    kind: StepKind::Waiting,
-                    instructions: " Stir. ".into(),
-                    problems: StepProblems {
-                        title: Some(StepTitleError::NotEmptyViolated),
-                        duration: Some(DurationError::TooLong),
-                    },
-                },
-                others: vec![StepNodeView {
-                    id: step_id(1),
-                    title: "Dice onion".into(),
-                    label: StepLabel::Titled {
+                    others: vec![StepNodeView {
+                        id: step_id(1),
                         title: "Dice onion".into(),
-                    },
-                    position: CanvasPoint { x: 40, y: 40 },
-                    duration: StepDurationView::Set {
-                        text: "1 min 30 s".into(),
-                        parts: DurationParts {
-                            days: 0,
-                            hours: 0,
-                            minutes: 1,
-                            seconds: 30,
+                        label: StepLabel::Titled {
+                            title: "Dice onion".into(),
                         },
-                        whole_minutes: None,
-                    },
-                    kind: StepKind::Active,
-                    instructions: String::new(),
-                    problems: StepProblems {
-                        title: None,
-                        duration: None,
-                    },
+                        position: CanvasPoint { x: 40, y: 40 },
+                        duration: StepDurationView::Set {
+                            text: "1 min 30 s".into(),
+                            parts: DurationParts {
+                                days: 0,
+                                hours: 0,
+                                minutes: 1,
+                                seconds: 30,
+                            },
+                            whole_minutes: None,
+                        },
+                        kind: StepKind::Active,
+                        instructions: String::new(),
+                        problems: StepProblems {
+                            title: None,
+                            duration: None,
+                        },
+                        after: vec![],
+                    }],
+                },
+                connections: vec![StepEdge {
+                    from: step_id(1),
+                    to: step_id(2),
                 }],
+                refusal: Some(ConnectRefusal::Loop),
             },
             status: RecipeEditorStatus::Editing { problem: None },
         }
@@ -552,11 +580,12 @@ fn an_unselected_canvas_keeps_the_steps_in_the_order_added() -> anyhow::Result<(
         kind: kreatyna::recipes::StepKind::Active,
         instructions: String::new(),
         problems: kreatyna::recipes::StepProblems::default(),
+        after: vec![],
     };
-    let canvas = kreatyna::recipes::StepCanvasView::Unselected {
+    let nodes = kreatyna::recipes::StepNodesView::Unselected {
         steps: vec![node(2, 40), node(1, 240)],
     };
-    let StepCanvasView::Unselected { steps } = StepCanvasView::from(canvas) else {
+    let StepNodesView::Unselected { steps } = StepNodesView::from(nodes) else {
         anyhow::bail!("expected an unselected canvas");
     };
     assert_eq!(
@@ -670,7 +699,11 @@ fn a_create_pane_keeps_the_draft_row_and_the_problem() {
     let pane = kreatyna::recipes::RecipePaneView::Create {
         editor: kreatyna::recipes::RecipeEditorView {
             title: "shakshuka ".into(),
-            canvas: kreatyna::recipes::StepCanvasView::Unselected { steps: vec![] },
+            canvas: kreatyna::recipes::StepCanvasView {
+                nodes: kreatyna::recipes::StepNodesView::Unselected { steps: vec![] },
+                connections: vec![],
+                refusal: None,
+            },
             status: kreatyna::recipes::RecipeEditorStatus::Editing {
                 problem: Some(kreatyna::recipes::RecipeEditorProblem::SaveFailed(
                     kreatyna::recipes::capabilities::RecipeSaveError::DuplicateTitle,
@@ -684,7 +717,11 @@ fn a_create_pane_keeps_the_draft_row_and_the_problem() {
         RecipePaneView::Create {
             editor: RecipeEditorView {
                 title: "shakshuka ".into(),
-                canvas: StepCanvasView::Unselected { steps: vec![] },
+                canvas: StepCanvasView {
+                    nodes: StepNodesView::Unselected { steps: vec![] },
+                    connections: vec![],
+                    refusal: None,
+                },
                 status: RecipeEditorStatus::Editing {
                     problem: Some(RecipeEditorProblem::SaveFailed {
                         error: RecipeSaveError::DuplicateTitle
@@ -701,7 +738,11 @@ fn an_edit_pane_keeps_the_saved_title_and_the_problem() {
     let pane = kreatyna::recipes::RecipePaneView::Edit {
         editor: kreatyna::recipes::RecipeEditorView {
             title: "Spicy shakshuka".into(),
-            canvas: kreatyna::recipes::StepCanvasView::Unselected { steps: vec![] },
+            canvas: kreatyna::recipes::StepCanvasView {
+                nodes: kreatyna::recipes::StepNodesView::Unselected { steps: vec![] },
+                connections: vec![],
+                refusal: None,
+            },
             status: kreatyna::recipes::RecipeEditorStatus::Editing {
                 problem: Some(kreatyna::recipes::RecipeEditorProblem::SaveFailed(
                     kreatyna::recipes::capabilities::RecipeSaveError::NotFound,
@@ -715,7 +756,11 @@ fn an_edit_pane_keeps_the_saved_title_and_the_problem() {
         RecipePaneView::Edit {
             editor: RecipeEditorView {
                 title: "Spicy shakshuka".into(),
-                canvas: StepCanvasView::Unselected { steps: vec![] },
+                canvas: StepCanvasView {
+                    nodes: StepNodesView::Unselected { steps: vec![] },
+                    connections: vec![],
+                    refusal: None,
+                },
                 status: RecipeEditorStatus::Editing {
                     problem: Some(RecipeEditorProblem::SaveFailed {
                         error: RecipeSaveError::NotFound

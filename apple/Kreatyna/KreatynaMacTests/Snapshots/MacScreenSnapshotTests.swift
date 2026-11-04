@@ -155,7 +155,7 @@ extension MainActorTests {
         /// border and its Title in the inspector (REC-14).
         @Test(arguments: Appearance.allCases)
         func recipeCanvas(appearance: Appearance) {
-            let canvas = StepCanvasView.selected(
+            let canvas = StepNodesView.selected(
                 selected: Fixtures.stepNode("Fry onion", x: 200, y: 110),
                 others: [
                     Fixtures.stepNode("Dice onion", x: 20, y: 20),
@@ -172,7 +172,7 @@ extension MainActorTests {
         /// border, and the inspector shows the problem (REC-14/Q2).
         @Test(arguments: Appearance.allCases)
         func untitledStep(appearance: Appearance) {
-            let canvas = StepCanvasView.selected(
+            let canvas = StepNodesView.selected(
                 selected: Fixtures.stepNode(
                     "", x: 200, y: 110, label: .untitled, problem: .notEmptyViolated, key: "new"
                 ),
@@ -188,7 +188,7 @@ extension MainActorTests {
         /// "No duration". The waiting node has a dashed border (REC-17).
         @Test(arguments: Appearance.allCases)
         func recipeCanvasActiveAndWaiting(appearance: Appearance) {
-            let canvas = StepCanvasView.unselected(steps: [
+            let canvas = StepNodesView.unselected(steps: [
                 Fixtures.stepNode("Boil water", x: 20, y: 20, duration: Fixtures.duration("10 min", minutes: 10)),
                 Fixtures.stepNode(
                     "Bake sauce", x: 200, y: 110, duration: Fixtures.duration("1 h 30 min", hours: 1, minutes: 30),
@@ -206,7 +206,7 @@ extension MainActorTests {
         /// and instructions (REC-17).
         @Test(arguments: Appearance.allCases)
         func recipeInspectorFilled(appearance: Appearance) {
-            let canvas = StepCanvasView.selected(
+            let canvas = StepNodesView.selected(
                 selected: Fixtures.stepNode(
                     "Boil water", x: 20, y: 20, duration: Fixtures.duration("10 min", minutes: 10),
                     kind: .waiting, instructions: "Salt it well."
@@ -223,7 +223,7 @@ extension MainActorTests {
         /// 1 min 30 s and the minutes field is empty (REC-17).
         @Test(arguments: Appearance.allCases)
         func recipeInspectorMore(appearance: Appearance) {
-            let canvas = StepCanvasView.selected(
+            let canvas = StepNodesView.selected(
                 selected: Fixtures.stepNode(
                     "Sear scallops", x: 20, y: 20, duration: Fixtures.duration("1 min 30 s", minutes: 1, seconds: 30)
                 ),
@@ -240,7 +240,7 @@ extension MainActorTests {
         /// problem under it (REC-17).
         @Test(arguments: Appearance.allCases)
         func recipeInspectorDurationProblem(appearance: Appearance) {
-            let canvas = StepCanvasView.selected(
+            let canvas = StepNodesView.selected(
                 selected: Fixtures.stepNode(
                     "Feed starter", x: 20, y: 20,
                     duration: .tooLong(parts: DurationParts(days: 400, hours: 0, minutes: 0, seconds: 0)),
@@ -338,7 +338,7 @@ extension MainActorTests {
                 Fixtures.stepNode("Fry onion", x: 200, y: 110),
             ]
             let editor = RecipeEditorView(
-                title: "Spicy shakshuka", canvas: .unselected(steps: steps), status: .editing(problem: nil)
+                title: "Spicy shakshuka", canvas: Fixtures.canvas(.unselected(steps: steps)), status: .editing(problem: nil)
             )
             snapshot(
                 MacMainView(
@@ -450,9 +450,9 @@ extension MainActorTests {
         private func recipes(
             _ status: RecipeListStatus,
             editor: (title: String, problem: RecipeEditorProblem?),
-            canvas: StepCanvasView = .unselected(steps: [])
+            canvas: StepNodesView = .unselected(steps: [])
         ) -> some View {
-            let view = RecipeEditorView(title: editor.title, canvas: canvas, status: .editing(problem: editor.problem))
+            let view = RecipeEditorView(title: editor.title, canvas: Fixtures.canvas(canvas), status: .editing(problem: editor.problem))
             let pane = RecipePaneView.create(
                 editor: view, draftRow: editor.title.trimmingCharacters(in: .whitespaces)
             )

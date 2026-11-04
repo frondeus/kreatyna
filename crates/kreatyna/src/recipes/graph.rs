@@ -65,6 +65,10 @@ impl StepEdges {
         Ok(saved)
     }
 
+    pub fn contains(&self, edge: StepEdge) -> bool {
+        self.0.contains(&edge)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &StepEdge> {
         self.0.iter()
     }

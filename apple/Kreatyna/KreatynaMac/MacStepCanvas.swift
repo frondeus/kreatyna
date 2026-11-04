@@ -69,7 +69,7 @@ struct MacStepCanvas: View {
 
     /// Every node, the selected one last so it draws on top.
     private var nodes: [(node: StepNodeView, selected: Bool)] {
-        switch canvas {
+        switch canvas.nodes {
         case .unselected(let steps):
             steps.map { ($0, false) }
         case .selected(let selected, let others):

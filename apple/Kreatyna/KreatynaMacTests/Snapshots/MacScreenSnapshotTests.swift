@@ -184,6 +184,76 @@ extension MainActorTests {
             )
         }
 
+        /// An active and a waiting node, each with a duration, and one with
+        /// "No duration". The waiting node has a dashed border (REC-17).
+        @Test(arguments: Appearance.allCases)
+        func recipeCanvasActiveAndWaiting(appearance: Appearance) {
+            let canvas = StepCanvasView.unselected(steps: [
+                Fixtures.stepNode("Boil water", x: 20, y: 20, duration: Fixtures.duration("10 min", minutes: 10)),
+                Fixtures.stepNode(
+                    "Bake sauce", x: 200, y: 110, duration: Fixtures.duration("1 h 30 min", hours: 1, minutes: 30),
+                    kind: .waiting
+                ),
+                Fixtures.stepNode("Drain", x: 40, y: 220),
+            ])
+            snapshot(
+                recipes(.ready(rows: []), editor: ("Pasta", nil), canvas: canvas),
+                appearance: appearance
+            )
+        }
+
+        /// The inspector of a waiting step: the 10 min chip filled, Waiting,
+        /// and instructions (REC-17).
+        @Test(arguments: Appearance.allCases)
+        func recipeInspectorFilled(appearance: Appearance) {
+            let canvas = StepCanvasView.selected(
+                selected: Fixtures.stepNode(
+                    "Boil water", x: 20, y: 20, duration: Fixtures.duration("10 min", minutes: 10),
+                    kind: .waiting, instructions: "Salt it well."
+                ),
+                others: [Fixtures.stepNode("Cook pasta", x: 200, y: 110)]
+            )
+            snapshot(
+                recipes(.ready(rows: []), editor: ("Pasta", nil), canvas: canvas),
+                appearance: appearance
+            )
+        }
+
+        /// A duration with seconds opens More… by itself: the unit fields show
+        /// 1 min 30 s and the minutes field is empty (REC-17).
+        @Test(arguments: Appearance.allCases)
+        func recipeInspectorMore(appearance: Appearance) {
+            let canvas = StepCanvasView.selected(
+                selected: Fixtures.stepNode(
+                    "Sear scallops", x: 20, y: 20, duration: Fixtures.duration("1 min 30 s", minutes: 1, seconds: 30)
+                ),
+                others: []
+            )
+            snapshot(
+                recipes(.ready(rows: []), editor: ("Scallops", nil), canvas: canvas),
+                appearance: appearance
+            )
+        }
+
+        /// Save refused a duration past 365 days: the node has the red border
+        /// and "No duration", and the inspector keeps what you set with the
+        /// problem under it (REC-17).
+        @Test(arguments: Appearance.allCases)
+        func recipeInspectorDurationProblem(appearance: Appearance) {
+            let canvas = StepCanvasView.selected(
+                selected: Fixtures.stepNode(
+                    "Feed starter", x: 20, y: 20,
+                    duration: .tooLong(parts: DurationParts(days: 400, hours: 0, minutes: 0, seconds: 0)),
+                    kind: .waiting, durationProblem: .tooLong
+                ),
+                others: []
+            )
+            snapshot(
+                recipes(.ready(rows: []), editor: ("Sourdough", nil), canvas: canvas),
+                appearance: appearance
+            )
+        }
+
         /// Shakshuka's read view: its row selected, its three steps in the order
         /// added, "None yet" ingredients, Edit and Delete enabled (REC-03 to
         /// REC-05). The rows show "1 step" and "3 steps" (REC-14).

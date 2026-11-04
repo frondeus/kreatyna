@@ -126,14 +126,25 @@ enum Fixtures {
     /// title the StepTitle rule refuses.
     static func stepNode(
         _ title: String, x: UInt32, y: UInt32, label: StepLabel? = nil,
-        problem: StepTitleError? = nil, key: String? = nil
+        duration: StepDurationView = .notSet, kind: StepKind = .active, instructions: String = "",
+        problem: StepTitleError? = nil, durationProblem: DurationError? = nil, key: String? = nil
     ) -> StepNodeView {
         StepNodeView(
             id: StepId(uuid: "step-\(key ?? title)"), title: title,
             label: label ?? .titled(title: title),
-            position: CanvasPoint(x: x, y: y), duration: .notSet, kind: .active,
-            instructions: "", problems: StepProblems(title: problem, duration: nil)
+            position: CanvasPoint(x: x, y: y), duration: duration, kind: kind,
+            instructions: instructions, problems: StepProblems(title: problem, duration: durationProblem)
         )
+    }
+
+    /// A duration as Rust shows it: `text` on the node, `parts` in the unit
+    /// fields, and whole minutes unless it has seconds.
+    static func duration(
+        _ text: String, days: UInt32 = 0, hours: UInt32 = 0, minutes: UInt32 = 0, seconds: UInt32 = 0
+    ) -> StepDurationView {
+        let parts = DurationParts(days: days, hours: hours, minutes: minutes, seconds: seconds)
+        let total = ((days * 24 + hours) * 60 + minutes)
+        return .set(text: text, parts: parts, wholeMinutes: seconds == 0 ? total : nil)
     }
 
     /// A step of the read view. The ID only has to be unique in the recipe.

@@ -19,7 +19,7 @@ struct MacStepCanvas: View {
     /// Presentation only: the node under a drag, and where Swift draws it.
     @State private var drag: NodeDrag?
 
-    static let nodeSize = CGSize(width: 150, height: 54)
+    static let nodeSize = CGSize(width: 150, height: 64)
     /// Room right of and below the last node, so a step can be added there.
     private static let margin: CGFloat = 120
     /// A press must move this far before it is a drag, not a click.
@@ -150,26 +150,34 @@ private enum NodeDrag: Equatable {
 }
 
 /// One step on the canvas: the label Rust gives it, a title or "Untitled
-/// step". The selected node has the accent border; a node with a problem has
-/// a red border.
+/// step", and under it the duration and the kind (REC-17). A waiting step
+/// has a dashed border. The selected node has the accent border; a node
+/// with a problem has a red border.
 struct MacStepNode: View {
     let node: StepNodeView
     let selected: Bool
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 10)
-        Text(text)
-            .font(.body.weight(.medium))
-            .foregroundStyle(untitled ? .secondary : .primary)
-            .lineLimit(2)
-            .padding(.horizontal, 12)
-            .frame(width: MacStepCanvas.nodeSize.width, height: MacStepCanvas.nodeSize.height, alignment: .leading)
-            .background(Color(nsColor: .controlBackgroundColor), in: shape)
-            .overlay(shape.strokeBorder(border, lineWidth: selected || node.problems.title != nil ? 2 : 1))
-            .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
-            .contentShape(shape)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(text)
+        VStack(alignment: .leading, spacing: 2) {
+            Text(text)
+                .font(.body.weight(.medium))
+                .foregroundStyle(untitled ? .secondary : .primary)
+                .lineLimit(2)
+            Text(details)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .frame(width: MacStepCanvas.nodeSize.width, height: MacStepCanvas.nodeSize.height, alignment: .leading)
+        .background(background, in: shape)
+        .overlay(shape.strokeBorder(border, style: borderStyle))
+        .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
+        .contentShape(shape)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
+        .accessibilityValue(details)
             .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
             .accessibilityIdentifier("stepNode")
     }
@@ -181,12 +189,35 @@ struct MacStepNode: View {
         }
     }
 
+    /// "10 min · waiting". A duration that is too long shows "No duration",
+    /// as Rust has no duration to save.
+    private var details: String {
+        let duration = if case .set(let text, _, _) = node.duration { text } else { "No duration" }
+        return "\(duration) · \(waiting ? "waiting" : "active")"
+    }
+
     private var untitled: Bool {
         node.label == .untitled
     }
 
+    private var waiting: Bool {
+        node.kind == .waiting
+    }
+
+    private var problem: Bool {
+        node.problems.title != nil || node.problems.duration != nil
+    }
+
+    private var background: Color {
+        waiting ? Color(nsColor: .underPageBackgroundColor) : Color(nsColor: .controlBackgroundColor)
+    }
+
     private var border: Color {
-        if node.problems.title != nil { .red } else if selected { .accentColor } else { Color(nsColor: .separatorColor) }
+        if problem { .red } else if selected { .accentColor } else { Color(nsColor: .separatorColor) }
+    }
+
+    private var borderStyle: StrokeStyle {
+        StrokeStyle(lineWidth: selected || problem ? 2 : 1, dash: waiting ? [5, 3] : [])
     }
 }
 

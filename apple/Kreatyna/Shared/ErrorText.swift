@@ -80,6 +80,14 @@ extension StepTitleError {
     }
 }
 
+extension DurationError {
+    var message: String {
+        switch self {
+        case .tooLong: "A duration can be at most 365 days."
+        }
+    }
+}
+
 extension RecipeEditorProblem {
     var message: String {
         switch self {

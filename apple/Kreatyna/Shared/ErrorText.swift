@@ -148,3 +148,24 @@ extension NutritionBasis {
         }
     }
 }
+
+extension ConnectRefusal {
+    /// The line under the canvas (REC-18/Q2).
+    var message: String {
+        switch self {
+        case .sameStep: "A step cannot come after itself."
+        case .duplicate: "These steps are already connected."
+        case .loop: "That would make a loop."
+        }
+    }
+}
+
+extension StepLabel {
+    /// What a node, an After chip, or a connection shows.
+    var text: String {
+        switch self {
+        case .titled(let title): title
+        case .untitled: "Untitled step"
+        }
+    }
+}

@@ -1,34 +1,49 @@
 import SwiftUI
 
 extension FocusedValues {
-    /// Deletes the selected step of the open recipe editor. The editor
-    /// publishes it while a step is selected; otherwise it is absent (REC-16).
-    @Entry var deleteStep: DeleteStepAction?
+    /// Deletes the selected step or arrow of the open recipe editor. The
+    /// editor publishes it while one is selected; otherwise it is absent
+    /// (REC-16, REC-18).
+    @Entry var deleteSelection: DeleteSelectionAction?
 }
 
-/// Deletes the step `id`. Two actions for the same step are equal, so the
-/// menu updates only when the selection changes.
-struct DeleteStepAction: Equatable {
-    let id: StepId
+/// Deletes what `target` names. Two actions for the same target are equal,
+/// so the menu updates only when the selection changes.
+struct DeleteSelectionAction: Equatable {
+    enum Target: Equatable {
+        case step(StepId)
+        case connection(StepEdge)
+    }
+
+    let target: Target
     let perform: () -> Void
 
-    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
+    /// The Edit menu item.
+    var title: String {
+        switch target {
+        case .step: "Delete Step"
+        case .connection: "Delete Connection"
+        }
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.target == rhs.target }
 }
 
 /// The app's items in the Edit menu.
 ///
-/// Delete Step (⌘⌫) deletes the selected step (REC-16/Q1). macOS gives a
+/// Delete Step (⌘⌫) deletes the selected step (REC-16/Q1), and reads
+/// Delete Connection while an arrow is selected (REC-18/Q1). macOS gives a
 /// menu's ⌘ keys to the menu first, so it works while the cursor is in the
 /// step's Title field.
 struct MacEditCommands: Commands {
-    @FocusedValue(\.deleteStep) private var deleteStep
+    @FocusedValue(\.deleteSelection) private var deleteSelection
 
     var body: some Commands {
         CommandGroup(after: .pasteboard) {
             Divider()
-            Button("Delete Step", systemImage: "trash") { deleteStep?.perform() }
+            Button(deleteSelection?.title ?? "Delete Step", systemImage: "trash") { deleteSelection?.perform() }
                 .keyboardShortcut(.delete, modifiers: .command)
-                .disabled(deleteStep == nil)
+                .disabled(deleteSelection == nil)
         }
     }
 }

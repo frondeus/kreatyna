@@ -9,15 +9,34 @@ import SwiftUI
 /// A node's own context menu has Delete Step (REC-16).
 /// A drag moves a node: Swift draws the drag, and sends one Move on the drop
 /// (REC-15). Rust places and selects the step.
+///
+/// Each node has ○ on its left and ● on its right (REC-18). A drag from a ●
+/// draws a dashed line to the pointer; a drop anywhere on another node sends
+/// Connect, and Rust adds the arrow or refuses it. Arrows run from ● to ○
+/// under the nodes. A click near an arrow selects it; its context menu has
+/// Delete Connection.
 struct MacStepCanvas: View {
     let canvas: StepCanvasView
     let send: (StepCanvasEvent) -> Void
+
+    init(canvas: StepCanvasView, send: @escaping (StepCanvasEvent) -> Void) {
+        self.init(canvas: canvas, connecting: nil, send: send)
+    }
+
+    /// Starts with a connection drag, so a snapshot can show the dashed line.
+    init(canvas: StepCanvasView, connecting: ConnectionDrag?, send: @escaping (StepCanvasEvent) -> Void) {
+        self.canvas = canvas
+        self.send = send
+        _connecting = State(initialValue: connecting)
+    }
 
     /// Presentation only: the last pointer location on the canvas. SwiftUI's
     /// context menu does not give the click location, so Add Step uses it.
     @State private var pointer: CGPoint = .zero
     /// Presentation only: the node under a drag, and where Swift draws it.
     @State private var drag: NodeDrag?
+    /// Presentation only: a drag from a ●, until the drop.
+    @State private var connecting: ConnectionDrag?
 
     static let nodeSize = CGSize(width: 150, height: 64)
     /// Room right of and below the last node, so a step can be added there.
@@ -25,6 +44,8 @@ struct MacStepCanvas: View {
     /// A press must move this far before it is a drag, not a click.
     private static let dragDistance: CGFloat = 4
     private static let space = "stepCanvas"
+    /// A click this close to an arrow selects it.
+    static let arrowHitDistance: CGFloat = 5
 
     var body: some View {
         GeometryReader { proxy in
@@ -32,10 +53,28 @@ struct MacStepCanvas: View {
                 ZStack(alignment: .topLeading) {
                     MacCanvasGrid()
                         .contentShape(.rect)
-                        .onTapGesture { send(.clearSelection) }
+                        .onTapGesture(coordinateSpace: .local) { location in
+                            if let edge = Self.connection(near: location, among: steps, in: canvas.connections) {
+                                send(.selectConnection(edge: edge))
+                            } else {
+                                send(.clearSelection)
+                            }
+                        }
+                    MacConnections(arrows: arrows, rubberBand: rubberBand)
+                        .allowsHitTesting(false)
                     ForEach(nodes, id: \.node.id) { item in
                         let origin = origin(of: item.node)
                         MacStepNode(node: item.node, selected: item.selected)
+                            .overlay(alignment: .leading) {
+                                MacPort(kind: .input, selected: item.selected)
+                                    .offset(x: -MacPort.target / 2)
+                                    .allowsHitTesting(false)
+                            }
+                            .overlay(alignment: .trailing) {
+                                MacPort(kind: .output, selected: item.selected)
+                                    .offset(x: MacPort.target / 2)
+                                    .gesture(connectGesture(from: item.node))
+                            }
                             .offset(x: origin.x, y: origin.y)
                             // The dragged node draws above the others.
                             .zIndex(drag?.id == item.node.id ? 1 : 0)
@@ -55,8 +94,17 @@ struct MacStepCanvas: View {
                     if case .active(let location) = phase { pointer = location }
                 }
                 .contextMenu {
-                    Button("Add Step", systemImage: "plus") { send(.add(at: Self.canvasPoint(pointer))) }
-                        .accessibilityIdentifier("addStep")
+                    // SwiftUI builds the menu from the last pointer location,
+                    // so a right-click near an arrow offers to delete it.
+                    if let edge = Self.connection(near: pointer, among: steps, in: canvas.connections) {
+                        Button("Delete Connection", systemImage: "trash", role: .destructive) {
+                            send(.deleteConnection(edge: edge))
+                        }
+                        .accessibilityIdentifier("deleteConnection")
+                    } else {
+                        Button("Add Step", systemImage: "plus") { send(.add(at: Self.canvasPoint(pointer))) }
+                            .accessibilityIdentifier("addStep")
+                    }
                 }
             }
             .accessibilityIdentifier("stepCanvas")
@@ -65,6 +113,36 @@ struct MacStepCanvas: View {
             // The next view has the dropped node where Rust put it.
             if case .dropped = drag { drag = nil }
         }
+    }
+
+    /// Every step, in the order added.
+    private var steps: [StepNodeView] {
+        switch canvas.nodes {
+        case .unselected(let steps), .connectionSelected(_, let steps): steps
+        case .selected(let selected, let others): others + [selected]
+        }
+    }
+
+    /// The arrows as Swift draws them: from the ● to the ○, following a
+    /// node while it is dragged.
+    private var arrows: [MacArrow] {
+        let selected: StepEdge? = if case .connectionSelected(let connection, _) = canvas.nodes { connection.edge } else { nil }
+        let origins = Dictionary(steps.map { ($0.id, origin(of: $0)) }, uniquingKeysWith: { first, _ in first })
+        return canvas.connections.compactMap { edge in
+            guard let from = origins[edge.from], let to = origins[edge.to] else { return nil }
+            return MacArrow(
+                start: Self.outPort(at: from), end: Self.inPort(at: to), selected: edge == selected
+            )
+        }
+    }
+
+    /// The dashed line of a connection drag. Over a node, it ends at the
+    /// node's ○, where the arrow will end.
+    private var rubberBand: MacArrow? {
+        guard let connecting, let from = steps.first(where: { $0.id == connecting.from }) else { return nil }
+        let start = Self.outPort(at: origin(of: from))
+        let end = Self.node(at: connecting.pointer, among: steps).map { Self.inPort(at: origin(of: $0)) }
+        return MacArrow(start: start, end: end ?? connecting.pointer, selected: true)
     }
 
     /// Every node, the selected one last so it draws on top.
@@ -105,6 +183,60 @@ struct MacStepCanvas: View {
             }
     }
 
+    /// A drag from the ● of `node`. A drop on a node sends Connect, also on
+    /// `node` itself, so Rust can say why not. A drop on empty canvas sends
+    /// nothing.
+    private func connectGesture(from node: StepNodeView) -> some Gesture {
+        DragGesture(minimumDistance: 1, coordinateSpace: .named(Self.space))
+            .onChanged { value in
+                connecting = ConnectionDrag(from: node.id, pointer: value.location)
+            }
+            .onEnded { value in
+                connecting = nil
+                if let target = Self.node(at: value.location, among: steps) {
+                    send(.connect(from: node.id, to: target.id))
+                }
+            }
+    }
+
+    /// The ● of a node whose top left corner is `origin`.
+    static func outPort(at origin: CGPoint) -> CGPoint {
+        CGPoint(x: origin.x + nodeSize.width, y: origin.y + nodeSize.height / 2)
+    }
+
+    /// Where an arrow ends: just left of the ○ of a node whose top left
+    /// corner is `origin`, so the ○ does not hide the arrowhead.
+    static func inPort(at origin: CGPoint) -> CGPoint {
+        CGPoint(x: origin.x - arrowGap, y: origin.y + nodeSize.height / 2)
+    }
+
+    /// The ○'s radius and a point of space.
+    private static let arrowGap: CGFloat = 6
+
+    /// The topmost node under `point`, if any.
+    static func node(at point: CGPoint, among steps: [StepNodeView]) -> StepNodeView? {
+        steps.last { step in
+            CGRect(origin: CGPoint(x: CGFloat(step.position.x), y: CGFloat(step.position.y)), size: nodeSize)
+                .contains(point)
+        }
+    }
+
+    /// The arrow within `arrowHitDistance` of `point`, if any. With two
+    /// near, the closer one.
+    static func connection(near point: CGPoint, among steps: [StepNodeView], in edges: [StepEdge]) -> StepEdge? {
+        let positions = Dictionary(steps.map { ($0.id, $0.position) }, uniquingKeysWith: { first, _ in first })
+        let distances: [(edge: StepEdge, distance: CGFloat)] = edges.compactMap { edge in
+            guard let from = positions[edge.from], let to = positions[edge.to] else { return nil }
+            let arrow = MacArrow(
+                start: outPort(at: CGPoint(x: CGFloat(from.x), y: CGFloat(from.y))),
+                end: inPort(at: CGPoint(x: CGFloat(to.x), y: CGFloat(to.y))),
+                selected: false
+            )
+            return (edge, arrow.distance(to: point))
+        }
+        return distances.filter { $0.distance <= arrowHitDistance }.min { $0.distance < $1.distance }?.edge
+    }
+
     /// `position` plus `translation`. A drag stops at the left and the top
     /// edge, as the drop does in `canvasPoint`.
     static func moved(_ position: CanvasPoint, by translation: CGSize) -> CGPoint {
@@ -134,6 +266,128 @@ struct MacStepCanvas: View {
         if rounded <= 0 { return 0 }
         if rounded >= CGFloat(UInt32.max) { return .max }
         return UInt32(rounded)
+    }
+}
+
+/// A drag from the ● of the step `from`. Only Swift knows about it; Rust
+/// gets Connect on the drop.
+struct ConnectionDrag: Equatable {
+    let from: StepId
+    /// In canvas points.
+    let pointer: CGPoint
+}
+
+/// One arrow, or the dashed line of a drag: a curve from the ● at `start`
+/// to the ○ at `end`, as in the mockups.
+struct MacArrow: Equatable {
+    let start: CGPoint
+    let end: CGPoint
+    let selected: Bool
+
+    /// The two control points pull the curve out of the ● and into the ○
+    /// sideways, at least 30 points.
+    private var pull: CGFloat { max(30, (end.x - start.x) / 2) }
+
+    var path: Path {
+        Path { path in
+            path.move(to: start)
+            path.addCurve(
+                to: end,
+                control1: CGPoint(x: start.x + pull, y: start.y),
+                control2: CGPoint(x: end.x - pull, y: end.y)
+            )
+        }
+    }
+
+    /// The point at `t` in `0...1` along the curve.
+    func point(at t: CGFloat) -> CGPoint {
+        let c1 = CGPoint(x: start.x + pull, y: start.y)
+        let c2 = CGPoint(x: end.x - pull, y: end.y)
+        let u = 1 - t
+        let a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t
+        return CGPoint(
+            x: a * start.x + b * c1.x + c * c2.x + d * end.x,
+            y: a * start.y + b * c1.y + c * c2.y + d * end.y
+        )
+    }
+
+    /// How far `point` is from the curve: the nearest of 64 straight pieces.
+    func distance(to point: CGPoint) -> CGFloat {
+        let pieces = 64
+        let samples = (0...pieces).map { self.point(at: CGFloat($0) / CGFloat(pieces)) }
+        return zip(samples, samples.dropFirst()).map { Self.distance(from: point, toSegment: $0, $1) }.min() ?? .infinity
+    }
+
+    private static func distance(from p: CGPoint, toSegment a: CGPoint, _ b: CGPoint) -> CGFloat {
+        let dx = b.x - a.x, dy = b.y - a.y
+        let length = dx * dx + dy * dy
+        let t = length == 0 ? 0 : min(1, max(0, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length))
+        return hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
+    }
+}
+
+/// The arrows under the nodes, with arrowheads, and the dashed line of a
+/// connection drag. The selected arrow is accent and thicker.
+private struct MacConnections: View {
+    let arrows: [MacArrow]
+    let rubberBand: MacArrow?
+
+    var body: some View {
+        Canvas { context, _ in
+            for arrow in arrows {
+                let color = arrow.selected ? Color.accentColor : Color.secondary
+                // The line stops at the arrowhead's back, so its end does not show.
+                context.stroke(arrow.path, with: .color(color), lineWidth: arrow.selected ? 3 : 1.6)
+                context.fill(Self.head(at: arrow.end, length: arrow.selected ? 10 : 8), with: .color(color))
+            }
+            if let rubberBand {
+                context.stroke(
+                    rubberBand.path, with: .color(.accentColor),
+                    style: StrokeStyle(lineWidth: 1.6, dash: [6, 5])
+                )
+                context.fill(
+                    Path(ellipseIn: CGRect(x: rubberBand.end.x - 4, y: rubberBand.end.y - 4, width: 8, height: 8)),
+                    with: .color(.accentColor)
+                )
+            }
+        }
+    }
+
+    /// A triangle that points right with its tip at the ○: the curve
+    /// always enters a ○ sideways.
+    private static func head(at tip: CGPoint, length: CGFloat) -> Path {
+        Path { path in
+            path.move(to: tip)
+            path.addLine(to: CGPoint(x: tip.x - length, y: tip.y - length / 2))
+            path.addLine(to: CGPoint(x: tip.x - length, y: tip.y + length / 2))
+            path.closeSubpath()
+        }
+    }
+}
+
+/// A node's ○ (where arrows end) or ● (where you drag from).
+private struct MacPort: View {
+    enum Kind { case input, output }
+
+    let kind: Kind
+    let selected: Bool
+
+    static let size: CGFloat = 10
+    /// The area that takes the drag, centered on the dot.
+    static let target: CGFloat = size + 8
+
+    var body: some View {
+        let color: Color = selected ? .accentColor : .secondary
+        Circle()
+            .fill(kind == .output ? color : Color(nsColor: .controlBackgroundColor))
+            .overlay(Circle().strokeBorder(color, lineWidth: 1.6))
+            .frame(width: Self.size, height: Self.size)
+            // A larger target than the dot, so the ● is easy to grab.
+            .frame(width: Self.target, height: Self.target)
+            .contentShape(Circle())
+            .accessibilityElement()
+            .accessibilityLabel(kind == .output ? "Connect from here" : "Arrow end")
+            .accessibilityIdentifier(kind == .output ? "stepOutPort" : "stepInPort")
     }
 }
 
@@ -185,10 +439,7 @@ struct MacStepNode: View {
     }
 
     private var text: String {
-        switch node.label {
-        case .titled(let title): title
-        case .untitled: "Untitled step"
-        }
+        node.label.text
     }
 
     /// "10 min · waiting". A duration that is too long shows "No duration",

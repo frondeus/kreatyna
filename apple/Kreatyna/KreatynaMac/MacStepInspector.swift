@@ -2,8 +2,9 @@ import SwiftUI
 
 /// The inspector column of the recipe editor (REC-14/Q1). It shows the
 /// selected step's Title, Duration, Active/Waiting, and Instructions fields
-/// with their problems (REC-17), or "Select a step". After is a placeholder
-/// until REC-18.
+/// with their problems (REC-17), and After: the steps before it (REC-18). A
+/// selected arrow shows its two steps. With nothing selected, it shows
+/// "Select a step".
 struct MacStepInspector: View {
     let canvas: StepCanvasView
     let send: (StepCanvasEvent) -> Void
@@ -13,8 +14,7 @@ struct MacStepInspector: View {
     var body: some View {
         Group {
             switch canvas.nodes {
-            // A selected arrow gets its own inspector with REC-18 change 5.
-            case .unselected, .connectionSelected:
+            case .unselected:
                 Text("Select a step")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -23,6 +23,8 @@ struct MacStepInspector: View {
                 MacStepFields(step: selected, send: send)
                     // A new field for each step, so its text starts from that step.
                     .id(selected.id)
+            case .connectionSelected(let connection, _):
+                MacConnectionFields(connection: connection)
             }
         }
         .frame(width: Self.width)
@@ -86,8 +88,7 @@ private struct MacStepFields: View {
                 .lineLimit(3...6)
                 .accessibilityIdentifier("stepInstructionsField")
             }
-            // A placeholder for REC-18: it shows where the field goes.
-            field("After") { placeholder("Coming soon") }
+            field("After") { MacAfterChips(after: step.after) }
             Spacer(minLength: 0)
         }
         .padding(16)
@@ -108,10 +109,60 @@ private struct MacStepFields: View {
         }
     }
 
-    private func placeholder(_ text: String) -> some View {
-        TextField(text, text: .constant(""), prompt: Text(text))
-            .labelsHidden()
-            .textFieldStyle(.roundedBorder)
-            .disabled(true)
+}
+
+/// The steps before the selected one, as read-only chips. You change them
+/// on the canvas.
+private struct MacAfterChips: View {
+    let after: [StepAfterView]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if after.isEmpty {
+                Text("None")
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("stepAfterNone")
+            } else {
+                // One chip a line: the inspector is narrow.
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(after, id: \.id) { step in
+                        Text(step.label.text)
+                            .font(.callout)
+                            .lineLimit(1)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .overlay(
+                                Capsule().strokeBorder(
+                                    Color(nsColor: .separatorColor), style: StrokeStyle(lineWidth: 1, dash: [3, 2])
+                                )
+                            )
+                            .accessibilityIdentifier("stepAfterChip")
+                    }
+                }
+            }
+            Text("Drawn on the canvas.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// The selected arrow: its two steps, "Dice onion → Fry onion".
+private struct MacConnectionFields: View {
+    let connection: StepConnectionView
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Connection")
+                .font(.headline)
+            Text("\(connection.from.text) → \(connection.to.text)")
+                .accessibilityIdentifier("connectionSteps")
+            Text("Delete it with Edit ▸ Delete Connection or the arrow's menu.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

@@ -139,6 +139,17 @@ enum Fixtures {
         )
     }
 
+    /// "`to` comes after `from`", by the steps' titles as `stepNode` names
+    /// them.
+    static func edge(_ from: String, _ to: String) -> StepEdge {
+        StepEdge(from: StepId(uuid: "step-\(from)"), to: StepId(uuid: "step-\(to)"))
+    }
+
+    /// One After chip: the step titled `title`.
+    static func after(_ title: String) -> StepAfterView {
+        StepAfterView(id: StepId(uuid: "step-\(title)"), label: .titled(title: title))
+    }
+
     /// The editor's canvas: `nodes`, with `connections` as arrows and no
     /// refusal.
     static func canvas(_ nodes: StepNodesView, connections: [StepEdge] = []) -> StepCanvasView {

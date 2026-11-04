@@ -29,6 +29,15 @@ struct MacRecipeEditor: View {
                     .padding(.vertical, 12)
                 Divider()
                 MacStepCanvas(canvas: view.canvas) { send(.canvas(event: $0)) }
+                if let refusal = view.canvas.refusal {
+                    // Until the next change (REC-18/Q2).
+                    Text(refusal.message)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 6)
+                        .accessibilityIdentifier("connectRefusal")
+                }
                 Divider()
                 // Ingredient lines arrive with REC-07.
                 HStack {
@@ -72,15 +81,25 @@ struct MacRecipeEditor: View {
             Button("Keep Editing", role: .cancel) { send(.confirmation(event: .cancel)) }
                 .accessibilityIdentifier("cancelDiscard")
         }
-        .focusedSceneValue(\.deleteStep, deleteSelectedStep)
+        .focusedSceneValue(\.deleteSelection, deleteSelection)
         .onAppear { titleFocused = true }
     }
 
-    /// Edit ▸ Delete Step for the selected step; absent with no selection.
-    private var deleteSelectedStep: DeleteStepAction? {
-        guard case .selected(let selected, _) = view.canvas.nodes else { return nil }
-        let id = selected.id
-        return DeleteStepAction(id: id) { send(.canvas(event: .delete(id: id))) }
+    /// Edit ▸ Delete Step or Delete Connection for the selection; absent
+    /// with no selection.
+    private var deleteSelection: DeleteSelectionAction? {
+        switch view.canvas.nodes {
+        case .unselected:
+            return nil
+        case .selected(let selected, _):
+            let id = selected.id
+            return DeleteSelectionAction(target: .step(id)) { send(.canvas(event: .delete(id: id))) }
+        case .connectionSelected(let connection, _):
+            let edge = connection.edge
+            return DeleteSelectionAction(target: .connection(edge)) {
+                send(.canvas(event: .deleteConnection(edge: edge)))
+            }
+        }
     }
 
     private var titleField: some View {

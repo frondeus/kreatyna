@@ -235,6 +235,96 @@ extension MainActorTests {
             )
         }
 
+        /// A diamond of arrows: Heat pan comes before Fry onion and Toast
+        /// cumin, and both before Add tomatoes. Add tomatoes is selected, with
+        /// two After chips (REC-18). The window is wider for room.
+        @Test(arguments: Appearance.allCases)
+        func recipeCanvasConnected(appearance: Appearance) {
+            let nodes = Self.diamond(selected: "Add tomatoes")
+            snapshot(
+                recipes(.ready(rows: []), editor: ("Shakshuka", nil), canvas: nodes, connections: Self.diamondEdges ),
+                appearance: appearance, width: Self.wideWindow
+            )
+        }
+
+        /// A drag from Toast cumin's ● draws a dashed line to the pointer
+        /// (REC-18). Only the canvas: the drag lives in it.
+        @Test(arguments: Appearance.allCases)
+        func recipeConnectionDrag(appearance: Appearance) {
+            let canvas = Fixtures.canvas(
+                .unselected(steps: [
+                    Fixtures.stepNode("Heat pan", x: 20, y: 130),
+                    Fixtures.stepNode("Toast cumin", x: 270, y: 220),
+                    Fixtures.stepNode("Fry onion", x: 270, y: 40),
+                ]),
+                connections: [Fixtures.edge("Heat pan", "Toast cumin")]
+            )
+            snapshot(
+                MacStepCanvas(
+                    canvas: canvas,
+                    connecting: ConnectionDrag(from: StepId(uuid: "step-Toast cumin"), pointer: CGPoint(x: 600, y: 160)),
+                    send: { _ in }
+                ),
+                appearance: appearance
+            )
+        }
+
+        /// A selected arrow: accent and thicker, and the inspector shows its
+        /// two steps (REC-18/Q1).
+        @Test(arguments: Appearance.allCases)
+        func recipeConnectionSelected(appearance: Appearance) {
+            let connection = StepConnectionView(
+                edge: Fixtures.edge("Heat pan", "Fry onion"),
+                from: .titled(title: "Heat pan"), to: .titled(title: "Fry onion")
+            )
+            let nodes = StepNodesView.connectionSelected(connection: connection, steps: Self.diamondSteps)
+            snapshot(
+                recipes(.ready(rows: []), editor: ("Shakshuka", nil), canvas: nodes, connections: Self.diamondEdges ),
+                appearance: appearance, width: Self.wideWindow
+            )
+        }
+
+        /// A refused connection: the line under the canvas says why (REC-18/Q2).
+        @Test(arguments: Appearance.allCases)
+        func recipeConnectionRefused(appearance: Appearance) {
+            snapshot(
+                recipes(
+                    .ready(rows: []), editor: ("Shakshuka", nil), canvas: .unselected(steps: Self.diamondSteps),
+                    connections: Self.diamondEdges, refusal: .loop
+                ),
+                appearance: appearance, width: Self.wideWindow
+            )
+        }
+
+        /// Room for three columns of steps on the canvas.
+        private static let wideWindow: CGFloat = 1240
+
+        private static let diamondEdges = [
+            Fixtures.edge("Heat pan", "Fry onion"),
+            Fixtures.edge("Heat pan", "Toast cumin"),
+            Fixtures.edge("Fry onion", "Add tomatoes"),
+            Fixtures.edge("Toast cumin", "Add tomatoes"),
+        ]
+
+        private static var diamondSteps: [StepNodeView] {
+            [
+                Fixtures.stepNode("Heat pan", x: 20, y: 130),
+                Fixtures.stepNode("Fry onion", x: 270, y: 40, after: [Fixtures.after("Heat pan")]),
+                Fixtures.stepNode("Toast cumin", x: 270, y: 220, after: [Fixtures.after("Heat pan")]),
+                Fixtures.stepNode(
+                    "Add tomatoes", x: 520, y: 130,
+                    after: [Fixtures.after("Fry onion"), Fixtures.after("Toast cumin")]
+                ),
+            ]
+        }
+
+        /// The diamond with the step titled `selected` selected.
+        private static func diamond(selected: String) -> StepNodesView {
+            let steps = diamondSteps
+            guard let chosen = steps.first(where: { $0.title == selected }) else { return .unselected(steps: steps) }
+            return .selected(selected: chosen, others: steps.filter { $0.title != selected })
+        }
+
         /// Save refused a duration past 365 days: the node has the red border
         /// and "No duration", and the inspector keeps what you set with the
         /// problem under it (REC-17).
@@ -450,9 +540,12 @@ extension MainActorTests {
         private func recipes(
             _ status: RecipeListStatus,
             editor: (title: String, problem: RecipeEditorProblem?),
-            canvas: StepNodesView = .unselected(steps: [])
+            canvas: StepNodesView = .unselected(steps: []),
+            connections: [StepEdge] = [],
+            refusal: ConnectRefusal? = nil,
         ) -> some View {
-            let view = RecipeEditorView(title: editor.title, canvas: Fixtures.canvas(canvas), status: .editing(problem: editor.problem))
+            let canvas = StepCanvasView(nodes: canvas, connections: connections, refusal: refusal)
+            let view = RecipeEditorView(title: editor.title, canvas: canvas, status: .editing(problem: editor.problem))
             let pane = RecipePaneView.create(
                 editor: view, draftRow: editor.title.trimmingCharacters(in: .whitespaces)
             )
@@ -514,6 +607,7 @@ extension MainActorTests {
         private func snapshot(
             _ view: some View,
             appearance: Appearance,
+            width: CGFloat = 960,
             fileID: StaticString = #fileID,
             filePath: StaticString = #filePath,
             testName: String = #function,
@@ -524,7 +618,7 @@ extension MainActorTests {
             // hosted in an off-screen window. The window's frame view is
             // captured so the title bar and toolbar are included.
             let window = InactiveWindow(
-                contentRect: CGRect(x: 0, y: 0, width: 960, height: 600),
+                contentRect: CGRect(x: 0, y: 0, width: width, height: 600),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
@@ -539,10 +633,10 @@ extension MainActorTests {
             // The fixed frame keeps SwiftUI from resizing the window to its content.
             window.contentViewController = NSHostingController(
                 rootView: view
-                    .frame(width: 960, height: 600)
+                    .frame(width: width, height: 600)
                     .environment(\.locale, Locale(identifier: "en_US"))
             )
-            window.setContentSize(CGSize(width: 960, height: 600))
+            window.setContentSize(CGSize(width: width, height: 600))
             window.setFrameOrigin(CGPoint(x: -10_000, y: -10_000))
             window.orderFront(nil)
             defer { window.close() }

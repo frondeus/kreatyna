@@ -2,8 +2,8 @@
 //! canvas has no effects, so it is a plain struct, not a widget: the editor
 //! renders after each change.
 use super::{
-    CanvasPoint, DurationError, DurationInput, DurationParts, Step, StepDurationS, StepId,
-    StepInstructions, StepKind, StepTitle, StepTitleError, StepWrite,
+    CanvasPoint, DurationError, DurationInput, DurationParts, Step, StepDurationS, StepEdges,
+    StepId, StepInstructions, StepKind, StepTitle, StepTitleError, StepWrite,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -248,12 +248,14 @@ impl DraftStep {
 /// change them, so `selected` always names a step in `steps`.
 pub(crate) struct StepCanvas {
     steps: Vec<DraftStep>,
+    /// The arrows between `steps` (REC-18).
+    edges: StepEdges,
     selected: Option<StepId>,
 }
 
 impl StepCanvas {
-    /// A canvas with the saved steps and no selection.
-    pub(crate) fn new(steps: &[Step]) -> Self {
+    /// A canvas with the saved steps and edges, and no selection.
+    pub(crate) fn new(steps: &[Step], edges: &StepEdges) -> Self {
         let steps = steps
             .iter()
             .map(|step| DraftStep {
@@ -270,6 +272,7 @@ impl StepCanvas {
             .collect();
         Self {
             steps,
+            edges: edges.clone(),
             selected: None,
         }
     }
@@ -380,10 +383,16 @@ impl StepCanvas {
             .collect()
     }
 
+    /// The edges as Save writes them.
+    pub(crate) fn edges(&self) -> &StepEdges {
+        &self.edges
+    }
+
     /// Whether the steps differ from `saved` in number, order, or any field
-    /// that Save writes.
-    pub(crate) fn differs_from(&self, saved: &[Step]) -> bool {
-        self.steps.len() != saved.len()
+    /// that Save writes, or the edges differ from `saved_edges`.
+    pub(crate) fn differs_from(&self, saved: &[Step], saved_edges: &StepEdges) -> bool {
+        self.edges != *saved_edges
+            || self.steps.len() != saved.len()
             || self
                 .steps
                 .iter()

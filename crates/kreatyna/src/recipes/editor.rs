@@ -6,7 +6,7 @@ use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget}
 use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 
 use super::{
-    NewRecipe, Recipe, RecipeTitle, RecipeTitleError, RecipeUpdate, Step, StepWrite,
+    NewRecipe, Recipe, RecipeTitle, RecipeTitleError, RecipeUpdate, Step, StepEdges, StepWrite,
     capabilities::{RecipeCapabilities, RecipeEffectStream, RecipeSaveError},
     step_canvas::{CanvasChange, StepCanvas, StepCanvasEvent, StepCanvasView},
 };
@@ -89,12 +89,16 @@ enum EditorTarget {
     Saved { recipe: Recipe },
 }
 
-/// The title and the steps the editor opens with. `is_dirty` compares the
-/// edits with them.
+/// The title, the steps, and the edges the editor opens with. `is_dirty`
+/// compares the edits with them.
 struct OpenedWith<'a> {
     title: &'a str,
     steps: &'a [Step],
+    edges: &'a StepEdges,
 }
+
+/// What a new recipe opens with.
+static NO_EDGES: StepEdges = StepEdges::new();
 
 impl EditorTarget {
     fn opened_with(&self) -> OpenedWith<'_> {
@@ -102,10 +106,12 @@ impl EditorTarget {
             EditorTarget::New => OpenedWith {
                 title: "",
                 steps: &[],
+                edges: &NO_EDGES,
             },
             EditorTarget::Saved { recipe } => OpenedWith {
                 title: &recipe.title,
                 steps: &recipe.steps,
+                edges: &recipe.edges,
             },
         }
     }
@@ -141,7 +147,7 @@ impl RecipeEditor {
     fn open(caps: RecipeCapabilities, target: EditorTarget) -> Self {
         let opened_with = target.opened_with();
         let title = opened_with.title.to_owned();
-        let canvas = StepCanvas::new(opened_with.steps);
+        let canvas = StepCanvas::new(opened_with.steps, opened_with.edges);
         Self {
             caps,
             target,
@@ -169,7 +175,10 @@ impl RecipeEditor {
     /// ones for a saved one.
     pub(crate) fn is_dirty(&self) -> bool {
         let opened_with = self.target.opened_with();
-        self.title != opened_with.title || self.canvas.differs_from(opened_with.steps)
+        self.title != opened_with.title
+            || self
+                .canvas
+                .differs_from(opened_with.steps, opened_with.edges)
     }
 
     fn render(&self) -> Command<RecipeEditorOutcome> {
@@ -217,6 +226,7 @@ impl RecipeEditor {
         title: RecipeTitle,
         steps: Vec<StepWrite>,
     ) -> Command<RecipeEditorOutcome> {
+        let edges = self.canvas.edges().clone();
         self.state = EditorState::Saving;
         let render = self.caps.render.clone();
         let store = self.caps.store.clone();
@@ -227,8 +237,22 @@ impl RecipeEditor {
         Command::single(async move {
             render.render().await;
             match saved_id {
-                None => store.create(NewRecipe { title, steps }).await,
-                Some(id) => store.update(id, RecipeUpdate { title, steps }).await,
+                None => {
+                    let recipe = NewRecipe {
+                        title,
+                        steps,
+                        edges,
+                    };
+                    store.create(recipe).await
+                }
+                Some(id) => {
+                    let recipe = RecipeUpdate {
+                        title,
+                        steps,
+                        edges,
+                    };
+                    store.update(id, recipe).await
+                }
             }
         })
         .latest(&mut self.save)

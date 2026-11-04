@@ -5,8 +5,8 @@ use kreatyna::{
         CanvasPoint, DurationError, DurationInput, DurationParts, Recipe, RecipeEditor,
         RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus,
         RecipeEditorView, RecipeId, RecipeTitleError, Step, StepCanvasEvent, StepCanvasView,
-        StepDurationS, StepDurationView, StepId, StepInstructions, StepKind, StepLabel,
-        StepNodeView, StepProblems, StepTitle, StepTitleError, StepWrite,
+        StepDurationS, StepDurationView, StepEdge, StepEdges, StepId, StepInstructions, StepKind,
+        StepLabel, StepNodeView, StepProblems, StepTitle, StepTitleError, StepWrite,
         capabilities::{
             RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
         },
@@ -239,6 +239,12 @@ async fn save_in_an_edit_editor_writes_the_changed_and_the_added_steps() -> anyh
             write(cook_pasta().id, "Cook pasta", point(240, 40))?,
             write(drain, "Drain", point(440, 40))?,
         ]]
+    );
+    // REC-18 change 2: the editor cannot change edges yet, so it writes
+    // back the saved ones.
+    assert_eq!(
+        f.written_edges,
+        [StepEdges::from_saved([boil_then_cook()])?]
     );
     Ok(())
 }
@@ -988,15 +994,25 @@ fn shakshuka() -> Recipe {
         id: RecipeId::from(Uuid::from_u128(1)),
         title: "Shakshuka".into(),
         steps: vec![],
+        edges: StepEdges::default(),
     }
 }
 
-/// A saved recipe with two steps.
+/// A saved recipe with two steps: Cook pasta comes after Boil water.
+/// `from_saved` cannot refuse this one edge.
 fn pasta() -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(2)),
         title: "Pasta".into(),
         steps: vec![boil_water(), cook_pasta()],
+        edges: StepEdges::from_saved([boil_then_cook()]).unwrap_or_default(),
+    }
+}
+
+fn boil_then_cook() -> StepEdge {
+    StepEdge {
+        from: boil_water().id,
+        to: cook_pasta().id,
     }
 }
 
@@ -1040,6 +1056,7 @@ fn sauce() -> Recipe {
         id: RecipeId::from(Uuid::from_u128(3)),
         title: "Sauce".into(),
         steps: vec![bake_sauce()],
+        edges: StepEdges::default(),
     }
 }
 
@@ -1168,6 +1185,8 @@ struct Fixture {
     writes: Vec<Write>,
     /// The steps that each store call wrote, in the order of `writes`.
     written_steps: Vec<Vec<StepWrite>>,
+    /// The edges that each store call wrote, in the order of `writes`.
+    written_edges: Vec<StepEdges>,
 }
 
 impl Fixture {
@@ -1194,6 +1213,7 @@ impl Fixture {
             effects,
             writes: vec![],
             written_steps: vec![],
+            written_edges: vec![],
         }
     }
 
@@ -1295,6 +1315,7 @@ impl Fixture {
             .await?;
         let mut write = None;
         let mut steps = None;
+        let mut edges = None;
         let store = command.step().await?.expect_effect().expect_store();
         match store.request {
             RecipeStoreRequest::Create { .. } => {
@@ -1302,6 +1323,7 @@ impl Fixture {
                     .resolve_create(|recipe| {
                         write = Some(Write::Created(recipe.title.as_ref().to_owned()));
                         steps = Some(recipe.steps);
+                        edges = Some(recipe.edges);
                         async { result }
                     })
                     .await?
@@ -1311,6 +1333,7 @@ impl Fixture {
                     .resolve_update(|id, recipe| {
                         write = Some(Write::Updated(id, recipe.title.as_ref().to_owned()));
                         steps = Some(recipe.steps);
+                        edges = Some(recipe.edges);
                         async { result }
                     })
                     .await?
@@ -1322,6 +1345,7 @@ impl Fixture {
         drop(command);
         self.writes.extend(write);
         self.written_steps.extend(steps);
+        self.written_edges.extend(edges);
         Ok(finished)
     }
 

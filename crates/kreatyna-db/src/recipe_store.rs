@@ -9,17 +9,18 @@ use diesel::{
 use kreatyna::{
     ingredients::name_key,
     recipes::{
-        NewRecipe, Recipe, RecipeId, RecipeSummary, RecipeUpdate, Step, StepWrite,
+        ConnectRefusal, NewRecipe, Recipe, RecipeId, RecipeSummary, RecipeUpdate, Step, StepEdge,
+        StepEdges, StepId, StepWrite,
         capabilities::{RecipeDeleteError, RecipeLoadError, RecipeSaveError, RecipeStoreMut},
     },
 };
 
 use super::{
     recipe_models::{
-        LocalRecipeId, NewRecipeRow, NewStepRow, RecipeRow, RemoteRecipeId, StepOrdinal, StepRow,
-        saved_step,
+        LocalRecipeId, LocalStepId, NewRecipeRow, NewStepRow, RecipeRow, RemoteRecipeId,
+        RemoteStepId, StepEdgeRow, StepOrdinal, StepRow, saved_step,
     },
-    schema::{recipe_steps, recipes},
+    schema::{recipe_step_edges, recipe_steps, recipes},
     sqlite::SqliteDatabase,
 };
 
@@ -35,6 +36,10 @@ enum StoreFailure {
     DuplicateTitle,
     #[error("recipe to update was not found")]
     NotFound,
+    #[error("an edge names a step that is not in the recipe")]
+    EdgeOutsideRecipe,
+    #[error("the stored edges break the step graph: {0}")]
+    InvalidEdges(#[from] ConnectRefusal),
 }
 
 /// A summary of every recipe. One query reads the recipes, one counts the
@@ -84,24 +89,51 @@ fn record(connection: &mut SqliteConnection, id: RecipeId) -> Result<Option<Reci
         return Ok(None);
     };
     let row = checked(row)?;
-    let steps = steps(connection, row.local_id)?;
-    Ok(Some(row.into_domain(steps)))
+    let rows = step_rows(connection, row.local_id)?;
+    let step_ids: HashMap<LocalStepId, StepId> = rows
+        .iter()
+        .map(|step| (step.local_id, step.remote_id.0))
+        .collect();
+    let edges = edges(connection, &step_ids)?;
+    let steps = rows.into_iter().map(StepRow::into_domain).collect();
+    Ok(Some(row.into_domain(steps, edges)))
 }
 
-/// The steps of the recipe row `recipe_local_id`, in the order added.
-fn steps(
+/// The step rows of the recipe row `recipe_local_id`, in the order added.
+fn step_rows(
     connection: &mut SqliteConnection,
     recipe_local_id: LocalRecipeId,
-) -> Result<Vec<Step>, StoreFailure> {
+) -> Result<Vec<StepRow>, StoreFailure> {
     // A coordinate that does not fit a `u32` fails the load (`DbCoordinate`).
     Ok(recipe_steps::table
         .filter(recipe_steps::recipe_local_id.eq(recipe_local_id))
         .order(recipe_steps::ordinal.asc())
         .select(StepRow::as_select())
-        .load::<StepRow>(connection)?
+        .load::<StepRow>(connection)?)
+}
+
+/// The edges that start at the steps `step_ids`. An edge that ends at a step
+/// of another recipe fails with `EdgeOutsideRecipe`; a loop fails with
+/// `InvalidEdges`.
+fn edges(
+    connection: &mut SqliteConnection,
+    step_ids: &HashMap<LocalStepId, StepId>,
+) -> Result<StepEdges, StoreFailure> {
+    let rows = recipe_step_edges::table
+        .filter(recipe_step_edges::from_local_id.eq_any(step_ids.keys()))
+        .select(StepEdgeRow::as_select())
+        .load::<StepEdgeRow>(connection)?;
+    let edges = rows
         .into_iter()
-        .map(StepRow::into_domain)
-        .collect())
+        .map(|row| {
+            let id = |local_id| step_ids.get(&local_id).copied();
+            match (id(row.from_local_id), id(row.to_local_id)) {
+                (Some(from), Some(to)) => Ok(StepEdge { from, to }),
+                _ => Err(StoreFailure::EdgeOutsideRecipe),
+            }
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(StepEdges::from_saved(edges)?)
 }
 
 /// Inserts `steps` for the recipe row `recipe_local_id`, with their order
@@ -119,6 +151,43 @@ fn insert_steps(
         .values(&rows)
         .execute(connection)?;
     Ok(steps.iter().map(saved_step).collect())
+}
+
+/// Inserts `edges` between the steps of the recipe row `recipe_local_id`,
+/// after `insert_steps`. An edge whose step the recipe does not have fails
+/// with `EdgeOutsideRecipe`.
+fn insert_edges(
+    connection: &mut SqliteConnection,
+    recipe_local_id: LocalRecipeId,
+    edges: &StepEdges,
+) -> Result<(), StoreFailure> {
+    if edges.is_empty() {
+        return Ok(());
+    }
+    let local_ids: HashMap<StepId, LocalStepId> = recipe_steps::table
+        .filter(recipe_steps::recipe_local_id.eq(recipe_local_id))
+        .select((recipe_steps::remote_id, recipe_steps::local_id))
+        .load::<(RemoteStepId, LocalStepId)>(connection)?
+        .into_iter()
+        .map(|(remote_id, local_id)| (remote_id.0, local_id))
+        .collect();
+    let rows = edges
+        .iter()
+        .map(|edge| {
+            let id = |step| local_ids.get(&step).copied();
+            match (id(edge.from), id(edge.to)) {
+                (Some(from_local_id), Some(to_local_id)) => Ok(StepEdgeRow {
+                    from_local_id,
+                    to_local_id,
+                }),
+                _ => Err(StoreFailure::EdgeOutsideRecipe),
+            }
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    diesel::insert_into(recipe_step_edges::table)
+        .values(&rows)
+        .execute(connection)?;
+    Ok(())
 }
 
 /// Runs inside an immediate transaction, so the check and the insert see the
@@ -142,7 +211,8 @@ fn create_in_transaction(
         .select(recipes::local_id)
         .first::<LocalRecipeId>(connection)?;
     let steps = insert_steps(connection, local_id, &recipe.steps)?;
-    Ok(row.into_domain(steps))
+    insert_edges(connection, local_id, &recipe.edges)?;
+    Ok(row.into_domain(steps, recipe.edges))
 }
 
 /// Runs inside an immediate transaction, like `create_in_transaction`. The
@@ -178,10 +248,12 @@ fn update_in_transaction(
         ))
         .execute(connection);
     duplicate_title(write)?;
+    // The cascade deletes the old steps' edges too.
     diesel::delete(recipe_steps::table.filter(recipe_steps::recipe_local_id.eq(local_id)))
         .execute(connection)?;
     let steps = insert_steps(connection, local_id, &recipe.steps)?;
-    Ok(row.into_domain(steps))
+    insert_edges(connection, local_id, &recipe.edges)?;
+    Ok(row.into_domain(steps, recipe.edges))
 }
 
 /// A taken title key fails with `DuplicateTitle`, also when the unique index

@@ -10,12 +10,12 @@ use diesel::{
 use kreatyna::{
     ingredients::name_key,
     recipes::{
-        CanvasPoint, Recipe, RecipeId, RecipeTitle, Step, StepDurationS, StepId, StepInstructions,
-        StepKind, StepWrite,
+        CanvasPoint, Recipe, RecipeId, RecipeTitle, Step, StepDurationS, StepEdges, StepId,
+        StepInstructions, StepKind, StepWrite,
     },
 };
 
-use super::schema::{recipe_steps, recipes};
+use super::schema::{recipe_step_edges, recipe_steps, recipes};
 
 /// The `local_id` of a `recipes` row: the key that its steps point to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, AsExpression, FromSqlRow)]
@@ -29,6 +29,25 @@ impl FromSql<BigInt, Sqlite> for LocalRecipeId {
 }
 
 impl ToSql<BigInt, Sqlite> for LocalRecipeId {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
+        out.set_value(self.0);
+        Ok(IsNull::No)
+    }
+}
+
+/// The `local_id` of a `recipe_steps` row: the key that its edges point to
+/// (REC-18).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, AsExpression, FromSqlRow)]
+#[diesel(sql_type = BigInt)]
+pub(crate) struct LocalStepId(pub i64);
+
+impl FromSql<BigInt, Sqlite> for LocalStepId {
+    fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
+        i64::from_sql(value).map(Self)
+    }
+}
+
+impl ToSql<BigInt, Sqlite> for LocalStepId {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
         out.set_value(self.0);
         Ok(IsNull::No)
@@ -197,12 +216,14 @@ pub(crate) struct RecipeRow {
 }
 
 impl RecipeRow {
-    /// The recipe with `steps`, which the store read in the order added.
-    pub fn into_domain(self, steps: Vec<Step>) -> Recipe {
+    /// The recipe with `steps`, which the store read in the order added,
+    /// and their `edges`.
+    pub fn into_domain(self, steps: Vec<Step>, edges: StepEdges) -> Recipe {
         Recipe {
             id: self.remote_id.0,
             title: self.title,
             steps,
+            edges,
         }
     }
 }
@@ -210,6 +231,8 @@ impl RecipeRow {
 #[derive(Debug, Clone, Queryable, Selectable)]
 #[diesel(table_name = recipe_steps)]
 pub(crate) struct StepRow {
+    /// The key that the step's edges point to. `into_domain` drops it.
+    pub local_id: LocalStepId,
     pub remote_id: RemoteStepId,
     pub title: String,
     pub x: DbCoordinate,
@@ -267,6 +290,15 @@ impl NewStepRow {
     }
 }
 
+/// One `recipe_step_edges` row: "`to` comes after `from`", by the steps'
+/// row keys (REC-18).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Queryable, Selectable, Insertable)]
+#[diesel(table_name = recipe_step_edges)]
+pub(crate) struct StepEdgeRow {
+    pub from_local_id: LocalStepId,
+    pub to_local_id: LocalStepId,
+}
+
 /// The step that the store saved for `step`.
 pub(crate) fn saved_step(step: &StepWrite) -> Step {
     Step {
@@ -296,12 +328,13 @@ impl NewRecipeRow {
         }
     }
 
-    /// The saved recipe with `steps`, as the store wrote them.
-    pub fn into_domain(self, steps: Vec<Step>) -> Recipe {
+    /// The saved recipe with `steps` and `edges`, as the store wrote them.
+    pub fn into_domain(self, steps: Vec<Step>, edges: StepEdges) -> Recipe {
         Recipe {
             id: self.remote_id.0,
             title: self.title,
             steps,
+            edges,
         }
     }
 }

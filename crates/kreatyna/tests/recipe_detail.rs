@@ -2,8 +2,8 @@ use kreatyna::capabilities::ResolveRender;
 use kreatyna::confirmation::{ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 use kreatyna::recipes::{
     CanvasPoint, Recipe, RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome,
-    RecipeDetailStatus, RecipeDetailStep, RecipeDetailView, RecipeId, Step, StepDurationS, StepId,
-    StepInstructions, StepKind,
+    RecipeDetailStatus, RecipeDetailStep, RecipeDetailView, RecipeId, Step, StepDurationS,
+    StepEdges, StepId, StepInstructions, StepKind,
     capabilities::{RecipeDeleteError, RecipeEffectStream, RecipeLoadError, ResolveRecipeStore},
 };
 use krucyfiks::{Command, Latest, Message, Widget, effects::CommandTestExt};
@@ -77,6 +77,7 @@ async fn a_recipe_without_steps_shows_an_empty_step_list() -> anyhow::Result<()>
         id: id(),
         title: "Toast".into(),
         steps: vec![],
+        edges: StepEdges::default(),
     };
     f.finish_load(load, Ok(Some(toast))).await?;
     assert_eq!(
@@ -412,6 +413,7 @@ fn shakshuka() -> Recipe {
             },
             step(12, "Dice onion", 10, 20),
         ],
+        edges: StepEdges::default(),
     }
 }
 

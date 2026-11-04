@@ -10,7 +10,7 @@ use kreatyna::{
     recipes::{
         Recipe, RecipeDeletion, RecipeDetailEvent, RecipeDetailStatus, RecipeDetailView,
         RecipeEditorEvent, RecipeId, RecipeListEvent, RecipeListRow, RecipeListStatus,
-        RecipePaneView, RecipeSectionEvent, RecipeSummary,
+        RecipePaneView, RecipeSectionEvent, RecipeSummary, StepEdges,
         capabilities::{RecipeEffect, RecipeLoadError, RecipeStoreRequest, ResolveRecipeStore},
     },
     *,
@@ -517,6 +517,7 @@ fn shakshuka() -> Recipe {
         id: RecipeId::from(uuid::Uuid::from_u128(1)),
         title: "Shakshuka".into(),
         steps: vec![],
+        edges: StepEdges::default(),
     }
 }
 
@@ -525,6 +526,7 @@ fn pasta() -> Recipe {
         id: RecipeId::from(uuid::Uuid::from_u128(2)),
         title: "Pasta".into(),
         steps: vec![],
+        edges: StepEdges::default(),
     }
 }
 

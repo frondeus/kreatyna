@@ -5,7 +5,8 @@ use kreatyna::{
     ingredients::capabilities::IngredientStoreMut,
     recipes::{
         CanvasPoint, NewRecipe, Recipe, RecipeId, RecipeSummary, RecipeTitle, RecipeUpdate, Step,
-        StepDurationS, StepId, StepInstructions, StepKind, StepTitle, StepWrite,
+        StepDurationS, StepEdge, StepEdges, StepId, StepInstructions, StepKind, StepTitle,
+        StepWrite,
     },
 };
 use test_case::test_case;
@@ -185,6 +186,7 @@ async fn an_update_replaces_the_steps_and_a_kept_step_keeps_its_id() -> anyhow::
     let update = RecipeUpdate {
         title: RecipeTitle::try_new("Shakshuka")?,
         steps: steps.clone(),
+        edges: StepEdges::default(),
     };
     let updated = RecipeStoreMut::update(&mut db, created.id, update).await?;
     assert_eq!(updated.steps, saved(&steps));
@@ -222,6 +224,7 @@ async fn a_step_keeps_its_duration_kind_and_instructions_through_create_and_upda
     let update = RecipeUpdate {
         title: RecipeTitle::try_new("Pasta")?,
         steps: steps.clone(),
+        edges: StepEdges::default(),
     };
     let updated = RecipeStoreMut::update(&mut db, created.id, update).await?;
     assert_eq!(updated.steps, saved(&steps));
@@ -280,6 +283,112 @@ async fn a_deleted_recipe_takes_its_steps_with_it() -> anyhow::Result<()> {
     RecipeStoreMut::create(&mut db, with_steps("Pasta", vec![step(2, "Boil", 0, 0)?])?).await?;
     RecipeStoreMut::delete(&mut db, shakshuka.id).await?;
     assert_eq!(step_rows(&mut db).await?, 1);
+    Ok(())
+}
+
+#[tokio::test]
+async fn create_and_update_keep_the_edges_when_the_step_rows_change() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let (dice, fry, serve) = (
+        step(1, "Dice onion", 0, 0)?,
+        step(2, "Fry onion", 200, 0)?,
+        step(3, "Serve", 400, 0)?,
+    );
+    let recipe = NewRecipe {
+        edges: StepEdges::from_saved([edge(&dice, &fry), edge(&fry, &serve)])?,
+        ..with_steps("Shakshuka", vec![dice.clone(), fry.clone(), serve.clone()])?
+    };
+    let created = RecipeStoreMut::create(&mut db, recipe.clone()).await?;
+    assert_eq!(created.edges, recipe.edges);
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, created.id).await,
+        Ok(Some(created.clone()))
+    );
+
+    // The update writes every step row again, with new row keys. Serve goes,
+    // Plate is new, and Dice now also comes before Plate.
+    let plate = step(4, "Plate", 400, 100)?;
+    let update = RecipeUpdate {
+        title: RecipeTitle::try_new("Shakshuka")?,
+        steps: vec![dice.clone(), fry.clone(), plate.clone()],
+        edges: StepEdges::from_saved([edge(&dice, &fry), edge(&fry, &plate), edge(&dice, &plate)])?,
+    };
+    let updated = RecipeStoreMut::update(&mut db, created.id, update.clone()).await?;
+    assert_eq!(updated.edges, update.edges);
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, created.id).await,
+        Ok(Some(updated))
+    );
+    assert_eq!(edge_rows(&mut db).await?, 3);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_deleted_step_or_recipe_takes_its_edges_with_it() -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let (boil, cook, drain) = (
+        step(1, "Boil water", 0, 0)?,
+        step(2, "Cook pasta", 200, 0)?,
+        step(3, "Drain", 400, 0)?,
+    );
+    let recipe = NewRecipe {
+        edges: StepEdges::from_saved([edge(&boil, &cook), edge(&cook, &drain)])?,
+        ..with_steps("Pasta", vec![boil.clone(), cook.clone(), drain.clone()])?
+    };
+    let pasta = RecipeStoreMut::create(&mut db, recipe).await?;
+    // A step row that goes takes the edges into it and out of it.
+    execute(
+        &mut db,
+        "DELETE FROM recipe_steps WHERE title = 'Cook pasta'",
+    )
+    .await?;
+    assert_eq!(edge_rows(&mut db).await?, 0);
+    let recipe = NewRecipe {
+        edges: StepEdges::from_saved([edge(&boil, &drain)])?,
+        ..with_steps("Toast", vec![step(4, "Toast", 0, 0)?])?
+    };
+    // Boil and Drain belong to Pasta, so Toast cannot have this edge.
+    assert_eq!(
+        RecipeStoreMut::create(&mut db, recipe).await,
+        Err(RecipeSaveError::Storage)
+    );
+    let update = RecipeUpdate {
+        title: RecipeTitle::try_new("Pasta")?,
+        steps: vec![boil.clone(), drain.clone()],
+        edges: StepEdges::from_saved([edge(&boil, &drain)])?,
+    };
+    RecipeStoreMut::update(&mut db, pasta.id, update).await?;
+    assert_eq!(edge_rows(&mut db).await?, 1);
+    RecipeStoreMut::delete(&mut db, pasta.id).await?;
+    assert_eq!(edge_rows(&mut db).await?, 0);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_recipe_from_before_rec_18_upgrades_with_no_edges() -> anyhow::Result<()> {
+    let folder = tempfile::tempdir()?;
+    let path = folder.path().join("app.sqlite");
+    let path = path.to_str().context("the temporary path is not UTF-8")?;
+    {
+        let mut db = SqliteConnection::establish(path)?;
+        // The schema before REC-18: up to and with the step details.
+        for _ in 0..6 {
+            db.run_next_migration(MIGRATIONS)
+                .map_err(|error| anyhow!(error))?;
+        }
+        db.batch_execute(TWO_RECIPES)?;
+        db.batch_execute(&format!(
+            "INSERT INTO recipe_steps (remote_id, recipe_local_id, title, ordinal, x, y, kind)
+             VALUES ('{STEP}', (SELECT local_id FROM recipes WHERE title = 'Shakshuka'),
+                     'Fry onion', 0, 10, 20, 'active')"
+        ))?;
+    }
+    let mut db = SqliteDatabase::new(path).await?;
+    let shakshuka = RecipeStoreMut::get(&mut db, SHAKSHUKA.parse()?)
+        .await?
+        .context("Shakshuka is gone")?;
+    assert_eq!(shakshuka.steps.len(), 1);
+    assert_eq!(shakshuka.edges, StepEdges::default());
     Ok(())
 }
 
@@ -419,6 +528,49 @@ async fn a_step_id_of_another_recipe_fails_the_save_and_changes_nothing() -> any
     // The transaction rolled back the recipe row too.
     assert_eq!(RecipeStoreMut::list(&mut db).await?.len(), 1);
     assert_eq!(step_rows(&mut db).await?, 1);
+    Ok(())
+}
+
+#[test_case("1, 1"; "a step to itself")]
+#[test_case("1, 2"; "the same edge twice")]
+#[test_case("1, 99"; "an unknown step")]
+fn the_edge_table_refuses_invalid_rows(ends: &str) -> anyhow::Result<()> {
+    let mut db = migrated_connection()?;
+    db.batch_execute(
+        "PRAGMA foreign_keys = ON;
+         INSERT INTO recipe_steps (local_id, remote_id, recipe_local_id, title, ordinal, x, y)
+         VALUES (1, '6f1c1d3e-0000-4000-8000-0000000000f1',
+                 (SELECT local_id FROM recipes WHERE title = 'Shakshuka'), 'Dice', 0, 0, 0),
+                (2, '6f1c1d3e-0000-4000-8000-0000000000f2',
+                 (SELECT local_id FROM recipes WHERE title = 'Shakshuka'), 'Fry', 1, 0, 0);
+         INSERT INTO recipe_step_edges (from_local_id, to_local_id) VALUES (1, 2);",
+    )?;
+    let sql = format!("INSERT INTO recipe_step_edges (from_local_id, to_local_id) VALUES ({ends})");
+    assert!(db.batch_execute(&sql).is_err());
+    Ok(())
+}
+
+#[tokio::test]
+async fn an_edge_to_a_step_the_recipe_does_not_have_fails_the_save_and_changes_nothing()
+-> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let (dice, fry) = (step(1, "Dice", 0, 0)?, step(2, "Fry", 200, 0)?);
+    let created =
+        RecipeStoreMut::create(&mut db, with_steps("Shakshuka", vec![dice.clone(), fry])?).await?;
+    // Fry is not in the update, but the edge still names it.
+    let update = RecipeUpdate {
+        title: RecipeTitle::try_new("Shakshuka")?,
+        steps: vec![dice.clone()],
+        edges: StepEdges::from_saved([edge(&dice, &step(2, "Fry", 200, 0)?)])?,
+    };
+    assert_eq!(
+        RecipeStoreMut::update(&mut db, created.id, update).await,
+        Err(RecipeSaveError::Storage)
+    );
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, created.id).await,
+        Ok(Some(created))
+    );
     Ok(())
 }
 
@@ -638,6 +790,39 @@ async fn step_details_that_break_the_rules_fail_get(assignment: &str) -> anyhow:
     Ok(())
 }
 
+/// Only a broken file or another program can write these: the store never
+/// does.
+#[test_case("(1, 2), (2, 1)"; "a loop")]
+#[test_case("(1, 3)"; "an edge into another recipe")]
+#[tokio::test]
+async fn stored_edges_that_break_the_graph_fail_get(edges: &str) -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let shakshuka = RecipeStoreMut::create(
+        &mut db,
+        with_steps(
+            "Shakshuka",
+            vec![step(1, "Dice", 0, 0)?, step(2, "Fry", 200, 0)?],
+        )?,
+    )
+    .await?;
+    RecipeStoreMut::create(&mut db, with_steps("Pasta", vec![step(3, "Boil", 0, 0)?])?).await?;
+    let sql = format!(
+        "INSERT INTO recipe_step_edges (from_local_id, to_local_id)
+         SELECT f.local_id, t.local_id
+         FROM (VALUES {edges}) AS e
+         JOIN recipe_steps AS f ON f.remote_id = printf('6f1c1d3e-0000-4000-8000-%012x', e.column1)
+         JOIN recipe_steps AS t ON t.remote_id = printf('6f1c1d3e-0000-4000-8000-%012x', e.column2)"
+    );
+    db.connection
+        .spawn_blocking(move |conn| conn.batch_execute(&sql))
+        .await?;
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, shakshuka.id).await,
+        Err(RecipeLoadError::Storage)
+    );
+    Ok(())
+}
+
 // Test support
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
@@ -714,7 +899,24 @@ fn with_steps(title: &str, steps: Vec<StepWrite>) -> anyhow::Result<NewRecipe> {
     Ok(NewRecipe {
         title: RecipeTitle::try_new(title)?,
         steps,
+        edges: StepEdges::default(),
     })
+}
+
+/// "`to` comes after `from`".
+fn edge(from: &StepWrite, to: &StepWrite) -> StepEdge {
+    StepEdge {
+        from: from.id,
+        to: to.id,
+    }
+}
+
+/// How many edge rows the database has, over all recipes.
+async fn edge_rows(db: &mut SqliteDatabase) -> anyhow::Result<i64> {
+    Ok(db
+        .connection
+        .spawn_blocking(|conn| recipe_step_edges::table.count().get_result::<i64>(conn))
+        .await?)
 }
 
 /// How many step rows the database has, over all recipes.
@@ -730,6 +932,7 @@ fn recipe(id: &str, title: &str) -> anyhow::Result<Recipe> {
         id: id.parse()?,
         title: title.into(),
         steps: vec![],
+        edges: StepEdges::default(),
     })
 }
 
@@ -741,6 +944,7 @@ fn update(title: &str) -> anyhow::Result<RecipeUpdate> {
     Ok(RecipeUpdate {
         title: RecipeTitle::try_new(title)?,
         steps: vec![],
+        edges: StepEdges::default(),
     })
 }
 

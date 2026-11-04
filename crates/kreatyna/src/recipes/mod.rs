@@ -4,6 +4,7 @@ pub mod capabilities;
 mod detail;
 mod duration;
 mod editor;
+mod graph;
 mod list;
 mod model;
 mod section;
@@ -18,6 +19,7 @@ pub use editor::{
     RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus,
     RecipeEditorView,
 };
+pub use graph::{ConnectRefusal, StepEdge, StepEdges};
 pub use list::{
     RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListRow, RecipeListStatus, RecipeListView,
 };

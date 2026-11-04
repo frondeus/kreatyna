@@ -6,8 +6,8 @@ use kreatyna::{
         RecipeDetailStep, RecipeDetailView, RecipeEditorEvent, RecipeEditorProblem,
         RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeListEvent, RecipeListRow,
         RecipeListStatus, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
-        RecipeSectionView, RecipeSummary, Step, StepCanvasView, StepDurationView, StepId, StepKind,
-        StepLabel, StepNodeView, StepProblems,
+        RecipeSectionView, RecipeSummary, Step, StepCanvasView, StepDurationView, StepEdges,
+        StepId, StepKind, StepLabel, StepNodeView, StepProblems,
         capabilities::{
             RecipeDeleteError, RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError,
             RecipeStoreRequest, ResolveRecipeStore,
@@ -767,6 +767,7 @@ fn recipe(id: u128, title: &str) -> Recipe {
         id: RecipeId::from(Uuid::from_u128(id)),
         title: title.into(),
         steps: vec![],
+        edges: StepEdges::default(),
     }
 }
 

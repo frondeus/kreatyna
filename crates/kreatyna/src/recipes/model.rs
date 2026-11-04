@@ -1,6 +1,8 @@
 use nutype::nutype;
 use uuid::Uuid;
 
+use super::StepEdges;
+
 /// Stable recipe identity. Creation is explicit and does not use a nil sentinel:
 /// `generate` makes a version 4 identifier, and `new` wraps a known one.
 #[nutype(derive(
@@ -89,6 +91,8 @@ pub struct Recipe {
     pub title: String,
     /// In the order added.
     pub steps: Vec<Step>,
+    /// The arrows between `steps` (REC-18).
+    pub edges: StepEdges,
 }
 
 /// A row of `RecipeStore::list`: what the recipe list shows, without the
@@ -136,6 +140,8 @@ pub struct NewRecipe {
     pub title: RecipeTitle,
     /// In the order added.
     pub steps: Vec<StepWrite>,
+    /// The arrows between `steps` (REC-18).
+    pub edges: StepEdges,
 }
 
 /// What `RecipeStore::update` writes: every field of the recipe, not a
@@ -146,4 +152,6 @@ pub struct RecipeUpdate {
     pub title: RecipeTitle,
     /// The whole new step list, in the order added. Steps keep their ids.
     pub steps: Vec<StepWrite>,
+    /// The whole new edge set between `steps` (REC-18).
+    pub edges: StepEdges,
 }

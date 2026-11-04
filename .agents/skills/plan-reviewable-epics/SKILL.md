@@ -188,7 +188,9 @@ per cycle, before the cooldown.
 
 The `mol-cycle` workflow (`.beads/formulas/mol-cycle.formula.json`) holds the
 order of the work: four feature slices, then the open bugs, then the full test
-suite, then the tech-debt cooldown, then the user's approval. Start a cycle
+suite, then the tech-debt cooldown, then the introspection
+([run-introspection](../run-introspection/SKILL.md)), then the user's
+approval. Start a cycle
 with `scripts/start-cycle.sh <cycle>`. Bugs still come first at every step: no
 feature slice starts while a bug bead is open, and a bug fix is not a feature
 slice. Each feature step names its slice in its notes and closes when the

@@ -1,6 +1,6 @@
 {
   "formula": "mol-cycle",
-  "description": "One delivery cycle: four feature slices, then the open bugs, then the full test suite, then the tech-debt cooldown and the user's approval. Bugs come first at every step: no feature slice starts while a bug bead is open. Start it with .agents/skills/plan-reviewable-epics/scripts/start-cycle.sh <cycle>.",
+  "description": "One delivery cycle: four feature slices, then the open bugs, then the full test suite, then the tech-debt cooldown, then the introspection, and the user's approval. Bugs come first at every step: no feature slice starts while a bug bead is open. Start it with .agents/skills/plan-reviewable-epics/scripts/start-cycle.sh <cycle>.",
   "version": 1,
   "type": "workflow",
   "pour": true,
@@ -50,11 +50,17 @@
       "description": "Audit the codebase: correctness, API hygiene, performance, tests, naming, dependencies, migrations, tooling, security, each finding with file:line and severity. Push back on false findings. File the real ones as beads with the tech-debt label. Send the audit to an Inbox thread named \"Cooldown {{cycle}}\". Clear every open tech-debt bead (`bd list --label tech-debt --status open`), each in a reviewed jj change. Close this step when none is open."
     },
     {
+      "id": "introspection",
+      "title": "Cycle {{cycle}}: introspection",
+      "needs": ["cooldown"],
+      "description": "Follow .agents/skills/run-introspection/SKILL.md. Gather every Plannotator comment since the cursor (`bd memories introspection-cursor`) with its gather-comments.py script, and read all of it. Find the corrections that repeat, and the ones where the user asked for a skill or a rule. Propose the strongest fix for each: a lint, then a check, then a skill rule, then a memory. Send the report to an Inbox thread named \"Introspection {{cycle}}\", with one question per fix. Make each approved fix in its own reviewed jj change. Then move the cursor and close this step."
+    },
+    {
       "id": "finish",
       "title": "Cycle {{cycle}}: close the cycle",
-      "needs": ["cooldown"],
+      "needs": ["introspection"],
       "gate": {"type": "human"},
-      "description": "Waits for the human gate: close it when the user approves the cooldown in the \"Cooldown {{cycle}}\" thread. Then close this step and the workflow root (\"Cycle {{cycle}}\"), and start the next cycle with start-cycle.sh <next number>."
+      "description": "Waits for the human gate: close it when the user approves the cooldown (in the \"Cooldown {{cycle}}\" thread) and the introspection (in the \"Introspection {{cycle}}\" thread). Then close this step and the workflow root (\"Cycle {{cycle}}\"), and start the next cycle with start-cycle.sh <next number>."
     }
   ]
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Start a delivery cycle: pour the mol-cycle workflow (4 feature slices, the
-# open bugs, the full test suite, the cooldown, the user's approval).
+# open bugs, the full test suite, the cooldown, the introspection, and the
+# user's approval).
 #
 #   start-cycle.sh <cycle>
 #   start-cycle.sh 2
@@ -33,6 +34,6 @@ if len(gates) != 1:
     sys.exit(f"expected one gate, found {len(gates)}")
 print(gates[0]["id"])
 ')
-bd update "$gate" --title "Cycle $cycle: the user approves the cooldown" >/dev/null
+bd update "$gate" --title "Cycle $cycle: the user approves the cooldown and the introspection" >/dev/null
 
 bd graph "$root" --compact

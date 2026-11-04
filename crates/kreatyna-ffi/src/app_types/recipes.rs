@@ -595,11 +595,16 @@ pub enum RecipeDetailStatus {
     },
 }
 
-/// A step in the read view.
+/// A step in the read view: "Boil water · 10 min · waiting", with the
+/// instructions under it in smaller text (REC-17/Q2).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct RecipeDetailStep {
     pub id: core::StepId,
     pub title: String,
+    /// The duration as text, such as "1 h 30 min". `nil` shows nothing.
+    pub duration: Option<String>,
+    pub kind: StepKind,
+    pub instructions: Option<String>,
 }
 
 impl From<core::RecipeDetailStep> for RecipeDetailStep {
@@ -607,6 +612,9 @@ impl From<core::RecipeDetailStep> for RecipeDetailStep {
         Self {
             id: value.id,
             title: value.title,
+            duration: value.duration,
+            kind: value.kind.into(),
+            instructions: value.instructions,
         }
     }
 }

@@ -2,7 +2,8 @@ use kreatyna::capabilities::ResolveRender;
 use kreatyna::confirmation::{ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 use kreatyna::recipes::{
     CanvasPoint, Recipe, RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome,
-    RecipeDetailStatus, RecipeDetailStep, RecipeDetailView, RecipeId, Step, StepId, StepKind,
+    RecipeDetailStatus, RecipeDetailStep, RecipeDetailView, RecipeId, Step, StepDurationS, StepId,
+    StepInstructions, StepKind,
     capabilities::{RecipeDeleteError, RecipeEffectStream, RecipeLoadError, ResolveRecipeStore},
 };
 use krucyfiks::{Command, Latest, Message, Widget, effects::CommandTestExt};
@@ -396,13 +397,19 @@ fn id() -> RecipeId {
 }
 
 /// Shakshuka with two steps. Fry onion was added first, so the read view
-/// lists it first, although it is right of Dice onion on the canvas.
+/// lists it first, although it is right of Dice onion on the canvas. Fry
+/// onion has a duration, Waiting, and instructions (REC-17).
 fn shakshuka() -> Recipe {
     Recipe {
         id: id(),
         title: "Shakshuka".into(),
         steps: vec![
-            step(11, "Fry onion", 200, 40),
+            Step {
+                duration: StepDurationS::try_new(5_400).ok(),
+                kind: StepKind::Waiting,
+                instructions: StepInstructions::try_new("Low heat, stir now and then.").ok(),
+                ..step(11, "Fry onion", 200, 40)
+            },
             step(12, "Dice onion", 10, 20),
         ],
     }
@@ -419,16 +426,25 @@ fn step(id: u128, title: &str, x: u32, y: u32) -> Step {
     }
 }
 
-/// Shakshuka's steps as the read view lists them.
+/// Shakshuka's steps as the read view lists them: in the order added, with
+/// the duration as text.
 fn shakshuka_steps() -> Vec<RecipeDetailStep> {
-    shakshuka()
-        .steps
-        .into_iter()
-        .map(|step| RecipeDetailStep {
-            id: step.id,
-            title: step.title,
-        })
-        .collect()
+    vec![
+        RecipeDetailStep {
+            id: StepId::from(Uuid::from_u128(11)),
+            title: "Fry onion".into(),
+            duration: Some("1 h 30 min".into()),
+            kind: StepKind::Waiting,
+            instructions: Some("Low heat, stir now and then.".into()),
+        },
+        RecipeDetailStep {
+            id: StepId::from(Uuid::from_u128(12)),
+            title: "Dice onion".into(),
+            duration: None,
+            kind: StepKind::Active,
+            instructions: None,
+        },
+    ]
 }
 
 fn ready(title: &str) -> RecipeDetailStatus {

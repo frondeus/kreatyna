@@ -843,6 +843,10 @@ fn detail_steps(recipe: &Recipe) -> Vec<RecipeDetailStep> {
         .map(|step| RecipeDetailStep {
             id: step.id,
             title: step.title.clone(),
+            // The section's recipes have steps with no details.
+            duration: None,
+            kind: step.kind,
+            instructions: None,
         })
         .collect()
 }

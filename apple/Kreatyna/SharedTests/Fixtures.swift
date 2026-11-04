@@ -148,8 +148,13 @@ enum Fixtures {
     }
 
     /// A step of the read view. The ID only has to be unique in the recipe.
-    static func detailStep(_ title: String) -> RecipeDetailStep {
-        RecipeDetailStep(id: StepId(uuid: "step-\(title)"), title: title)
+    static func detailStep(
+        _ title: String, duration: String? = nil, kind: StepKind = .active, instructions: String? = nil
+    ) -> RecipeDetailStep {
+        RecipeDetailStep(
+            id: StepId(uuid: "step-\(title)"), title: title, duration: duration, kind: kind,
+            instructions: instructions
+        )
     }
 
     static func recipeList(_ status: RecipeListStatus, search: String = "") -> RecipeListView {

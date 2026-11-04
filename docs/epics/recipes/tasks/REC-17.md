@@ -411,4 +411,37 @@ tests, and the UI tests of the Recipes section only (`--ui MacRecipeUITests`).
 
 ## Validation
 
-Not run yet.
+| # | Change | Result |
+|---|---|---|
+| 1 | 2 to 5 | `cargo test --workspace`: 817 tests pass after change 5. |
+| 2 | 2 to 5 | `cargo clippy --workspace --all-targets -- -D warnings`: no warnings. |
+| 3 | 2 to 5 | `cargo fmt --check`: no diff. |
+| 4 | 3 | `mac-test --ui none`: passes. No image changes. |
+| 4 | 4, 5 | `mac-test --ui MacRecipeUITests`: unit and snapshot tests pass, and 13 UI tests pass, `testStepDetailsSurviveReopen` among them. Image changes: the five new snapshots, and `editRecipeEditor`, `recipeCanvas`, `untitledStep` (taller nodes, real fields). Each one was checked by eye. |
+| 5 | 4, 5 | `ios-app-build`: builds. |
+| 6 | 5 | `capture-demo.sh`: `01-inspector.png`, `02-more.png`, `03-read-view.png` in `REC-17-demo/`. |
+| 7 | 2 to 5 | Change 2: 534 insertions and 22 deletions. Change 3: 788 and 86. Change 4: 445 and 24. Change 5: under 300, with this section. |
+
+Findings during the work:
+
+- Review of change 2: `StepDuration` became `StepDurationS`, so the name
+  says seconds. `DbDuration` became `DbDurationS`.
+- Change 3 was 874 lines, not about 550. The editor tests grew: every new
+  event has its unknown-id, same-value, saving, and Discard cases.
+- The same duration sent another way (20 min as 1,200 s) changes nothing,
+  so the editor does not render. A test that expected a render was wrong.
+- `logging … threshold::error` failed once in change 3 and passed in three
+  reruns. It is filed as `vibetyna-ns6a`.
+- The snapshot window is never active, so a `.borderedProminent` chip
+  looked like the others. The chips have their own style.
+- The four unit fields did not fit in one row of the 260-point inspector.
+  They sit two per row.
+- The node's accessibility label stays the title; the duration and kind
+  are its value. A label with both broke the UI tests that find nodes by
+  title.
+- macOS does not report the selected segment of the Active/Waiting switch
+  as selected. The UI test reads the kind from the node's value instead.
+- The More… button has the link style, and the UI test finds it by
+  identifier on any element type.
+
+All checks ran. No check was skipped.

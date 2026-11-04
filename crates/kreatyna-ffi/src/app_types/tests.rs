@@ -584,20 +584,32 @@ fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     kreatyna::recipes::RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
         steps: vec![
-            kreatyna::recipes::RecipeDetailStep { id: step_id(1), title: "Fry onion".into() },
-            kreatyna::recipes::RecipeDetailStep { id: step_id(2), title: "Dice onion".into() },
+            kreatyna::recipes::RecipeDetailStep {
+                id: step_id(1), title: "Fry onion".into(), duration: Some("1 h 30 min".into()),
+                kind: kreatyna::recipes::StepKind::Waiting, instructions: Some("Low heat.".into()),
+            },
+            kreatyna::recipes::RecipeDetailStep {
+                id: step_id(2), title: "Dice onion".into(), duration: None,
+                kind: kreatyna::recipes::StepKind::Active, instructions: None,
+            },
         ],
         deletion: kreatyna::recipes::RecipeDeletion::Idle,
     },
     RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
         steps: vec![
-            RecipeDetailStep { id: step_id(1), title: "Fry onion".into() },
-            RecipeDetailStep { id: step_id(2), title: "Dice onion".into() },
+            RecipeDetailStep {
+                id: step_id(1), title: "Fry onion".into(), duration: Some("1 h 30 min".into()),
+                kind: StepKind::Waiting, instructions: Some("Low heat.".into()),
+            },
+            RecipeDetailStep {
+                id: step_id(2), title: "Dice onion".into(), duration: None,
+                kind: StepKind::Active, instructions: None,
+            },
         ],
         deletion: RecipeDeletion::Idle,
     };
-    "ready with steps in the order added"
+    "ready with steps in the order added and their details"
 )]
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Idle },

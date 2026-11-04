@@ -343,6 +343,52 @@ final class MacRecipeUITests: MacUITestCase {
         XCTAssertFalse(app.staticTexts["recipeStep"].exists)
     }
 
+    /// A step's duration, kind, and instructions survive Save and show in
+    /// the read view and again in the inspector (REC-17).
+    @MainActor
+    func testStepDetailsSurviveReopen() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
+        app.typeText("Pasta")
+        addStep(at: CGVector(dx: 0.1, dy: 0.1), in: app)
+        XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Boil water")
+
+        app.buttons["durationChip10"].click()
+        let minutes = app.textFields["durationMinutesField"]
+        XCTAssertTrue(waitFor(minutes, value: "10"))
+        app.radioButtons["Waiting"].click()
+        let instructions = instructionsField(in: app)
+        instructions.click()
+        app.typeText("Salt it well.")
+        XCTAssertTrue(waitFor(stepNode("Boil water", in: app), value: "10 min · waiting"))
+        app.typeKey("s", modifierFlags: .command)
+
+        XCTAssertTrue(waitForTitle(in: app, "Pasta"))
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStep"], value: "Boil water"))
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStepDetails"], value: " · 10 min · waiting"))
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStepInstructions"], value: "Salt it well."))
+
+        app.buttons["editRecipe"].click()
+        XCTAssertTrue(app.staticTexts["selectStepHint"].waitForExistence(timeout: 5))
+        stepNode("Boil water", in: app).click()
+        XCTAssertTrue(waitFor(minutes, value: "10"))
+        XCTAssertTrue(app.buttons["durationChip10"].isSelected)
+        // The kind comes back from Rust: the node says "waiting".
+        XCTAssertTrue(waitFor(stepNode("Boil water", in: app), value: "10 min · waiting"))
+        XCTAssertTrue(waitFor(instructionsField(in: app), value: "Salt it well."))
+    }
+
+    /// The Instructions field. A vertical text field may show as a text view.
+    @MainActor
+    private func instructionsField(in app: XCUIApplication) -> XCUIElement {
+        let field = app.descendants(matching: .any).matching(identifier: "stepInstructionsField").firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        return field
+    }
+
     /// Presses on `element`, moves the pointer by `offset` points, and releases.
     @MainActor
     private func drag(_ element: XCUIElement, by offset: CGVector) {

@@ -484,6 +484,59 @@ final class MacDemoCaptureUITests: MacUITestCase {
         app.terminate()
     }
 
+    /// REC-17: the inspector with the 10 min chip, Waiting, and instructions; More… with
+    /// 1 min 30 s; and the read view with the step details.
+    @MainActor
+    func testCaptureREC17Demo() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(app.textFields["recipeTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Pasta")
+        let canvas = app.scrollViews["stepCanvas"]
+        XCTAssertTrue(canvas.waitForExistence(timeout: 5))
+        let add = app.menuItems["Add Step"]
+        let nodes = app.descendants(matching: .any).matching(identifier: "stepNode")
+
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.08)).rightClick()
+        XCTAssertTrue(add.waitForExistence(timeout: 5))
+        add.click()
+        XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Boil water")
+        app.buttons["durationChip10"].click()
+        app.radioButtons["Waiting"].click()
+        let instructions = app.descendants(matching: .any).matching(identifier: "stepInstructionsField").firstMatch
+        XCTAssertTrue(instructions.waitForExistence(timeout: 5))
+        instructions.click()
+        app.typeText("Salt it well.")
+        let boil = nodes.matching(NSPredicate(format: "label == 'Boil water'")).firstMatch
+        XCTAssertTrue(waitFor(boil, value: "10 min · waiting"))
+        capture("01-inspector", app)
+
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.42)).rightClick()
+        XCTAssertTrue(add.waitForExistence(timeout: 5))
+        add.click()
+        XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Sear scallops")
+        // A link-style button: macOS may list it as a link.
+        app.descendants(matching: .any).matching(identifier: "durationMoreButton").firstMatch.click()
+        let unitMinutes = app.textFields["durationUnit-min"]
+        XCTAssertTrue(unitMinutes.waitForExistence(timeout: 5))
+        unitMinutes.click()
+        app.typeText("1")
+        app.textFields["durationUnit-s"].click()
+        app.typeText("30")
+        let sear = nodes.matching(NSPredicate(format: "label == 'Sear scallops'")).firstMatch
+        XCTAssertTrue(waitFor(sear, value: "1 min 30 s · active"))
+        capture("02-more", app)
+
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStepCount"], value: "2 steps"))
+        XCTAssertTrue(app.staticTexts["recipeStepInstructions"].waitForExistence(timeout: 5))
+        capture("03-read-view", app)
+        app.terminate()
+    }
+
     /// The ingredient list the demos start from (Garlic, Tomato, Basil, …).
     private func demoIngredients() throws -> String {
         let fixture = URL(fileURLWithPath: #filePath)

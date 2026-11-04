@@ -260,7 +260,7 @@ extension MainActorTests {
         @Test(arguments: Appearance.allCases)
         func recipeReadView(appearance: Appearance) {
             let shakshuka = Fixtures.recipeRow("Shakshuka", stepCount: 3)
-            let steps = ["Fry onion", "Dice onion", "Crack eggs"].map(Fixtures.detailStep)
+            let steps = ["Fry onion", "Dice onion", "Crack eggs"].map { Fixtures.detailStep($0) }
             let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: shakshuka.title, steps: steps, deletion: .idle))
             snapshot(
                 MacMainView(
@@ -270,6 +270,31 @@ extension MainActorTests {
                             .ready(rows: [Fixtures.recipeRow("Pasta", stepCount: 1), shakshuka]),
                             pane: .detail(detail: detail)
                         )
+                    ),
+                    columnVisibility: .doubleColumn,
+                    send: { _ in }
+                ),
+                appearance: appearance
+            )
+        }
+
+        /// Pasta's read view with step details: the duration and "waiting"
+        /// after the title, and the instructions under it (REC-17/Q2).
+        @Test(arguments: Appearance.allCases)
+        func recipeReadViewStepDetails(appearance: Appearance) {
+            let pasta = Fixtures.recipeRow("Pasta", stepCount: 4)
+            let steps = [
+                Fixtures.detailStep("Boil water", duration: "10 min", kind: .waiting, instructions: "Salt it well."),
+                Fixtures.detailStep("Sear scallops", duration: "1 min 30 s"),
+                Fixtures.detailStep("Rest the dough", kind: .waiting),
+                Fixtures.detailStep("Plate"),
+            ]
+            let detail = RecipeDetailView(id: pasta.id, status: .ready(title: pasta.title, steps: steps, deletion: .idle))
+            snapshot(
+                MacMainView(
+                    app: Fixtures.splitApp(
+                        section: .recipes,
+                        recipes: Fixtures.recipeSection(.ready(rows: [pasta]), pane: .detail(detail: detail))
                     ),
                     columnVisibility: .doubleColumn,
                     send: { _ in }

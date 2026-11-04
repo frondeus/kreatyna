@@ -5,7 +5,7 @@
 use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
 use super::{
-    Recipe, RecipeId, StepId,
+    Recipe, RecipeId, StepDurationS, StepId, StepKind,
     capabilities::{RecipeCapabilities, RecipeDeleteError, RecipeEffectStream, RecipeLoadError},
 };
 use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
@@ -55,11 +55,16 @@ pub enum RecipeDetailStatus {
     },
 }
 
-/// A step in the read view's flat list (REC-14).
+/// A step in the read view's flat list (REC-14): "Boil water · 10 min ·
+/// waiting", with the instructions under it (REC-17/Q2).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecipeDetailStep {
     pub id: StepId,
     pub title: String,
+    /// The duration as text, such as "1 h 30 min". `None` shows nothing.
+    pub duration: Option<String>,
+    pub kind: StepKind,
+    pub instructions: Option<String>,
 }
 
 /// The delete of the shown recipe (MAC-07).
@@ -333,6 +338,12 @@ impl Widget for RecipeDetail {
                     .map(|step| RecipeDetailStep {
                         id: step.id,
                         title: step.title.clone(),
+                        duration: step.duration.map(StepDurationS::text),
+                        kind: step.kind,
+                        instructions: step
+                            .instructions
+                            .as_ref()
+                            .map(|text| text.as_ref().to_owned()),
                     })
                     .collect(),
                 deletion: match deletion {

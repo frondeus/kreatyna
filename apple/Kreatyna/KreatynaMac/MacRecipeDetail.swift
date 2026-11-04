@@ -108,8 +108,7 @@ struct MacRecipeDetail: View {
                     // In the order added (REC-14).
                     Section("Steps") {
                         ForEach(steps, id: \.id) { step in
-                            Text(step.title)
-                                .accessibilityIdentifier("recipeStep")
+                            MacRecipeDetailStepRow(step: step)
                         }
                     }
                 }
@@ -133,5 +132,38 @@ struct MacRecipeDetail: View {
             Text("None yet")
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+/// One step of the read view: "Boil water · 10 min · waiting", with the
+/// instructions under it in smaller text (REC-17/Q2).
+struct MacRecipeDetailStepRow: View {
+    let step: RecipeDetailStep
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 0) {
+                Text(step.title)
+                    .accessibilityIdentifier("recipeStep")
+                if let details = Self.details(step) {
+                    Text(" · \(details)")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("recipeStepDetails")
+                }
+            }
+            if let instructions = step.instructions {
+                Text(instructions)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("recipeStepInstructions")
+            }
+        }
+    }
+
+    /// "10 min · waiting", "1 min 30 s", "waiting", or `nil` for an active
+    /// step without a duration.
+    static func details(_ step: RecipeDetailStep) -> String? {
+        let parts = [step.duration, step.kind == .waiting ? "waiting" : nil].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }

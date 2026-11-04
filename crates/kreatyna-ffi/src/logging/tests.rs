@@ -143,7 +143,7 @@ fn delivers_concurrently_from_multiple_threads() {
 // The task can resume on another worker thread after the yield, so the span
 // must travel with the future, not with the thread.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[allow(
+#[expect(
     clippy::await_holding_lock,
     reason = "the guard only keeps other tests' dispatchers out; no task here takes it"
 )]
@@ -207,6 +207,10 @@ fn a_threshold_keeps_its_level_and_every_more_severe_one(level: LogLevel) {
 fn a_filtered_event_does_not_format_its_fields() {
     struct MustNotFormat;
     impl fmt::Debug for MustNotFormat {
+        #[expect(
+            clippy::panic,
+            reason = "the test fails exactly when the logger formats a filtered field"
+        )]
         fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
             panic!("filtered field was formatted");
         }

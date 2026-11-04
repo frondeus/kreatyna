@@ -25,6 +25,10 @@ pub use seed::*;
 
 uniffi::setup_scaffolding!();
 
+#[expect(
+    clippy::expect_used,
+    reason = "the runtime fails to build only when the OS refuses its threads or timer; the app, its startup and its failure screen all run on it, so there is no error path to report to"
+)]
 static RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
     tokio::runtime::Builder::new_multi_thread()
         .enable_time()

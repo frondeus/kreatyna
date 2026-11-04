@@ -67,9 +67,6 @@ impl TryFrom<core::IngredientCatalogView> for IngredientCatalogView {
     }
 }
 
-// UniFFI exports this as a Swift enum; boxing one Rust variant would not reduce
-// the generated value payload and would make the bridge contract less direct.
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum IngredientCatalogScreenView {
     List,

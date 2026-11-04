@@ -1,8 +1,11 @@
 //! Test support that `recipe_editor.rs` and `step_canvas.rs` share: the
 //! editor fixture and the recipes it opens. `recipe_section.rs` uses the
 //! chips. Each test file compiles this module on its own and uses only part
-//! of it, so unused items are allowed.
-#![allow(dead_code)]
+//! of it.
+#![expect(
+    dead_code,
+    reason = "each test file compiles this module on its own and uses only part of it"
+)]
 
 use kreatyna::{
     capabilities::ResolveRender,

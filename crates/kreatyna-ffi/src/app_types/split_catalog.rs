@@ -46,9 +46,6 @@ impl TryFrom<IngredientSplitCatalogEvent> for core::IngredientSplitCatalogEvent 
     }
 }
 
-// UniFFI exports this as a Swift enum; boxing would not shrink the generated
-// value (see `IngredientCatalogScreenView`).
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum IngredientSplitPaneView {
     Empty,

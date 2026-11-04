@@ -57,9 +57,10 @@ pub enum AppOutcome {
     SplitIngredients(Scoped<IngredientSplitCatalogOutcome>),
 }
 
-// An app has one layout, so one value of each exists at a time. Boxing would
-// only add an allocation per render.
-#[allow(clippy::large_enum_variant)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "an app has one layout, so one value of each exists at a time; boxing would only add an allocation per render"
+)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppView {
     /// iOS: the ingredient catalog on a stack. No sections (E-04).
@@ -109,7 +110,7 @@ impl AppCapabilities {
 }
 
 /// The children of the chosen layout. Each variant holds exactly its own.
-#[allow(clippy::large_enum_variant)] // one per app, see `AppView`
+#[expect(clippy::large_enum_variant, reason = "one per app, see `AppView`")]
 enum Layout {
     Stack(ScopedChild<IngredientCatalog>),
     Split(SplitLayout),

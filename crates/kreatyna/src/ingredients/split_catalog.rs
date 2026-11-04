@@ -42,7 +42,6 @@ pub enum IngredientSplitPaneOutcome {
     Form(IngredientFormOutcome),
 }
 
-#[allow(clippy::large_enum_variant)] // one per catalog
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IngredientSplitPaneView {
     /// Nothing is selected.
@@ -110,7 +109,6 @@ enum PaneEvent {
     Form(IngredientFormEvent),
 }
 
-#[allow(clippy::large_enum_variant)] // one per catalog
 enum Pane {
     Empty,
     Detail(IngredientDetail),

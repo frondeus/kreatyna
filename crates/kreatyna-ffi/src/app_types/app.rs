@@ -105,7 +105,10 @@ impl From<SqliteStartupError> for AppInitializationError {
     }
 }
 
-#[allow(clippy::large_enum_variant)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "one per app, as in Rust's `AppView`"
+)]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum AppView {
     Initializing,
@@ -121,7 +124,7 @@ pub enum AppView {
 }
 
 /// The running app in its layout, the same shape as Rust's `AppView`.
-#[allow(clippy::large_enum_variant)] // one per app
+#[expect(clippy::large_enum_variant, reason = "one per app")]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum RunningAppView {
     /// iOS: the ingredient catalog on a stack. No sections (E-04).

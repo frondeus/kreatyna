@@ -6,3 +6,12 @@ members = [
 ]
 
 resolver = "3"
+
+# Machine checks for rules the user stated in review (Introspection 1,
+# 2026-11-04). An exception is an `#[expect(..., reason = "...")]`.
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"

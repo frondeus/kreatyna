@@ -535,6 +535,10 @@ struct PanicOnceRender {
 
 #[async_trait::async_trait]
 impl RenderHandler for PanicOnceRender {
+    #[expect(
+        clippy::panic,
+        reason = "the test checks that the runtime survives a panic in a render command"
+    )]
     async fn render(&self) {
         if self.armed.swap(false, std::sync::atomic::Ordering::SeqCst) {
             panic!("test panic in a render command");

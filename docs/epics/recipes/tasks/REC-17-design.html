@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step Duration Design</title>
+<style>
+  :root {
+    --bg: #f5f5f7; --surface: #ffffff; --surface-2: #f4f4f6; --border: #d8d8de;
+    --text: #1d1d1f; --muted: #6e6e73; --accent: #0a74e6; --accent-soft: rgba(10, 116, 230, 0.12);
+    --q: #c2255c; --q-soft: rgba(194, 37, 92, 0.1); --d: #2b8a3e; --d-soft: rgba(43, 138, 62, 0.1);
+    --bad: #d92d20; --node: #ffffff; --node-wait: #f4f4f6; --edge: #8e8e96;
+    --field: #ffffff; --shadow: 0 10px 30px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111113; --surface: #1e1e21; --surface-2: #26262a; --border: #38383e;
+      --text: #f2f2f4; --muted: #9a9aa2; --accent: #4aa3ff; --accent-soft: rgba(74, 163, 255, 0.16);
+      --q: #f06595; --q-soft: rgba(240, 101, 149, 0.14); --d: #69db7c; --d-soft: rgba(105, 219, 124, 0.1);
+      --bad: #ff6b6b; --node: #2a2a2e; --node-wait: #212124; --edge: #7a7a82;
+      --field: #2a2a2e; --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111113; --surface: #1e1e21; --surface-2: #26262a; --border: #38383e;
+    --text: #f2f2f4; --muted: #9a9aa2; --accent: #4aa3ff; --accent-soft: rgba(74, 163, 255, 0.16);
+    --q: #f06595; --q-soft: rgba(240, 101, 149, 0.14); --d: #69db7c; --d-soft: rgba(105, 219, 124, 0.1);
+    --bad: #ff6b6b; --node: #2a2a2e; --node-wait: #212124; --edge: #7a7a82;
+    --field: #2a2a2e; --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; }
+  .page { max-width: 1160px; margin: 0 auto; padding: 32px 16px 80px; }
+  header.top { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
+  header.top h1 { margin: 0 0 4px; font-size: 28px; letter-spacing: -0.01em; }
+  header.top p { margin: 0; color: var(--muted); max-width: 72ch; }
+  .theme-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    border-radius: 8px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  h2 { margin: 40px 0 6px; font-size: 20px; }
+  .lede { color: var(--muted); margin: 0 0 16px; max-width: 80ch; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px;
+    vertical-align: middle; margin-left: 6px; }
+  .tag.mvp { background: var(--accent-soft); color: var(--accent); }
+  .q { display: inline-block; font: 600 11px ui-monospace, Menlo, monospace; color: var(--q);
+    background: var(--q-soft); border-radius: 6px; padding: 1px 6px; text-decoration: none; margin-left: 6px; }
+  .examples { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
+  .examples button { border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .examples button:hover { border-color: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; }
+  .variant { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .variant h3 { margin: 0; font-size: 16px; }
+  #variant-E { border: 2px solid var(--d); }
+  .variant .why { margin: 0; color: var(--muted); font-size: 13px; }
+  .inspector { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .lbl { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  input.f { background: var(--field); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 8px; font: inherit; outline: none; }
+  input.f:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  input.f.bad { border-color: var(--bad); }
+  input.num { width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+  .seg button { border: 0; background: var(--field); color: var(--text); font: inherit; font-size: 13px; padding: 4px 10px; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .unit { color: var(--muted); font-size: 13px; }
+  .stepper { display: inline-flex; align-items: center; gap: 2px; }
+  .stepper .arrows { display: flex; flex-direction: column; }
+  .stepper .arrows button { border: 1px solid var(--border); background: var(--field); color: var(--muted);
+    font-size: 8px; line-height: 1; width: 16px; height: 13px; padding: 0; cursor: pointer; }
+  .stepper .arrows button:first-child { border-radius: 4px 4px 0 0; border-bottom: 0; }
+  .stepper .arrows button:last-child { border-radius: 0 0 4px 4px; }
+  .problem { color: var(--bad); font-size: 12px; margin-top: 4px; min-height: 16px; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chips button { border: 1px solid var(--border); background: var(--field); color: var(--text);
+    border-radius: 999px; padding: 2px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+  .chips button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .link { border: 0; background: none; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; padding: 0; }
+  .wheel-btn { border: 1px solid var(--border); background: var(--field); color: var(--text); border-radius: 6px;
+    padding: 5px 10px; font: inherit; cursor: pointer; min-width: 120px; text-align: left; }
+  .popover { margin-top: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: var(--shadow); padding: 10px; display: none; }
+  .popover.open { display: block; }
+  .wheels { display: flex; gap: 4px; position: relative; }
+  .wheels::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 30px; transform: translateY(-50%);
+    background: var(--accent-soft); border-radius: 7px; pointer-events: none; }
+  .wheel { height: 150px; overflow-y: scroll; scroll-snap-type: y mandatory; width: 64px; scrollbar-width: none;
+    mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); }
+  .wheel::-webkit-scrollbar { display: none; }
+  .wheel div { height: 30px; line-height: 30px; text-align: center; scroll-snap-align: center; font-variant-numeric: tabular-nums; }
+  .wheel .pad { scroll-snap-align: none; }
+  .wheel-unit { display: flex; gap: 4px; }
+  .wheel-unit span { width: 64px; text-align: center; color: var(--muted); font-size: 11px; }
+  .result { border-top: 1px dashed var(--border); padding-top: 10px; display: grid; grid-template-columns: auto 1fr; gap: 10px 14px; align-items: center; }
+  .result .k { color: var(--muted); font-size: 12px; }
+  .node { width: 170px; height: 64px; border-radius: 10px; background: var(--node); border: 1.2px solid var(--border);
+    padding: 10px 12px; display: flex; flex-direction: column; justify-content: center; }
+  .node.waiting { background: var(--node-wait); border-style: dashed; border-color: var(--edge); }
+  .node.problem-node { border: 2px solid var(--bad); }
+  .node .t { font-weight: 600; font-size: 13px; }
+  .node .m { color: var(--muted); font-size: 11px; }
+  code { font: 12px ui-monospace, Menlo, monospace; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  .boxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 18px; }
+  .box { border-radius: 12px; padding: 12px 16px; }
+  .box.open { background: var(--q-soft); }
+  .box.decided { background: var(--d-soft); }
+  .box h4 { margin: 0 0 6px; font-size: 13px; }
+  .box ul { margin: 0; padding-left: 18px; }
+  .box li { margin: 4px 0; }
+  table.fmt { border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table.fmt td, table.fmt th { padding: 6px 12px; border-bottom: 1px solid var(--border); text-align: left; font-size: 13px; }
+  table.fmt th { color: var(--muted); font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div>
+      <h1>REC-17 · How you set a step's duration</h1>
+      <p>Design round for the inspector's Duration field. Each variant below works: type in it, click it, or use the
+        example buttons to fill every variant at once. Under each one you see what Rust would store and what the
+        canvas node would show. The step is "Bake sauce" from the Pasta recipe.</p>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button">Theme: system</button>
+  </header>
+
+  <h2>1 · Duration variants <span class="tag mvp">MVP</span></h2>
+  <p class="lede"><b>Decided: E.</b> A to D stay for the record. Fill every variant with a real step from a recipe. Each example needs a different unit. That is the
+    point of the comparison: a sear takes seconds and a marinade takes days.</p>
+  <div class="examples" id="examples"></div>
+  <div class="grid" id="variants"></div>
+
+  <div class="boxes">
+    <div class="box decided">
+      <h4>Decided</h4>
+      <ul>
+        <li><b>D-21</b> A duration is one value. Ranges ("8 to 10 min") are parked as F-06.</li>
+        <li><b>Q-R5</b> A new step has no duration until you set one. REC-22 later makes it required on Save.</li>
+        <li><b>REC-17/Q2</b> The read view shows the title, the duration, "waiting", and the instructions.</li>
+        <li id="q1"><b>REC-17/Q1</b> The inspector uses <b>variant E</b>: presets, a minutes field, and More… for the
+          unit fields.</li>
+        <li id="q3"><b>REC-17/Q3</b> Durations have <b>seconds</b>. Rust stores one whole number of seconds.</li>
+        <li id="q4"><b>REC-17/Q4</b> Durations go up to <b>365 days</b>, for long recipes such as a sourdough starter.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>2 · How Rust writes a duration <span class="tag mvp">MVP</span></h2>
+  <p class="lede">Every variant shows the same text on the node, in the read view, and later in REC-21's total time.
+    Rust writes the largest units first, and leaves out the units that are zero.</p>
+  <table class="fmt" id="formatTable">
+    <tr><th>Stored</th><th>Shown</th><th>Example step</th></tr>
+  </table>
+</div>
+
+<script>
+  // One step, one set of examples: every variant reads and writes `state.seconds`.
+  const examples = [
+    { label: "Sear 45 s", seconds: 45 },
+    { label: "Blanch 1 min 30 s", seconds: 90 },
+    { label: "Fry onion 6 min", seconds: 360 },
+    { label: "Bake sauce 20 min", seconds: 1200 },
+    { label: "Simmer 1 h 30 min", seconds: 5400 },
+    { label: "Soak overnight 8 h", seconds: 28800 },
+    { label: "Marinate 2 d", seconds: 172800 },
+    { label: "Sourdough starter 365 d", seconds: 31536000 },
+    { label: "No duration", seconds: null },
+  ];
+  const MAX = 365 * 86400;
+  const state = { seconds: 1200, kind: "waiting" };
+
+  function format(seconds) {
+    if (seconds == null) return "No duration";
+    const parts = [];
+    let rest = seconds;
+    for (const [size, unit] of [[86400, "d"], [3600, "h"], [60, "min"], [1, "s"]]) {
+      const n = Math.floor(rest / size);
+      rest -= n * size;
+      if (n) parts.push(`${n} ${unit}`);
+    }
+    return parts.join(" ") || "0 s";
+  }
+
+  function check(seconds) {
+    if (seconds == null) return null;
+    if (seconds <= 0) return "A duration must be at least 1 second.";
+    if (seconds > MAX) return "A duration can be at most 365 days.";
+    return null;
+  }
+
+  // B's reader: "90", "90 min", "1 h 30 min", "1h30", "1:30", "45 s", "2 d".
+  function parseText(text) {
+    const t = text.trim().toLowerCase();
+    if (!t) return { seconds: null };
+    if (/^\d+$/.test(t)) return { seconds: Number(t) * 60 };
+    let m = t.match(/^(\d+):([0-5]\d)$/);
+    if (m) return { seconds: Number(m[1]) * 3600 + Number(m[2]) * 60 };
+    m = t.match(/^(\d+)\s*h\s*(\d+)$/);
+    if (m) return { seconds: Number(m[1]) * 3600 + Number(m[2]) * 60 };
+    const units = { d: 86400, day: 86400, days: 86400, h: 3600, hr: 3600, hour: 3600, hours: 3600,
+      m: 60, min: 60, mins: 60, minute: 60, minutes: 60, s: 1, sec: 1, secs: 1, second: 1, seconds: 1 };
+    const re = /(\d+)\s*([a-z]+)\s*/y;
+    let total = 0, found = false;
+    re.lastIndex = 0;
+    while (re.lastIndex < t.length) {
+      const at = re.lastIndex;
+      const part = re.exec(t);
+      if (!part || part.index !== at || !(part[2] in units)) return { error: "Type 90, 1 h 30 min, 45 s or 2 d." };
+      total += Number(part[1]) * units[part[2]];
+      found = true;
+    }
+    return found ? { seconds: total } : { error: "Type 90, 1 h 30 min, 45 s or 2 d." };
+  }
+
+  function split(seconds) {
+    const s = seconds ?? 0;
+    return { d: Math.floor(s / 86400), h: Math.floor(s % 86400 / 3600), m: Math.floor(s % 3600 / 60), s: s % 60 };
+  }
+
+  const el = (tag, attrs = {}, ...kids) => {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") node.className = v;
+      else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+      else node.setAttribute(k, v);
+    }
+    for (const kid of kids) node.append(kid);
+    return node;
+  };
+
+  // Each variant: a title, a why, and a build(container, setSeconds) that returns a sync(seconds) function.
+  const variants = [
+    {
+      id: "A", title: "A · Minutes field", why: "The mockup as drawn. Simplest; 8 h is typed as 480, and seconds are impossible.",
+      build(box, set) {
+        const input = el("input", { class: "f num", inputmode: "numeric", "aria-label": "Minutes" });
+        const problem = el("div", { class: "problem" });
+        input.addEventListener("input", () => {
+          const t = input.value.trim();
+          if (!t) { problem.textContent = ""; input.classList.remove("bad"); return set(null, "A"); }
+          if (!/^\d+$/.test(t)) { problem.textContent = "Type whole minutes, for example 90."; input.classList.add("bad"); return; }
+          problem.textContent = ""; input.classList.remove("bad"); set(Number(t) * 60, "A");
+        });
+        box.append(el("div", { class: "row" }, input, el("span", { class: "unit" }, "min")), problem);
+        return s => { input.value = s == null ? "" : String(Math.round(s / 60)); input.classList.remove("bad"); problem.textContent = s != null && s % 60 ? "Seconds are lost: rounded to whole minutes." : ""; };
+      },
+    },
+    {
+      id: "B", title: "B · Smart text field", why: "Type it the way you'd say it: 90, 1 h 30 min, 1:30, 45 s, 2 d. Fast with the keyboard; you must know the forms.",
+      build(box, set) {
+        const input = el("input", { class: "f", style: "width:170px", placeholder: "e.g. 1 h 30 min", "aria-label": "Duration" });
+        const problem = el("div", { class: "problem" });
+        const hint = el("div", { class: "hint" });
+        input.addEventListener("input", () => {
+          const r = parseText(input.value);
+          if (r.error) { problem.textContent = r.error; hint.textContent = ""; input.classList.add("bad"); return; }
+          problem.textContent = ""; input.classList.remove("bad");
+          hint.textContent = r.seconds == null ? "" : `Reads as ${format(r.seconds)}`;
+          set(r.seconds, "B");
+        });
+        box.append(input, hint, problem);
+        return s => { input.value = s == null ? "" : format(s); input.classList.remove("bad"); problem.textContent = ""; hint.textContent = ""; };
+      },
+    },
+    {
+      id: "C", title: "C · Unit fields (d · h · min · s)", why: "Like a Mac date picker: one small field per unit, Tab to move, ↑ ↓ or the arrows to step. Nothing to learn; more to click.",
+      build(box, set) {
+        const fields = {};
+        const limits = { d: 365, h: 23, m: 59, s: 59 };
+        const row = el("div", { class: "row", style: "flex-wrap:nowrap;gap:6px" });
+        const read = () => {
+          const v = k => Number(fields[k].value || 0);
+          const total = v("d") * 86400 + v("h") * 3600 + v("m") * 60 + v("s");
+          set(total || null, "C");
+        };
+        for (const [k, unit] of [["d", "d"], ["h", "h"], ["m", "min"], ["s", "s"]]) {
+          const input = el("input", { class: "f num", inputmode: "numeric", "aria-label": unit, style: "width:36px;padding:5px 6px" });
+          const bump = by => { input.value = String(Math.min(limits[k], Math.max(0, Number(input.value || 0) + by))); read(); };
+          input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, "").slice(0, k === "d" ? 3 : 2); if (Number(input.value) > limits[k]) input.value = String(limits[k]); read(); });
+          input.addEventListener("keydown", e => { if (e.key === "ArrowUp") { e.preventDefault(); bump(1); } if (e.key === "ArrowDown") { e.preventDefault(); bump(-1); } });
+          const arrows = el("span", { class: "arrows" },
+            el("button", { type: "button", onclick: () => bump(1), "aria-label": `More ${unit}` }, "▲"),
+            el("button", { type: "button", onclick: () => bump(-1), "aria-label": `Less ${unit}` }, "▼"));
+          fields[k] = input;
+          row.append(el("span", { class: "stepper" }, input, arrows), el("span", { class: "unit" }, unit));
+        }
+        box.append(row, el("div", { class: "hint" }, "Empty fields count as 0. All zero means no duration."));
+        return s => { const p = split(s); for (const k of "dhms") fields[k].value = s == null ? "" : String(p[k]); };
+      },
+    },
+    {
+      id: "D", title: "D · Timer wheels in a popover", why: "The iOS Timer (“minutnik”): spin hours, minutes and seconds. Familiar on iPhone; on a Mac the wheels need a mouse wheel or a trackpad.",
+      build(box, set) {
+        const button = el("button", { class: "wheel-btn", type: "button" }, "No duration");
+        // Open at first, so the page shows the wheels without a click.
+        const pop = el("div", { class: "popover open" });
+        const wheels = el("div", { class: "wheels" });
+        const labels = el("div", { class: "wheel-unit" });
+        const cols = {};
+        const ranges = { d: 8, h: 24, m: 60, s: 60 };
+        let quiet = false;
+        const read = () => {
+          if (quiet) return;
+          const v = k => Math.round(cols[k].scrollTop / 30);
+          const total = v("d") * 86400 + v("h") * 3600 + v("m") * 60 + v("s");
+          set(total || null, "D");
+          button.textContent = format(total || null);
+        };
+        for (const [k, unit] of [["d", "days"], ["h", "hours"], ["m", "min"], ["s", "sec"]]) {
+          const col = el("div", { class: "wheel", tabindex: "0", "aria-label": unit });
+          col.append(el("div", { class: "pad" }, ""), el("div", { class: "pad" }, ""));
+          for (let i = 0; i < ranges[k]; i++) col.append(el("div", {}, String(i)));
+          col.append(el("div", { class: "pad" }, ""), el("div", { class: "pad" }, ""));
+          let t;
+          col.addEventListener("scroll", () => { clearTimeout(t); t = setTimeout(read, 120); });
+          cols[k] = col;
+          wheels.append(col);
+          labels.append(el("span", {}, unit));
+        }
+        pop.append(wheels, labels);
+        button.addEventListener("click", () => pop.classList.toggle("open"));
+        box.append(button, pop);
+        return s => {
+          quiet = true;
+          const p = split(s);
+          for (const k of "dhms") cols[k].scrollTop = (s == null ? 0 : p[k]) * 30;
+          button.textContent = format(s);
+          setTimeout(() => { quiet = false; }, 200);
+        };
+      },
+    },
+    {
+      id: "E", title: "E · Presets, then More…", why: "One click for the common lengths, a minutes field for the rest, and More… opens the unit fields of C for seconds and days.",
+      build(box, set) {
+        const presets = [1, 2, 5, 10, 15, 20, 30, 45, 60];
+        const chips = el("div", { class: "chips" });
+        const input = el("input", { class: "f num", inputmode: "numeric", "aria-label": "Minutes" });
+        const more = el("div", { style: "display:none;margin-top:8px" });
+        const toggle = el("button", { class: "link", type: "button" }, "More… (seconds, days)");
+        const chipFor = {};
+        for (const p of presets) {
+          const b = el("button", { type: "button", onclick: () => set(p * 60, null) }, p < 60 ? `${p} min` : "1 h");
+          chipFor[p * 60] = b;
+          chips.append(b);
+        }
+        input.addEventListener("input", () => { const t = input.value.trim(); if (!t) return set(null, "E"); if (/^\d+$/.test(t)) set(Number(t) * 60, "E"); });
+        const inner = variants[2].build(more, (s) => set(s, "E"));
+        toggle.addEventListener("click", () => { const open = more.style.display === "none"; more.style.display = open ? "block" : "none"; toggle.textContent = open ? "Less" : "More… (seconds, days)"; });
+        box.append(el("div", { class: "row" }, input, el("span", { class: "unit" }, "min"), toggle), chips, more);
+        return s => {
+          for (const [v, b] of Object.entries(chipFor)) b.classList.toggle("on", Number(v) === s);
+          const exact = s != null && s % 60 === 0 && s < 86400;
+          input.value = s == null ? "" : exact ? String(s / 60) : "";
+          input.placeholder = s != null && !exact ? "…" : "";
+          inner(s);
+          if (s != null && !exact) { more.style.display = "block"; toggle.textContent = "Less"; }
+        };
+      },
+    },
+  ];
+
+  const syncs = [];
+  const results = [];
+  function setSeconds(seconds, from) {
+    state.seconds = seconds;
+    variants.forEach((v, i) => { if (v.id !== from) syncs[i](seconds); });
+    results.forEach(r => r());
+  }
+
+  const grid = document.getElementById("variants");
+  variants.forEach((v, i) => {
+    const card = el("section", { class: "variant", id: `variant-${v.id}` });
+    card.append(el("h3", {}, v.title), el("p", { class: "why" }, v.why));
+    const insp = el("div", { class: "inspector" });
+    const field = el("div");
+    insp.append(el("div", { class: "lbl" }, "Duration"), field);
+    syncs[i] = v.build(field, setSeconds);
+    const kind = el("div", { class: "seg", style: "margin-top:10px" });
+    const kb = {};
+    for (const k of ["active", "waiting"]) {
+      kb[k] = el("button", { type: "button", onclick: () => { state.kind = k; results.forEach(r => r()); } }, k[0].toUpperCase() + k.slice(1));
+      kind.append(kb[k]);
+    }
+    insp.append(kind);
+    const node = el("div", { class: "node" }, el("div", { class: "t" }, "Bake sauce"), el("div", { class: "m" }));
+    const stored = el("code");
+    const res = el("div", { class: "result" },
+      el("span", { class: "k" }, "Node"), node,
+      el("span", { class: "k" }, "Rust stores"), stored);
+    results.push(() => {
+      const problem = check(state.seconds);
+      node.className = `node ${state.kind}${problem ? " problem-node" : ""}`;
+      node.querySelector(".m").textContent = `${format(state.seconds)} · ${state.kind}`;
+      stored.textContent = state.seconds == null ? "duration: None" : `duration: ${state.seconds} s${problem ? "  ✗ " + problem : ""}`;
+      for (const k in kb) kb[k].classList.toggle("on", state.kind === k);
+    });
+    card.append(insp, res);
+    grid.append(card);
+  });
+
+  const exBox = document.getElementById("examples");
+  for (const ex of examples) exBox.append(el("button", { type: "button", onclick: () => setSeconds(ex.seconds, null) }, ex.label));
+
+  const table = document.getElementById("formatTable");
+  for (const ex of examples.filter(e => e.seconds != null)) {
+    table.append(el("tr", {}, el("td", {}, el("code", {}, `${ex.seconds} s`)), el("td", {}, format(ex.seconds)), el("td", {}, ex.label.replace(/ [\d].*$/, ""))));
+  }
+
+  setSeconds(state.seconds, null);
+
+  const themes = ["system", "light", "dark"];
+  let theme = 0;
+  document.getElementById("themeBtn").addEventListener("click", e => {
+    theme = (theme + 1) % themes.length;
+    const t = themes[theme];
+    if (t === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+    e.target.textContent = `Theme: ${t}`;
+  });
+</script>
+</body>
+</html>

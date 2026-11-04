@@ -102,8 +102,11 @@ review (`plannotator review`) unless the user asks for it.
    `attachments`, no `demo.md` file (see
    [document-apple-delivery](../document-apple-delivery/SKILL.md)). End it
    with the question "Does the app behave as the demo shows?".
-2. Call `get_guide_brief` and follow its method.
-3. Make the patch from the Rust side only:
+2. Complete the checklist in [review-own-diff](../review-own-diff/SKILL.md)
+   on the patch, and fix what it finds. This is required before every guided
+   review, also after a round of review fixes.
+3. Call `get_guide_brief` and follow its method.
+4. Make the patch from the Rust side only:
 
    ```sh
    jj diff --git -r @ 'glob:"**/*.rs" | glob:"**/Cargo.toml" | glob:"**/migrations/**"'
@@ -116,10 +119,12 @@ review (`plannotator review`) unless the user asks for it.
    inside the same single quotes), and say in its section why it is in the
    review. Never add views, view modifiers, snapshot baselines, UI
    tests, or `project.yml` only for layout.
-4. Call `submit_guide` with the guide and that exact patch, in the same
-   thread. Every file in the patch goes in exactly one section.
+5. Call `submit_guide` with the guide and that exact patch, in the same
+   thread. Every file in the patch goes in exactly one section. The body ends
+   with the self-review line from review-own-diff.
 
-The user's comments come back as an Inbox reply.
+The user's comments come back as an Inbox reply. Handle them with
+[handle-review-comments](../handle-review-comments/SKILL.md).
 
 ## Reports
 

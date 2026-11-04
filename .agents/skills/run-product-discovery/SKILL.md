@@ -100,10 +100,14 @@ approved. Then keep two files current after every round:
   - Write notes for someone who doesn't know the plan. Avoid shorthand like
     "rung 6" without saying what it means and showing an example.
   - Show open choices as variants A/B side by side, each with a one-line "why".
+  - Use no emoji, as icons or as decoration. Use the platform's symbols, or
+    text. The user asked "can you drop these emojis?" (MAC-01 design,
+    2026-10-12).
   - Support light and dark themes through CSS tokens, plus a theme toggle.
 
 Render the page (light and dark) and look at the screenshots before you hand it
-over. Check that badges don't cover content and that the derived views agree
+over. This holds for every HTML file you attach, not only mockups: an empty
+graph once reached the user (beads migration, 2026-10-31). Check that badges don't cover content and that the derived views agree
 with the data.
 
 Keep these files in their own jj change, following

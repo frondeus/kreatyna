@@ -37,6 +37,12 @@ later slices.
    - *Recommendation* and why.
    - *Effect on this plan:* which steps change for each answer.
 
+   A question about how something looks or works on screen gets a mockup
+   for each option, in the question itself (a picture choice in the Inbox
+   block, or a section of the design page). Do not ask it in words only. The
+   user asked for mockups in MAC-05/Q2 and REC-17/Q1 (2026-10-13,
+   2026-11-04).
+
    Each question must be complete alone. Never write "as mentioned below" or
    "see section X"; repeat the fact. If there are no questions, write
    "None." and one sentence why.
@@ -51,7 +57,8 @@ later slices.
    `docs/epics/<epic>/tasks/<ID>-design.html` (self-contained, light and dark,
    same rules as discovery mockups in
    [run-product-discovery](../run-product-discovery/SKILL.md)). If the slice
-   has no UI change, say so.
+   has no UI change, say so. Open each design page and look at its
+   screenshot, light and dark, before you send it.
 7. **Changes by layer.** db, rust, ffi, swift, tooling, docs. For each:
    files, types, contracts, state transitions. Show examples (see below).
 8. **Steps.** Numbered. One action per step. Estimate the diff size of the

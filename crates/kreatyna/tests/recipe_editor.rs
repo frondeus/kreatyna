@@ -2,12 +2,12 @@ use kreatyna::{
     capabilities::ResolveRender,
     confirmation::{ConfirmationEvent, ConfirmationView},
     recipes::{
-        CanvasPoint, DurationError, DurationInput, DurationParts, Recipe, RecipeEditor,
-        RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus,
-        RecipeEditorView, RecipeId, RecipeTitleError, Step, StepAfterView, StepCanvasEvent,
-        StepCanvasView, StepDurationS, StepDurationView, StepEdge, StepEdges, StepId,
-        StepInstructions, StepKind, StepLabel, StepNodeView, StepNodesView, StepProblems,
-        StepTitle, StepTitleError, StepWrite,
+        CanvasPoint, ConnectRefusal, DurationError, DurationInput, DurationParts, Recipe,
+        RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem,
+        RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeTitleError, Step, StepAfterView,
+        StepCanvasEvent, StepCanvasView, StepConnectionView, StepDurationS, StepDurationView,
+        StepEdge, StepEdges, StepId, StepInstructions, StepKind, StepLabel, StepNodeView,
+        StepNodesView, StepProblems, StepTitle, StepTitleError, StepWrite,
         capabilities::{
             RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
         },
@@ -254,6 +254,89 @@ async fn after_shows_the_earlier_steps_label_as_typed() -> anyhow::Result<()> {
                 cook_after(StepLabel::Untitled),
             ],
         }
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn connect_adds_the_arrow_and_the_after_and_keeps_the_selection() -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&pasta());
+    f.canvas(StepCanvasEvent::Select(boil_water().id)).await?;
+    f.connect(boil_water().id, cook_pasta().id).await?;
+    assert_eq!(
+        f.editor.view().canvas,
+        StepCanvasView {
+            nodes: StepNodesView::Selected {
+                selected: saved_node(&boil_water()),
+                others: vec![cook_after(titled("Boil water"))],
+            },
+            connections: vec![boil_then_cook()],
+            refusal: None,
+        }
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn save_writes_the_connected_arrows() -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&pasta());
+    f.connect(boil_water().id, cook_pasta().id).await?;
+    let save = f.send(RecipeEditorEvent::Save);
+    f.save(save, Ok(connected_pasta())).await?;
+    assert_eq!(
+        f.written_edges,
+        [StepEdges::from_saved([boil_then_cook()])?]
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_click_on_an_arrow_selects_it_and_a_click_on_a_step_selects_the_step()
+-> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&connected_pasta());
+    f.canvas(StepCanvasEvent::SelectConnection(boil_then_cook()))
+        .await?;
+    assert_eq!(
+        f.editor.view().canvas.nodes,
+        StepNodesView::ConnectionSelected {
+            connection: StepConnectionView {
+                edge: boil_then_cook(),
+                from: titled("Boil water"),
+                to: titled("Cook pasta"),
+            },
+            steps: vec![saved_node(&boil_water()), cook_after(titled("Boil water"))],
+        }
+    );
+    f.canvas(StepCanvasEvent::Select(cook_pasta().id)).await?;
+    assert_eq!(f.selected()?, cook_pasta().id);
+    Ok(())
+}
+
+#[tokio::test]
+async fn delete_connection_removes_the_arrow_and_its_selection() -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&connected_pasta());
+    f.canvas(StepCanvasEvent::SelectConnection(boil_then_cook()))
+        .await?;
+    f.canvas(StepCanvasEvent::DeleteConnection(boil_then_cook()))
+        .await?;
+    assert_eq!(f.editor.view().canvas, saved_canvas(&pasta()));
+    f.request_close().await
+}
+
+#[test_case(StepCanvasEvent::Select(boil_water().id); "a step selected")]
+#[test_case(StepCanvasEvent::SelectConnection(boil_then_cook()); "its arrow selected")]
+#[tokio::test]
+async fn deleting_a_step_removes_its_arrows_and_the_after_they_made(
+    select: StepCanvasEvent,
+) -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&connected_pasta());
+    f.canvas(select).await?;
+    f.delete_step(boil_water().id).await?;
+    assert_eq!(
+        f.editor.view().canvas,
+        canvas(StepNodesView::Unselected {
+            steps: vec![saved_node(&cook_pasta())],
+        })
     );
     Ok(())
 }
@@ -659,6 +742,18 @@ async fn edits_steps_save_and_cancel_are_ignored_while_saving() -> anyhow::Resul
             id: onion,
             text: "Fine.".into(),
         }),
+        RecipeEditorEvent::Canvas(StepCanvasEvent::Connect {
+            from: onion,
+            to: onion,
+        }),
+        RecipeEditorEvent::Canvas(StepCanvasEvent::SelectConnection(StepEdge {
+            from: onion,
+            to: onion,
+        })),
+        RecipeEditorEvent::Canvas(StepCanvasEvent::DeleteConnection(StepEdge {
+            from: onion,
+            to: onion,
+        })),
         RecipeEditorEvent::Save,
         RecipeEditorEvent::RequestClose,
     ] {
@@ -860,6 +955,7 @@ async fn deleting_an_added_step_keeps_the_editor_unchanged() -> anyhow::Result<(
 #[test_case(StepCanvasEvent::SetDuration { id: cook_pasta().id, input: DurationInput::Minutes(10) }; "give it a duration")]
 #[test_case(StepCanvasEvent::SetKind { id: cook_pasta().id, kind: StepKind::Waiting }; "make it waiting")]
 #[test_case(StepCanvasEvent::SetInstructions { id: cook_pasta().id, text: "Stir.".into() }; "give it instructions")]
+#[test_case(StepCanvasEvent::Connect { from: boil_water().id, to: cook_pasta().id }; "connect it")]
 #[tokio::test]
 async fn cancel_after_changing_a_saved_step_asks(change: StepCanvasEvent) -> anyhow::Result<()> {
     let mut f = Fixture::edit_recipe(&pasta());
@@ -907,6 +1003,13 @@ async fn cancel_after_changing_a_saved_step_asks(change: StepCanvasEvent) -> any
     vec![StepCanvasEvent::SetInstructions { id: bake_sauce().id, text: " Cover the dish. ".into() }];
     "type its saved instructions with spaces around"
 )]
+#[test_case(
+    vec![
+        StepCanvasEvent::Connect { from: boil_water().id, to: cook_pasta().id },
+        StepCanvasEvent::DeleteConnection(boil_then_cook()),
+    ];
+    "connect two steps, then delete the arrow"
+)]
 #[tokio::test]
 async fn changing_a_step_back_to_its_saved_state_keeps_the_editor_unchanged(
     changes: Vec<StepCanvasEvent>,
@@ -939,6 +1042,10 @@ async fn changing_a_step_back_to_its_saved_state_keeps_the_editor_unchanged(
 #[test_case(StepCanvasEvent::SetDuration { id: cook_pasta().id, input: DurationInput::Cleared }; "clear an empty duration")]
 #[test_case(StepCanvasEvent::SetKind { id: cook_pasta().id, kind: StepKind::Active }; "choose the same kind")]
 #[test_case(StepCanvasEvent::SetInstructions { id: cook_pasta().id, text: String::new() }; "type the same instructions")]
+#[test_case(StepCanvasEvent::Connect { from: unknown_step(), to: cook_pasta().id }; "connect from an unknown step")]
+#[test_case(StepCanvasEvent::Connect { from: boil_water().id, to: unknown_step() }; "connect to an unknown step")]
+#[test_case(StepCanvasEvent::SelectConnection(boil_then_cook()); "select a missing arrow")]
+#[test_case(StepCanvasEvent::DeleteConnection(boil_then_cook()); "delete a missing arrow")]
 #[tokio::test]
 async fn a_canvas_event_that_changes_nothing_does_nothing(
     event: StepCanvasEvent,
@@ -965,6 +1072,7 @@ async fn clearing_an_empty_selection_does_nothing() -> anyhow::Result<()> {
 #[test_case(StepCanvasEvent::Move { id: cook_pasta().id, to: point(320, 200) }; "move a step")]
 #[test_case(StepCanvasEvent::Delete(cook_pasta().id); "delete a step")]
 #[test_case(StepCanvasEvent::SetDuration { id: cook_pasta().id, input: DurationInput::Minutes(10) }; "time a step")]
+#[test_case(StepCanvasEvent::Connect { from: boil_water().id, to: cook_pasta().id }; "connect two steps")]
 #[tokio::test]
 async fn canvas_events_are_ignored_while_discard_is_asked(
     event: StepCanvasEvent,
@@ -975,6 +1083,57 @@ async fn canvas_events_are_ignored_while_discard_is_asked(
     let command = f.send(RecipeEditorEvent::Canvas(event));
     command.driver(&mut f.effects).step().await?.expect_done();
     assert_eq!(f.editor.view().canvas, saved_canvas(&pasta()));
+    Ok(())
+}
+
+#[test_case(cook_pasta().id, cook_pasta().id, ConnectRefusal::SameStep; "a step to itself")]
+#[test_case(boil_water().id, cook_pasta().id, ConnectRefusal::Duplicate; "the same arrow twice")]
+#[test_case(cook_pasta().id, boil_water().id, ConnectRefusal::Loop; "a loop")]
+#[tokio::test]
+async fn a_refused_connection_changes_nothing_and_says_why_until_the_next_change(
+    from: StepId,
+    to: StepId,
+    refusal: ConnectRefusal,
+) -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&connected_pasta());
+    let before = f.editor.view().canvas;
+    f.connect(from, to).await?;
+    assert_eq!(
+        f.editor.view().canvas,
+        StepCanvasView {
+            refusal: Some(refusal),
+            ..before
+        }
+    );
+    // The same refusal again, and an event that changes nothing, keep it.
+    for event in [
+        StepCanvasEvent::Connect { from, to },
+        StepCanvasEvent::Select(unknown_step()),
+    ] {
+        let command = f.send(RecipeEditorEvent::Canvas(event));
+        command.driver(&mut f.effects).step().await?.expect_done();
+    }
+    assert_eq!(f.editor.view().canvas.refusal, Some(refusal));
+    f.canvas(StepCanvasEvent::Select(boil_water().id)).await?;
+    assert_eq!(f.editor.view().canvas.refusal, None);
+    // A refusal alone does not make the editor changed.
+    let command = f.send(RecipeEditorEvent::RequestClose);
+    assert_eq!(
+        f.render_then_outcome(command).await?,
+        RecipeEditorOutcome::Discarded
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_different_refusal_replaces_the_last_one() -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&connected_pasta());
+    f.connect(cook_pasta().id, boil_water().id).await?;
+    f.connect(cook_pasta().id, cook_pasta().id).await?;
+    assert_eq!(
+        f.editor.view().canvas.refusal,
+        Some(ConnectRefusal::SameStep)
+    );
     Ok(())
 }
 
@@ -1350,6 +1509,11 @@ impl Fixture {
             .await
     }
 
+    /// A drop of a ● drag from `from` on the node `to`.
+    async fn connect(&mut self, from: StepId, to: StepId) -> anyhow::Result<()> {
+        self.canvas(StepCanvasEvent::Connect { from, to }).await
+    }
+
     async fn delete_step(&mut self, id: StepId) -> anyhow::Result<()> {
         self.canvas(StepCanvasEvent::Delete(id)).await
     }
@@ -1358,7 +1522,9 @@ impl Fixture {
     fn selected(&self) -> anyhow::Result<StepId> {
         match self.editor.view().canvas.nodes {
             StepNodesView::Selected { selected, .. } => Ok(selected.id),
-            StepNodesView::Unselected { .. } => anyhow::bail!("no step is selected"),
+            StepNodesView::Unselected { .. } | StepNodesView::ConnectionSelected { .. } => {
+                anyhow::bail!("no step is selected")
+            }
         }
     }
 

@@ -418,6 +418,21 @@ fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     kreatyna::recipes::StepCanvasEvent::SetInstructions { id: step_id(1), text: " Stir. ".into() };
     "instructions as typed"
 )]
+#[test_case(
+    StepCanvasEvent::Connect { from: step_id(1), to: step_id(2) },
+    kreatyna::recipes::StepCanvasEvent::Connect { from: step_id(1), to: step_id(2) };
+    "connect"
+)]
+#[test_case(
+    StepCanvasEvent::SelectConnection { edge: StepEdge { from: step_id(1), to: step_id(2) } },
+    kreatyna::recipes::StepCanvasEvent::SelectConnection(kreatyna::recipes::StepEdge { from: step_id(1), to: step_id(2) });
+    "select a connection"
+)]
+#[test_case(
+    StepCanvasEvent::DeleteConnection { edge: StepEdge { from: step_id(1), to: step_id(2) } },
+    kreatyna::recipes::StepCanvasEvent::DeleteConnection(kreatyna::recipes::StepEdge { from: step_id(1), to: step_id(2) });
+    "delete a connection"
+)]
 fn canvas_events_reach_the_editor_in_their_pane_scope(
     event: StepCanvasEvent,
     expected: kreatyna::recipes::StepCanvasEvent,
@@ -591,6 +606,55 @@ fn an_unselected_canvas_keeps_the_steps_in_the_order_added() -> anyhow::Result<(
     assert_eq!(
         steps.iter().map(|step| step.id).collect::<Vec<_>>(),
         [step_id(2), step_id(1)]
+    );
+    Ok(())
+}
+
+#[test]
+fn a_selected_connection_keeps_its_edge_its_labels_and_the_steps() -> anyhow::Result<()> {
+    let node = |n: u128| kreatyna::recipes::StepNodeView {
+        id: step_id(n),
+        title: String::new(),
+        label: kreatyna::recipes::StepLabel::Untitled,
+        position: kreatyna::recipes::CanvasPoint { x: 40, y: 40 },
+        duration: kreatyna::recipes::StepDurationView::NotSet,
+        kind: kreatyna::recipes::StepKind::Active,
+        instructions: String::new(),
+        problems: kreatyna::recipes::StepProblems::default(),
+        after: vec![],
+    };
+    let nodes = kreatyna::recipes::StepNodesView::ConnectionSelected {
+        connection: kreatyna::recipes::StepConnectionView {
+            edge: kreatyna::recipes::StepEdge {
+                from: step_id(1),
+                to: step_id(2),
+            },
+            from: kreatyna::recipes::StepLabel::Titled {
+                title: "Dice onion".into(),
+            },
+            to: kreatyna::recipes::StepLabel::Untitled,
+        },
+        steps: vec![node(1), node(2)],
+    };
+    let StepNodesView::ConnectionSelected { connection, steps } = StepNodesView::from(nodes) else {
+        anyhow::bail!("expected a selected connection");
+    };
+    assert_eq!(
+        connection,
+        StepConnectionView {
+            edge: StepEdge {
+                from: step_id(1),
+                to: step_id(2),
+            },
+            from: StepLabel::Titled {
+                title: "Dice onion".into(),
+            },
+            to: StepLabel::Untitled,
+        }
+    );
+    assert_eq!(
+        steps.iter().map(|step| step.id).collect::<Vec<_>>(),
+        [step_id(1), step_id(2)]
     );
     Ok(())
 }

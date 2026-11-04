@@ -13,7 +13,8 @@ struct MacStepInspector: View {
     var body: some View {
         Group {
             switch canvas.nodes {
-            case .unselected:
+            // A selected arrow gets its own inspector with REC-18 change 5.
+            case .unselected, .connectionSelected:
                 Text("Select a step")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -457,6 +457,33 @@ impl From<core::StepEdge> for StepEdge {
     }
 }
 
+impl From<StepEdge> for core::StepEdge {
+    fn from(value: StepEdge) -> Self {
+        Self {
+            from: value.from,
+            to: value.to,
+        }
+    }
+}
+
+/// The selected arrow, as the inspector shows it: "Dice onion → Fry onion".
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct StepConnectionView {
+    pub edge: StepEdge,
+    pub from: StepLabel,
+    pub to: StepLabel,
+}
+
+impl From<core::StepConnectionView> for StepConnectionView {
+    fn from(value: core::StepConnectionView) -> Self {
+        Self {
+            edge: value.edge.into(),
+            from: value.from.into(),
+            to: value.to.into(),
+        }
+    }
+}
+
 /// Why Rust refused a connection (REC-18/Q2). Swift shows the line under
 /// the canvas.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -526,6 +553,11 @@ pub enum StepNodesView {
         selected: StepNodeView,
         others: Vec<StepNodeView>,
     },
+    /// The inspector shows the arrow. The steps are in the order added.
+    ConnectionSelected {
+        connection: StepConnectionView,
+        steps: Vec<StepNodeView>,
+    },
 }
 
 impl From<core::StepNodesView> for StepNodesView {
@@ -538,6 +570,12 @@ impl From<core::StepNodesView> for StepNodesView {
                 selected: selected.into(),
                 others: others.into_iter().map(Into::into).collect(),
             },
+            core::StepNodesView::ConnectionSelected { connection, steps } => {
+                Self::ConnectionSelected {
+                    connection: connection.into(),
+                    steps: steps.into_iter().map(Into::into).collect(),
+                }
+            }
         }
     }
 }
@@ -583,6 +621,15 @@ pub enum StepCanvasEvent {
     SetKind { id: core::StepId, kind: StepKind },
     /// The inspector's Instructions field, as typed.
     SetInstructions { id: core::StepId, text: String },
+    /// A drop of a ● drag on a node: "`to` comes after `from`".
+    Connect {
+        from: core::StepId,
+        to: core::StepId,
+    },
+    /// A click on an arrow.
+    SelectConnection { edge: StepEdge },
+    /// Edit ▸ Delete Connection (⌘⌫) or right-click ▸ Delete Connection.
+    DeleteConnection { edge: StepEdge },
 }
 
 impl From<StepCanvasEvent> for core::StepCanvasEvent {
@@ -603,6 +650,9 @@ impl From<StepCanvasEvent> for core::StepCanvasEvent {
                 kind: kind.into(),
             },
             StepCanvasEvent::SetInstructions { id, text } => Self::SetInstructions { id, text },
+            StepCanvasEvent::Connect { from, to } => Self::Connect { from, to },
+            StepCanvasEvent::SelectConnection { edge } => Self::SelectConnection(edge.into()),
+            StepCanvasEvent::DeleteConnection { edge } => Self::DeleteConnection(edge.into()),
         }
     }
 }

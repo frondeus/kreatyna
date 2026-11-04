@@ -74,6 +74,8 @@ struct MacStepCanvas: View {
             steps.map { ($0, false) }
         case .selected(let selected, let others):
             others.map { ($0, false) } + [(selected, true)]
+        case .connectionSelected(_, let steps):
+            steps.map { ($0, false) }
         }
     }
 

@@ -1,4 +1,5 @@
-//! The steps on the editor's canvas and the selected step (REC-14). The
+//! The steps on the editor's canvas, the arrows between them (REC-18), and
+//! the selected step or arrow (REC-14). The
 //! canvas has no effects, so it is a plain struct, not a widget: the editor
 //! renders after each change.
 use super::{
@@ -34,6 +35,16 @@ pub enum StepCanvasEvent {
     /// The inspector's Instructions field, as typed. Rust trims it only on
     /// Save. Ignored for an id that names no step.
     SetInstructions { id: StepId, text: String },
+    /// A drop of a ● drag on a node (REC-18/Q3): "`to` comes after
+    /// `from`". Adds the arrow, or keeps why not for the line under the
+    /// canvas. Selects nothing new. Ignored for an id that names no step.
+    Connect { from: StepId, to: StepId },
+    /// A click on an arrow. Ignored for an arrow that does not exist.
+    SelectConnection(StepEdge),
+    /// Edit ▸ Delete Connection (⌘⌫) on the selected arrow, or right-click
+    /// ▸ Delete Connection (REC-18/Q1). Ignored for an arrow that does not
+    /// exist.
+    DeleteConnection(StepEdge),
 }
 
 /// The canvas as Swift draws it (REC-18): the nodes, the arrows under them,
@@ -45,7 +56,6 @@ pub struct StepCanvasView {
     /// order (by `from`, then `to`), not the order connected.
     pub connections: Vec<StepEdge>,
     /// The last refused connection, until the next change (REC-18/Q2).
-    /// Always `None` until the editor can connect steps.
     pub refusal: Option<ConnectRefusal>,
 }
 
@@ -59,6 +69,20 @@ pub enum StepNodesView {
         selected: StepNodeView,
         others: Vec<StepNodeView>,
     },
+    /// The inspector shows "Dice onion → Fry onion". The steps are in the
+    /// order added.
+    ConnectionSelected {
+        connection: StepConnectionView,
+        steps: Vec<StepNodeView>,
+    },
+}
+
+/// The selected arrow, as the inspector shows it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StepConnectionView {
+    pub edge: StepEdge,
+    pub from: StepLabel,
+    pub to: StepLabel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -272,13 +296,24 @@ impl DraftStep {
     }
 }
 
-/// The steps in the order added, and the selection. Only these methods
-/// change them, so `selected` always names a step in `steps`.
+/// What the canvas has selected: one step, one arrow, or nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Selection {
+    None,
+    Step(StepId),
+    Connection(StepEdge),
+}
+
+/// The steps in the order added, the arrows, and the selection. Only these
+/// methods change them, so `edges` only joins steps in `steps`, and
+/// `selection` always names a step in `steps` or an arrow in `edges`.
 pub(crate) struct StepCanvas {
     steps: Vec<DraftStep>,
     /// The arrows between `steps` (REC-18).
     edges: StepEdges,
-    selected: Option<StepId>,
+    selection: Selection,
+    /// The last refused `Connect`, until the next change (REC-18/Q2).
+    refusal: Option<ConnectRefusal>,
 }
 
 impl StepCanvas {
@@ -301,12 +336,48 @@ impl StepCanvas {
         Self {
             steps,
             edges: edges.clone(),
-            selected: None,
+            selection: Selection::None,
+            refusal: None,
         }
     }
 
-    /// Applies `event`, and says whether the steps or the selection changed.
+    /// Applies `event`, and says whether the steps, the arrows, the
+    /// selection, or the refusal changed. Any change other than a refused
+    /// `Connect` clears the refusal.
     pub(crate) fn apply(&mut self, event: StepCanvasEvent) -> CanvasChange {
+        if let StepCanvasEvent::Connect { from, to } = event {
+            return self.connect(StepEdge { from, to });
+        }
+        let change = self.change(event);
+        self.settle(change)
+    }
+
+    /// Clears the refusal after a change.
+    fn settle(&mut self, change: CanvasChange) -> CanvasChange {
+        if change == CanvasChange::Changed {
+            self.refusal = None;
+        }
+        change
+    }
+
+    /// Adds `edge`, or keeps why not. A refusal changes nothing but the
+    /// refusal itself.
+    fn connect(&mut self, edge: StepEdge) -> CanvasChange {
+        if self.step(edge.from).is_none() || self.step(edge.to).is_none() {
+            return CanvasChange::Unchanged;
+        }
+        match self.edges.connect(edge) {
+            Ok(()) => self.settle(CanvasChange::Changed),
+            Err(refusal) if self.refusal == Some(refusal) => CanvasChange::Unchanged,
+            Err(refusal) => {
+                self.refusal = Some(refusal);
+                CanvasChange::Changed
+            }
+        }
+    }
+
+    /// Every event but `Connect`.
+    fn change(&mut self, event: StepCanvasEvent) -> CanvasChange {
         match event {
             StepCanvasEvent::Add { at } => {
                 let id = StepId::generate();
@@ -318,14 +389,11 @@ impl StepCanvas {
                     kind: StepKind::default(),
                     instructions: String::new(),
                 });
-                self.selected = Some(id);
+                self.selection = Selection::Step(id);
                 CanvasChange::Changed
             }
-            StepCanvasEvent::Select(id) => self.select(id),
-            StepCanvasEvent::ClearSelection => match self.selected.take() {
-                Some(_) => CanvasChange::Changed,
-                None => CanvasChange::Unchanged,
-            },
+            StepCanvasEvent::Select(id) => self.select_step(id),
+            StepCanvasEvent::ClearSelection => self.set_selection(Selection::None),
             StepCanvasEvent::SetTitle { id, title } => self.edit(id, |step| &mut step.title, title),
             StepCanvasEvent::Move { id, to } => {
                 let Some(step) = self.step_mut(id) else {
@@ -333,16 +401,23 @@ impl StepCanvas {
                 };
                 let placed = step.place(to);
                 // Both run: the position and the selection can each change.
-                placed.or(self.select(id))
+                placed.or(self.select_step(id))
             }
             StepCanvasEvent::Delete(id) => {
                 let Some(index) = self.index_of(id) else {
                     return CanvasChange::Unchanged;
                 };
                 self.steps.remove(index);
-                // `selected` must always name a step in `steps`.
-                if self.selected == Some(id) {
-                    self.selected = None;
+                // `edges` only joins steps in `steps`, and `selection` only
+                // names what is left.
+                self.edges.remove_step(id);
+                let selected_goes = match self.selection {
+                    Selection::None => false,
+                    Selection::Step(step) => step == id,
+                    Selection::Connection(edge) => edge.from == id || edge.to == id,
+                };
+                if selected_goes {
+                    self.selection = Selection::None;
                 }
                 CanvasChange::Changed
             }
@@ -355,7 +430,30 @@ impl StepCanvas {
             StepCanvasEvent::SetInstructions { id, text } => {
                 self.edit(id, |step| &mut step.instructions, text)
             }
+            StepCanvasEvent::SelectConnection(edge) => {
+                if !self.edges.contains(edge) {
+                    return CanvasChange::Unchanged;
+                }
+                self.set_selection(Selection::Connection(edge))
+            }
+            StepCanvasEvent::DeleteConnection(edge) => {
+                if self.selection == Selection::Connection(edge) {
+                    self.selection = Selection::None;
+                }
+                self.edges.disconnect(edge)
+            }
+            // `apply` handles it before `change`.
+            StepCanvasEvent::Connect { .. } => CanvasChange::Unchanged,
         }
+    }
+
+    /// Sets the selection, and says whether it changed.
+    fn set_selection(&mut self, selection: Selection) -> CanvasChange {
+        if self.selection == selection {
+            return CanvasChange::Unchanged;
+        }
+        self.selection = selection;
+        CanvasChange::Changed
     }
 
     /// Sets one field of the step `id` to `value`, and says whether it
@@ -392,14 +490,20 @@ impl StepCanvas {
         self.steps.iter_mut().find(|step| step.id == id)
     }
 
+    /// Selects the step `id` for Save, which shows the first step that
+    /// breaks a rule. Clears the refusal when the selection changes.
+    pub(crate) fn select(&mut self, id: StepId) -> CanvasChange {
+        let change = self.select_step(id);
+        self.settle(change)
+    }
+
     /// Selects the step `id`, and says whether the selection changed. An id
     /// that names no step changes nothing.
-    pub(crate) fn select(&mut self, id: StepId) -> CanvasChange {
-        if self.selected == Some(id) || self.step(id).is_none() {
+    fn select_step(&mut self, id: StepId) -> CanvasChange {
+        if self.step(id).is_none() {
             return CanvasChange::Unchanged;
         }
-        self.selected = Some(id);
-        CanvasChange::Changed
+        self.set_selection(Selection::Step(id))
     }
 
     /// The steps as Save writes them, in the order added. Fails with the id
@@ -432,25 +536,39 @@ impl StepCanvas {
     /// Save.
     pub(crate) fn view(&self, show_problems: bool) -> StepCanvasView {
         let node = |step: &DraftStep| step.node(show_problems, self.after(step.id));
-        let selected = self.selected.and_then(|id| self.step(id));
-        let nodes = match selected {
-            None => StepNodesView::Unselected {
-                steps: self.steps.iter().map(node).collect(),
+        let all = || self.steps.iter().map(node).collect();
+        let nodes = match self.selection {
+            Selection::None => StepNodesView::Unselected { steps: all() },
+            Selection::Step(id) => match self.step(id) {
+                // `selection` always names a step in `steps`.
+                None => StepNodesView::Unselected { steps: all() },
+                Some(selected) => StepNodesView::Selected {
+                    selected: node(selected),
+                    others: self
+                        .steps
+                        .iter()
+                        .filter(|step| step.id != id)
+                        .map(node)
+                        .collect(),
+                },
             },
-            Some(selected) => StepNodesView::Selected {
-                selected: node(selected),
-                others: self
-                    .steps
-                    .iter()
-                    .filter(|step| step.id != selected.id)
-                    .map(node)
-                    .collect(),
+            Selection::Connection(edge) => match (self.step(edge.from), self.step(edge.to)) {
+                (Some(from), Some(to)) => StepNodesView::ConnectionSelected {
+                    connection: StepConnectionView {
+                        edge,
+                        from: from.label(),
+                        to: to.label(),
+                    },
+                    steps: all(),
+                },
+                // `edges` only joins steps in `steps`.
+                _ => StepNodesView::Unselected { steps: all() },
             },
         };
         StepCanvasView {
             nodes,
             connections: self.edges.iter().copied().collect(),
-            refusal: None,
+            refusal: self.refusal,
         }
     }
 

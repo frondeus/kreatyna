@@ -5,7 +5,7 @@ use std::collections::{BTreeSet, HashSet};
 
 use uuid::Uuid;
 
-use super::StepId;
+use super::{StepId, step_canvas::CanvasChange};
 
 /// "`to` comes after `from`": an arrow from the ● of `from` to the ○ of
 /// `to`.
@@ -63,6 +63,20 @@ impl StepEdges {
             saved.connect(edge)?;
         }
         Ok(saved)
+    }
+
+    /// Removes `edge`, and says whether it was there.
+    pub(crate) fn disconnect(&mut self, edge: StepEdge) -> CanvasChange {
+        if self.0.remove(&edge) {
+            CanvasChange::Changed
+        } else {
+            CanvasChange::Unchanged
+        }
+    }
+
+    /// Removes every edge into or out of `step`.
+    pub(crate) fn remove_step(&mut self, step: StepId) {
+        self.0.retain(|edge| edge.from != step && edge.to != step);
     }
 
     pub fn contains(&self, edge: StepEdge) -> bool {

@@ -4,8 +4,8 @@ use kreatyna::{
     recipes::{
         CanvasPoint, Recipe, RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome,
         RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeTitleError,
-        Step, StepCanvasEvent, StepCanvasView, StepId, StepLabel, StepNodeView, StepTitle,
-        StepTitleError, StepWrite,
+        Step, StepCanvasEvent, StepCanvasView, StepDurationS, StepId, StepInstructions, StepKind,
+        StepLabel, StepNodeView, StepTitle, StepTitleError, StepWrite,
         capabilities::{
             RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
         },
@@ -348,6 +348,39 @@ async fn save_writes_the_steps_without_the_deleted_one() -> anyhow::Result<()> {
     assert_eq!(
         f.written_steps,
         [vec![write(cook_pasta().id, "Cook pasta", point(240, 40))?]]
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn save_keeps_a_steps_duration_kind_and_instructions() -> anyhow::Result<()> {
+    let bake = Step {
+        id: StepId::from(Uuid::from_u128(13)),
+        title: "Bake sauce".into(),
+        position: point(440, 40),
+        duration: Some(StepDurationS::try_new(1_200)?),
+        kind: StepKind::Waiting,
+        instructions: Some(StepInstructions::try_new("Cover the dish.")?),
+    };
+    let recipe = Recipe {
+        steps: vec![bake.clone()],
+        ..pasta()
+    };
+    let mut f = Fixture::edit_recipe(&recipe);
+    f.name_step(bake.id, "Bake the sauce").await?;
+
+    let save = f.send(RecipeEditorEvent::Save);
+    f.save(save, Ok(recipe)).await?;
+    assert_eq!(
+        f.written_steps,
+        [vec![StepWrite {
+            id: bake.id,
+            title: StepTitle::try_new("Bake the sauce")?,
+            position: bake.position,
+            duration: bake.duration,
+            kind: StepKind::Waiting,
+            instructions: bake.instructions,
+        }]]
     );
     Ok(())
 }
@@ -768,6 +801,9 @@ fn boil_water() -> Step {
         id: StepId::from(Uuid::from_u128(11)),
         title: "Boil water".into(),
         position: point(40, 40),
+        duration: None,
+        kind: StepKind::Active,
+        instructions: None,
     }
 }
 
@@ -776,6 +812,9 @@ fn cook_pasta() -> Step {
         id: StepId::from(Uuid::from_u128(12)),
         title: "Cook pasta".into(),
         position: point(240, 40),
+        duration: None,
+        kind: StepKind::Active,
+        instructions: None,
     }
 }
 
@@ -837,6 +876,9 @@ fn write(id: StepId, title: &str, position: CanvasPoint) -> anyhow::Result<StepW
         id,
         title: StepTitle::try_new(title)?,
         position,
+        duration: None,
+        kind: StepKind::Active,
+        instructions: None,
     })
 }
 

@@ -2,7 +2,7 @@ use kreatyna::capabilities::ResolveRender;
 use kreatyna::confirmation::{ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 use kreatyna::recipes::{
     CanvasPoint, Recipe, RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome,
-    RecipeDetailStatus, RecipeDetailStep, RecipeDetailView, RecipeId, Step, StepId,
+    RecipeDetailStatus, RecipeDetailStep, RecipeDetailView, RecipeId, Step, StepId, StepKind,
     capabilities::{RecipeDeleteError, RecipeEffectStream, RecipeLoadError, ResolveRecipeStore},
 };
 use krucyfiks::{Command, Latest, Message, Widget, effects::CommandTestExt};
@@ -413,6 +413,9 @@ fn step(id: u128, title: &str, x: u32, y: u32) -> Step {
         id: StepId::from(Uuid::from_u128(id)),
         title: title.into(),
         position: CanvasPoint { x, y },
+        duration: None,
+        kind: StepKind::Active,
+        instructions: None,
     }
 }
 

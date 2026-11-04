@@ -1,7 +1,10 @@
 //! The steps on the editor's canvas and the selected step (REC-14). The
 //! canvas has no effects, so it is a plain struct, not a widget: the editor
 //! renders after each change.
-use super::{CanvasPoint, Step, StepId, StepTitle, StepTitleError, StepWrite};
+use super::{
+    CanvasPoint, Step, StepDurationS, StepId, StepInstructions, StepKind, StepTitle,
+    StepTitleError, StepWrite,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StepCanvasEvent {
@@ -82,6 +85,9 @@ struct DraftStep {
     id: StepId,
     title: String,
     position: CanvasPoint,
+    duration: Option<StepDurationS>,
+    kind: StepKind,
+    instructions: Option<StepInstructions>,
 }
 
 impl DraftStep {
@@ -113,7 +119,12 @@ impl DraftStep {
     }
 
     fn matches(&self, step: &Step) -> bool {
-        self.id == step.id && self.title == step.title && self.position == step.position
+        self.id == step.id
+            && self.title == step.title
+            && self.position == step.position
+            && self.duration == step.duration
+            && self.kind == step.kind
+            && self.instructions == step.instructions
     }
 }
 
@@ -133,6 +144,9 @@ impl StepCanvas {
                 id: step.id,
                 title: step.title.clone(),
                 position: step.position,
+                duration: step.duration,
+                kind: step.kind,
+                instructions: step.instructions.clone(),
             })
             .collect();
         Self {
@@ -150,6 +164,9 @@ impl StepCanvas {
                     id,
                     title: String::new(),
                     position: at,
+                    duration: None,
+                    kind: StepKind::default(),
+                    instructions: None,
                 });
                 self.selected = Some(id);
                 CanvasChange::Changed
@@ -227,6 +244,9 @@ impl StepCanvas {
                     id: step.id,
                     title,
                     position: step.position,
+                    duration: step.duration,
+                    kind: step.kind,
+                    instructions: step.instructions.clone(),
                 })
             })
             .collect()

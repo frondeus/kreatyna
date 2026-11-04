@@ -37,13 +37,47 @@ pub struct CanvasPoint {
     pub y: u32,
 }
 
-/// A stored step of a recipe (REC-14).
+/// A stored step of a recipe (REC-14, REC-17).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Step {
     pub id: StepId,
     pub title: String,
     pub position: CanvasPoint,
+    /// `None` until you set one (Q-R5).
+    pub duration: Option<StepDurationS>,
+    pub kind: StepKind,
+    pub instructions: Option<StepInstructions>,
 }
+
+/// A step's duration in whole seconds; the `S` in the name stands for
+/// seconds. It holds 1 second to 365 days (REC-17/Q3, Q4). `try_new` fails with `StepDurationSError::GreaterViolated` for 0 and
+/// `StepDurationSError::LessOrEqualViolated` above 365 days.
+#[nutype(
+    validate(greater = 0, less_or_equal = 31_536_000),
+    derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Into)
+)]
+pub struct StepDurationS(u32);
+
+/// Whether your hands are busy during a step (D-09, D-30). A new step is
+/// active.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum StepKind {
+    /// Hands busy, such as "Dice onion".
+    #[default]
+    Active,
+    /// Hands free, such as "Bake 20 min".
+    Waiting,
+}
+
+/// A step's longer text (D-09): trimmed and not empty. `try_new` fails
+/// with `StepInstructionsError::NotEmptyViolated`; the editor reads that as
+/// "no instructions".
+#[nutype(
+    sanitize(trim),
+    validate(not_empty),
+    derive(Debug, Clone, PartialEq, Eq, AsRef)
+)]
+pub struct StepInstructions(String);
 
 /// A stored recipe. Until REC-22 a recipe needs only its title (E-02).
 ///
@@ -91,6 +125,9 @@ pub struct StepWrite {
     pub id: StepId,
     pub title: StepTitle,
     pub position: CanvasPoint,
+    pub duration: Option<StepDurationS>,
+    pub kind: StepKind,
+    pub instructions: Option<StepInstructions>,
 }
 
 /// What `RecipeStore::create` writes. REC-07 adds the lines.

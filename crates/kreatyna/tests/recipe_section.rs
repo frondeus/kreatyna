@@ -6,7 +6,8 @@ use kreatyna::{
         RecipeDetailStep, RecipeDetailView, RecipeEditorEvent, RecipeEditorProblem,
         RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeListEvent, RecipeListRow,
         RecipeListStatus, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
-        RecipeSectionView, RecipeSummary, Step, StepCanvasView, StepId, StepLabel, StepNodeView,
+        RecipeSectionView, RecipeSummary, Step, StepCanvasView, StepId, StepKind, StepLabel,
+        StepNodeView,
         capabilities::{
             RecipeDeleteError, RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError,
             RecipeStoreRequest, ResolveRecipeStore,
@@ -778,11 +779,17 @@ fn shakshuka() -> Recipe {
                 id: StepId::from(Uuid::from_u128(11)),
                 title: "Dice onion".into(),
                 position: CanvasPoint { x: 10, y: 20 },
+                duration: None,
+                kind: StepKind::Active,
+                instructions: None,
             },
             Step {
                 id: StepId::from(Uuid::from_u128(12)),
                 title: "Fry onion".into(),
                 position: CanvasPoint { x: 200, y: 40 },
+                duration: None,
+                kind: StepKind::Active,
+                instructions: None,
             },
         ],
         ..recipe(1, "Shakshuka")

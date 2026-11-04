@@ -9,7 +9,10 @@ use diesel::{
 };
 use kreatyna::{
     ingredients::name_key,
-    recipes::{CanvasPoint, Recipe, RecipeId, RecipeTitle, Step, StepId, StepWrite},
+    recipes::{
+        CanvasPoint, Recipe, RecipeId, RecipeTitle, Step, StepDurationS, StepId, StepInstructions,
+        StepKind, StepWrite,
+    },
 };
 
 use super::schema::{recipe_steps, recipes};
@@ -72,6 +75,78 @@ impl FromSql<BigInt, Sqlite> for DbCoordinate {
 impl ToSql<BigInt, Sqlite> for DbCoordinate {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
         out.set_value(i64::from(self.0));
+        Ok(IsNull::No)
+    }
+}
+
+/// A step's duration in seconds (REC-17). Reading a value outside 1 second
+/// to 365 days fails, as the table's CHECK does not allow it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
+#[diesel(sql_type = BigInt)]
+pub(crate) struct DbDurationS(pub StepDurationS);
+
+impl FromSql<BigInt, Sqlite> for DbDurationS {
+    fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
+        let seconds = u32::try_from(i64::from_sql(value)?)?;
+        Ok(Self(StepDurationS::try_new(seconds)?))
+    }
+}
+
+impl ToSql<BigInt, Sqlite> for DbDurationS {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
+        out.set_value(i64::from(self.0.into_inner()));
+        Ok(IsNull::No)
+    }
+}
+
+/// A step's kind as its text: `active` or `waiting` (REC-17). Any other
+/// text fails to read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
+#[diesel(sql_type = Text)]
+pub(crate) struct DbStepKind(pub StepKind);
+
+impl DbStepKind {
+    fn text(self) -> &'static str {
+        match self.0 {
+            StepKind::Active => "active",
+            StepKind::Waiting => "waiting",
+        }
+    }
+}
+
+impl FromSql<Text, Sqlite> for DbStepKind {
+    fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
+        match <String as FromSql<Text, Sqlite>>::from_sql(value)?.as_str() {
+            "active" => Ok(Self(StepKind::Active)),
+            "waiting" => Ok(Self(StepKind::Waiting)),
+            other => Err(format!("unknown step kind {other:?}").into()),
+        }
+    }
+}
+
+impl ToSql<Text, Sqlite> for DbStepKind {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
+        out.set_value(self.text());
+        Ok(IsNull::No)
+    }
+}
+
+/// A step's instructions (REC-17). Reading a blank text fails, as the
+/// table's CHECK does not allow it.
+#[derive(Debug, Clone, PartialEq, Eq, AsExpression, FromSqlRow)]
+#[diesel(sql_type = Text)]
+pub(crate) struct DbInstructions(pub StepInstructions);
+
+impl FromSql<Text, Sqlite> for DbInstructions {
+    fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
+        let text = <String as FromSql<Text, Sqlite>>::from_sql(value)?;
+        Ok(Self(StepInstructions::try_new(text)?))
+    }
+}
+
+impl ToSql<Text, Sqlite> for DbInstructions {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
+        out.set_value(self.0.as_ref().to_owned());
         Ok(IsNull::No)
     }
 }
@@ -139,6 +214,9 @@ pub(crate) struct StepRow {
     pub title: String,
     pub x: DbCoordinate,
     pub y: DbCoordinate,
+    pub duration_seconds: Option<DbDurationS>,
+    pub kind: DbStepKind,
+    pub instructions: Option<DbInstructions>,
 }
 
 impl StepRow {
@@ -150,6 +228,9 @@ impl StepRow {
                 x: self.x.0,
                 y: self.y.0,
             },
+            duration: self.duration_seconds.map(|duration| duration.0),
+            kind: self.kind.0,
+            instructions: self.instructions.map(|instructions| instructions.0),
         }
     }
 }
@@ -163,6 +244,9 @@ pub(crate) struct NewStepRow {
     pub title: String,
     pub x: DbCoordinate,
     pub y: DbCoordinate,
+    pub duration_seconds: Option<DbDurationS>,
+    pub kind: DbStepKind,
+    pub instructions: Option<DbInstructions>,
 }
 
 impl NewStepRow {
@@ -176,6 +260,9 @@ impl NewStepRow {
             title: step.title.as_ref().to_owned(),
             x: DbCoordinate(step.position.x),
             y: DbCoordinate(step.position.y),
+            duration_seconds: step.duration.map(DbDurationS),
+            kind: DbStepKind(step.kind),
+            instructions: step.instructions.clone().map(DbInstructions),
         }
     }
 }
@@ -186,6 +273,9 @@ pub(crate) fn saved_step(step: &StepWrite) -> Step {
         id: step.id,
         title: step.title.as_ref().to_owned(),
         position: step.position,
+        duration: step.duration,
+        kind: step.kind,
+        instructions: step.instructions.clone(),
     }
 }
 

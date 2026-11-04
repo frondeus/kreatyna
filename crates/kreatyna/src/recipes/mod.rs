@@ -2,6 +2,7 @@
 
 pub mod capabilities;
 mod detail;
+mod duration;
 mod editor;
 mod list;
 mod model;
@@ -12,6 +13,7 @@ pub use detail::{
     RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome, RecipeDetailStatus,
     RecipeDetailStep, RecipeDetailView,
 };
+pub use duration::{DurationError, DurationInput, DurationParts};
 pub use editor::{
     RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus,
     RecipeEditorView,
@@ -21,7 +23,8 @@ pub use list::{
 };
 pub use model::{
     CanvasPoint, NewRecipe, Recipe, RecipeId, RecipeIdParseError, RecipeSummary, RecipeTitle,
-    RecipeTitleError, RecipeUpdate, Step, StepId, StepIdParseError, StepTitle, StepTitleError,
+    RecipeTitleError, RecipeUpdate, Step, StepDurationS, StepDurationSError, StepId,
+    StepIdParseError, StepInstructions, StepInstructionsError, StepKind, StepTitle, StepTitleError,
     StepWrite,
 };
 pub use section::{

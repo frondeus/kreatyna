@@ -35,6 +35,9 @@ diesel::table! {
         title -> Text,
         x -> BigInt,
         y -> BigInt,
+        duration_seconds -> Nullable<BigInt>,
+        kind -> Text,
+        instructions -> Nullable<Text>,
     }
 }
 

@@ -5,7 +5,7 @@ use kreatyna::{
     ingredients::capabilities::IngredientStoreMut,
     recipes::{
         CanvasPoint, NewRecipe, Recipe, RecipeId, RecipeSummary, RecipeTitle, RecipeUpdate, Step,
-        StepId, StepTitle, StepWrite,
+        StepDurationS, StepId, StepInstructions, StepKind, StepTitle, StepWrite,
     },
 };
 use test_case::test_case;
@@ -197,6 +197,79 @@ async fn an_update_replaces_the_steps_and_a_kept_step_keeps_its_id() -> anyhow::
 }
 
 #[tokio::test]
+async fn a_step_keeps_its_duration_kind_and_instructions_through_create_and_update()
+-> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let bake = detailed(
+        step(1, "Bake sauce", 0, 0)?,
+        1_200,
+        StepKind::Waiting,
+        "Cover it.",
+    )?;
+    let sear = detailed(step(2, "Sear", 200, 0)?, 45, StepKind::Active, "Hot pan.")?;
+    let created =
+        RecipeStoreMut::create(&mut db, with_steps("Pasta", vec![bake, sear.clone()])?).await?;
+
+    // Bake loses its details; Sear keeps them; Starter is a year long.
+    let bake = step(1, "Bake sauce", 0, 0)?;
+    let starter = detailed(
+        step(3, "Feed starter", 400, 0)?,
+        31_536_000,
+        StepKind::Waiting,
+        "Daily.",
+    )?;
+    let steps = vec![bake, sear, starter];
+    let update = RecipeUpdate {
+        title: RecipeTitle::try_new("Pasta")?,
+        steps: steps.clone(),
+    };
+    let updated = RecipeStoreMut::update(&mut db, created.id, update).await?;
+    assert_eq!(updated.steps, saved(&steps));
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, created.id).await,
+        Ok(Some(updated))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_step_from_before_rec_17_upgrades_as_active_with_no_details() -> anyhow::Result<()> {
+    let folder = tempfile::tempdir()?;
+    let path = folder.path().join("app.sqlite");
+    let path = path.to_str().context("the temporary path is not UTF-8")?;
+    {
+        let mut db = SqliteConnection::establish(path)?;
+        // The schema before REC-17: up to and with the recipe steps table.
+        for _ in 0..5 {
+            db.run_next_migration(MIGRATIONS)
+                .map_err(|error| anyhow!(error))?;
+        }
+        db.batch_execute(TWO_RECIPES)?;
+        db.batch_execute(&format!(
+            "INSERT INTO recipe_steps (remote_id, recipe_local_id, title, ordinal, x, y)
+             VALUES ('{STEP}', (SELECT local_id FROM recipes WHERE title = 'Shakshuka'),
+                     'Fry onion', 0, 10, 20)"
+        ))?;
+    }
+    let mut db = SqliteDatabase::new(path).await?;
+    let shakshuka = RecipeStoreMut::get(&mut db, SHAKSHUKA.parse()?)
+        .await?
+        .context("Shakshuka is gone")?;
+    assert_eq!(
+        shakshuka.steps,
+        [Step {
+            id: STEP.parse()?,
+            title: "Fry onion".into(),
+            position: CanvasPoint { x: 10, y: 20 },
+            duration: None,
+            kind: StepKind::Active,
+            instructions: None,
+        }]
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn a_deleted_recipe_takes_its_steps_with_it() -> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
     let shakshuka = RecipeStoreMut::create(
@@ -294,6 +367,22 @@ fn the_step_table_refuses_invalid_rows(values: &str) -> anyhow::Result<()> {
     let sql = format!(
         "INSERT INTO recipe_steps (remote_id, recipe_local_id, title, ordinal, x, y)
          VALUES ('{STEP}', (SELECT local_id FROM recipes WHERE title = 'Shakshuka'), {values})"
+    );
+    assert!(db.batch_execute(&sql).is_err());
+    Ok(())
+}
+
+#[test_case("duration_seconds", "0"; "no seconds")]
+#[test_case("duration_seconds", "31536001"; "past 365 days")]
+#[test_case("kind", "'resting'"; "an unknown kind")]
+#[test_case("kind", "NULL"; "no kind")]
+#[test_case("instructions", "'  '"; "blank instructions")]
+fn the_step_table_refuses_invalid_details(column: &str, value: &str) -> anyhow::Result<()> {
+    let mut db = migrated_connection()?;
+    let sql = format!(
+        "INSERT INTO recipe_steps (remote_id, recipe_local_id, title, ordinal, x, y, {column})
+         VALUES ('{STEP}', (SELECT local_id FROM recipes WHERE title = 'Shakshuka'),
+                 'Fry', 0, 0, 0, {value})"
     );
     assert!(db.batch_execute(&sql).is_err());
     Ok(())
@@ -521,6 +610,34 @@ async fn a_step_position_that_does_not_fit_the_canvas_fails_get(
     Ok(())
 }
 
+#[test_case("duration_seconds = 0"; "no seconds")]
+#[test_case("duration_seconds = 31536001"; "past 365 days")]
+#[test_case("kind = 'resting'"; "an unknown kind")]
+#[test_case("instructions = '  '"; "blank instructions")]
+#[tokio::test]
+async fn step_details_that_break_the_rules_fail_get(assignment: &str) -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let created = RecipeStoreMut::create(
+        &mut db,
+        with_steps("Shakshuka", vec![step(1, "Fry", 0, 0)?])?,
+    )
+    .await?;
+    // Only a broken file or another program can write these: the CHECKs
+    // refuse them, so the test turns the CHECKs off.
+    let sql = format!(
+        "PRAGMA ignore_check_constraints = ON; UPDATE recipe_steps SET {assignment}; \
+         PRAGMA ignore_check_constraints = OFF;"
+    );
+    db.connection
+        .spawn_blocking(move |conn| conn.batch_execute(&sql))
+        .await?;
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, created.id).await,
+        Err(RecipeLoadError::Storage)
+    );
+    Ok(())
+}
+
 // Test support
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
@@ -557,6 +674,24 @@ fn step(id: u128, title: &str, x: u32, y: u32) -> anyhow::Result<StepWrite> {
         id: format!("6f1c1d3e-0000-4000-8000-{id:012x}").parse::<StepId>()?,
         title: StepTitle::try_new(title)?,
         position: CanvasPoint { x, y },
+        duration: None,
+        kind: StepKind::Active,
+        instructions: None,
+    })
+}
+
+/// `step` with a duration in seconds, a kind, and instructions.
+fn detailed(
+    step: StepWrite,
+    seconds: u32,
+    kind: StepKind,
+    instructions: &str,
+) -> anyhow::Result<StepWrite> {
+    Ok(StepWrite {
+        duration: Some(StepDurationS::try_new(seconds)?),
+        kind,
+        instructions: Some(StepInstructions::try_new(instructions)?),
+        ..step
     })
 }
 
@@ -568,6 +703,9 @@ fn saved(steps: &[StepWrite]) -> Vec<Step> {
             id: step.id,
             title: step.title.as_ref().to_owned(),
             position: step.position,
+            duration: step.duration,
+            kind: step.kind,
+            instructions: step.instructions.clone(),
         })
         .collect()
 }

@@ -110,7 +110,7 @@ New types in `model.rs` (*sketch*):
     validate(greater = 0, less_or_equal = 31_536_000),
     derive(Debug, Clone, Copy, PartialEq, Eq, Into)
 )]
-pub struct StepDuration(u32);
+pub struct StepDurationS(u32);
 
 /// Whether your hands are busy during a step (D-09, D-30).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -128,7 +128,7 @@ pub struct Step {
     pub id: StepId,
     pub title: String,
     pub position: CanvasPoint,
-    pub duration: Option<StepDuration>,
+    pub duration: Option<StepDurationS>,
     pub kind: StepKind,
     pub instructions: Option<StepInstructions>,
 }
@@ -166,13 +166,13 @@ pub enum DurationError {
 
 /// `Ok(None)` for `Cleared` and for all parts at 0. Adds with checked
 /// arithmetic, so a huge field is `TooLong`, never an overflow.
-pub fn duration_from(input: DurationInput) -> Result<Option<StepDuration>, DurationError>;
+pub fn duration_from(input: DurationInput) -> Result<Option<StepDurationS>, DurationError>;
 
-/// `StepDuration` split into days, hours, minutes, seconds.
-pub fn parts_of(duration: StepDuration) -> DurationParts;
+/// `StepDurationS` split into days, hours, minutes, seconds.
+pub fn parts_of(duration: StepDurationS) -> DurationParts;
 
 /// "45 s", "1 min 30 s", "1 h 30 min", "2 d".
-pub fn format_duration(duration: StepDuration) -> String;
+pub fn format_duration(duration: StepDurationS) -> String;
 ```
 
 **`step_canvas.rs`:**
@@ -182,7 +182,7 @@ pub fn format_duration(duration: StepDuration) -> String;
   ```rust
   enum DraftDuration {
       NotSet,
-      Set(StepDuration),
+      Set(StepDurationS),
       /// What you set, kept so the fields still show it, with the problem.
       TooLong(DurationParts),
   }
@@ -335,7 +335,7 @@ The Validation section of this plan, after the last change.
 
 ### Change 2 — REC-17: steps store duration, kind and instructions (about 450 lines, review)
 
-1. Add `StepDuration`, `StepKind`, `StepInstructions`, and `duration.rs`
+1. Add `StepDurationS`, `StepKind`, `StepInstructions`, and `duration.rs`
    with its tests.
 2. Add the three fields to `Step` and `StepWrite`. Update every place that
    builds one (list below).

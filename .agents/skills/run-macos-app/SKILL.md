@@ -5,12 +5,15 @@ description: Build the Kreatyna Mac app with the real Rust core and open its win
 
 # Run the Mac app
 
-Run the helper from the repository root inside the devenv shell:
+Run the helper inside the devenv shell. The devenv script `mac-run` calls it
+with the same options:
 
 ```sh
-.agents/skills/run-macos-app/scripts/run-mac-app.sh
-.agents/skills/run-macos-app/scripts/run-mac-app.sh --seed apple/Kreatyna/Fixtures/demo-ingredients.json
+devenv shell -- mac-run
+devenv shell -- mac-run --seed apple/Kreatyna/Fixtures/demo-ingredients.json
 ```
+
+The script is `.agents/skills/run-macos-app/scripts/run-mac-app.sh`.
 
 The script performs these steps:
 
@@ -76,4 +79,4 @@ data. A Rust test seeds it, so it stays valid.
   name Nix paths mean `xcodebuild` saw Nix compiler variables; run it the way
   the script does.
 - `mac-bindings` or `apple-generate` is missing from PATH outside the devenv
-  shell. Run `devenv shell -- .agents/skills/run-macos-app/scripts/run-mac-app.sh`.
+  shell. Run `devenv shell -- mac-run`.

@@ -259,4 +259,14 @@ in
       grep -E "Test run with|TEST SUCCEEDED" target/xcode/mac-test.log || true
     '';
   };
+
+  scripts.mac-run = {
+    description = "Build the Mac app with the Rust core and open it: mac-run [--seed FILE.json] [--skip-rust]";
+    exec = ''
+      set -euo pipefail
+      cd ${lib.escapeShellArg config.devenv.root}
+      # The run-macos-app skill owns the steps; this name makes them easy to find.
+      exec .agents/skills/run-macos-app/scripts/run-mac-app.sh "$@"
+    '';
+  };
 }

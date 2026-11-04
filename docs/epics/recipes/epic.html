@@ -442,10 +442,11 @@ const EPIC = {
     {
       id: "REC-16", bead: "vibetyna-hrx.16", short: "Delete step",
       title: "Delete a step",
-      outcome: "Select a node and press [[⌫]], or right-click it ▸ **Delete step**. It disappears, along with its connections once those exist.",
+      outcome: "Select a node and press [[⌘]][[⌫]] (Edit ▸ **Delete Step**), or right-click it ▸ **Delete Step**. It disappears, along with its connections once those exist.",
       layers: ["rust", "ffi", "swift"],
       acceptance: ["Rust removes the step and anything that refers to it. Rust tests; snapshot of the context menu."],
       refs: [],
+      plan: "tasks/REC-16.md",
     },
     {
       id: "REC-17", bead: "vibetyna-hrx.17", short: "Step details",

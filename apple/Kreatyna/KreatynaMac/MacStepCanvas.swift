@@ -6,6 +6,7 @@ import SwiftUI
 ///
 /// A click on a node selects it; a click on empty canvas clears the selection.
 /// The context menu has Add Step, which adds a step where the pointer was.
+/// A node's own context menu has Delete Step (REC-16).
 /// A drag moves a node: Swift draws the drag, and sends one Move on the drop
 /// (REC-15). Rust places and selects the step.
 struct MacStepCanvas: View {
@@ -40,6 +41,12 @@ struct MacStepCanvas: View {
                             .zIndex(drag?.id == item.node.id ? 1 : 0)
                             .gesture(dragGesture(for: item.node))
                             .onTapGesture { send(.select(id: item.node.id)) }
+                            .contextMenu {
+                                Button("Delete Step", systemImage: "trash", role: .destructive) {
+                                    send(.delete(id: item.node.id))
+                                }
+                                .accessibilityIdentifier("deleteStep")
+                            }
                     }
                 }
                 .coordinateSpace(.named(Self.space))

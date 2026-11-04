@@ -438,6 +438,52 @@ final class MacDemoCaptureUITests: MacUITestCase {
         app.terminate()
     }
 
+    /// REC-16: the Edit menu with Delete Step (⌘⌫) while "Dice onion" is selected, the node
+    /// context menu on "Fry onion", and the canvas after both deletes.
+    @MainActor
+    func testCaptureREC16Demo() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(app.textFields["recipeTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Shakshuka")
+        let canvas = app.scrollViews["stepCanvas"]
+        XCTAssertTrue(canvas.waitForExistence(timeout: 5))
+        let add = app.menuItems["Add Step"]
+        let steps = [("Dice onion", CGVector(dx: 0.08, dy: 0.08)), ("Fry onion", CGVector(dx: 0.35, dy: 0.3)), ("Crack eggs", CGVector(dx: 0.12, dy: 0.55))]
+        for (title, offset) in steps {
+            canvas.coordinate(withNormalizedOffset: offset).rightClick()
+            XCTAssertTrue(add.waitForExistence(timeout: 5))
+            add.click()
+            XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
+            app.typeText(title)
+        }
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStepCount"], value: "3 steps"))
+        app.buttons["editRecipe"].click()
+        XCTAssertTrue(app.staticTexts["selectStepHint"].waitForExistence(timeout: 5))
+
+        let nodes = app.descendants(matching: .any).matching(identifier: "stepNode")
+        nodes.matching(NSPredicate(format: "label == 'Dice onion'")).firstMatch.click()
+        XCTAssertTrue(waitFor(app.textFields["stepTitleField"], value: "Dice onion"))
+        let edit = app.menuBars.menuBarItems["Edit"]
+        edit.click()
+        XCTAssertTrue(app.menuBars.menuItems["Delete Step"].waitForExistence(timeout: 5))
+        // The menu only: the menu bar and the desktop around it stay out.
+        captureScreen("01-edit-menu", around: edit.menus.firstMatch)
+        app.menuBars.menuItems["Delete Step"].click()
+        XCTAssertTrue(app.staticTexts["selectStepHint"].waitForExistence(timeout: 5))
+
+        nodes.matching(NSPredicate(format: "label == 'Fry onion'")).firstMatch.rightClick()
+        let delete = app.menuItems.matching(identifier: "deleteStep").firstMatch
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        captureScreen("02-context-menu", around: app.windows.firstMatch)
+        delete.click()
+        XCTAssertTrue(waitForNonExistence(nodes.matching(NSPredicate(format: "label == 'Fry onion'")).firstMatch))
+        capture("03-after-delete", app)
+        app.terminate()
+    }
+
     /// The ingredient list the demos start from (Garlic, Tomato, Basil, …).
     private func demoIngredients() throws -> String {
         let fixture = URL(fileURLWithPath: #filePath)

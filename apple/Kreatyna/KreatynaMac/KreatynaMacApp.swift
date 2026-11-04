@@ -17,5 +17,6 @@ struct KreatynaMacApp: App {
                 .frame(minWidth: 800, minHeight: 500)
         }
         .defaultSize(width: 960, height: 600)
+        .commands { MacEditCommands() }
     }
 }

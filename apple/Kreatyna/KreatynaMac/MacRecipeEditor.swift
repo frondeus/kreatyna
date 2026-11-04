@@ -72,7 +72,15 @@ struct MacRecipeEditor: View {
             Button("Keep Editing", role: .cancel) { send(.confirmation(event: .cancel)) }
                 .accessibilityIdentifier("cancelDiscard")
         }
+        .focusedSceneValue(\.deleteStep, deleteSelectedStep)
         .onAppear { titleFocused = true }
+    }
+
+    /// Edit ▸ Delete Step for the selected step; absent with no selection.
+    private var deleteSelectedStep: DeleteStepAction? {
+        guard case .selected(let selected, _) = view.canvas else { return nil }
+        let id = selected.id
+        return DeleteStepAction(id: id) { send(.canvas(event: .delete(id: id))) }
     }
 
     private var titleField: some View {

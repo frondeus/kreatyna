@@ -296,6 +296,53 @@ final class MacRecipeUITests: MacUITestCase {
         XCTAssertEqual(after.minY - before.minY, 120, accuracy: 1)
     }
 
+    /// Edit ▸ Delete Step is disabled with no selection. With "Dice onion"
+    /// selected and the cursor in its Title, ⌘⌫ deletes the step, not text.
+    /// Right-click ▸ Delete Step deletes "Fry onion". Save keeps no steps
+    /// (REC-16).
+    @MainActor
+    func testDeleteStepsAndSave() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
+        app.typeText("Shakshuka")
+        addStep(at: CGVector(dx: 0.1, dy: 0.1), in: app)
+        XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Dice onion")
+        addStep(at: CGVector(dx: 0.5, dy: 0.5), in: app)
+        _ = stepNode("Untitled step", in: app)
+        app.typeText("Fry onion")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStepCount"], value: "2 steps"))
+
+        app.buttons["editRecipe"].click()
+        let hint = app.staticTexts["selectStepHint"]
+        XCTAssertTrue(hint.waitForExistence(timeout: 5))
+        app.menuBars.menuBarItems["Edit"].click()
+        let menuDelete = app.menuBars.menuItems["Delete Step"]
+        XCTAssertTrue(menuDelete.waitForExistence(timeout: 5))
+        XCTAssertFalse(menuDelete.isEnabled)
+        app.typeKey(.escape, modifierFlags: [])
+
+        stepNode("Dice onion", in: app).click()
+        XCTAssertTrue(waitFor(app.textFields["stepTitleField"], value: "Dice onion"))
+        app.typeKey(.delete, modifierFlags: .command)
+        XCTAssertTrue(hint.waitForExistence(timeout: 5))
+        XCTAssertEqual(stepNodes(in: app).count, 1)
+
+        stepNode("Fry onion", in: app).rightClick()
+        let nodeDelete = app.menuItems.matching(identifier: "deleteStep").firstMatch
+        XCTAssertTrue(nodeDelete.waitForExistence(timeout: 5))
+        nodeDelete.click()
+        XCTAssertTrue(waitForNonExistence(stepNodes(in: app).firstMatch, timeout: 5))
+
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitForTitle(in: app, "Shakshuka"))
+        XCTAssertTrue(waitForNonExistence(app.staticTexts["recipeStepCount"], timeout: 5))
+        XCTAssertFalse(app.staticTexts["recipeStep"].exists)
+    }
+
     /// Presses on `element`, moves the pointer by `offset` points, and releases.
     @MainActor
     private func drag(_ element: XCUIElement, by offset: CGVector) {

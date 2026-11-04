@@ -226,4 +226,31 @@ tests, and the UI tests of the Recipes section only (`--ui MacRecipeUITests`).
 
 ## Validation
 
-Not run yet.
+| # | Change | Result |
+|---|---|---|
+| 1 | 2 | `cargo test --workspace`: 744 tests pass. |
+| 2 | 2 | `cargo clippy --workspace --all-targets -- -D warnings`: no warnings. |
+| 3 | 2 | `cargo fmt --check`: no diff. |
+| 4 | 2 | `mac-test --ui none`: passes. No image changes. |
+| 4 | 3 | `mac-test --ui MacRecipeUITests`: unit and snapshot tests pass, and 12 UI tests pass, `testDeleteStepsAndSave` among them. No image changes. |
+| 5 | 3 | `ios-app-build`: builds. |
+| 6 | 3 | `capture-demo.sh`: `01-edit-menu.png`, `02-context-menu.png`, `03-after-delete.png` in `REC-16-demo/`. |
+| 7 | 2, 3 | Change 2: 128 insertions and 6 deletions, after the review round. Change 3: 143 insertions, before this section. |
+
+Findings during the work:
+
+- Review of change 2: the canvas searched `steps` by id in six places. It
+  now has `index_of`, `step`, and `step_mut`.
+- `testDeleteStepsAndSave` passed on its first run. ⌘⌫ deletes the step
+  while the cursor is in the step's Title field, so the menu gets the key
+  before the field.
+- The focused value holds `DeleteStepAction`, an `Equatable` struct, not a
+  closure. SwiftUI warned that a closure in a focused value updates its
+  readers on every change.
+- `01-edit-menu.png` shows the Edit menu only. The menu opens from the menu
+  bar, outside the window, and a larger crop would show the rest of the
+  screen.
+- ⌘⌫ deletes the selected step from any text field of the editor, the
+  recipe Title too, not only from the step's Title.
+
+All checks ran. No check was skipped.

@@ -1,4 +1,4 @@
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use test_case::test_case;
 
 use super::*;
@@ -7,7 +7,11 @@ use super::*;
 
 #[test]
 fn preserves_message_fields_and_source() {
-    let (logger, dispatch) = setup(LogLevel::Trace);
+    let Recording {
+        logger,
+        dispatch,
+        _serial,
+    } = setup(LogLevel::Trace);
     let mut source_line = 0;
     tracing::dispatcher::with_default(&dispatch, || {
         source_line = line!() + 1;
@@ -36,7 +40,11 @@ fn preserves_message_fields_and_source() {
 
 #[test]
 fn preserves_nested_spans_and_recorded_updates_without_collisions() {
-    let (logger, dispatch) = setup(LogLevel::Trace);
+    let Recording {
+        logger,
+        dispatch,
+        _serial,
+    } = setup(LogLevel::Trace);
     tracing::dispatcher::with_default(&dispatch, || {
         let root = tracing::info_span!(target: "test.root", "root", id = 1, rows = tracing::field::Empty, message = "span message");
         root.in_scope(|| {
@@ -79,7 +87,11 @@ fn preserves_nested_spans_and_recorded_updates_without_collisions() {
 
 #[test]
 fn respects_explicit_parent_and_explicit_root_events() {
-    let (logger, dispatch) = setup(LogLevel::Trace);
+    let Recording {
+        logger,
+        dispatch,
+        _serial,
+    } = setup(LogLevel::Trace);
     tracing::dispatcher::with_default(&dispatch, || {
         let parent = tracing::info_span!("explicit");
         let unrelated = tracing::info_span!("unrelated");
@@ -97,7 +109,11 @@ fn respects_explicit_parent_and_explicit_root_events() {
 
 #[test]
 fn delivers_concurrently_from_multiple_threads() {
-    let (logger, dispatch) = setup(LogLevel::Info);
+    let Recording {
+        logger,
+        dispatch,
+        _serial,
+    } = setup(LogLevel::Info);
     std::thread::scope(|scope| {
         for worker in 0..4 {
             let dispatch = dispatch.clone();
@@ -127,10 +143,18 @@ fn delivers_concurrently_from_multiple_threads() {
 // The task can resume on another worker thread after the yield, so the span
 // must travel with the future, not with the thread.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[allow(
+    clippy::await_holding_lock,
+    reason = "the guard only keeps other tests' dispatchers out; no task here takes it"
+)]
 async fn preserves_span_context_across_async_yields() -> anyhow::Result<()> {
     use tracing::{Instrument, instrument::WithSubscriber};
 
-    let (logger, dispatch) = setup(LogLevel::Info);
+    let Recording {
+        logger,
+        dispatch,
+        _serial,
+    } = setup(LogLevel::Info);
     let span =
         tracing::dispatcher::with_default(&dispatch, || tracing::info_span!("worker", id = 42));
     tokio::spawn(
@@ -157,7 +181,11 @@ async fn preserves_span_context_across_async_yields() -> anyhow::Result<()> {
 #[test_case(LogLevel::Warn; "warn")]
 #[test_case(LogLevel::Error; "error")]
 fn a_threshold_keeps_its_level_and_every_more_severe_one(level: LogLevel) {
-    let (logger, dispatch) = setup(level.clone());
+    let Recording {
+        logger,
+        dispatch,
+        _serial,
+    } = setup(level.clone());
     tracing::dispatcher::with_default(&dispatch, || {
         tracing::trace!("trace");
         tracing::debug!("debug");
@@ -183,7 +211,11 @@ fn a_filtered_event_does_not_format_its_fields() {
             panic!("filtered field was formatted");
         }
     }
-    let (logger, dispatch) = setup(LogLevel::Info);
+    let Recording {
+        logger,
+        dispatch,
+        _serial,
+    } = setup(LogLevel::Info);
     tracing::dispatcher::with_default(&dispatch, || {
         tracing::debug!(value = ?MustNotFormat, "disabled");
     });
@@ -250,11 +282,33 @@ impl LoggerHandler for RecordingLogger {
     }
 }
 
-fn setup(level: LogLevel) -> (Arc<RecordingLogger>, tracing::Dispatch) {
+/// One test's logger and dispatcher.
+struct Recording {
+    logger: Arc<RecordingLogger>,
+    dispatch: tracing::Dispatch,
+    /// Held until the test ends; see `SERIAL`.
+    _serial: MutexGuard<'static, ()>,
+}
+
+/// Only one test dispatcher lives at a time (vibetyna-ns6a). `tracing`
+/// caches, per log line and for the whole process, whether the line is
+/// enabled. When one test's dispatcher is the only one alive, its answer is
+/// cached as "always", and a test with a stricter threshold then skips its
+/// own filter for that line. The app has one global dispatcher, so only the
+/// tests can meet this.
+static SERIAL: Mutex<()> = Mutex::new(());
+
+fn setup(level: LogLevel) -> Recording {
+    // Before the dispatcher exists: a new dispatcher rebuilds the cache.
+    let serial = SERIAL.lock();
     let logger = Arc::new(RecordingLogger::default());
     let subscriber = tracing_subscriber::registry()
         .with(LoggerLayer::new(logger.clone()).with_filter(LevelFilter::from(level)));
-    (logger, tracing::Dispatch::new(subscriber))
+    Recording {
+        logger,
+        dispatch: tracing::Dispatch::new(subscriber),
+        _serial: serial,
+    }
 }
 
 fn field(name: &str, value: &str) -> LogField {

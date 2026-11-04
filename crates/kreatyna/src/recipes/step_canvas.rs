@@ -3,8 +3,9 @@
 //! canvas has no effects, so it is a plain struct, not a widget: the editor
 //! renders after each change.
 use super::{
-    CanvasPoint, ConnectRefusal, DurationError, DurationInput, DurationParts, Step, StepDurationS,
-    StepEdge, StepEdges, StepId, StepInstructions, StepKind, StepTitle, StepTitleError, StepWrite,
+    CanvasPoint, ConnectRefusal, DurationChip, DurationEntry, DurationError, DurationInput,
+    DurationParts, Step, StepDurationS, StepEdge, StepEdges, StepId, StepInstructions, StepKind,
+    StepTitle, StepTitleError, StepWrite, duration::duration_chips,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,6 +58,9 @@ pub struct StepCanvasView {
     pub connections: Vec<StepEdge>,
     /// The last refused connection, until the next change (REC-18/Q2).
     pub refusal: Option<ConnectRefusal>,
+    /// The chips of the inspector's Duration field, shortest first. The same
+    /// for every step.
+    pub duration_chips: Vec<DurationChip>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -123,9 +127,8 @@ pub enum StepDurationView {
         text: String,
         /// For the unit fields under More….
         parts: DurationParts,
-        /// For the minutes field and the chips. `None` when the duration
-        /// has seconds; then More… opens by itself.
-        whole_minutes: Option<u32>,
+        /// For the minutes field, the chips, and More….
+        entry: DurationEntry,
     },
     /// More than 365 days: the node shows "No duration", and the unit
     /// fields show what you set.
@@ -214,7 +217,7 @@ impl DraftDuration {
             Self::Set(duration) => StepDurationView::Set {
                 text: duration.text(),
                 parts: duration.parts(),
-                whole_minutes: duration.whole_minutes(),
+                entry: duration.entry(),
             },
             Self::TooLong(parts) => StepDurationView::TooLong { parts },
         }
@@ -576,6 +579,7 @@ impl StepCanvas {
             nodes,
             connections: self.edges.iter().copied().collect(),
             refusal: self.refusal,
+            duration_chips: duration_chips(),
         }
     }
 

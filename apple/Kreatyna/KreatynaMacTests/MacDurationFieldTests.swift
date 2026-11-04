@@ -27,20 +27,16 @@ struct MacDurationFieldTests {
         #expect(MacDurationField.unitValue(text) == expected)
     }
 
-    /// More… opens by itself when the minutes field cannot show the duration.
+    /// The unit fields open by themselves for every entry Rust names that
+    /// way, and for a duration that is too long.
     @Test(arguments: [
         (StepDurationView.notSet, false),
-        (Fixtures.duration("10 min", minutes: 10), false),
-        (Fixtures.duration("1 min 30 s", minutes: 1, seconds: 30), true),
-        (Fixtures.duration("2 d", days: 2), true),
+        (Fixtures.duration("10 min", .minutes(minutes: 10), minutes: 10), false),
+        (Fixtures.duration("1 min 30 s", .seconds, minutes: 1, seconds: 30), true),
+        (Fixtures.duration("2 d", .minutesWithDays(minutes: 2_880), days: 2), true),
         (.tooLong(parts: DurationParts(days: 400, hours: 0, minutes: 0, seconds: 0)), true),
     ])
-    func moreOpensWhenMinutesCannotShowTheDuration(duration: StepDurationView, expected: Bool) {
+    func theUnitsOpenWhenRustSaysTheMinutesFieldIsNotEnough(duration: StepDurationView, expected: Bool) {
         #expect(MacDurationField.needsUnits(duration) == expected)
-    }
-
-    @Test(arguments: [(UInt32(1), "1 min"), (45, "45 min"), (60, "1 h")])
-    func chipsNameTheirLength(minutes: UInt32, expected: String) {
-        #expect(MacDurationField.chipLabel(minutes) == expected)
     }
 }

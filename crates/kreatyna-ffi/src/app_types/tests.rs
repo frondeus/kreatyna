@@ -491,7 +491,7 @@ fn an_editor_canvas_keeps_the_selection_the_details_the_problems_and_the_arrows(
                 minutes: 1,
                 seconds: 30,
             },
-            whole_minutes: None,
+            entry: kreatyna::recipes::DurationEntry::Seconds,
         },
         kind: kreatyna::recipes::StepKind::Active,
         instructions: String::new(),
@@ -510,6 +510,10 @@ fn an_editor_canvas_keeps_the_selection_the_details_the_problems_and_the_arrows(
                 to: step_id(2),
             }],
             refusal: Some(kreatyna::recipes::ConnectRefusal::Loop),
+            duration_chips: vec![kreatyna::recipes::DurationChip {
+                minutes: 60,
+                text: "1 h".into(),
+            }],
         },
         status: kreatyna::recipes::RecipeEditorStatus::Editing { problem: None },
     };
@@ -560,7 +564,7 @@ fn an_editor_canvas_keeps_the_selection_the_details_the_problems_and_the_arrows(
                                 minutes: 1,
                                 seconds: 30,
                             },
-                            whole_minutes: None,
+                            entry: DurationEntry::Seconds,
                         },
                         kind: StepKind::Active,
                         instructions: String::new(),
@@ -576,6 +580,10 @@ fn an_editor_canvas_keeps_the_selection_the_details_the_problems_and_the_arrows(
                     to: step_id(2),
                 }],
                 refusal: Some(ConnectRefusal::Loop),
+                duration_chips: vec![DurationChip {
+                    minutes: 60,
+                    text: "1 h".into(),
+                }],
             },
             status: RecipeEditorStatus::Editing { problem: None },
         }
@@ -767,6 +775,7 @@ fn a_create_pane_keeps_the_draft_row_and_the_problem() {
                 nodes: kreatyna::recipes::StepNodesView::Unselected { steps: vec![] },
                 connections: vec![],
                 refusal: None,
+                duration_chips: vec![],
             },
             status: kreatyna::recipes::RecipeEditorStatus::Editing {
                 problem: Some(kreatyna::recipes::RecipeEditorProblem::SaveFailed(
@@ -785,6 +794,7 @@ fn a_create_pane_keeps_the_draft_row_and_the_problem() {
                     nodes: StepNodesView::Unselected { steps: vec![] },
                     connections: vec![],
                     refusal: None,
+                    duration_chips: vec![],
                 },
                 status: RecipeEditorStatus::Editing {
                     problem: Some(RecipeEditorProblem::SaveFailed {
@@ -806,6 +816,7 @@ fn an_edit_pane_keeps_the_saved_title_and_the_problem() {
                 nodes: kreatyna::recipes::StepNodesView::Unselected { steps: vec![] },
                 connections: vec![],
                 refusal: None,
+                duration_chips: vec![],
             },
             status: kreatyna::recipes::RecipeEditorStatus::Editing {
                 problem: Some(kreatyna::recipes::RecipeEditorProblem::SaveFailed(
@@ -824,6 +835,7 @@ fn an_edit_pane_keeps_the_saved_title_and_the_problem() {
                     nodes: StepNodesView::Unselected { steps: vec![] },
                     connections: vec![],
                     refusal: None,
+                    duration_chips: vec![],
                 },
                 status: RecipeEditorStatus::Editing {
                     problem: Some(RecipeEditorProblem::SaveFailed {

@@ -762,6 +762,10 @@ async fn retry_in_a_failed_read_view_loads_the_recipe_again() -> anyhow::Result<
 
 // Test support
 
+mod recipe_editor_support;
+
+use recipe_editor_support::chips;
+
 fn recipe(id: u128, title: &str) -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(id)),
@@ -1177,5 +1181,6 @@ fn canvas(nodes: StepNodesView) -> StepCanvasView {
         nodes,
         connections: vec![],
         refusal: None,
+        duration_chips: chips(),
     }
 }

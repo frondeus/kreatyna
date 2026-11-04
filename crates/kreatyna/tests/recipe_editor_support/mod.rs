@@ -1,17 +1,18 @@
 //! Test support that `recipe_editor.rs` and `step_canvas.rs` share: the
-//! editor fixture and the recipes it opens. Each test file compiles this
-//! module on its own and uses only part of it, so unused items are allowed.
+//! editor fixture and the recipes it opens. `recipe_section.rs` uses the
+//! chips. Each test file compiles this module on its own and uses only part
+//! of it, so unused items are allowed.
 #![allow(dead_code)]
 
 use kreatyna::{
     capabilities::ResolveRender,
     confirmation::{ConfirmationEvent, ConfirmationView},
     recipes::{
-        CanvasPoint, DurationInput, DurationParts, Recipe, RecipeEditor, RecipeEditorEvent,
-        RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus, RecipeId, RecipeTitleError,
-        Step, StepCanvasEvent, StepCanvasView, StepDurationS, StepDurationView, StepEdge,
-        StepEdges, StepId, StepInstructions, StepKind, StepLabel, StepNodeView, StepNodesView,
-        StepProblems, StepTitle, StepTitleError, StepWrite,
+        CanvasPoint, DurationChip, DurationEntry, DurationInput, DurationParts, Recipe,
+        RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem,
+        RecipeEditorStatus, RecipeId, RecipeTitleError, Step, StepCanvasEvent, StepCanvasView,
+        StepDurationS, StepDurationView, StepEdge, StepEdges, StepId, StepInstructions, StepKind,
+        StepLabel, StepNodeView, StepNodesView, StepProblems, StepTitle, StepTitleError, StepWrite,
         capabilities::{
             RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
         },
@@ -126,16 +127,16 @@ pub(crate) fn node(
     }
 }
 
-pub(crate) fn set(
-    text: &str,
-    parts: DurationParts,
-    whole_minutes: Option<u32>,
-) -> StepDurationView {
+pub(crate) fn set(text: &str, parts: DurationParts, entry: DurationEntry) -> StepDurationView {
     StepDurationView::Set {
         text: text.into(),
         parts,
-        whole_minutes,
+        entry,
     }
+}
+
+pub(crate) fn minutes(minutes: u32) -> DurationEntry {
+    DurationEntry::Minutes { minutes }
 }
 
 pub(crate) fn parts(days: u32, hours: u32, minutes: u32, seconds: u32) -> DurationParts {
@@ -157,7 +158,7 @@ pub(crate) fn titled(title: &str) -> StepLabel {
 pub(crate) fn saved_node(step: &Step) -> StepNodeView {
     let duration = match step.duration {
         None => StepDurationView::NotSet,
-        Some(duration) => set(&duration.text(), duration.parts(), duration.whole_minutes()),
+        Some(duration) => set(&duration.text(), duration.parts(), duration.entry()),
     };
     StepNodeView {
         duration,
@@ -189,7 +190,28 @@ pub(crate) fn canvas(nodes: StepNodesView) -> StepCanvasView {
         nodes,
         connections: vec![],
         refusal: None,
+        duration_chips: chips(),
     }
+}
+
+/// The Duration field's chips, as every canvas shows them (REC-17/Q1).
+pub(crate) fn chips() -> Vec<DurationChip> {
+    [
+        (1, "1 min"),
+        (2, "2 min"),
+        (5, "5 min"),
+        (10, "10 min"),
+        (15, "15 min"),
+        (20, "20 min"),
+        (30, "30 min"),
+        (45, "45 min"),
+        (60, "1 h"),
+    ]
+    .map(|(minutes, text)| DurationChip {
+        minutes,
+        text: text.into(),
+    })
+    .into()
 }
 
 pub(crate) fn write(id: StepId, title: &str, position: CanvasPoint) -> anyhow::Result<StepWrite> {

@@ -346,6 +346,48 @@ impl From<core::DurationError> for DurationError {
     }
 }
 
+/// How the Duration field shows a set duration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum DurationEntry {
+    /// Whole minutes, less than a day. The minutes field shows them, the
+    /// chip with the same minutes is on, and More… opens only on a click.
+    Minutes { minutes: u32 },
+    /// Whole minutes, a day or more. The minutes field shows them, and the
+    /// unit fields open by themselves.
+    MinutesWithDays { minutes: u32 },
+    /// The duration has seconds. The minutes field shows "…", and the unit
+    /// fields open by themselves.
+    Seconds,
+}
+
+impl From<core::DurationEntry> for DurationEntry {
+    fn from(value: core::DurationEntry) -> Self {
+        match value {
+            core::DurationEntry::Minutes { minutes } => Self::Minutes { minutes },
+            core::DurationEntry::MinutesWithDays { minutes } => Self::MinutesWithDays { minutes },
+            core::DurationEntry::Seconds => Self::Seconds,
+        }
+    }
+}
+
+/// One chip of the Duration field.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct DurationChip {
+    /// What a click sends, as `DurationInput.minutes`.
+    pub minutes: u32,
+    /// "10 min", "1 h".
+    pub text: String,
+}
+
+impl From<core::DurationChip> for DurationChip {
+    fn from(value: core::DurationChip) -> Self {
+        Self {
+            minutes: value.minutes,
+            text: value.text,
+        }
+    }
+}
+
 /// A step's duration as the node and the Duration field show it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum StepDurationView {
@@ -356,9 +398,8 @@ pub enum StepDurationView {
         text: String,
         /// For the unit fields under More….
         parts: DurationParts,
-        /// For the minutes field and the chips. `nil` when the duration has
-        /// seconds; then More… opens by itself.
-        whole_minutes: Option<u32>,
+        /// For the minutes field, the chips, and More….
+        entry: DurationEntry,
     },
     /// More than 365 days: the node shows "No duration", and the unit
     /// fields show what you set.
@@ -369,14 +410,10 @@ impl From<core::StepDurationView> for StepDurationView {
     fn from(value: core::StepDurationView) -> Self {
         match value {
             core::StepDurationView::NotSet => Self::NotSet,
-            core::StepDurationView::Set {
-                text,
-                parts,
-                whole_minutes,
-            } => Self::Set {
+            core::StepDurationView::Set { text, parts, entry } => Self::Set {
                 text,
                 parts: parts.into(),
-                whole_minutes,
+                entry: entry.into(),
             },
             core::StepDurationView::TooLong { parts } => Self::TooLong {
                 parts: parts.into(),
@@ -531,6 +568,9 @@ pub struct StepCanvasView {
     pub connections: Vec<StepEdge>,
     /// The last refused connection, until the next change.
     pub refusal: Option<ConnectRefusal>,
+    /// The chips of the inspector's Duration field, shortest first. The same
+    /// for every step.
+    pub duration_chips: Vec<DurationChip>,
 }
 
 impl From<core::StepCanvasView> for StepCanvasView {
@@ -539,6 +579,7 @@ impl From<core::StepCanvasView> for StepCanvasView {
             nodes: value.nodes.into(),
             connections: value.connections.into_iter().map(Into::into).collect(),
             refusal: value.refusal.map(Into::into),
+            duration_chips: value.duration_chips.into_iter().map(Into::into).collect(),
         }
     }
 }

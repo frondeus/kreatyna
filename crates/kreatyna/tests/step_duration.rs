@@ -1,4 +1,6 @@
-use kreatyna::recipes::{DurationError, DurationInput, DurationParts, StepDurationS};
+use kreatyna::recipes::{
+    DurationEntry, DurationError, DurationInput, DurationParts, StepDurationS,
+};
 use test_case::test_case;
 
 // Green path
@@ -42,16 +44,19 @@ fn a_duration_splits_into_units_and_shows_the_units_it_has(
     Ok(())
 }
 
-#[test_case(60, Some(1); "one minute")]
-#[test_case(5_400, Some(90); "past an hour")]
-#[test_case(172_800, Some(2_880); "days")]
-#[test_case(90, None; "minutes and seconds")]
-#[test_case(45, None; "seconds only")]
-fn whole_minutes_are_absent_when_the_duration_has_seconds(
+#[test_case(60, DurationEntry::Minutes { minutes: 1 }; "one minute")]
+#[test_case(5_400, DurationEntry::Minutes { minutes: 90 }; "past an hour")]
+#[test_case(86_340, DurationEntry::Minutes { minutes: 1_439 }; "a minute short of a day")]
+#[test_case(86_400, DurationEntry::MinutesWithDays { minutes: 1_440 }; "one day")]
+#[test_case(172_800, DurationEntry::MinutesWithDays { minutes: 2_880 }; "days")]
+#[test_case(90, DurationEntry::Seconds; "minutes and seconds")]
+#[test_case(45, DurationEntry::Seconds; "seconds only")]
+#[test_case(86_401, DurationEntry::Seconds; "days and seconds")]
+fn the_duration_field_shows_minutes_unless_there_are_seconds_and_opens_the_units_for_days(
     seconds: u32,
-    expected: Option<u32>,
+    expected: DurationEntry,
 ) -> anyhow::Result<()> {
-    assert_eq!(StepDurationS::try_new(seconds)?.whole_minutes(), expected);
+    assert_eq!(StepDurationS::try_new(seconds)?.entry(), expected);
     Ok(())
 }
 

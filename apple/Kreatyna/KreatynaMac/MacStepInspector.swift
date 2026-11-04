@@ -20,7 +20,7 @@ struct MacStepInspector: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .accessibilityIdentifier("selectStepHint")
             case .selected(let selected, _):
-                MacStepFields(step: selected, send: send)
+                MacStepFields(step: selected, chips: canvas.durationChips, send: send)
                     // A new field for each step, so its text starts from that step.
                     .id(selected.id)
             case .connectionSelected(let connection, _):
@@ -35,6 +35,7 @@ struct MacStepInspector: View {
 
 private struct MacStepFields: View {
     let step: StepNodeView
+    let chips: [DurationChip]
     let send: (StepCanvasEvent) -> Void
 
     /// Presentation only: a selected step puts the cursor in its Title.
@@ -60,7 +61,7 @@ private struct MacStepFields: View {
                 }
             }
             field("Duration") {
-                MacDurationField(duration: step.duration) {
+                MacDurationField(duration: step.duration, chips: chips) {
                     send(.setDuration(id: step.id, input: $0))
                 }
                 if let problem = step.problems.duration {

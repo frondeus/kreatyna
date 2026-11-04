@@ -29,6 +29,47 @@ pub struct DurationParts {
     pub seconds: u32,
 }
 
+/// How the Duration field shows a set duration (REC-17/Q1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DurationEntry {
+    /// Whole minutes, less than a day. The minutes field shows them, the
+    /// chip with the same minutes is on, and More… opens only on a click.
+    Minutes { minutes: u32 },
+    /// Whole minutes, a day or more. The minutes field shows them, and the
+    /// unit fields open by themselves.
+    MinutesWithDays { minutes: u32 },
+    /// The duration has seconds. The minutes field shows "…", and the unit
+    /// fields open by themselves.
+    Seconds,
+}
+
+/// One chip of the Duration field.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DurationChip {
+    /// What a click sends, as `DurationInput::Minutes`.
+    pub minutes: u32,
+    /// "10 min", "1 h".
+    pub text: String,
+}
+
+/// The chips, shortest first (REC-17/Q1).
+const CHIP_MINUTES: [u32; 9] = [1, 2, 5, 10, 15, 20, 30, 45, 60];
+
+/// The Duration field's chips, shortest first. Each shows its length as the
+/// node shows it: 60 is "1 h".
+pub(crate) fn duration_chips() -> Vec<DurationChip> {
+    CHIP_MINUTES
+        .into_iter()
+        .filter_map(|minutes| {
+            let duration = StepDurationS::try_new(minutes * MINUTE).ok()?;
+            Some(DurationChip {
+                minutes,
+                text: duration.text(),
+            })
+        })
+        .collect()
+}
+
 /// Why a duration cannot be saved.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DurationError {
@@ -92,11 +133,17 @@ impl StepDurationS {
         }
     }
 
-    /// The duration in minutes for the minutes field and the chips. `None`
-    /// when it has seconds, so the minutes field cannot show it.
-    pub fn whole_minutes(self) -> Option<u32> {
+    /// How the Duration field shows this duration.
+    pub fn entry(self) -> DurationEntry {
         let seconds = self.into_inner();
-        seconds.is_multiple_of(MINUTE).then_some(seconds / MINUTE)
+        let minutes = seconds / MINUTE;
+        if !seconds.is_multiple_of(MINUTE) {
+            DurationEntry::Seconds
+        } else if seconds < DAY {
+            DurationEntry::Minutes { minutes }
+        } else {
+            DurationEntry::MinutesWithDays { minutes }
+        }
     }
 
     /// The largest units first, without the units that are 0: "45 s",

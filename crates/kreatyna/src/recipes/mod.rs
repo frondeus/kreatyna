@@ -14,7 +14,7 @@ pub use detail::{
     RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome, RecipeDetailStatus,
     RecipeDetailStep, RecipeDetailView,
 };
-pub use duration::{DurationError, DurationInput, DurationParts};
+pub use duration::{DurationChip, DurationEntry, DurationError, DurationInput, DurationParts};
 pub use editor::{
     RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus,
     RecipeEditorView,

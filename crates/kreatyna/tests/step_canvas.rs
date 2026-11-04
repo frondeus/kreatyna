@@ -2,11 +2,11 @@
 //! selecting, naming, moving, deleting, timing, and connecting steps, and
 //! the step rules that Save checks. The tests drive it through the editor.
 use kreatyna::recipes::{
-    ConnectRefusal, DurationError, DurationInput, RecipeEditorEvent, RecipeEditorOutcome,
-    RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, StepAfterView, StepCanvasEvent,
-    StepCanvasView, StepConnectionView, StepDurationS, StepDurationView, StepEdges, StepId,
-    StepInstructions, StepKind, StepLabel, StepNodeView, StepNodesView, StepProblems, StepTitle,
-    StepTitleError, StepWrite,
+    ConnectRefusal, DurationEntry, DurationError, DurationInput, RecipeEditorEvent,
+    RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, StepAfterView,
+    StepCanvasEvent, StepCanvasView, StepConnectionView, StepDurationS, StepDurationView,
+    StepEdges, StepId, StepInstructions, StepKind, StepLabel, StepNodeView, StepNodesView,
+    StepProblems, StepTitle, StepTitleError, StepWrite,
 };
 use krucyfiks::{Widget, effects::CommandTestExt};
 use test_case::test_case;
@@ -112,6 +112,7 @@ async fn an_edit_editor_shows_the_saved_arrows_and_each_steps_after() {
             },
             connections: vec![boil_then_cook()],
             refusal: None,
+            duration_chips: chips(),
         }
     );
 }
@@ -150,6 +151,7 @@ async fn connect_adds_the_arrow_and_the_after_and_keeps_the_selection() -> anyho
             },
             connections: vec![boil_then_cook()],
             refusal: None,
+            duration_chips: chips(),
         }
     );
     Ok(())
@@ -386,7 +388,7 @@ async fn an_edit_editor_shows_a_saved_steps_duration_kind_and_instructions() -> 
         f.editor.view().canvas.nodes,
         StepNodesView::Selected {
             selected: StepNodeView {
-                duration: set("20 min", parts(0, 0, 20, 0), Some(20)),
+                duration: set("20 min", parts(0, 0, 20, 0), minutes(20)),
                 kind: StepKind::Waiting,
                 instructions: "Cover the dish.".into(),
                 ..saved_node(&bake_sauce())
@@ -397,11 +399,11 @@ async fn an_edit_editor_shows_a_saved_steps_duration_kind_and_instructions() -> 
     Ok(())
 }
 
-#[test_case(DurationInput::Minutes(10), set("10 min", parts(0, 0, 10, 0), Some(10)); "a chip")]
-#[test_case(DurationInput::Minutes(90), set("1 h 30 min", parts(0, 1, 30, 0), Some(90)); "the minutes field past an hour")]
-#[test_case(DurationInput::Parts(parts(0, 0, 1, 30)), set("1 min 30 s", parts(0, 0, 1, 30), None); "seconds leave no whole minutes")]
-#[test_case(DurationInput::Parts(parts(0, 1, 75, 0)), set("2 h 15 min", parts(0, 2, 15, 0), Some(135)); "a unit field past its unit")]
-#[test_case(DurationInput::Parts(parts(2, 0, 0, 0)), set("2 d", parts(2, 0, 0, 0), Some(2_880)); "days")]
+#[test_case(DurationInput::Minutes(10), set("10 min", parts(0, 0, 10, 0), minutes(10)); "a chip")]
+#[test_case(DurationInput::Minutes(90), set("1 h 30 min", parts(0, 1, 30, 0), minutes(90)); "the minutes field past an hour")]
+#[test_case(DurationInput::Parts(parts(0, 0, 1, 30)), set("1 min 30 s", parts(0, 0, 1, 30), DurationEntry::Seconds); "seconds leave no whole minutes")]
+#[test_case(DurationInput::Parts(parts(0, 1, 75, 0)), set("2 h 15 min", parts(0, 2, 15, 0), minutes(135)); "a unit field past its unit")]
+#[test_case(DurationInput::Parts(parts(2, 0, 0, 0)), set("2 d", parts(2, 0, 0, 0), DurationEntry::MinutesWithDays { minutes: 2_880 }); "days")]
 #[test_case(DurationInput::Cleared, StepDurationView::NotSet; "clearing it")]
 #[test_case(DurationInput::Minutes(0), StepDurationView::NotSet; "0 minutes")]
 #[test_case(DurationInput::Parts(parts(400, 0, 0, 0)), StepDurationView::TooLong { parts: parts(400, 0, 0, 0) }; "past 365 days keeps what you set")]
@@ -604,7 +606,7 @@ async fn save_with_a_duration_past_365_days_selects_that_step_and_does_not_call_
         f.editor.view().canvas.nodes,
         StepNodesView::Selected {
             selected: StepNodeView {
-                duration: set("10 min", parts(0, 0, 10, 0), Some(10)),
+                duration: set("10 min", parts(0, 0, 10, 0), minutes(10)),
                 ..saved_node(&cook_pasta())
             },
             others: vec![saved_node(&boil_water())],

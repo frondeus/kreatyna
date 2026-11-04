@@ -189,9 +189,9 @@ extension MainActorTests {
         @Test(arguments: Appearance.allCases)
         func recipeCanvasActiveAndWaiting(appearance: Appearance) {
             let canvas = StepNodesView.unselected(steps: [
-                Fixtures.stepNode("Boil water", x: 20, y: 20, duration: Fixtures.duration("10 min", minutes: 10)),
+                Fixtures.stepNode("Boil water", x: 20, y: 20, duration: Fixtures.duration("10 min", .minutes(minutes: 10), minutes: 10)),
                 Fixtures.stepNode(
-                    "Bake sauce", x: 200, y: 110, duration: Fixtures.duration("1 h 30 min", hours: 1, minutes: 30),
+                    "Bake sauce", x: 200, y: 110, duration: Fixtures.duration("1 h 30 min", .minutes(minutes: 90), hours: 1, minutes: 30),
                     kind: .waiting
                 ),
                 Fixtures.stepNode("Drain", x: 40, y: 220),
@@ -208,7 +208,7 @@ extension MainActorTests {
         func recipeInspectorFilled(appearance: Appearance) {
             let canvas = StepNodesView.selected(
                 selected: Fixtures.stepNode(
-                    "Boil water", x: 20, y: 20, duration: Fixtures.duration("10 min", minutes: 10),
+                    "Boil water", x: 20, y: 20, duration: Fixtures.duration("10 min", .minutes(minutes: 10), minutes: 10),
                     kind: .waiting, instructions: "Salt it well."
                 ),
                 others: [Fixtures.stepNode("Cook pasta", x: 200, y: 110)]
@@ -225,7 +225,7 @@ extension MainActorTests {
         func recipeInspectorMore(appearance: Appearance) {
             let canvas = StepNodesView.selected(
                 selected: Fixtures.stepNode(
-                    "Sear scallops", x: 20, y: 20, duration: Fixtures.duration("1 min 30 s", minutes: 1, seconds: 30)
+                    "Sear scallops", x: 20, y: 20, duration: Fixtures.duration("1 min 30 s", .seconds, minutes: 1, seconds: 30)
                 ),
                 others: []
             )
@@ -544,7 +544,9 @@ extension MainActorTests {
             connections: [StepEdge] = [],
             refusal: ConnectRefusal? = nil,
         ) -> some View {
-            let canvas = StepCanvasView(nodes: canvas, connections: connections, refusal: refusal)
+            let canvas = StepCanvasView(
+                nodes: canvas, connections: connections, refusal: refusal, durationChips: Fixtures.durationChips
+            )
             let view = RecipeEditorView(title: editor.title, canvas: canvas, status: .editing(problem: editor.problem))
             let pane = RecipePaneView.create(
                 editor: view, draftRow: editor.title.trimmingCharacters(in: .whitespaces)

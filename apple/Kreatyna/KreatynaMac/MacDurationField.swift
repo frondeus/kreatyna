@@ -3,18 +3,16 @@ import SwiftUI
 /// The inspector's Duration field (REC-17/Q1, variant E): a minutes field,
 /// chips for the common lengths, and More… with a field for each unit.
 ///
-/// Rust owns the duration: it adds the units up, checks the range, and
-/// gives back what each field shows. Swift only turns typed text into a
-/// `DurationInput`.
+/// Rust owns the duration: it adds the units up, checks the range, gives
+/// the chips, and says what each field shows and when the unit fields open
+/// by themselves. Swift only turns typed text into a `DurationInput`.
 struct MacDurationField: View {
     let duration: StepDurationView
+    let chips: [DurationChip]
     let send: (DurationInput) -> Void
 
     /// Presentation only: More… opened by a click.
     @State private var moreOpened = false
-
-    /// The chips, in minutes. 60 shows as "1 h".
-    static let chips: [UInt32] = [1, 2, 5, 10, 15, 20, 30, 45, 60]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -43,21 +41,21 @@ struct MacDurationField: View {
 
     private var chipGrid: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
-            ForEach(Self.chips, id: \.self) { minutes in
-                chip(minutes, on: wholeMinutes == minutes)
+            ForEach(chips, id: \.minutes) { chip in
+                self.chip(chip, on: entry == .minutes(minutes: chip.minutes))
             }
         }
     }
 
-    private func chip(_ minutes: UInt32, on: Bool) -> some View {
-        Button(Self.chipLabel(minutes)) { send(.minutes(minutes: minutes)) }
+    private func chip(_ chip: DurationChip, on: Bool) -> some View {
+        Button(chip.text) { send(.minutes(minutes: chip.minutes)) }
             .buttonStyle(MacDurationChipStyle(on: on))
             .accessibilityAddTraits(on ? .isSelected : [])
-            .accessibilityIdentifier("durationChip\(minutes)")
+            .accessibilityIdentifier("durationChip\(chip.minutes)")
     }
 
-    private var wholeMinutes: UInt32? {
-        if case .set(_, _, let minutes) = duration { minutes } else { nil }
+    private var entry: DurationEntry? {
+        if case .set(_, _, let entry) = duration { entry } else { nil }
     }
 
     private var parts: DurationParts? {
@@ -68,26 +66,27 @@ struct MacDurationField: View {
     }
 
     private var minutesText: String {
-        wholeMinutes.map(String.init) ?? ""
+        switch entry {
+        case .minutes(let minutes), .minutesWithDays(let minutes): String(minutes)
+        case .seconds, nil: ""
+        }
     }
 
     /// "…" when the duration cannot show in whole minutes.
     private var minutesPrompt: String {
-        if case .notSet = duration { "" } else if wholeMinutes == nil { "…" } else { "" }
-    }
-
-    /// More… opens by itself when the minutes field cannot show the
-    /// duration, or when it has days.
-    static func needsUnits(_ duration: StepDurationView) -> Bool {
         switch duration {
-        case .notSet: false
-        case .set(_, let parts, let wholeMinutes): wholeMinutes == nil || parts.days > 0
-        case .tooLong: true
+        case .notSet, .set(_, _, .minutes), .set(_, _, .minutesWithDays): ""
+        case .set(_, _, .seconds), .tooLong: "…"
         }
     }
 
-    static func chipLabel(_ minutes: UInt32) -> String {
-        minutes == 60 ? "1 h" : "\(minutes) min"
+    /// The unit fields open by themselves when Rust says the minutes field
+    /// is not enough.
+    static func needsUnits(_ duration: StepDurationView) -> Bool {
+        switch duration {
+        case .notSet, .set(_, _, .minutes): false
+        case .set(_, _, .minutesWithDays), .set(_, _, .seconds), .tooLong: true
+        }
     }
 
     /// The minutes field: digits send `.minutes`, an empty field `.cleared`,

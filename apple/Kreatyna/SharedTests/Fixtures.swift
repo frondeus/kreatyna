@@ -153,17 +153,23 @@ enum Fixtures {
     /// The editor's canvas: `nodes`, with `connections` as arrows and no
     /// refusal.
     static func canvas(_ nodes: StepNodesView, connections: [StepEdge] = []) -> StepCanvasView {
-        StepCanvasView(nodes: nodes, connections: connections, refusal: nil)
+        StepCanvasView(nodes: nodes, connections: connections, refusal: nil, durationChips: durationChips)
     }
+
+    /// The Duration field's chips, as Rust gives them.
+    static let durationChips: [DurationChip] = [
+        (1, "1 min"), (2, "2 min"), (5, "5 min"), (10, "10 min"), (15, "15 min"),
+        (20, "20 min"), (30, "30 min"), (45, "45 min"), (60, "1 h"),
+    ].map { DurationChip(minutes: $0.0, text: $0.1) }
 
     /// A duration as Rust shows it: `text` on the node, `parts` in the unit
     /// fields, and whole minutes unless it has seconds.
     static func duration(
-        _ text: String, days: UInt32 = 0, hours: UInt32 = 0, minutes: UInt32 = 0, seconds: UInt32 = 0
+        _ text: String, _ entry: DurationEntry,
+        days: UInt32 = 0, hours: UInt32 = 0, minutes: UInt32 = 0, seconds: UInt32 = 0
     ) -> StepDurationView {
         let parts = DurationParts(days: days, hours: hours, minutes: minutes, seconds: seconds)
-        let total = ((days * 24 + hours) * 60 + minutes)
-        return .set(text: text, parts: parts, wholeMinutes: seconds == 0 ? total : nil)
+        return .set(text: text, parts: parts, entry: entry)
     }
 
     /// A step of the read view. The ID only has to be unique in the recipe.

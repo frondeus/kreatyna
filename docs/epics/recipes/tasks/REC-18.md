@@ -370,4 +370,22 @@ tests, and the UI tests of the Recipes section only (`--ui MacRecipeUITests`).
 
 ## Validation
 
-Not run yet.
+Run on 2026-11-04, after each change. Each change was reviewed or reported in the REC-18 thread and approved.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `cargo test --workspace` | All pass. `tests/step_graph.rs` checks all 4,096 edge sets of 4 steps; 543 are accepted, the number of acyclic graphs on 4 labelled nodes. |
+| 2 | `cargo clippy --workspace --all-targets -- -D warnings` | No warnings. |
+| 3 | `cargo fmt --check` | No diff. |
+| 4 | `devenv shell -- mac-test --ui MacRecipeUITests` | All pass, `testConnectStepsAndSave` among them. Snapshots: 4 new (`recipeCanvasConnected`, `recipeConnectionDrag`, `recipeConnectionSelected`, `recipeConnectionRefused`), and 7 changed for the ports and the After field. Each one was checked by eye. |
+| 5 | `devenv shell -- ios-app-build` | Builds. |
+| 6 | `capture-demo.sh mac …/testCaptureREC18Demo docs/epics/recipes/tasks/REC-18-demo` | `01-connected.png`, `02-loop-refused.png`, `03-connection-menu.png`. |
+| 7 | `jj diff -r @ --stat '~.beads/issues.jsonl'` | Under 1,000 lines for each change: 760, 554, 507, 592, and 142. |
+
+Changes from the plan:
+
+- `StepEdges` keeps a sorted set, not a list in the order connected. Equal sets are equal values, so connecting and then disconnecting an edge leaves the editor unchanged. Arrows come in one fixed order; After keeps the order the steps were added.
+- The connection snapshots use a window 1,240 points wide, because the usual 960 has room for only two columns of steps.
+- The demo hides the sidebar, so the canvas has room for two columns of steps. The UI test keeps its nodes at the canvas's left edge, so each ● stays on screen in the narrow test window.
+
+Checks that could not run: none.

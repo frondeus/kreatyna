@@ -381,6 +381,57 @@ final class MacRecipeUITests: MacUITestCase {
         XCTAssertTrue(waitFor(instructionsField(in: app), value: "Salt it well."))
     }
 
+    /// A drag from Dice onion's ● to Fry onion connects them, and Fry
+    /// onion's After shows Dice onion. The drag back is a loop: the line
+    /// under the canvas says so. The arrow survives Save; a click selects it
+    /// and ⌘⌫ deletes it (REC-18).
+    @MainActor
+    func testConnectStepsAndSave() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
+        app.typeText("Shakshuka")
+        // The canvas is narrow in the test window: both nodes stay at its
+        // left, so each ● is on screen.
+        addStep(at: CGVector(dx: 0.03, dy: 0.05), in: app)
+        XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Dice onion")
+        addStep(at: CGVector(dx: 0.12, dy: 0.5), in: app)
+        _ = stepNode("Untitled step", in: app)
+        app.typeText("Fry onion")
+
+        connect(stepNode("Dice onion", in: app), to: stepNode("Fry onion", in: app))
+        stepNode("Fry onion", in: app).click()
+        let chip = app.staticTexts.matching(identifier: "stepAfterChip").firstMatch
+        XCTAssertTrue(chip.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitFor(chip, value: "Dice onion"))
+
+        connect(stepNode("Fry onion", in: app), to: stepNode("Dice onion", in: app))
+        let refusal = app.staticTexts["connectRefusal"]
+        XCTAssertTrue(refusal.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitFor(refusal, value: "That would make a loop."))
+
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitFor(app.staticTexts["recipeStepCount"], value: "2 steps"))
+        app.buttons["editRecipe"].click()
+        XCTAssertTrue(app.staticTexts["selectStepHint"].waitForExistence(timeout: 5))
+        stepNode("Fry onion", in: app).click()
+        XCTAssertTrue(chip.waitForExistence(timeout: 5))
+
+        arrowMiddle(from: stepNode("Dice onion", in: app), to: stepNode("Fry onion", in: app)).click()
+        let connection = app.staticTexts["connectionSteps"]
+        XCTAssertTrue(connection.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitFor(connection, value: "Dice onion → Fry onion"))
+        app.menuBars.menuBarItems["Edit"].click()
+        XCTAssertTrue(app.menuBars.menuItems["Delete Connection"].waitForExistence(timeout: 5))
+        app.typeKey(.escape, modifierFlags: [])
+        app.typeKey(.delete, modifierFlags: .command)
+        XCTAssertTrue(app.staticTexts["selectStepHint"].waitForExistence(timeout: 5))
+        stepNode("Fry onion", in: app).click()
+        XCTAssertTrue(app.staticTexts["stepAfterNone"].waitForExistence(timeout: 5))
+    }
+
     /// The Instructions field. A vertical text field may show as a text view.
     @MainActor
     private func instructionsField(in app: XCUIApplication) -> XCUIElement {

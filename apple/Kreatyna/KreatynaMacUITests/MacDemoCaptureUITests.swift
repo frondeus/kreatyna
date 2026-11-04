@@ -537,6 +537,56 @@ final class MacDemoCaptureUITests: MacUITestCase {
         app.terminate()
     }
 
+    /// REC-18: three steps connected into a chain with Fry onion's After;
+    /// the loop refused; and an arrow's context menu.
+    @MainActor
+    func testCaptureREC18Demo() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(app.textFields["recipeTitleField"].waitForExistence(timeout: 5))
+        app.typeText("Shakshuka")
+        // The sidebar hides, so the canvas has room for two columns of steps.
+        let sidebarToggle = app.windows.firstMatch.buttons
+            .matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).firstMatch
+        XCTAssertTrue(sidebarToggle.waitForExistence(timeout: 5))
+        sidebarToggle.click()
+        let canvas = app.scrollViews["stepCanvas"]
+        XCTAssertTrue(canvas.waitForExistence(timeout: 5))
+        let add = app.menuItems["Add Step"]
+        let nodes = app.descendants(matching: .any).matching(identifier: "stepNode")
+        let node = { (title: String) in nodes.matching(NSPredicate(format: "label == %@", title)).firstMatch }
+        for (title, offset) in [
+            ("Dice onion", CGVector(dx: 0.04, dy: 0.06)),
+            ("Mince garlic", CGVector(dx: 0.04, dy: 0.5)),
+            ("Fry onion", CGVector(dx: 0.56, dy: 0.28)),
+        ] {
+            canvas.coordinate(withNormalizedOffset: offset).rightClick()
+            XCTAssertTrue(add.waitForExistence(timeout: 5))
+            add.click()
+            XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
+            app.typeText(title)
+        }
+        connect(node("Dice onion"), to: node("Fry onion"))
+        connect(node("Mince garlic"), to: node("Fry onion"))
+        node("Fry onion").click()
+        let chips = app.staticTexts.matching(identifier: "stepAfterChip")
+        XCTAssertTrue(chips.element(boundBy: 1).waitForExistence(timeout: 5))
+        capture("01-connected", app)
+
+        connect(node("Fry onion"), to: node("Dice onion"))
+        XCTAssertTrue(app.staticTexts["connectRefusal"].waitForExistence(timeout: 5))
+        capture("02-loop-refused", app)
+
+        arrowMiddle(from: node("Mince garlic"), to: node("Fry onion")).rightClick()
+        let delete = app.menuItems.matching(identifier: "deleteConnection").firstMatch
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        // The window and its menu only: the desktop around it stays out.
+        captureScreen("03-connection-menu", around: app.windows.firstMatch)
+        app.typeKey(.escape, modifierFlags: [])
+        app.terminate()
+    }
+
     /// The ingredient list the demos start from (Garlic, Tomato, Basil, …).
     private func demoIngredients() throws -> String {
         let fixture = URL(fileURLWithPath: #filePath)

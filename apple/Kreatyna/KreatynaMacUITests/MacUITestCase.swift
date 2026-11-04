@@ -54,4 +54,25 @@ class MacUITestCase: XCTestCase {
         let match = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", value), object: element)
         return XCTWaiter().wait(for: [match], timeout: timeout) == .completed
     }
+
+    /// Drags from the ● on the right edge of the node `from` and drops on
+    /// the middle of the node `to` (REC-18).
+    @MainActor
+    func connect(_ from: XCUIElement, to: XCUIElement) {
+        let port = from.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5)).withOffset(CGVector(dx: 2, dy: 0))
+        port.click(forDuration: 0.3, thenDragTo: to.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
+    }
+
+    /// The middle of the arrow from the node `from` to the node `to`. The
+    /// curve is symmetric, so its middle is half way between its ends: the
+    /// ● of `from`, and 6 points left of the ○ of `to`.
+    @MainActor
+    func arrowMiddle(from: XCUIElement, to: XCUIElement) -> XCUICoordinate {
+        let start = from.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
+        let offset = CGVector(
+            dx: (to.frame.minX - 6 - from.frame.maxX) / 2,
+            dy: (to.frame.midY - from.frame.midY) / 2
+        )
+        return start.withOffset(offset)
+    }
 }

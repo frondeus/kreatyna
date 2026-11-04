@@ -2,8 +2,8 @@
 //! canvas has no effects, so it is a plain struct, not a widget: the editor
 //! renders after each change.
 use super::{
-    CanvasPoint, Step, StepDurationS, StepId, StepInstructions, StepKind, StepTitle,
-    StepTitleError, StepWrite,
+    CanvasPoint, DurationError, DurationInput, DurationParts, Step, StepDurationS, StepId,
+    StepInstructions, StepKind, StepTitle, StepTitleError, StepWrite,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,6 +24,16 @@ pub enum StepCanvasEvent {
     /// Delete Step. Removes the step; a deleted selected step leaves nothing
     /// selected. Ignored for an id that names no step.
     Delete(StepId),
+    /// The inspector's Duration field: a chip, the minutes field, or the
+    /// unit fields under More… (REC-17/Q1). Ignored for an id that names no
+    /// step.
+    SetDuration { id: StepId, input: DurationInput },
+    /// The inspector's Active/Waiting switch. Ignored for an id that names
+    /// no step.
+    SetKind { id: StepId, kind: StepKind },
+    /// The inspector's Instructions field, as typed. Rust trims it only on
+    /// Save. Ignored for an id that names no step.
+    SetInstructions { id: StepId, text: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,8 +56,40 @@ pub struct StepNodeView {
     /// What the node shows.
     pub label: StepLabel,
     pub position: CanvasPoint,
-    /// Only after the first Save: the title breaks the rule.
-    pub problem: Option<StepTitleError>,
+    /// What the node and the Duration field show.
+    pub duration: StepDurationView,
+    pub kind: StepKind,
+    /// The instructions as typed. The inspector's Instructions field edits
+    /// them.
+    pub instructions: String,
+    /// Only after the first Save: the rules this step breaks.
+    pub problems: StepProblems,
+}
+
+/// A step's duration as the node and the Duration field show it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StepDurationView {
+    /// The node shows "No duration"; the fields are empty.
+    NotSet,
+    Set {
+        /// What the node shows: "1 h 30 min".
+        text: String,
+        /// For the unit fields under More….
+        parts: DurationParts,
+        /// For the minutes field and the chips. `None` when the duration
+        /// has seconds; then More… opens by itself.
+        whole_minutes: Option<u32>,
+    },
+    /// More than 365 days: the node shows "No duration", and the unit
+    /// fields show what you set.
+    TooLong { parts: DurationParts },
+}
+
+/// The rules one step breaks. Each field is independent of the other.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct StepProblems {
+    pub title: Option<StepTitleError>,
+    pub duration: Option<DurationError>,
 }
 
 /// What a step node shows. The StepTitle rule decides it, so a title of
@@ -79,15 +121,60 @@ impl CanvasChange {
     }
 }
 
-/// A step as the editor keeps it: its title is the raw text of the field.
+/// A step's duration as the editor keeps it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DraftDuration {
+    NotSet,
+    Set(StepDurationS),
+    /// What you set, kept so the fields still show it. Save refuses it.
+    TooLong(DurationParts),
+}
+
+impl DraftDuration {
+    fn from_input(input: DurationInput) -> Self {
+        match input.duration() {
+            Ok(None) => Self::NotSet,
+            Ok(Some(duration)) => Self::Set(duration),
+            Err(DurationError::TooLong) => Self::TooLong(input.parts()),
+        }
+    }
+
+    fn from_saved(duration: Option<StepDurationS>) -> Self {
+        duration.map_or(Self::NotSet, Self::Set)
+    }
+
+    /// The duration as Save writes it.
+    fn checked(self) -> Result<Option<StepDurationS>, DurationError> {
+        match self {
+            Self::NotSet => Ok(None),
+            Self::Set(duration) => Ok(Some(duration)),
+            Self::TooLong(_) => Err(DurationError::TooLong),
+        }
+    }
+
+    fn view(self) -> StepDurationView {
+        match self {
+            Self::NotSet => StepDurationView::NotSet,
+            Self::Set(duration) => StepDurationView::Set {
+                text: duration.text(),
+                parts: duration.parts(),
+                whole_minutes: duration.whole_minutes(),
+            },
+            Self::TooLong(parts) => StepDurationView::TooLong { parts },
+        }
+    }
+}
+
+/// A step as the editor keeps it: its title and instructions are the raw
+/// text of their fields.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DraftStep {
     id: StepId,
     title: String,
     position: CanvasPoint,
-    duration: Option<StepDurationS>,
+    duration: DraftDuration,
     kind: StepKind,
-    instructions: Option<StepInstructions>,
+    instructions: String,
 }
 
 impl DraftStep {
@@ -99,14 +186,43 @@ impl DraftStep {
             },
             Err(StepTitleError::NotEmptyViolated) => StepLabel::Untitled,
         };
-        let problem = if show_problems { checked.err() } else { None };
+        let problems = if show_problems {
+            StepProblems {
+                title: checked.err(),
+                duration: self.duration.checked().err(),
+            }
+        } else {
+            StepProblems::default()
+        };
         StepNodeView {
             id: self.id,
             title: self.title.clone(),
             label,
             position: self.position,
-            problem,
+            duration: self.duration.view(),
+            kind: self.kind,
+            instructions: self.instructions.clone(),
+            problems,
         }
+    }
+
+    /// The instructions as Save writes them: trimmed, and `None` when
+    /// nothing is left.
+    fn checked_instructions(&self) -> Option<StepInstructions> {
+        // The only error is "empty": then there are no instructions.
+        StepInstructions::try_new(self.instructions.as_str()).ok()
+    }
+
+    /// The step as Save writes it. Fails when a rule is broken.
+    fn write(&self) -> Option<StepWrite> {
+        Some(StepWrite {
+            id: self.id,
+            title: StepTitle::try_new(self.title.as_str()).ok()?,
+            position: self.position,
+            duration: self.duration.checked().ok()?,
+            kind: self.kind,
+            instructions: self.checked_instructions(),
+        })
     }
 
     /// Puts the step at `to`, and says whether its position changed.
@@ -122,9 +238,9 @@ impl DraftStep {
         self.id == step.id
             && self.title == step.title
             && self.position == step.position
-            && self.duration == step.duration
+            && self.duration == DraftDuration::from_saved(step.duration)
             && self.kind == step.kind
-            && self.instructions == step.instructions
+            && self.checked_instructions() == step.instructions
     }
 }
 
@@ -144,9 +260,12 @@ impl StepCanvas {
                 id: step.id,
                 title: step.title.clone(),
                 position: step.position,
-                duration: step.duration,
+                duration: DraftDuration::from_saved(step.duration),
                 kind: step.kind,
-                instructions: step.instructions.clone(),
+                instructions: step
+                    .instructions
+                    .as_ref()
+                    .map_or_else(String::new, |text| text.as_ref().to_owned()),
             })
             .collect();
         Self {
@@ -164,9 +283,9 @@ impl StepCanvas {
                     id,
                     title: String::new(),
                     position: at,
-                    duration: None,
+                    duration: DraftDuration::NotSet,
                     kind: StepKind::default(),
-                    instructions: None,
+                    instructions: String::new(),
                 });
                 self.selected = Some(id);
                 CanvasChange::Changed
@@ -176,16 +295,7 @@ impl StepCanvas {
                 Some(_) => CanvasChange::Changed,
                 None => CanvasChange::Unchanged,
             },
-            StepCanvasEvent::SetTitle { id, title } => {
-                let Some(step) = self.step_mut(id) else {
-                    return CanvasChange::Unchanged;
-                };
-                if step.title == title {
-                    return CanvasChange::Unchanged;
-                }
-                step.title = title;
-                CanvasChange::Changed
-            }
+            StepCanvasEvent::SetTitle { id, title } => self.edit(id, |step| &mut step.title, title),
             StepCanvasEvent::Move { id, to } => {
                 let Some(step) = self.step_mut(id) else {
                     return CanvasChange::Unchanged;
@@ -205,7 +315,35 @@ impl StepCanvas {
                 }
                 CanvasChange::Changed
             }
+            StepCanvasEvent::SetDuration { id, input } => self.edit(
+                id,
+                |step| &mut step.duration,
+                DraftDuration::from_input(input),
+            ),
+            StepCanvasEvent::SetKind { id, kind } => self.edit(id, |step| &mut step.kind, kind),
+            StepCanvasEvent::SetInstructions { id, text } => {
+                self.edit(id, |step| &mut step.instructions, text)
+            }
         }
+    }
+
+    /// Sets one field of the step `id` to `value`, and says whether it
+    /// changed. An id that names no step changes nothing.
+    fn edit<T: PartialEq>(
+        &mut self,
+        id: StepId,
+        field: impl FnOnce(&mut DraftStep) -> &mut T,
+        value: T,
+    ) -> CanvasChange {
+        let Some(step) = self.step_mut(id) else {
+            return CanvasChange::Unchanged;
+        };
+        let field = field(step);
+        if *field == value {
+            return CanvasChange::Unchanged;
+        }
+        *field = value;
+        CanvasChange::Changed
     }
 
     /// Where the step `id` is in `steps`. `None` for an id that names no
@@ -234,26 +372,16 @@ impl StepCanvas {
     }
 
     /// The steps as Save writes them, in the order added. Fails with the id
-    /// of the first step whose title breaks the rule.
+    /// of the first step that breaks a rule: its title or its duration.
     pub(crate) fn writes(&self) -> Result<Vec<StepWrite>, StepId> {
         self.steps
             .iter()
-            .map(|step| {
-                let title = StepTitle::try_new(step.title.as_str()).map_err(|_| step.id)?;
-                Ok(StepWrite {
-                    id: step.id,
-                    title,
-                    position: step.position,
-                    duration: step.duration,
-                    kind: step.kind,
-                    instructions: step.instructions.clone(),
-                })
-            })
+            .map(|step| step.write().ok_or(step.id))
             .collect()
     }
 
-    /// Whether the steps differ from `saved` in number, order, id, title, or
-    /// position.
+    /// Whether the steps differ from `saved` in number, order, or any field
+    /// that Save writes.
     pub(crate) fn differs_from(&self, saved: &[Step]) -> bool {
         self.steps.len() != saved.len()
             || self

@@ -2,10 +2,11 @@ use kreatyna::{
     capabilities::ResolveRender,
     confirmation::{ConfirmationEvent, ConfirmationView},
     recipes::{
-        CanvasPoint, Recipe, RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome,
-        RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeTitleError,
-        Step, StepCanvasEvent, StepCanvasView, StepDurationS, StepId, StepInstructions, StepKind,
-        StepLabel, StepNodeView, StepTitle, StepTitleError, StepWrite,
+        CanvasPoint, DurationError, DurationInput, DurationParts, Recipe, RecipeEditor,
+        RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus,
+        RecipeEditorView, RecipeId, RecipeTitleError, Step, StepCanvasEvent, StepCanvasView,
+        StepDurationS, StepDurationView, StepId, StepInstructions, StepKind, StepLabel,
+        StepNodeView, StepProblems, StepTitle, StepTitleError, StepWrite,
         capabilities::{
             RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
         },
@@ -354,23 +355,12 @@ async fn save_writes_the_steps_without_the_deleted_one() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn save_keeps_a_steps_duration_kind_and_instructions() -> anyhow::Result<()> {
-    let bake = Step {
-        id: StepId::from(Uuid::from_u128(13)),
-        title: "Bake sauce".into(),
-        position: point(440, 40),
-        duration: Some(StepDurationS::try_new(1_200)?),
-        kind: StepKind::Waiting,
-        instructions: Some(StepInstructions::try_new("Cover the dish.")?),
-    };
-    let recipe = Recipe {
-        steps: vec![bake.clone()],
-        ..pasta()
-    };
-    let mut f = Fixture::edit_recipe(&recipe);
+    let bake = bake_sauce();
+    let mut f = Fixture::edit_recipe(&sauce());
     f.name_step(bake.id, "Bake the sauce").await?;
 
     let save = f.send(RecipeEditorEvent::Save);
-    f.save(save, Ok(recipe)).await?;
+    f.save(save, Ok(sauce())).await?;
     assert_eq!(
         f.written_steps,
         [vec![StepWrite {
@@ -380,6 +370,124 @@ async fn save_keeps_a_steps_duration_kind_and_instructions() -> anyhow::Result<(
             duration: bake.duration,
             kind: StepKind::Waiting,
             instructions: bake.instructions,
+        }]]
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn an_edit_editor_shows_a_saved_steps_duration_kind_and_instructions() -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&sauce());
+    f.canvas(StepCanvasEvent::Select(bake_sauce().id)).await?;
+    assert_eq!(
+        f.editor.view().canvas,
+        StepCanvasView::Selected {
+            selected: StepNodeView {
+                duration: set("20 min", parts(0, 0, 20, 0), Some(20)),
+                kind: StepKind::Waiting,
+                instructions: "Cover the dish.".into(),
+                ..saved_node(&bake_sauce())
+            },
+            others: vec![],
+        }
+    );
+    Ok(())
+}
+
+#[test_case(DurationInput::Minutes(10), set("10 min", parts(0, 0, 10, 0), Some(10)); "a chip")]
+#[test_case(DurationInput::Minutes(90), set("1 h 30 min", parts(0, 1, 30, 0), Some(90)); "the minutes field past an hour")]
+#[test_case(DurationInput::Parts(parts(0, 0, 1, 30)), set("1 min 30 s", parts(0, 0, 1, 30), None); "seconds leave no whole minutes")]
+#[test_case(DurationInput::Parts(parts(0, 1, 75, 0)), set("2 h 15 min", parts(0, 2, 15, 0), Some(135)); "a unit field past its unit")]
+#[test_case(DurationInput::Parts(parts(2, 0, 0, 0)), set("2 d", parts(2, 0, 0, 0), Some(2_880)); "days")]
+#[test_case(DurationInput::Cleared, StepDurationView::NotSet; "clearing it")]
+#[test_case(DurationInput::Minutes(0), StepDurationView::NotSet; "0 minutes")]
+#[test_case(DurationInput::Parts(parts(400, 0, 0, 0)), StepDurationView::TooLong { parts: parts(400, 0, 0, 0) }; "past 365 days keeps what you set")]
+#[tokio::test]
+async fn setting_the_duration_renders_the_step_with_it(
+    input: DurationInput,
+    expected: StepDurationView,
+) -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&sauce());
+    let id = bake_sauce().id;
+    let command = f.send(RecipeEditorEvent::Canvas(StepCanvasEvent::SetDuration {
+        id,
+        input,
+    }));
+    // No problem before the first Save, even past 365 days.
+    assert_eq!(
+        f.editor.view().canvas,
+        StepCanvasView::Unselected {
+            steps: vec![StepNodeView {
+                duration: expected,
+                ..saved_node(&bake_sauce())
+            }],
+        }
+    );
+    f.render(command).await
+}
+
+#[tokio::test]
+async fn the_kind_and_the_raw_instructions_render() -> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&pasta());
+    let id = cook_pasta().id;
+    f.canvas(StepCanvasEvent::SetKind {
+        id,
+        kind: StepKind::Waiting,
+    })
+    .await?;
+    f.canvas(StepCanvasEvent::SetInstructions {
+        id,
+        text: " Salt it well. ".into(),
+    })
+    .await?;
+    assert_eq!(
+        f.editor.view().canvas,
+        StepCanvasView::Unselected {
+            steps: vec![
+                saved_node(&boil_water()),
+                StepNodeView {
+                    kind: StepKind::Waiting,
+                    instructions: " Salt it well. ".into(),
+                    ..saved_node(&cook_pasta())
+                },
+            ],
+        }
+    );
+    Ok(())
+}
+
+#[test_case(" Salt it well. ", StepInstructions::try_new("Salt it well.").ok(); "trimmed instructions")]
+#[test_case("   ", None; "instructions of spaces are none")]
+#[tokio::test]
+async fn save_writes_the_duration_the_kind_and_the_instructions(
+    text: &str,
+    instructions: Option<StepInstructions>,
+) -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    f.type_title("Pasta").await?;
+    let id = f.add_step(point(40, 40)).await?;
+    f.name_step(id, "Boil water").await?;
+    f.set_duration(id, DurationInput::Minutes(10)).await?;
+    f.canvas(StepCanvasEvent::SetKind {
+        id,
+        kind: StepKind::Waiting,
+    })
+    .await?;
+    f.canvas(StepCanvasEvent::SetInstructions {
+        id,
+        text: text.into(),
+    })
+    .await?;
+
+    let save = f.send(RecipeEditorEvent::Save);
+    f.save(save, Ok(pasta())).await?;
+    assert_eq!(
+        f.written_steps,
+        [vec![StepWrite {
+            duration: Some(StepDurationS::try_new(600)?),
+            kind: StepKind::Waiting,
+            instructions,
+            ..write(id, "Boil water", point(40, 40))?
         }]]
     );
     Ok(())
@@ -497,6 +605,18 @@ async fn edits_steps_save_and_cancel_are_ignored_while_saving() -> anyhow::Resul
             to: point(320, 200),
         }),
         RecipeEditorEvent::Canvas(StepCanvasEvent::Delete(onion)),
+        RecipeEditorEvent::Canvas(StepCanvasEvent::SetDuration {
+            id: onion,
+            input: DurationInput::Minutes(5),
+        }),
+        RecipeEditorEvent::Canvas(StepCanvasEvent::SetKind {
+            id: onion,
+            kind: StepKind::Waiting,
+        }),
+        RecipeEditorEvent::Canvas(StepCanvasEvent::SetInstructions {
+            id: onion,
+            text: "Fine.".into(),
+        }),
         RecipeEditorEvent::Save,
         RecipeEditorEvent::RequestClose,
     ] {
@@ -589,6 +709,52 @@ async fn save_with_an_untitled_step_selects_the_first_one_and_does_not_call_the_
 }
 
 #[tokio::test]
+async fn save_with_a_duration_past_365_days_selects_that_step_and_does_not_call_the_store()
+-> anyhow::Result<()> {
+    let mut f = Fixture::edit_recipe(&pasta());
+    let id = cook_pasta().id;
+    let too_long = parts(365, 0, 0, 1);
+    f.set_duration(id, DurationInput::Parts(too_long)).await?;
+    f.canvas(StepCanvasEvent::Select(boil_water().id)).await?;
+
+    let command = f.send(RecipeEditorEvent::Save);
+    assert_eq!(
+        f.editor.view(),
+        RecipeEditorView {
+            title: "Pasta".into(),
+            canvas: StepCanvasView::Selected {
+                selected: StepNodeView {
+                    duration: StepDurationView::TooLong { parts: too_long },
+                    problems: StepProblems {
+                        title: None,
+                        duration: Some(DurationError::TooLong),
+                    },
+                    ..saved_node(&cook_pasta())
+                },
+                others: vec![saved_node(&boil_water())],
+            },
+            status: RecipeEditorStatus::Editing { problem: None },
+        }
+    );
+    // One render and nothing else: no store call.
+    f.render(command).await?;
+
+    // A duration in range clears the problem at once.
+    f.set_duration(id, DurationInput::Minutes(10)).await?;
+    assert_eq!(
+        f.editor.view().canvas,
+        StepCanvasView::Selected {
+            selected: StepNodeView {
+                duration: set("10 min", parts(0, 0, 10, 0), Some(10)),
+                ..saved_node(&cook_pasta())
+            },
+            others: vec![saved_node(&boil_water())],
+        }
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn after_the_first_save_naming_a_step_checks_its_title_again() -> anyhow::Result<()> {
     let mut f = Fixture::new();
     f.type_title("Shakshuka").await?;
@@ -649,6 +815,9 @@ async fn deleting_an_added_step_keeps_the_editor_unchanged() -> anyhow::Result<(
 #[test_case(StepCanvasEvent::SetTitle { id: cook_pasta().id, title: "Cook pasta al dente".into() }; "rename it")]
 #[test_case(StepCanvasEvent::Move { id: cook_pasta().id, to: point(320, 200) }; "move it")]
 #[test_case(StepCanvasEvent::Delete(cook_pasta().id); "delete it")]
+#[test_case(StepCanvasEvent::SetDuration { id: cook_pasta().id, input: DurationInput::Minutes(10) }; "give it a duration")]
+#[test_case(StepCanvasEvent::SetKind { id: cook_pasta().id, kind: StepKind::Waiting }; "make it waiting")]
+#[test_case(StepCanvasEvent::SetInstructions { id: cook_pasta().id, text: "Stir.".into() }; "give it instructions")]
 #[tokio::test]
 async fn cancel_after_changing_a_saved_step_asks(change: StepCanvasEvent) -> anyhow::Result<()> {
     let mut f = Fixture::edit_recipe(&pasta());
@@ -671,11 +840,39 @@ async fn cancel_after_changing_a_saved_step_asks(change: StepCanvasEvent) -> any
     ];
     "move it back to its saved point"
 )]
+#[test_case(
+    vec![
+        StepCanvasEvent::SetDuration { id: bake_sauce().id, input: DurationInput::Parts(parts(400, 0, 0, 0)) },
+        StepCanvasEvent::SetDuration { id: bake_sauce().id, input: DurationInput::Minutes(20) },
+    ];
+    "set it past 365 days, then its saved 20 minutes"
+)]
+#[test_case(
+    vec![
+        StepCanvasEvent::SetDuration { id: bake_sauce().id, input: DurationInput::Minutes(5) },
+        StepCanvasEvent::SetDuration { id: bake_sauce().id, input: DurationInput::Parts(parts(0, 0, 0, 1_200)) },
+    ];
+    "set 5 minutes, then its saved 20 minutes as seconds"
+)]
+#[test_case(
+    vec![
+        StepCanvasEvent::SetKind { id: bake_sauce().id, kind: StepKind::Active },
+        StepCanvasEvent::SetKind { id: bake_sauce().id, kind: StepKind::Waiting },
+    ];
+    "switch it to active and back"
+)]
+#[test_case(
+    vec![StepCanvasEvent::SetInstructions { id: bake_sauce().id, text: " Cover the dish. ".into() }];
+    "type its saved instructions with spaces around"
+)]
 #[tokio::test]
 async fn changing_a_step_back_to_its_saved_state_keeps_the_editor_unchanged(
     changes: Vec<StepCanvasEvent>,
 ) -> anyhow::Result<()> {
-    let mut f = Fixture::edit_recipe(&pasta());
+    let mut f = Fixture::edit_recipe(&Recipe {
+        steps: vec![boil_water(), cook_pasta(), bake_sauce()],
+        ..pasta()
+    });
     for change in changes {
         f.canvas(change).await?;
     }
@@ -694,6 +891,12 @@ async fn changing_a_step_back_to_its_saved_state_keeps_the_editor_unchanged(
 #[test_case(StepCanvasEvent::Move { id: unknown_step(), to: point(320, 200) }; "move an unknown step")]
 #[test_case(StepCanvasEvent::Move { id: cook_pasta().id, to: cook_pasta().position }; "drop the selected step where it is")]
 #[test_case(StepCanvasEvent::Delete(unknown_step()); "delete an unknown step")]
+#[test_case(StepCanvasEvent::SetDuration { id: unknown_step(), input: DurationInput::Minutes(10) }; "time an unknown step")]
+#[test_case(StepCanvasEvent::SetKind { id: unknown_step(), kind: StepKind::Waiting }; "switch an unknown step")]
+#[test_case(StepCanvasEvent::SetInstructions { id: unknown_step(), text: "Stir.".into() }; "describe an unknown step")]
+#[test_case(StepCanvasEvent::SetDuration { id: cook_pasta().id, input: DurationInput::Cleared }; "clear an empty duration")]
+#[test_case(StepCanvasEvent::SetKind { id: cook_pasta().id, kind: StepKind::Active }; "choose the same kind")]
+#[test_case(StepCanvasEvent::SetInstructions { id: cook_pasta().id, text: String::new() }; "type the same instructions")]
 #[tokio::test]
 async fn a_canvas_event_that_changes_nothing_does_nothing(
     event: StepCanvasEvent,
@@ -719,6 +922,7 @@ async fn clearing_an_empty_selection_does_nothing() -> anyhow::Result<()> {
 #[test_case(StepCanvasEvent::Add { at: point(440, 40) }; "add a step")]
 #[test_case(StepCanvasEvent::Move { id: cook_pasta().id, to: point(320, 200) }; "move a step")]
 #[test_case(StepCanvasEvent::Delete(cook_pasta().id); "delete a step")]
+#[test_case(StepCanvasEvent::SetDuration { id: cook_pasta().id, input: DurationInput::Minutes(10) }; "time a step")]
 #[tokio::test]
 async fn canvas_events_are_ignored_while_discard_is_asked(
     event: StepCanvasEvent,
@@ -818,6 +1022,27 @@ fn cook_pasta() -> Step {
     }
 }
 
+/// A saved step with a duration, Waiting, and instructions.
+fn bake_sauce() -> Step {
+    Step {
+        id: StepId::from(Uuid::from_u128(13)),
+        title: "Bake sauce".into(),
+        position: point(440, 40),
+        duration: StepDurationS::try_new(1_200).ok(),
+        kind: StepKind::Waiting,
+        instructions: StepInstructions::try_new("Cover the dish.").ok(),
+    }
+}
+
+/// A saved recipe with `bake_sauce()` only.
+fn sauce() -> Recipe {
+    Recipe {
+        id: RecipeId::from(Uuid::from_u128(3)),
+        title: "Sauce".into(),
+        steps: vec![bake_sauce()],
+    }
+}
+
 /// An id that names no step.
 fn unknown_step() -> StepId {
     StepId::from(Uuid::from_u128(99))
@@ -832,14 +1057,37 @@ fn node(
     title: &str,
     label: StepLabel,
     position: CanvasPoint,
-    problem: Option<StepTitleError>,
+    title_problem: Option<StepTitleError>,
 ) -> StepNodeView {
     StepNodeView {
         id,
         title: title.into(),
         label,
         position,
-        problem,
+        duration: StepDurationView::NotSet,
+        kind: StepKind::Active,
+        instructions: String::new(),
+        problems: StepProblems {
+            title: title_problem,
+            duration: None,
+        },
+    }
+}
+
+fn set(text: &str, parts: DurationParts, whole_minutes: Option<u32>) -> StepDurationView {
+    StepDurationView::Set {
+        text: text.into(),
+        parts,
+        whole_minutes,
+    }
+}
+
+fn parts(days: u32, hours: u32, minutes: u32, seconds: u32) -> DurationParts {
+    DurationParts {
+        days,
+        hours,
+        minutes,
+        seconds,
     }
 }
 
@@ -849,15 +1097,27 @@ fn titled(title: &str) -> StepLabel {
     }
 }
 
-/// A saved step's node: saved titles always pass the rule.
+/// A saved step's node: saved steps always pass the rules.
 fn saved_node(step: &Step) -> StepNodeView {
-    node(
-        step.id,
-        &step.title,
-        titled(&step.title),
-        step.position,
-        None,
-    )
+    let duration = match step.duration {
+        None => StepDurationView::NotSet,
+        Some(duration) => set(&duration.text(), duration.parts(), duration.whole_minutes()),
+    };
+    StepNodeView {
+        duration,
+        kind: step.kind,
+        instructions: step
+            .instructions
+            .as_ref()
+            .map_or_else(String::new, |text| text.as_ref().to_owned()),
+        ..node(
+            step.id,
+            &step.title,
+            titled(&step.title),
+            step.position,
+            None,
+        )
+    }
 }
 
 /// The canvas of `recipe` as the edit editor opens it: no selection.
@@ -998,6 +1258,11 @@ impl Fixture {
     /// A drop of the step `id` at `to`.
     async fn move_step(&mut self, id: StepId, to: CanvasPoint) -> anyhow::Result<()> {
         self.canvas(StepCanvasEvent::Move { id, to }).await
+    }
+
+    async fn set_duration(&mut self, id: StepId, input: DurationInput) -> anyhow::Result<()> {
+        self.canvas(StepCanvasEvent::SetDuration { id, input })
+            .await
     }
 
     async fn delete_step(&mut self, id: StepId) -> anyhow::Result<()> {

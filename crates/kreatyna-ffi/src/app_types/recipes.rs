@@ -250,6 +250,158 @@ impl From<core::StepLabel> for StepLabel {
     }
 }
 
+/// Whether your hands are busy during a step (D-09, D-30).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum StepKind {
+    /// Hands busy, such as "Dice onion".
+    Active,
+    /// Hands free, such as "Bake sauce". The node has a dashed border.
+    Waiting,
+}
+
+impl From<core::StepKind> for StepKind {
+    fn from(value: core::StepKind) -> Self {
+        match value {
+            core::StepKind::Active => Self::Active,
+            core::StepKind::Waiting => Self::Waiting,
+        }
+    }
+}
+
+impl From<StepKind> for core::StepKind {
+    fn from(value: StepKind) -> Self {
+        match value {
+            StepKind::Active => Self::Active,
+            StepKind::Waiting => Self::Waiting,
+        }
+    }
+}
+
+/// A duration in units. Rust fills each unit in its range; the unit fields
+/// send it back as typed, and a field may then hold more, such as 75 min.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct DurationParts {
+    pub days: u32,
+    pub hours: u32,
+    pub minutes: u32,
+    pub seconds: u32,
+}
+
+impl From<core::DurationParts> for DurationParts {
+    fn from(value: core::DurationParts) -> Self {
+        Self {
+            days: value.days,
+            hours: value.hours,
+            minutes: value.minutes,
+            seconds: value.seconds,
+        }
+    }
+}
+
+impl From<DurationParts> for core::DurationParts {
+    fn from(value: DurationParts) -> Self {
+        Self {
+            days: value.days,
+            hours: value.hours,
+            minutes: value.minutes,
+            seconds: value.seconds,
+        }
+    }
+}
+
+/// What the Duration field sends (REC-17/Q1). Rust adds the units up and
+/// checks the range.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum DurationInput {
+    /// An empty minutes field.
+    Cleared,
+    /// A chip, or the minutes field.
+    Minutes { minutes: u32 },
+    /// The unit fields under More….
+    Parts { parts: DurationParts },
+}
+
+impl From<DurationInput> for core::DurationInput {
+    fn from(value: DurationInput) -> Self {
+        match value {
+            DurationInput::Cleared => Self::Cleared,
+            DurationInput::Minutes { minutes } => Self::Minutes(minutes),
+            DurationInput::Parts { parts } => Self::Parts(parts.into()),
+        }
+    }
+}
+
+/// Why a duration cannot be saved.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum DurationError {
+    /// More than 365 days.
+    TooLong,
+}
+
+impl From<core::DurationError> for DurationError {
+    fn from(value: core::DurationError) -> Self {
+        match value {
+            core::DurationError::TooLong => Self::TooLong,
+        }
+    }
+}
+
+/// A step's duration as the node and the Duration field show it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum StepDurationView {
+    /// The node shows "No duration"; the fields are empty.
+    NotSet,
+    Set {
+        /// What the node shows: "1 h 30 min".
+        text: String,
+        /// For the unit fields under More….
+        parts: DurationParts,
+        /// For the minutes field and the chips. `nil` when the duration has
+        /// seconds; then More… opens by itself.
+        whole_minutes: Option<u32>,
+    },
+    /// More than 365 days: the node shows "No duration", and the unit
+    /// fields show what you set.
+    TooLong { parts: DurationParts },
+}
+
+impl From<core::StepDurationView> for StepDurationView {
+    fn from(value: core::StepDurationView) -> Self {
+        match value {
+            core::StepDurationView::NotSet => Self::NotSet,
+            core::StepDurationView::Set {
+                text,
+                parts,
+                whole_minutes,
+            } => Self::Set {
+                text,
+                parts: parts.into(),
+                whole_minutes,
+            },
+            core::StepDurationView::TooLong { parts } => Self::TooLong {
+                parts: parts.into(),
+            },
+        }
+    }
+}
+
+/// The rules one step breaks, only after the first Save. Each field is
+/// independent of the other.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct StepProblems {
+    pub title: Option<StepTitleError>,
+    pub duration: Option<DurationError>,
+}
+
+impl From<core::StepProblems> for StepProblems {
+    fn from(value: core::StepProblems) -> Self {
+        Self {
+            title: value.title.map(Into::into),
+            duration: value.duration.map(Into::into),
+        }
+    }
+}
+
 /// A step node on the canvas.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct StepNodeView {
@@ -259,8 +411,14 @@ pub struct StepNodeView {
     /// What the node shows.
     pub label: StepLabel,
     pub position: CanvasPoint,
-    /// Only after the first Save: the title breaks the rule.
-    pub problem: Option<StepTitleError>,
+    /// What the node and the Duration field show.
+    pub duration: StepDurationView,
+    pub kind: StepKind,
+    /// The instructions as typed. The inspector's Instructions field edits
+    /// them.
+    pub instructions: String,
+    /// Only after the first Save: the rules this step breaks.
+    pub problems: StepProblems,
 }
 
 impl From<core::StepNodeView> for StepNodeView {
@@ -270,7 +428,10 @@ impl From<core::StepNodeView> for StepNodeView {
             title: value.title,
             label: value.label.into(),
             position: value.position.into(),
-            problem: value.problem.map(Into::into),
+            duration: value.duration.into(),
+            kind: value.kind.into(),
+            instructions: value.instructions,
+            problems: value.problems.into(),
         }
     }
 }
@@ -333,6 +494,15 @@ pub enum StepCanvasEvent {
     Move { id: core::StepId, to: CanvasPoint },
     /// Edit ▸ Delete Step (⌘⌫) or right-click ▸ Delete Step.
     Delete { id: core::StepId },
+    /// The inspector's Duration field.
+    SetDuration {
+        id: core::StepId,
+        input: DurationInput,
+    },
+    /// The inspector's Active/Waiting switch.
+    SetKind { id: core::StepId, kind: StepKind },
+    /// The inspector's Instructions field, as typed.
+    SetInstructions { id: core::StepId, text: String },
 }
 
 impl From<StepCanvasEvent> for core::StepCanvasEvent {
@@ -344,6 +514,15 @@ impl From<StepCanvasEvent> for core::StepCanvasEvent {
             StepCanvasEvent::SetTitle { id, title } => Self::SetTitle { id, title },
             StepCanvasEvent::Move { id, to } => Self::Move { id, to: to.into() },
             StepCanvasEvent::Delete { id } => Self::Delete(id),
+            StepCanvasEvent::SetDuration { id, input } => Self::SetDuration {
+                id,
+                input: input.into(),
+            },
+            StepCanvasEvent::SetKind { id, kind } => Self::SetKind {
+                id,
+                kind: kind.into(),
+            },
+            StepCanvasEvent::SetInstructions { id, text } => Self::SetInstructions { id, text },
         }
     }
 }

@@ -385,6 +385,39 @@ fn a_recipe_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     kreatyna::recipes::StepCanvasEvent::Delete(step_id(1));
     "delete a step"
 )]
+#[test_case(
+    StepCanvasEvent::SetDuration { id: step_id(1), input: DurationInput::Cleared },
+    kreatyna::recipes::StepCanvasEvent::SetDuration { id: step_id(1), input: kreatyna::recipes::DurationInput::Cleared };
+    "clear the duration"
+)]
+#[test_case(
+    StepCanvasEvent::SetDuration { id: step_id(1), input: DurationInput::Minutes { minutes: 10 } },
+    kreatyna::recipes::StepCanvasEvent::SetDuration { id: step_id(1), input: kreatyna::recipes::DurationInput::Minutes(10) };
+    "a chip"
+)]
+#[test_case(
+    StepCanvasEvent::SetDuration { id: step_id(1), input: DurationInput::Parts { parts: DurationParts { days: 1, hours: 2, minutes: 3, seconds: 4 } } },
+    kreatyna::recipes::StepCanvasEvent::SetDuration {
+        id: step_id(1),
+        input: kreatyna::recipes::DurationInput::Parts(kreatyna::recipes::DurationParts { days: 1, hours: 2, minutes: 3, seconds: 4 }),
+    };
+    "the unit fields"
+)]
+#[test_case(
+    StepCanvasEvent::SetKind { id: step_id(1), kind: StepKind::Waiting },
+    kreatyna::recipes::StepCanvasEvent::SetKind { id: step_id(1), kind: kreatyna::recipes::StepKind::Waiting };
+    "waiting"
+)]
+#[test_case(
+    StepCanvasEvent::SetKind { id: step_id(1), kind: StepKind::Active },
+    kreatyna::recipes::StepCanvasEvent::SetKind { id: step_id(1), kind: kreatyna::recipes::StepKind::Active };
+    "active"
+)]
+#[test_case(
+    StepCanvasEvent::SetInstructions { id: step_id(1), text: " Stir. ".into() },
+    kreatyna::recipes::StepCanvasEvent::SetInstructions { id: step_id(1), text: " Stir. ".into() };
+    "instructions as typed"
+)]
 fn canvas_events_reach_the_editor_in_their_pane_scope(
     event: StepCanvasEvent,
     expected: kreatyna::recipes::StepCanvasEvent,
@@ -403,13 +436,24 @@ fn canvas_events_reach_the_editor_in_their_pane_scope(
 }
 
 #[test]
-fn an_editor_canvas_keeps_the_selection_the_positions_and_the_problems() {
+fn an_editor_canvas_keeps_the_selection_the_positions_the_details_and_the_problems() {
     let untitled = kreatyna::recipes::StepNodeView {
         id: step_id(2),
         title: " ".into(),
         label: kreatyna::recipes::StepLabel::Untitled,
         position: kreatyna::recipes::CanvasPoint { x: 240, y: 40 },
-        problem: Some(kreatyna::recipes::StepTitleError::NotEmptyViolated),
+        duration: kreatyna::recipes::StepDurationView::TooLong {
+            parts: kreatyna::recipes::DurationParts {
+                days: 400,
+                ..Default::default()
+            },
+        },
+        kind: kreatyna::recipes::StepKind::Waiting,
+        instructions: " Stir. ".into(),
+        problems: kreatyna::recipes::StepProblems {
+            title: Some(kreatyna::recipes::StepTitleError::NotEmptyViolated),
+            duration: Some(kreatyna::recipes::DurationError::TooLong),
+        },
     };
     let named = kreatyna::recipes::StepNodeView {
         id: step_id(1),
@@ -418,7 +462,19 @@ fn an_editor_canvas_keeps_the_selection_the_positions_and_the_problems() {
             title: "Dice onion".into(),
         },
         position: kreatyna::recipes::CanvasPoint { x: 40, y: 40 },
-        problem: None,
+        duration: kreatyna::recipes::StepDurationView::Set {
+            text: "1 min 30 s".into(),
+            parts: kreatyna::recipes::DurationParts {
+                days: 0,
+                hours: 0,
+                minutes: 1,
+                seconds: 30,
+            },
+            whole_minutes: None,
+        },
+        kind: kreatyna::recipes::StepKind::Active,
+        instructions: String::new(),
+        problems: kreatyna::recipes::StepProblems::default(),
     };
     let editor = kreatyna::recipes::RecipeEditorView {
         title: "Shakshuka".into(),
@@ -438,7 +494,20 @@ fn an_editor_canvas_keeps_the_selection_the_positions_and_the_problems() {
                     title: " ".into(),
                     label: StepLabel::Untitled,
                     position: CanvasPoint { x: 240, y: 40 },
-                    problem: Some(StepTitleError::NotEmptyViolated),
+                    duration: StepDurationView::TooLong {
+                        parts: DurationParts {
+                            days: 400,
+                            hours: 0,
+                            minutes: 0,
+                            seconds: 0,
+                        },
+                    },
+                    kind: StepKind::Waiting,
+                    instructions: " Stir. ".into(),
+                    problems: StepProblems {
+                        title: Some(StepTitleError::NotEmptyViolated),
+                        duration: Some(DurationError::TooLong),
+                    },
                 },
                 others: vec![StepNodeView {
                     id: step_id(1),
@@ -447,7 +516,22 @@ fn an_editor_canvas_keeps_the_selection_the_positions_and_the_problems() {
                         title: "Dice onion".into(),
                     },
                     position: CanvasPoint { x: 40, y: 40 },
-                    problem: None,
+                    duration: StepDurationView::Set {
+                        text: "1 min 30 s".into(),
+                        parts: DurationParts {
+                            days: 0,
+                            hours: 0,
+                            minutes: 1,
+                            seconds: 30,
+                        },
+                        whole_minutes: None,
+                    },
+                    kind: StepKind::Active,
+                    instructions: String::new(),
+                    problems: StepProblems {
+                        title: None,
+                        duration: None,
+                    },
                 }],
             },
             status: RecipeEditorStatus::Editing { problem: None },
@@ -464,7 +548,10 @@ fn an_unselected_canvas_keeps_the_steps_in_the_order_added() -> anyhow::Result<(
             title: format!("Step {n}"),
         },
         position: kreatyna::recipes::CanvasPoint { x, y: 40 },
-        problem: None,
+        duration: kreatyna::recipes::StepDurationView::NotSet,
+        kind: kreatyna::recipes::StepKind::Active,
+        instructions: String::new(),
+        problems: kreatyna::recipes::StepProblems::default(),
     };
     let canvas = kreatyna::recipes::StepCanvasView::Unselected {
         steps: vec![node(2, 40), node(1, 240)],

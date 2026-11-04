@@ -48,7 +48,7 @@ private struct MacStepFields: View {
                 .textFieldStyle(.roundedBorder)
                 .focused($titleFocused)
                 .accessibilityIdentifier("stepTitleField")
-                if let problem = step.problem {
+                if let problem = step.problems.title {
                     Text(problem.message)
                         .font(.footnote)
                         .foregroundStyle(.red)

@@ -6,8 +6,8 @@ use kreatyna::{
         RecipeDetailStep, RecipeDetailView, RecipeEditorEvent, RecipeEditorProblem,
         RecipeEditorStatus, RecipeEditorView, RecipeId, RecipeListEvent, RecipeListRow,
         RecipeListStatus, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
-        RecipeSectionView, RecipeSummary, Step, StepCanvasView, StepId, StepKind, StepLabel,
-        StepNodeView,
+        RecipeSectionView, RecipeSummary, Step, StepCanvasView, StepDurationView, StepId, StepKind,
+        StepLabel, StepNodeView, StepProblems,
         capabilities::{
             RecipeDeleteError, RecipeEffect, RecipeEffectStream, RecipeLoadError, RecipeSaveError,
             RecipeStoreRequest, ResolveRecipeStore,
@@ -888,7 +888,11 @@ fn editing(saved: &Recipe, title: &str) -> RecipePaneView {
                 title: step.title.clone(),
             },
             position: step.position,
-            problem: None,
+            // The section's recipes have steps with no details.
+            duration: StepDurationView::NotSet,
+            kind: step.kind,
+            instructions: String::new(),
+            problems: StepProblems::default(),
         })
         .collect();
     RecipePaneView::Edit {

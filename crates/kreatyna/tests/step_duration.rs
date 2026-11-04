@@ -42,6 +42,19 @@ fn a_duration_splits_into_units_and_shows_the_units_it_has(
     Ok(())
 }
 
+#[test_case(60, Some(1); "one minute")]
+#[test_case(5_400, Some(90); "past an hour")]
+#[test_case(172_800, Some(2_880); "days")]
+#[test_case(90, None; "minutes and seconds")]
+#[test_case(45, None; "seconds only")]
+fn whole_minutes_are_absent_when_the_duration_has_seconds(
+    seconds: u32,
+    expected: Option<u32>,
+) -> anyhow::Result<()> {
+    assert_eq!(StepDurationS::try_new(seconds)?.whole_minutes(), expected);
+    Ok(())
+}
+
 // Validation
 
 #[test_case(DurationInput::Parts(parts(365, 0, 0, 1)); "one second past 365 days")]

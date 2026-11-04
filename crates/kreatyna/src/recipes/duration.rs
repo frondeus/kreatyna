@@ -55,6 +55,22 @@ impl DurationInput {
     }
 }
 
+impl DurationInput {
+    /// The input as unit fields, so a duration that is too long still shows
+    /// what you set. A cleared field is all zeros; minutes go to the
+    /// minutes field.
+    pub(crate) fn parts(self) -> DurationParts {
+        match self {
+            Self::Cleared => DurationParts::default(),
+            Self::Minutes(minutes) => DurationParts {
+                minutes,
+                ..DurationParts::default()
+            },
+            Self::Parts(parts) => parts,
+        }
+    }
+}
+
 impl DurationParts {
     fn total_seconds(self) -> u64 {
         u64::from(self.days) * u64::from(DAY)
@@ -74,6 +90,13 @@ impl StepDurationS {
             minutes: seconds % HOUR / MINUTE,
             seconds: seconds % MINUTE,
         }
+    }
+
+    /// The duration in minutes for the minutes field and the chips. `None`
+    /// when it has seconds, so the minutes field cannot show it.
+    pub fn whole_minutes(self) -> Option<u32> {
+        let seconds = self.into_inner();
+        seconds.is_multiple_of(MINUTE).then_some(seconds / MINUTE)
     }
 
     /// The largest units first, without the units that are 0: "45 s",

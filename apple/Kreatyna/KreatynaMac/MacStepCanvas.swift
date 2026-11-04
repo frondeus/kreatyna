@@ -165,7 +165,7 @@ struct MacStepNode: View {
             .padding(.horizontal, 12)
             .frame(width: MacStepCanvas.nodeSize.width, height: MacStepCanvas.nodeSize.height, alignment: .leading)
             .background(Color(nsColor: .controlBackgroundColor), in: shape)
-            .overlay(shape.strokeBorder(border, lineWidth: selected || node.problem != nil ? 2 : 1))
+            .overlay(shape.strokeBorder(border, lineWidth: selected || node.problems.title != nil ? 2 : 1))
             .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
             .contentShape(shape)
             .accessibilityElement(children: .ignore)
@@ -186,7 +186,7 @@ struct MacStepNode: View {
     }
 
     private var border: Color {
-        if node.problem != nil { .red } else if selected { .accentColor } else { Color(nsColor: .separatorColor) }
+        if node.problems.title != nil { .red } else if selected { .accentColor } else { Color(nsColor: .separatorColor) }
     }
 }
 

@@ -131,7 +131,8 @@ enum Fixtures {
         StepNodeView(
             id: StepId(uuid: "step-\(key ?? title)"), title: title,
             label: label ?? .titled(title: title),
-            position: CanvasPoint(x: x, y: y), problem: problem
+            position: CanvasPoint(x: x, y: y), duration: .notSet, kind: .active,
+            instructions: "", problems: StepProblems(title: problem, duration: nil)
         )
     }
 

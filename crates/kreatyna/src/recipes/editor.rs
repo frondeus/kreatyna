@@ -9,7 +9,7 @@ use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, 
 use super::{
     NewRecipe, Recipe, RecipeTitle, RecipeTitleError, RecipeUpdate, Step, StepEdges, StepWrite,
     capabilities::{RecipeCapabilities, RecipeEffectStream, RecipeSaveError},
-    step_canvas::{CanvasChange, StepCanvas, StepCanvasEvent, StepCanvasView},
+    step_canvas::{CanvasChange, ProblemDisplay, StepCanvas, StepCanvasEvent, StepCanvasView},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -123,8 +123,7 @@ pub struct RecipeEditor {
     target: EditorTarget,
     title: String,
     canvas: StepCanvas,
-    /// After the first Save, every change checks the titles again.
-    save_attempted: bool,
+    problems: ProblemDisplay,
     state: EditorState,
     confirmation: LatestCommandSlot,
     save: LatestCommandSlot,
@@ -154,7 +153,7 @@ impl RecipeEditor {
             target,
             title,
             canvas,
-            save_attempted: false,
+            problems: ProblemDisplay::Hidden,
             state: EditorState::Editing { problem: None },
             confirmation: LatestCommandSlot::new(),
             save: LatestCommandSlot::new(),
@@ -201,7 +200,7 @@ impl RecipeEditor {
     /// problem. A step title that breaks the rule selects the first such
     /// step, so the inspector shows its problem (REC-14/Q2).
     fn save(&mut self) -> Command<RecipeEditorOutcome> {
-        self.save_attempted = true;
+        self.problems = ProblemDisplay::Shown;
         let title = RecipeTitle::try_new(self.title.as_str());
         let steps = self.canvas.writes();
         if let Err(untitled) = steps {
@@ -267,12 +266,11 @@ impl RecipeEditor {
         self.title = title;
         // A save error belongs to the old title. The title rule is checked
         // again only after the first Save.
-        let problem = if self.save_attempted {
-            RecipeTitle::try_new(self.title.as_str())
+        let problem = match self.problems {
+            ProblemDisplay::Hidden => None,
+            ProblemDisplay::Shown => RecipeTitle::try_new(self.title.as_str())
                 .err()
-                .map(RecipeEditorProblem::Invalid)
-        } else {
-            None
+                .map(RecipeEditorProblem::Invalid),
         };
         self.state = EditorState::Editing { problem };
         self.render()
@@ -394,7 +392,7 @@ impl Widget for RecipeEditor {
         };
         RecipeEditorView {
             title: self.title.clone(),
-            canvas: self.canvas.view(self.save_attempted),
+            canvas: self.canvas.view(self.problems),
             status,
         }
     }

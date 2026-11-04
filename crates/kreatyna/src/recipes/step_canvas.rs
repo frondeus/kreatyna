@@ -168,6 +168,15 @@ impl CanvasChange {
     }
 }
 
+/// Whether the nodes and the editor show the title and duration problems.
+/// They are hidden until the first Save; after it, every change checks
+/// again (REC-14/Q2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ProblemDisplay {
+    Hidden,
+    Shown,
+}
+
 /// A step's duration as the editor keeps it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum DraftDuration {
@@ -226,14 +235,13 @@ struct DraftStep {
 
 impl DraftStep {
     /// The node, with `after` the steps that come before this one.
-    fn node(&self, show_problems: bool, after: Vec<StepAfterView>) -> StepNodeView {
-        let problems = if show_problems {
-            StepProblems {
+    fn node(&self, problems: ProblemDisplay, after: Vec<StepAfterView>) -> StepNodeView {
+        let problems = match problems {
+            ProblemDisplay::Hidden => StepProblems::default(),
+            ProblemDisplay::Shown => StepProblems {
                 title: StepTitle::try_new(self.title.as_str()).err(),
                 duration: self.duration.checked().err(),
-            }
-        } else {
-            StepProblems::default()
+            },
         };
         StepNodeView {
             id: self.id,
@@ -532,10 +540,9 @@ impl StepCanvas {
                 .any(|(step, saved)| !step.matches(saved))
     }
 
-    /// The canvas as Swift draws it. `show_problems` is true after the first
-    /// Save.
-    pub(crate) fn view(&self, show_problems: bool) -> StepCanvasView {
-        let node = |step: &DraftStep| step.node(show_problems, self.after(step.id));
+    /// The canvas as Swift draws it.
+    pub(crate) fn view(&self, problems: ProblemDisplay) -> StepCanvasView {
+        let node = |step: &DraftStep| step.node(problems, self.after(step.id));
         let all = || self.steps.iter().map(node).collect();
         let nodes = match self.selection {
             Selection::None => StepNodesView::Unselected { steps: all() },

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ingredient Lines Design</title>
+<style>
+  :root {
+    --bg: #f5f5f7; --surface: #ffffff; --surface-2: #f4f4f6; --border: #d8d8de;
+    --text: #1d1d1f; --muted: #6e6e73; --accent: #0a74e6; --accent-soft: rgba(10, 116, 230, 0.12);
+    --d: #2b8a3e; --d-soft: rgba(43, 138, 62, 0.1); --bad: #d92d20; --field: #ffffff;
+    --canvas: #fafafb; --node: #ffffff; --edge: #8e8e96;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111113; --surface: #1e1e21; --surface-2: #26262a; --border: #38383e;
+      --text: #f2f2f4; --muted: #9a9aa2; --accent: #4aa3ff; --accent-soft: rgba(74, 163, 255, 0.16);
+      --d: #69db7c; --d-soft: rgba(105, 219, 124, 0.1); --bad: #ff6b6b; --field: #2a2a2e;
+      --canvas: #18181b; --node: #2a2a2e; --edge: #7a7a82; --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111113; --surface: #1e1e21; --surface-2: #26262a; --border: #38383e;
+    --text: #f2f2f4; --muted: #9a9aa2; --accent: #4aa3ff; --accent-soft: rgba(74, 163, 255, 0.16);
+    --d: #69db7c; --d-soft: rgba(105, 219, 124, 0.1); --bad: #ff6b6b; --field: #2a2a2e;
+    --canvas: #18181b; --node: #2a2a2e; --edge: #7a7a82; --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; }
+  .page { max-width: 1160px; margin: 0 auto; padding: 32px 16px 80px; }
+  header.top { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
+  header.top h1 { margin: 0 0 4px; font-size: 28px; letter-spacing: -0.01em; }
+  header.top p { margin: 0; color: var(--muted); max-width: 72ch; }
+  .theme-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    border-radius: 8px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  h2 { margin: 36px 0 6px; font-size: 20px; }
+  .lede { color: var(--muted); margin: 0 0 16px; max-width: 80ch; }
+  .win { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
+    overflow: hidden; }
+  .titlebar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border);
+    background: var(--surface-2); }
+  .lights { display: flex; gap: 6px; } .lights i { width: 11px; height: 11px; border-radius: 50%; background: var(--border); }
+  .titlebar .title { font-weight: 600; font-size: 13px; } .spacer { flex: 1; }
+  .tb { border: 1px solid var(--border); background: var(--field); color: var(--text); border-radius: 6px;
+    padding: 3px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+  .tb.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .editor { display: grid; grid-template-columns: minmax(0, 1fr) 240px; min-height: 520px; }
+  @media (max-width: 720px) { .editor { grid-template-columns: 1fr; } .inspector { border-left: 0; border-top: 1px solid var(--border); } }
+  .left { display: flex; flex-direction: column; min-width: 0; }
+  .heading { font-size: 20px; font-weight: 700; padding: 14px 18px 0; }
+  .titlefield { display: flex; gap: 8px; align-items: center; padding: 10px 18px 12px; border-bottom: 1px solid var(--border); }
+  input.f { background: var(--field); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 8px; font: inherit; outline: none; width: 100%; min-width: 0; }
+  input.f:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  input.f.bad { border-color: var(--bad); }
+  .canvas { flex: 1; min-height: 200px; background: var(--canvas); position: relative; border-bottom: 1px solid var(--border);
+    background-image: radial-gradient(var(--border) 1px, transparent 1px); background-size: 18px 18px; }
+  .node { position: absolute; width: 150px; padding: 9px 11px; border-radius: 10px; background: var(--node);
+    border: 1.2px solid var(--border); font-size: 12px; }
+  .node b { display: block; font-size: 13px; } .node span { color: var(--muted); }
+  .ings { padding: 10px 18px 14px; }
+  .ings-h { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .ings-h h3 { margin: 0; font-size: 14px; }
+  .lines { max-height: calc(6 * 40px); overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .line { display: grid; grid-template-columns: 20px minmax(0, 1fr) 26px; gap: 8px; align-items: start; padding: 3px 4px;
+    border-radius: 7px; border: 1px solid transparent; }
+  .line.over { border-color: var(--accent); background: var(--accent-soft); }
+  .line.dragging { opacity: 0.4; }
+  .handle { color: var(--muted); cursor: grab; user-select: none; text-align: center; padding-top: 5px; font-size: 15px; }
+  .rm { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; padding-top: 4px; }
+  .rm:hover { color: var(--bad); }
+  .problem { color: var(--bad); font-size: 12px; margin-top: 2px; }
+  .empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
+  .inspector { border-left: 1px solid var(--border); background: var(--surface-2); padding: 14px; color: var(--muted); font-size: 13px; }
+  .read { padding: 16px 20px 24px; max-width: 560px; }
+  .read h1 { margin: 0 0 14px; font-size: 22px; }
+  .sect { margin: 16px 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .group { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
+  .group div { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .group div:last-child { border-bottom: 0; }
+  .group .meta { color: var(--muted); font-size: 12px; }
+  .boxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 18px; }
+  .box { border-radius: 12px; padding: 12px 16px; background: var(--d-soft); }
+  .box h4 { margin: 0 0 6px; font-size: 13px; }
+  .box ul { margin: 0; padding-left: 18px; } .box li { margin: 4px 0; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+  code { font: 12px ui-monospace, Menlo, monospace; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div>
+      <h1>REC-07 · Ingredient lines with a name</h1>
+      <p>The editor gets an Ingredients list under the canvas, and the read view lists the lines. This page works:
+        add a line, type, drag a line by its handle onto another, remove one, and press Save to see the read view
+        or "Name required".</p>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button">Theme: system</button>
+  </header>
+
+  <h2>1 · The editor</h2>
+  <p class="lede">The list shows up to 6 lines, then it scrolls, so the canvas keeps its height. ＋ Line adds an empty
+    line at the bottom and puts the cursor in it. You drag a line by ≡ onto another line: it takes that line's place
+    (REC-07/Q1).</p>
+  <div class="win" id="editorWin">
+    <div class="titlebar">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <span class="title">Recipes</span><span class="spacer"></span>
+      <button class="tb" type="button" id="cancelBtn">Cancel</button>
+      <button class="tb primary" type="button" id="saveBtn">Save</button>
+    </div>
+    <div class="editor">
+      <div class="left">
+        <div class="heading">Roasted tomato pasta</div>
+        <div class="titlefield"><span>Title</span><input class="f" value="Roasted tomato pasta" aria-label="Title"></div>
+        <div class="canvas" aria-label="Step canvas">
+          <div class="node" style="left:24px; top:26px"><b>Boil water</b><span>10 min · waiting</span></div>
+          <div class="node" style="left:214px; top:26px"><b>Cook pasta</b><span>9 min · waiting</span></div>
+          <div class="node" style="left:24px; top:110px"><b>Roast tomatoes</b><span>25 min · waiting</span></div>
+        </div>
+        <div class="ings">
+          <div class="ings-h"><h3>Ingredients</h3><button class="tb" type="button" id="addBtn">＋ Line</button></div>
+          <div class="lines" id="lines"></div>
+        </div>
+      </div>
+      <aside class="inspector">No step selected.</aside>
+    </div>
+  </div>
+
+  <h2>2 · The read view after Save</h2>
+  <p class="lede">The lines come first, in their order, then the steps. With no lines, Ingredients shows "None yet",
+    as today.</p>
+  <div class="two">
+    <div class="win"><div class="read" id="read"></div></div>
+    <div class="win"><div class="read">
+      <h1>Overnight oats</h1>
+      <div class="sect">Ingredients</div>
+      <div class="group"><div class="meta">None yet</div></div>
+      <div class="sect">Steps</div>
+      <div class="group"><div class="meta">None yet</div></div>
+    </div></div>
+  </div>
+
+  <div class="boxes">
+    <div class="box">
+      <h4>Decided</h4>
+      <ul>
+        <li><b>REC-07/Q1</b> Lines keep the order you added them; you drag one by its handle to reorder (E-09).</li>
+        <li>A name is trimmed and must not be empty. "Name required" shows from the first Save on.</li>
+        <li>Two lines may share a name. The − button removes a line at once; Cancel still asks about the whole edit.</li>
+        <li>If drag cannot work on macOS, each line gets Move Up and Move Down in its context menu (MAC-05/Q4).</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h4>Later slices</h4>
+      <ul>
+        <li><b>REC-08</b> Amount, known unit and note: "300 g penne pasta".</li>
+        <li><b>REC-10</b> A line links to a catalog ingredient.</li>
+        <li><b>REC-20</b> Steps use lines.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<script>
+  const root = document.documentElement, themeBtn = document.getElementById("themeBtn");
+  const themes = ["system", "light", "dark"];
+  let theme = "system";
+  try { theme = localStorage.getItem("rec07-theme") || "system"; } catch (e) {}
+  function applyTheme() {
+    if (theme === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", theme);
+    themeBtn.textContent = "Theme: " + theme;
+  }
+  themeBtn.onclick = () => {
+    theme = themes[(themes.indexOf(theme) + 1) % themes.length];
+    try { localStorage.setItem("rec07-theme", theme); } catch (e) {}
+    applyTheme();
+  };
+  const params = new URLSearchParams(location.search);
+  if (params.get("theme")) theme = params.get("theme");
+  applyTheme();
+
+  let nextId = 4, shown = false, dragId = null;
+  let lines = [{ id: 1, name: "penne pasta" }, { id: 2, name: "olive oil" }, { id: 3, name: "" }];
+  let saved = [{ id: 1, name: "penne pasta" }, { id: 2, name: "olive oil" }];
+  if (params.get("problems") === "1") shown = true;
+
+  const linesEl = document.getElementById("lines");
+  function renderLines(focusId) {
+    linesEl.innerHTML = "";
+    if (!lines.length) linesEl.innerHTML = '<div class="empty">No lines yet.</div>';
+    for (const line of lines) {
+      const bad = shown && !line.name.trim();
+      const row = document.createElement("div");
+      row.className = "line"; row.dataset.id = line.id;
+      row.innerHTML = `<div class="handle" draggable="true" title="Drag to reorder" aria-label="Reorder">≡</div>
+        <div><input class="f${bad ? " bad" : ""}" placeholder="Name" aria-label="Name">${bad ? '<div class="problem">Name required</div>' : ""}</div>
+        <button class="rm" type="button" title="Remove" aria-label="Remove">−</button>`;
+      const input = row.querySelector("input");
+      input.value = line.name;
+      input.oninput = () => { line.name = input.value; if (shown) { renderLines(line.id); } };
+      row.querySelector(".rm").onclick = () => { lines = lines.filter(l => l !== line); renderLines(); };
+      const handle = row.querySelector(".handle");
+      handle.ondragstart = e => { dragId = line.id; e.dataTransfer.setData("text/plain", String(line.id)); row.classList.add("dragging"); };
+      handle.ondragend = () => { dragId = null; renderLines(); };
+      row.ondragover = e => { if (dragId !== null && dragId !== line.id) { e.preventDefault(); row.classList.add("over"); } };
+      row.ondragleave = () => row.classList.remove("over");
+      row.ondrop = e => {
+        e.preventDefault();
+        const from = lines.findIndex(l => l.id === dragId), to = lines.findIndex(l => l.id === line.id);
+        if (from < 0 || to < 0 || from === to) return;
+        const [moved] = lines.splice(from, 1); lines.splice(to, 0, moved); renderLines();
+      };
+      linesEl.appendChild(row);
+      if (line.id === focusId) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+    }
+  }
+  document.getElementById("addBtn").onclick = () => { const id = nextId++; lines.push({ id, name: "" }); renderLines(id); };
+  document.getElementById("saveBtn").onclick = () => {
+    shown = true;
+    if (lines.some(l => !l.name.trim())) { renderLines(); return; }
+    saved = lines.map(l => ({ id: l.id, name: l.name.trim() })); renderRead();
+    document.getElementById("read").scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+  document.getElementById("cancelBtn").onclick = () => { lines = saved.map(l => ({ ...l })); shown = false; renderLines(); };
+  function renderRead() {
+    const ings = saved.length ? saved.map(l => `<div>${l.name.replace(/</g, "&lt;")}</div>`).join("") : '<div class="meta">None yet</div>';
+    document.getElementById("read").innerHTML = `<h1>Roasted tomato pasta</h1>
+      <div class="sect">Ingredients</div><div class="group">${ings}</div>
+      <div class="sect">Steps</div><div class="group">
+        <div>Boil water <span class="meta">· 10 min · waiting</span></div>
+        <div>Cook pasta <span class="meta">· 9 min · waiting</span></div>
+        <div>Roast tomatoes <span class="meta">· 25 min · waiting</span></div></div>`;
+  }
+  renderLines(); renderRead();
+</script>
+</body>
+</html>

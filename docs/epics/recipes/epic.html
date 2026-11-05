@@ -194,6 +194,7 @@
         <tr><td>E-06</td><td>Every slice is vertical; agents own the Swift side.</td><td>Swift handover is permanent (<code>AGENTS.md</code>, 2026-10-11).</td></tr>
         <tr><td>E-07</td><td>The Mac app opens on the <b>Recipes</b> section. Until REC-02 that is an empty list.</td><td>The user's answer to REC-01/Q1: the mockup and the sidebar order put Recipes first.</td></tr>
         <tr><td>E-08</td><td>The read view loads its recipe by id from the store (<code>RecipeStore::get</code>). REC-07 and REC-14 add lines and steps to the same load.</td><td>The user's answer to REC-03/Q1.</td></tr>
+        <tr><td>E-09</td><td>Ingredient lines keep the order you added them, and you drag a line by its handle onto another to reorder it (REC-07). The store keeps each line's position.</td><td>The user's answer to REC-07/Q1 (was Q-R1).</td></tr>
       </table>
     </div>
   </section>
@@ -219,7 +220,7 @@
     <div class="table-wrap panel">
       <table>
         <tr><th>#</th><th>Question</th><th>Proposal</th><th>Settled in</th></tr>
-        <tr><td>Q-R1</td><td>In what order do ingredient lines appear? Can you reorder them?</td><td>The order you added them. Reordering is parked.</td><td><a href="#REC-07">REC-07</a></td></tr>
+        <tr><td>Q-R1</td><td>In what order do ingredient lines appear? Can you reorder them?</td><td>Settled as E-09: the order you added them, and you drag to reorder.</td><td><a href="#REC-07">REC-07</a></td></tr>
         <tr><td>Q-R2</td><td>Can you remove an ingredient line that steps use?</td><td>Yes; the steps simply stop using it.</td><td><a href="#REC-20">REC-20</a></td></tr>
         <tr><td>Q-R3</td><td>In what order are steps listed within one stage of the read view?</td><td>Top-to-bottom, then left-to-right, by canvas position.</td><td><a href="#REC-19">REC-19</a></td></tr>
         <tr><td>Q-R4</td><td>Is right-click the only way to add a step?</td><td>Yes in the MVP (D-20); the node lands where you clicked.</td><td><a href="#REC-14">REC-14</a></td></tr>
@@ -341,7 +342,7 @@ const EPIC = {
     {
       id: "REC-07", bead: "vibetyna-hrx.7", short: "Lines: name only",
       title: "Ingredient lines with a name",
-      outcome: "The editor's Ingredients column gets **+ Line**. You add “penne pasta” and “olive oil”, remove one, and save. The read view lists them.",
+      outcome: "The editor's Ingredients list gets **+ Line**. You add “penne pasta”, “olive oil” and “basil”, drag “basil” to the top, remove one, and save. The read view lists them in that order.",
       layers: ["db", "rust", "ffi", "swift"],
       stubs: ["Each line shows only its name; amount, unit and note come in REC-08."],
       acceptance: [
@@ -349,7 +350,8 @@ const EPIC = {
         "A line needs a non-empty name. Rust tests for add, remove and validation with line indices.",
         "Snapshots: editor with lines, read view with lines.",
       ],
-      refs: ["D-10"],
+      refs: ["D-10", "E-09"],
+      plan: "tasks/REC-07.md",
     },
     {
       id: "REC-08", bead: "vibetyna-hrx.8", short: "Amount, unit, note",

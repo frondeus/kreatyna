@@ -237,12 +237,19 @@ impl RecipeEditor {
             EditorTarget::New => None,
             EditorTarget::Saved { recipe } => Some(recipe.id),
         };
+        // The editor shows no lines yet: it writes a saved recipe's lines
+        // back as they are (REC-07 change 2).
+        let lines = match &self.target {
+            EditorTarget::New => Vec::new(),
+            EditorTarget::Saved { recipe } => recipe.lines.clone(),
+        };
         Command::single(async move {
             render.render().await;
             match saved_id {
                 None => {
                     let recipe = NewRecipe {
                         title,
+                        lines,
                         steps,
                         edges,
                     };
@@ -251,6 +258,7 @@ impl RecipeEditor {
                 Some(id) => {
                     let recipe = RecipeUpdate {
                         title,
+                        lines,
                         steps,
                         edges,
                     };

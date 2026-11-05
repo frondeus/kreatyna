@@ -76,6 +76,7 @@ async fn a_recipe_without_steps_shows_an_empty_step_list() -> anyhow::Result<()>
     let toast = Recipe {
         id: id(),
         title: "Toast".into(),
+        lines: vec![],
         steps: vec![],
         edges: StepEdges::default(),
     };
@@ -404,6 +405,7 @@ fn shakshuka() -> Recipe {
     Recipe {
         id: id(),
         title: "Shakshuka".into(),
+        lines: vec![],
         steps: vec![
             Step {
                 duration: StepDurationS::try_new(5_400).ok(),

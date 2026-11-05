@@ -516,6 +516,7 @@ fn shakshuka() -> Recipe {
     Recipe {
         id: RecipeId::from(uuid::Uuid::from_u128(1)),
         title: "Shakshuka".into(),
+        lines: vec![],
         steps: vec![],
         edges: StepEdges::default(),
     }
@@ -525,6 +526,7 @@ fn pasta() -> Recipe {
     Recipe {
         id: RecipeId::from(uuid::Uuid::from_u128(2)),
         title: "Pasta".into(),
+        lines: vec![],
         steps: vec![],
         edges: StepEdges::default(),
     }

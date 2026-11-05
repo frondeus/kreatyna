@@ -9,18 +9,18 @@ use diesel::{
 use kreatyna::{
     ingredients::name_key,
     recipes::{
-        ConnectRefusal, NewRecipe, Recipe, RecipeId, RecipeSummary, RecipeUpdate, Step, StepEdge,
-        StepEdges, StepId, StepWrite,
+        ConnectRefusal, IngredientLine, NewRecipe, Recipe, RecipeId, RecipeSummary, RecipeUpdate,
+        Step, StepEdge, StepEdges, StepId, StepWrite,
         capabilities::{RecipeDeleteError, RecipeLoadError, RecipeSaveError, RecipeStoreMut},
     },
 };
 
 use super::{
     recipe_models::{
-        LocalRecipeId, LocalStepId, NewRecipeRow, NewStepRow, RecipeRow, RemoteRecipeId,
-        RemoteStepId, StepEdgeRow, StepOrdinal, StepRow, saved_step,
+        DbOrdinal, LineRow, LocalRecipeId, LocalStepId, NewLineRow, NewRecipeRow, NewStepRow,
+        RecipeRow, RemoteRecipeId, RemoteStepId, StepEdgeRow, StepRow, saved_step,
     },
-    schema::{recipe_step_edges, recipe_steps, recipes},
+    schema::{recipe_ingredient_lines, recipe_step_edges, recipe_steps, recipes},
     sqlite::SqliteDatabase,
 };
 
@@ -89,6 +89,7 @@ fn record(connection: &mut SqliteConnection, id: RecipeId) -> Result<Option<Reci
         return Ok(None);
     };
     let row = checked(row)?;
+    let lines = load_lines(connection, row.local_id)?;
     let rows = step_rows(connection, row.local_id)?;
     let step_ids: HashMap<LocalStepId, StepId> = rows
         .iter()
@@ -96,7 +97,40 @@ fn record(connection: &mut SqliteConnection, id: RecipeId) -> Result<Option<Reci
         .collect();
     let edges = edges(connection, &step_ids)?;
     let steps = rows.into_iter().map(StepRow::into_domain).collect();
-    Ok(Some(row.into_domain(steps, edges)))
+    Ok(Some(row.into_domain(lines, steps, edges)))
+}
+
+/// The lines of the recipe row `recipe_local_id`, in list order. A blank
+/// stored name fails the load (`DbLineName`).
+fn load_lines(
+    connection: &mut SqliteConnection,
+    recipe_local_id: LocalRecipeId,
+) -> Result<Vec<IngredientLine>, StoreFailure> {
+    Ok(recipe_ingredient_lines::table
+        .filter(recipe_ingredient_lines::recipe_local_id.eq(recipe_local_id))
+        .order(recipe_ingredient_lines::ordinal.asc())
+        .select(LineRow::as_select())
+        .load::<LineRow>(connection)?
+        .into_iter()
+        .map(LineRow::into_domain)
+        .collect())
+}
+
+/// Inserts `lines` for the recipe row `recipe_local_id`, with their place in
+/// the list as `ordinal`.
+fn insert_lines(
+    connection: &mut SqliteConnection,
+    recipe_local_id: LocalRecipeId,
+    lines: &[IngredientLine],
+) -> Result<(), StoreFailure> {
+    let rows: Vec<NewLineRow> = DbOrdinal::sequence()
+        .zip(lines)
+        .map(|(ordinal, line)| NewLineRow::new(recipe_local_id, ordinal, line))
+        .collect();
+    diesel::insert_into(recipe_ingredient_lines::table)
+        .values(&rows)
+        .execute(connection)?;
+    Ok(())
 }
 
 /// The step rows of the recipe row `recipe_local_id`, in the order added.
@@ -143,7 +177,7 @@ fn insert_steps(
     recipe_local_id: LocalRecipeId,
     steps: &[StepWrite],
 ) -> Result<Vec<Step>, StoreFailure> {
-    let rows: Vec<NewStepRow> = StepOrdinal::sequence()
+    let rows: Vec<NewStepRow> = DbOrdinal::sequence()
         .zip(steps)
         .map(|(ordinal, step)| NewStepRow::new(recipe_local_id, ordinal, step))
         .collect();
@@ -210,15 +244,16 @@ fn create_in_transaction(
         .filter(recipes::remote_id.eq(&row.remote_id))
         .select(recipes::local_id)
         .first::<LocalRecipeId>(connection)?;
+    insert_lines(connection, local_id, &recipe.lines)?;
     let steps = insert_steps(connection, local_id, &recipe.steps)?;
     insert_edges(connection, local_id, &recipe.edges)?;
-    Ok(row.into_domain(steps, recipe.edges))
+    Ok(row.into_domain(recipe.lines, steps, recipe.edges))
 }
 
 /// Runs inside an immediate transaction, like `create_in_transaction`. The
 /// recipe's own title key is not a conflict, so "Shakshuka" can become
-/// "shakshuka". The new steps and edges replace the old ones; a step keeps
-/// its id.
+/// "shakshuka". The new lines, steps and edges replace the old ones; a line
+/// and a step keep their ids.
 fn update_in_transaction(
     connection: &mut SqliteConnection,
     id: RecipeId,
@@ -249,12 +284,18 @@ fn update_in_transaction(
         ))
         .execute(connection);
     duplicate_title(write)?;
+    diesel::delete(
+        recipe_ingredient_lines::table
+            .filter(recipe_ingredient_lines::recipe_local_id.eq(local_id)),
+    )
+    .execute(connection)?;
     // The cascade deletes the old steps' edges too.
     diesel::delete(recipe_steps::table.filter(recipe_steps::recipe_local_id.eq(local_id)))
         .execute(connection)?;
+    insert_lines(connection, local_id, &recipe.lines)?;
     let steps = insert_steps(connection, local_id, &recipe.steps)?;
     insert_edges(connection, local_id, &recipe.edges)?;
-    Ok(row.into_domain(steps, recipe.edges))
+    Ok(row.into_domain(recipe.lines, steps, recipe.edges))
 }
 
 /// A taken title key fails with `DuplicateTitle`, also when the unique index

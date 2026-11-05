@@ -24,8 +24,9 @@ pub use list::{
     RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListRow, RecipeListStatus, RecipeListView,
 };
 pub use model::{
-    CanvasPoint, NewRecipe, Recipe, RecipeId, RecipeIdParseError, RecipeSummary, RecipeTitle,
-    RecipeTitleError, RecipeUpdate, Step, StepDurationS, StepDurationSError, StepId,
+    CanvasPoint, IngredientLine, IngredientLineId, IngredientLineIdParseError, IngredientLineName,
+    IngredientLineNameError, NewRecipe, Recipe, RecipeId, RecipeIdParseError, RecipeSummary,
+    RecipeTitle, RecipeTitleError, RecipeUpdate, Step, StepDurationS, StepDurationSError, StepId,
     StepIdParseError, StepInstructions, StepInstructionsError, StepKind, StepTitle, StepTitleError,
     StepWrite,
 };

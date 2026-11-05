@@ -1,5 +1,5 @@
-//! Typed SQLite rows for recipes and their steps, and their conversion to
-//! the domain types. `recipe_store` reads and writes them.
+//! Typed SQLite rows for recipes, their ingredient lines and their steps,
+//! and their conversion to the domain types. `recipe_store` reads and writes them.
 use diesel::{
     AsExpression, FromSqlRow, Insertable, Queryable, Selectable,
     deserialize::FromSql,
@@ -10,12 +10,12 @@ use diesel::{
 use kreatyna::{
     ingredients::name_key,
     recipes::{
-        CanvasPoint, Recipe, RecipeId, RecipeTitle, Step, StepDurationS, StepEdges, StepId,
-        StepInstructions, StepKind, StepWrite,
+        CanvasPoint, IngredientLine, IngredientLineId, IngredientLineName, Recipe, RecipeId,
+        RecipeTitle, Step, StepDurationS, StepEdges, StepId, StepInstructions, StepKind, StepWrite,
     },
 };
 
-use super::schema::{recipe_step_edges, recipe_steps, recipes};
+use super::schema::{recipe_ingredient_lines, recipe_step_edges, recipe_steps, recipes};
 
 /// The `local_id` of a `recipes` row: the key that its steps point to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, AsExpression, FromSqlRow)]
@@ -54,25 +54,25 @@ impl ToSql<BigInt, Sqlite> for LocalStepId {
     }
 }
 
-/// A step's place in the order added: 0 for the first step of a recipe.
+/// A row's place in its recipe's list: 0 for the first step or line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
 #[diesel(sql_type = BigInt)]
-pub(crate) struct StepOrdinal(i64);
+pub(crate) struct DbOrdinal(i64);
 
-impl StepOrdinal {
-    /// 0, 1, 2, … for the steps of a recipe in the order added.
+impl DbOrdinal {
+    /// 0, 1, 2, … for the steps or the lines of a recipe, in list order.
     pub fn sequence() -> impl Iterator<Item = Self> {
         (0..).map(Self)
     }
 }
 
-impl FromSql<BigInt, Sqlite> for StepOrdinal {
+impl FromSql<BigInt, Sqlite> for DbOrdinal {
     fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
         i64::from_sql(value).map(Self)
     }
 }
 
-impl ToSql<BigInt, Sqlite> for StepOrdinal {
+impl ToSql<BigInt, Sqlite> for DbOrdinal {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
         out.set_value(self.0);
         Ok(IsNull::No)
@@ -170,6 +170,26 @@ impl ToSql<Text, Sqlite> for DbInstructions {
     }
 }
 
+/// An ingredient line's name (REC-07). Reading a blank text fails, as the
+/// table's CHECK does not allow it.
+#[derive(Debug, Clone, PartialEq, Eq, AsExpression, FromSqlRow)]
+#[diesel(sql_type = Text)]
+pub(crate) struct DbLineName(pub IngredientLineName);
+
+impl FromSql<Text, Sqlite> for DbLineName {
+    fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
+        let text = <String as FromSql<Text, Sqlite>>::from_sql(value)?;
+        Ok(Self(IngredientLineName::try_new(text)?))
+    }
+}
+
+impl ToSql<Text, Sqlite> for DbLineName {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
+        out.set_value(self.0.as_ref().to_owned());
+        Ok(IsNull::No)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
 #[diesel(sql_type = Text)]
 pub(crate) struct RemoteRecipeId(pub RecipeId);
@@ -206,6 +226,24 @@ impl ToSql<Text, Sqlite> for RemoteStepId {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
+#[diesel(sql_type = Text)]
+pub(crate) struct RemoteLineId(pub IngredientLineId);
+
+impl FromSql<Text, Sqlite> for RemoteLineId {
+    fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
+        let text = <String as FromSql<Text, Sqlite>>::from_sql(value)?;
+        Ok(Self(text.parse()?))
+    }
+}
+
+impl ToSql<Text, Sqlite> for RemoteLineId {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
+        out.set_value(self.0.to_string());
+        Ok(IsNull::No)
+    }
+}
+
 #[derive(Debug, Clone, Queryable, Selectable)]
 #[diesel(table_name = recipes)]
 pub(crate) struct RecipeRow {
@@ -216,12 +254,18 @@ pub(crate) struct RecipeRow {
 }
 
 impl RecipeRow {
-    /// The recipe with `steps`, which the store read in the order added,
-    /// and their `edges`.
-    pub fn into_domain(self, steps: Vec<Step>, edges: StepEdges) -> Recipe {
+    /// The recipe with `lines` and `steps`, which the store read in list
+    /// order, and the steps' `edges`.
+    pub fn into_domain(
+        self,
+        lines: Vec<IngredientLine>,
+        steps: Vec<Step>,
+        edges: StepEdges,
+    ) -> Recipe {
         Recipe {
             id: self.remote_id.0,
             title: self.title,
+            lines,
             steps,
             edges,
         }
@@ -263,7 +307,7 @@ impl StepRow {
 pub(crate) struct NewStepRow {
     pub remote_id: RemoteStepId,
     pub recipe_local_id: LocalRecipeId,
-    pub ordinal: StepOrdinal,
+    pub ordinal: DbOrdinal,
     pub title: String,
     pub x: DbCoordinate,
     pub y: DbCoordinate,
@@ -275,7 +319,7 @@ pub(crate) struct NewStepRow {
 impl NewStepRow {
     /// The step at `ordinal` (the order added) of the recipe row
     /// `recipe_local_id`.
-    pub fn new(recipe_local_id: LocalRecipeId, ordinal: StepOrdinal, step: &StepWrite) -> Self {
+    pub fn new(recipe_local_id: LocalRecipeId, ordinal: DbOrdinal, step: &StepWrite) -> Self {
         Self {
             remote_id: RemoteStepId(step.id),
             recipe_local_id,
@@ -286,6 +330,44 @@ impl NewStepRow {
             duration_seconds: step.duration.map(DbDurationS),
             kind: DbStepKind(step.kind),
             instructions: step.instructions.clone().map(DbInstructions),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Queryable, Selectable)]
+#[diesel(table_name = recipe_ingredient_lines)]
+pub(crate) struct LineRow {
+    pub remote_id: RemoteLineId,
+    pub name: DbLineName,
+}
+
+impl LineRow {
+    pub fn into_domain(self) -> IngredientLine {
+        IngredientLine {
+            id: self.remote_id.0,
+            name: self.name.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Insertable)]
+#[diesel(table_name = recipe_ingredient_lines)]
+pub(crate) struct NewLineRow {
+    pub remote_id: RemoteLineId,
+    pub recipe_local_id: LocalRecipeId,
+    pub ordinal: DbOrdinal,
+    pub name: DbLineName,
+}
+
+impl NewLineRow {
+    /// The line at `ordinal` (its place in the list) of the recipe row
+    /// `recipe_local_id`.
+    pub fn new(recipe_local_id: LocalRecipeId, ordinal: DbOrdinal, line: &IngredientLine) -> Self {
+        Self {
+            remote_id: RemoteLineId(line.id),
+            recipe_local_id,
+            ordinal,
+            name: DbLineName(line.name.clone()),
         }
     }
 }
@@ -328,11 +410,18 @@ impl NewRecipeRow {
         }
     }
 
-    /// The saved recipe with `steps` and `edges`, as the store wrote them.
-    pub fn into_domain(self, steps: Vec<Step>, edges: StepEdges) -> Recipe {
+    /// The saved recipe with `lines`, `steps` and `edges`, as the store wrote
+    /// them.
+    pub fn into_domain(
+        self,
+        lines: Vec<IngredientLine>,
+        steps: Vec<Step>,
+        edges: StepEdges,
+    ) -> Recipe {
         Recipe {
             id: self.remote_id.0,
             title: self.title,
+            lines,
             steps,
             edges,
         }

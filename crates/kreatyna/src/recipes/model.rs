@@ -31,6 +31,38 @@ impl StepId {
     }
 }
 
+/// Stable ingredient line identity. The editor generates it when you add a
+/// line (REC-07), and the line keeps it through every save.
+#[nutype(derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Display, FromStr, From, Into
+))]
+pub struct IngredientLineId(Uuid);
+
+impl IngredientLineId {
+    /// Generate a new version 4 identifier.
+    pub fn generate() -> Self {
+        Self::new(Uuid::new_v4())
+    }
+}
+
+/// A line's name: trimmed and not empty (REC-07). `try_new` keeps the
+/// spaces inside the name and fails with
+/// `IngredientLineNameError::NotEmptyViolated`.
+#[nutype(
+    sanitize(trim),
+    validate(not_empty),
+    derive(Debug, Clone, PartialEq, Eq, AsRef)
+)]
+pub struct IngredientLineName(String);
+
+/// A line of a recipe's ingredient list, such as "penne pasta" (D-10). The
+/// store reads and writes this type, so a stored line has a valid name.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IngredientLine {
+    pub id: IngredientLineId,
+    pub name: IngredientLineName,
+}
+
 /// A position on the step canvas in whole points, from the top left corner
 /// (D-19). A node cannot go left of or above the canvas.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -89,6 +121,8 @@ pub struct StepInstructions(String);
 pub struct Recipe {
     pub id: RecipeId,
     pub title: String,
+    /// In list order: the order added, then moved by drag (REC-07/Q1).
+    pub lines: Vec<IngredientLine>,
     /// In the order added.
     pub steps: Vec<Step>,
     /// The arrows between `steps` (REC-18).
@@ -134,10 +168,12 @@ pub struct StepWrite {
     pub instructions: Option<StepInstructions>,
 }
 
-/// What `RecipeStore::create` writes. REC-07 adds the lines.
+/// What `RecipeStore::create` writes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NewRecipe {
     pub title: RecipeTitle,
+    /// In list order (REC-07/Q1).
+    pub lines: Vec<IngredientLine>,
     /// In the order added.
     pub steps: Vec<StepWrite>,
     /// The arrows between `steps` (REC-18).
@@ -150,6 +186,8 @@ pub struct NewRecipe {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecipeUpdate {
     pub title: RecipeTitle,
+    /// The whole new line list, in list order. Lines keep their ids.
+    pub lines: Vec<IngredientLine>,
     /// The whole new step list, in the order added. Steps keep their ids.
     pub steps: Vec<StepWrite>,
     /// The whole new edge set between `steps` (REC-18).

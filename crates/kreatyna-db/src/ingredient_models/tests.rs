@@ -20,7 +20,7 @@ use crate::schema::{ingredient_units as u, ingredients as i};
 fn empty_database_migrates_and_rerun_is_harmless() -> anyhow::Result<()> {
     let mut db = SqliteConnection::establish(":memory:")?;
     db.batch_execute("PRAGMA foreign_keys = ON;")?;
-    assert_eq!(migrate(&mut db)?, 7);
+    assert_eq!(migrate(&mut db)?, 8);
     assert_eq!(migrate(&mut db)?, 0);
     assert_eq!(i::table.count().get_result::<i64>(&mut db)?, 0);
     assert_eq!(u::table.count().get_result::<i64>(&mut db)?, 0);
@@ -51,8 +51,9 @@ fn counter_database_upgrades_and_keeps_ingredients() -> anyhow::Result<()> {
             .execute(&mut db)?;
 
         // MAC-03 drops the counter; REC-01 adds recipes; REC-14 adds steps;
-        // REC-17 adds the step details.
-        assert_eq!(migrate(&mut db)?, 5);
+        // REC-17 adds the step details; REC-18 adds the step edges; REC-07
+        // adds the ingredient lines.
+        assert_eq!(migrate(&mut db)?, 6);
         assert!(!counter_table_exists(&mut db)?);
     }
     let mut db = SqliteConnection::establish(path)?;

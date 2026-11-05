@@ -771,6 +771,7 @@ fn recipe(id: u128, title: &str) -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(id)),
         title: title.into(),
+        lines: vec![],
         steps: vec![],
         edges: StepEdges::default(),
     }

@@ -28,6 +28,7 @@ pub(crate) fn shakshuka() -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(1)),
         title: "Shakshuka".into(),
+        lines: vec![],
         steps: vec![],
         edges: StepEdges::default(),
     }
@@ -38,6 +39,7 @@ pub(crate) fn pasta() -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(2)),
         title: "Pasta".into(),
+        lines: vec![],
         steps: vec![boil_water(), cook_pasta()],
         edges: StepEdges::default(),
     }
@@ -98,6 +100,7 @@ pub(crate) fn sauce() -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(3)),
         title: "Sauce".into(),
+        lines: vec![],
         steps: vec![bake_sauce()],
         edges: StepEdges::default(),
     }

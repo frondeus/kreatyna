@@ -27,6 +27,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    recipe_ingredient_lines (local_id) {
+        local_id -> BigInt,
+        remote_id -> Text,
+        recipe_local_id -> BigInt,
+        ordinal -> BigInt,
+        name -> Text,
+    }
+}
+
+diesel::table! {
     recipe_step_edges (from_local_id, to_local_id) {
         from_local_id -> BigInt,
         to_local_id -> BigInt,
@@ -58,11 +68,13 @@ diesel::table! {
 }
 
 diesel::joinable!(ingredient_units -> ingredients (ingredient_local_id));
+diesel::joinable!(recipe_ingredient_lines -> recipes (recipe_local_id));
 diesel::joinable!(recipe_steps -> recipes (recipe_local_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     ingredient_units,
     ingredients,
+    recipe_ingredient_lines,
     recipe_step_edges,
     recipe_steps,
     recipes,

@@ -171,6 +171,19 @@ enum Fixtures {
         return .set(text: text, parts: parts, entry: entry)
     }
 
+    /// An ingredient line of the editor. The ID only has to be unique in
+    /// the recipe; `key` stands in for the name when it is empty.
+    static func line(
+        _ name: String, problem: IngredientLineNameError? = nil, key: String? = nil
+    ) -> IngredientLineView {
+        IngredientLineView(id: IngredientLineId(uuid: "line-\(key ?? name)"), name: name, problem: problem)
+    }
+
+    /// An ingredient line of the read view.
+    static func detailLine(_ name: String) -> RecipeDetailLine {
+        RecipeDetailLine(id: IngredientLineId(uuid: "line-\(name)"), name: name)
+    }
+
     /// A step of the read view. The ID only has to be unique in the recipe.
     static func detailStep(
         _ title: String, duration: String? = nil, kind: StepKind = .active, instructions: String? = nil
@@ -197,7 +210,7 @@ enum Fixtures {
         let create: CreateAvailability = switch pane {
         case .empty: .available
         case .detail(let detail):
-            if case .ready(_, _, let deletion) = detail.status, deletion != .idle { .unavailable } else { .available }
+            if case .ready(_, _, _, let deletion) = detail.status, deletion != .idle { .unavailable } else { .available }
         case .create, .edit: .unavailable
         }
         let selected = if case .detail(let detail) = pane { detail.id } else { nil as RecipeId? }

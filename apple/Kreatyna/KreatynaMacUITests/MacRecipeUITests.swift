@@ -440,6 +440,44 @@ final class MacRecipeUITests: MacUITestCase {
         return field
     }
 
+    /// ＋ Line three times with a name each; a drag of basil's handle onto
+    /// penne pasta puts basil first; − removes olive oil. Save keeps the
+    /// two lines in the new order, and the read view lists them (REC-07).
+    @MainActor
+    func testIngredientLinesAddDragRemoveAndSave() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
+        app.typeText("Pasta")
+
+        // The new line's name field has the focus.
+        for (index, name) in ["penne pasta", "olive oil", "basil"].enumerated() {
+            app.buttons["addIngredientLine"].click()
+            let field = app.textFields["ingredientLineName.\(index)"]
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            app.typeText(name)
+            XCTAssertTrue(waitFor(field, value: name))
+        }
+
+        let handle = app.descendants(matching: .any)["ingredientLineHandle.2"]
+        let top = app.textFields["ingredientLineName.0"]
+        handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .click(forDuration: 0.2, thenDragTo: top.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
+        XCTAssertTrue(waitFor(app.textFields["ingredientLineName.0"], value: "basil"))
+        XCTAssertTrue(waitFor(app.textFields["ingredientLineName.1"], value: "penne pasta"))
+
+        app.buttons["removeIngredientLine.2"].click()
+        XCTAssertTrue(waitForNonExistence(app.textFields["ingredientLineName.2"], timeout: 5))
+        app.typeKey("s", modifierFlags: .command)
+
+        XCTAssertTrue(waitForTitle(in: app, "Pasta"))
+        let lines = app.staticTexts.matching(identifier: "recipeIngredientLine")
+        XCTAssertTrue(waitFor(lines.element(boundBy: 0), value: "basil"))
+        XCTAssertTrue(waitFor(lines.element(boundBy: 1), value: "penne pasta"))
+        XCTAssertEqual(lines.count, 2)
+    }
+
     /// Presses on `element`, moves the pointer by `offset` points, and releases.
     @MainActor
     private func drag(_ element: XCUIElement, by offset: CGVector) {

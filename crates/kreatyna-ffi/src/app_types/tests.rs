@@ -447,6 +447,84 @@ fn canvas_events_reach_the_editor_in_their_pane_scope(
     );
 }
 
+#[test_case(
+    IngredientLinesEvent::Add,
+    kreatyna::recipes::IngredientLinesEvent::Add;
+    "add a line"
+)]
+#[test_case(
+    IngredientLinesEvent::SetName { id: line_id(1), name: " eggs ".into() },
+    kreatyna::recipes::IngredientLinesEvent::SetName { id: line_id(1), name: " eggs ".into() };
+    "a name as typed"
+)]
+#[test_case(
+    IngredientLinesEvent::Remove { id: line_id(1) },
+    kreatyna::recipes::IngredientLinesEvent::Remove { id: line_id(1) };
+    "remove a line"
+)]
+#[test_case(
+    IngredientLinesEvent::Move { id: line_id(2), onto: line_id(1) },
+    kreatyna::recipes::IngredientLinesEvent::Move { id: line_id(2), onto: line_id(1) };
+    "move a line"
+)]
+fn line_events_reach_the_editor_in_their_pane_scope(
+    event: IngredientLinesEvent,
+    expected: kreatyna::recipes::IngredientLinesEvent,
+) {
+    let event = RecipeSectionEvent::Editor {
+        scope: ScopeId { value: 7 },
+        event: RecipeEditorEvent::Lines { event },
+    };
+    assert_eq!(
+        kreatyna::recipes::RecipeSectionEvent::from(event),
+        kreatyna::recipes::RecipeSectionEvent::Editor(Scoped::new(
+            CommandScopeId::from(7),
+            kreatyna::recipes::RecipeEditorEvent::Lines(expected)
+        ))
+    );
+}
+
+#[test]
+fn an_editor_keeps_the_lines_in_order_with_their_names_as_typed_and_problems() {
+    let editor = kreatyna::recipes::RecipeEditorView {
+        title: "Shakshuka".into(),
+        lines: vec![
+            kreatyna::recipes::IngredientLineView {
+                id: line_id(1),
+                name: " eggs ".into(),
+                problem: None,
+            },
+            kreatyna::recipes::IngredientLineView {
+                id: line_id(2),
+                name: " ".into(),
+                problem: Some(kreatyna::recipes::IngredientLineNameError::NotEmptyViolated),
+            },
+        ],
+        canvas: kreatyna::recipes::StepCanvasView {
+            nodes: kreatyna::recipes::StepNodesView::Unselected { steps: vec![] },
+            connections: vec![],
+            refusal: None,
+            duration_chips: vec![],
+        },
+        status: kreatyna::recipes::RecipeEditorStatus::Editing { problem: None },
+    };
+    assert_eq!(
+        RecipeEditorView::from(editor).lines,
+        [
+            IngredientLineView {
+                id: line_id(1),
+                name: " eggs ".into(),
+                problem: None,
+            },
+            IngredientLineView {
+                id: line_id(2),
+                name: " ".into(),
+                problem: Some(IngredientLineNameError::NotEmptyViolated),
+            },
+        ]
+    );
+}
+
 #[test]
 fn an_editor_canvas_keeps_the_selection_the_details_the_problems_and_the_arrows() {
     let untitled = kreatyna::recipes::StepNodeView {
@@ -519,6 +597,7 @@ fn an_editor_canvas_keeps_the_selection_the_details_the_problems_and_the_arrows(
         RecipeEditorView::from(editor),
         RecipeEditorView {
             title: "Shakshuka".into(),
+            lines: vec![],
             canvas: StepCanvasView {
                 nodes: StepNodesView::Selected {
                     selected: StepNodeView {
@@ -666,6 +745,13 @@ fn a_selected_connection_keeps_its_edge_its_labels_and_the_steps() -> anyhow::Re
 }
 
 #[test]
+fn an_ingredient_line_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
+    let id = kreatyna::recipes::IngredientLineId::generate();
+    assert_eq!(support::lift_ingredient_line_id(id.to_string())?, id);
+    Ok(())
+}
+
+#[test]
 fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     let id = kreatyna::recipes::StepId::generate();
     assert_eq!(support::lift_step_id(id.to_string())?, id);
@@ -682,7 +768,10 @@ fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
-        lines: vec![],
+        lines: vec![
+            kreatyna::recipes::RecipeDetailLine { id: line_id(1), name: "eggs".into() },
+            kreatyna::recipes::RecipeDetailLine { id: line_id(2), name: "tomatoes".into() },
+        ],
         steps: vec![
             kreatyna::recipes::RecipeDetailStep {
                 id: step_id(1), title: "Fry onion".into(), duration: Some("1 h 30 min".into()),
@@ -697,6 +786,10 @@ fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     },
     RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
+        lines: vec![
+            RecipeDetailLine { id: line_id(1), name: "eggs".into() },
+            RecipeDetailLine { id: line_id(2), name: "tomatoes".into() },
+        ],
         steps: vec![
             RecipeDetailStep {
                 id: step_id(1), title: "Fry onion".into(), duration: Some("1 h 30 min".into()),
@@ -709,11 +802,11 @@ fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
         ],
         deletion: RecipeDeletion::Idle,
     };
-    "ready with steps in the order added and their details"
+    "ready with lines and steps in list order, and the step details"
 )]
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), lines: vec![], steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Idle },
-    RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: RecipeDeletion::Idle };
+    RecipeDetailStatus::Ready { title: "Shakshuka".into(), lines: vec![], steps: vec![], deletion: RecipeDeletion::Idle };
     "ready without steps"
 )]
 #[test_case(
@@ -728,6 +821,7 @@ fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     },
     RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
+        lines: vec![],
         steps: vec![],
         deletion: RecipeDeletion::Confirming {
             confirmation: ConfirmationView::AwaitingDecision,
@@ -738,12 +832,12 @@ fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
 )]
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), lines: vec![], steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Deleting },
-    RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: RecipeDeletion::Deleting };
+    RecipeDetailStatus::Ready { title: "Shakshuka".into(), lines: vec![], steps: vec![], deletion: RecipeDeletion::Deleting };
     "deleting"
 )]
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), lines: vec![], steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Deleted },
-    RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: RecipeDeletion::Deleted };
+    RecipeDetailStatus::Ready { title: "Shakshuka".into(), lines: vec![], steps: vec![], deletion: RecipeDeletion::Deleted };
     "deleted"
 )]
 fn a_read_view_pane_keeps_the_id_and_the_status(
@@ -791,6 +885,7 @@ fn a_create_pane_keeps_the_draft_row_and_the_problem() {
         RecipePaneView::Create {
             editor: RecipeEditorView {
                 title: "shakshuka ".into(),
+                lines: vec![],
                 canvas: StepCanvasView {
                     nodes: StepNodesView::Unselected { steps: vec![] },
                     connections: vec![],
@@ -833,6 +928,7 @@ fn an_edit_pane_keeps_the_saved_title_and_the_problem() {
         RecipePaneView::Edit {
             editor: RecipeEditorView {
                 title: "Spicy shakshuka".into(),
+                lines: vec![],
                 canvas: StepCanvasView {
                     nodes: StepNodesView::Unselected { steps: vec![] },
                     connections: vec![],
@@ -1165,6 +1261,19 @@ fn invalid_step_id_text_fails_the_call_with_a_conversion_error() {
 }
 
 #[test]
+fn invalid_ingredient_line_id_text_fails_the_call_with_a_conversion_error() {
+    let error = support::lift_ingredient_line_id("not-a-uuid".into())
+        .err()
+        .and_then(|error| error.downcast::<crate::AppFfiError>().ok());
+    assert!(matches!(
+        error,
+        Some(crate::AppFfiError::Conversion {
+            error: AppTypeConversionError::InvalidIngredientLineId { value }
+        }) if value == "not-a-uuid"
+    ));
+}
+
+#[test]
 fn invalid_ingredient_id_text_fails_the_call_with_a_conversion_error() {
     let error = support::lift_ingredient_id("not-a-uuid".into())
         .err()
@@ -1297,6 +1406,11 @@ fn detail_and_confirmation_statuses_preserve_typed_delete_errors() {
 /// A fixed step id, so a test can name it twice.
 fn step_id(n: u128) -> kreatyna::recipes::StepId {
     kreatyna::recipes::StepId::from(uuid::Uuid::from_u128(n))
+}
+
+/// A fixed line id, so a test can name it twice.
+fn line_id(n: u128) -> kreatyna::recipes::IngredientLineId {
+    kreatyna::recipes::IngredientLineId::from(uuid::Uuid::from_u128(n))
 }
 
 fn stack(view: RunningAppView) -> anyhow::Result<IngredientCatalogView> {

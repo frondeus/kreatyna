@@ -232,6 +232,77 @@ impl From<core::StepTitleError> for StepTitleError {
     }
 }
 
+/// The save rule an ingredient line's name breaks (nutype's error in Rust).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum IngredientLineNameError {
+    NotEmptyViolated,
+}
+
+impl From<core::IngredientLineNameError> for IngredientLineNameError {
+    fn from(value: core::IngredientLineNameError) -> Self {
+        match value {
+            core::IngredientLineNameError::NotEmptyViolated => Self::NotEmptyViolated,
+        }
+    }
+}
+
+/// One ingredient line as the editor shows it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct IngredientLineView {
+    pub id: core::IngredientLineId,
+    /// The name as typed.
+    pub name: String,
+    /// `nil` until the first Save. After it, the name's problem, if any:
+    /// Swift shows "Name required".
+    pub problem: Option<IngredientLineNameError>,
+}
+
+impl From<core::IngredientLineView> for IngredientLineView {
+    fn from(value: core::IngredientLineView) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            problem: value.problem.map(Into::into),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum IngredientLinesEvent {
+    /// ＋ Line: an empty line at the bottom.
+    Add,
+    /// The name field, as typed.
+    SetName {
+        id: core::IngredientLineId,
+        name: String,
+    },
+    /// The − button.
+    Remove { id: core::IngredientLineId },
+    /// A drop of the line `id` onto the line `onto`: `id` takes `onto`'s
+    /// place. So it ends up before `onto` when it moves up, and after
+    /// `onto` when it moves down. With the lines penne, oil, basil:
+    ///
+    /// | Drag              | Result            | The dragged line ends up |
+    /// |-------------------|-------------------|--------------------------|
+    /// | basil onto penne  | basil, penne, oil | before penne             |
+    /// | penne onto basil  | oil, basil, penne | after basil              |
+    Move {
+        id: core::IngredientLineId,
+        onto: core::IngredientLineId,
+    },
+}
+
+impl From<IngredientLinesEvent> for core::IngredientLinesEvent {
+    fn from(value: IngredientLinesEvent) -> Self {
+        match value {
+            IngredientLinesEvent::Add => Self::Add,
+            IngredientLinesEvent::SetName { id, name } => Self::SetName { id, name },
+            IngredientLinesEvent::Remove { id } => Self::Remove { id },
+            IngredientLinesEvent::Move { id, onto } => Self::Move { id, onto },
+        }
+    }
+}
+
 /// What a step node shows. Rust's StepTitle rule decides it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum StepLabel {
@@ -625,6 +696,8 @@ impl From<core::StepNodesView> for StepNodesView {
 pub struct RecipeEditorView {
     /// The title as typed.
     pub title: String,
+    /// The ingredient lines, in list order.
+    pub lines: Vec<IngredientLineView>,
     pub canvas: StepCanvasView,
     pub status: RecipeEditorStatus,
 }
@@ -633,6 +706,7 @@ impl From<core::RecipeEditorView> for RecipeEditorView {
     fn from(value: core::RecipeEditorView) -> Self {
         Self {
             title: value.title,
+            lines: value.lines.into_iter().map(Into::into).collect(),
             canvas: value.canvas.into(),
             status: value.status.into(),
         }
@@ -703,12 +777,17 @@ pub enum RecipeEditorEvent {
     SetTitle {
         title: String,
     },
+    /// The ingredient lines.
+    Lines {
+        event: IngredientLinesEvent,
+    },
     /// The steps on the canvas and in the inspector.
     Canvas {
         event: StepCanvasEvent,
     },
     Save,
-    /// Cancel. A changed title or step list asks "Discard changes?" first.
+    /// Cancel. A changed title, line list or step list asks "Discard
+    /// changes?" first.
     RequestClose,
     Confirmation {
         event: ConfirmationEvent,
@@ -719,6 +798,7 @@ impl From<RecipeEditorEvent> for core::RecipeEditorEvent {
     fn from(value: RecipeEditorEvent) -> Self {
         match value {
             RecipeEditorEvent::SetTitle { title } => Self::SetTitle(title),
+            RecipeEditorEvent::Lines { event } => Self::Lines(event.into()),
             RecipeEditorEvent::Canvas { event } => Self::Canvas(event.into()),
             RecipeEditorEvent::Save => Self::Save,
             RecipeEditorEvent::RequestClose => Self::RequestClose,
@@ -760,10 +840,28 @@ pub enum RecipeDetailStatus {
     Missing,
     Ready {
         title: String,
+        /// The ingredient lines, in list order. Empty shows "None yet".
+        lines: Vec<RecipeDetailLine>,
         /// In the order added. Empty shows "None yet".
         steps: Vec<RecipeDetailStep>,
         deletion: RecipeDeletion,
     },
+}
+
+/// An ingredient line in the read view: its name.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct RecipeDetailLine {
+    pub id: core::IngredientLineId,
+    pub name: String,
+}
+
+impl From<core::RecipeDetailLine> for RecipeDetailLine {
+    fn from(value: core::RecipeDetailLine) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+        }
+    }
 }
 
 /// A step in the read view: "Boil water · 10 min · waiting", with the
@@ -829,14 +927,14 @@ impl From<core::RecipeDetailStatus> for RecipeDetailStatus {
                 error: error.into(),
             },
             core::RecipeDetailStatus::Missing => Self::Missing,
-            // The lines cross the FFI in REC-07 change 4.
             core::RecipeDetailStatus::Ready {
                 title,
-                lines: _,
+                lines,
                 steps,
                 deletion,
             } => Self::Ready {
                 title,
+                lines: lines.into_iter().map(Into::into).collect(),
                 steps: steps.into_iter().map(Into::into).collect(),
                 deletion: deletion.into(),
             },

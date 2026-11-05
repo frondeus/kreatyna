@@ -12,3 +12,7 @@ lower = "{}.uuid"
 [bindings.swift.custom_types.IngredientId]
 lift = "IngredientId(uuid: {})"
 lower = "{}.uuid"
+
+[bindings.swift.custom_types.IngredientLineId]
+lift = "IngredientLineId(uuid: {})"
+lower = "{}.uuid"

@@ -55,7 +55,7 @@ save, and that line shows "Name required" under its field.
 | Ingredient line | One row of a recipe's ingredient list, such as "penne pasta". It is not a catalog ingredient. REC-10 can link it to one (D-11). |
 | Ordinal | The position of a row in its list, stored as a number from 0. The steps already use one (`StepOrdinal`). |
 | `nutype` | The crate that makes a validated newtype from a field, such as `StepTitle`. `try_new` returns the value or a generated error. |
-| `Transferable` | The SwiftUI protocol for a value that a drag carries. `.draggable` starts the drag and `.dropDestination` receives it. |
+| `DragGesture` | A SwiftUI gesture that reports the pointer while you hold the mouse button and move. The canvas nodes move with it (REC-15). |
 | jj | The version control tool of this repository. Each change is one reviewed unit. |
 
 ## Design
@@ -223,12 +223,15 @@ for the ingredient draft later.
 
 - New `KreatynaMac/MacIngredientLines.swift`: the Ingredients list under the
   canvas. The header has "Ingredients" and **＋ Line**
-  (`addIngredientLine`). Each row has a handle ≡ (`.draggable` with the line
-  id), a `SyncedTextField` with the prompt "Name" (`ingredientLineName.<n>`),
+  (`addIngredientLine`). Each row has a handle ≡ (`ingredientLineHandle.<n>`),
+  a `SyncedTextField` with the prompt "Name" (`ingredientLineName.<n>`),
   "Name required" under it when Rust says so (`ingredientLineProblem.<n>`),
-  and a − button (`removeIngredientLine.<n>`). Each row is a
-  `.dropDestination` that sends `Move`. The rows are in a `ScrollView` of at
-  most 6 rows, not in a `List` or `Form` (MAC-05/Q4).
+  and a − button (`removeIngredientLine.<n>`). The handle has a
+  `DragGesture`: Swift finds the row under the pointer and shows it, and the
+  drop sends `Move` with that row's line as `onto`. The rows are in a
+  `ScrollView` of at most 6 rows, not in a `List` or `Form` (MAC-05/Q4).
+  A system drag (`.draggable` and `.dropDestination`) did not start in the
+  UI test, so the handle uses the same gesture as the canvas nodes.
 - `MacRecipeEditor.swift`: the "Coming soon" strip becomes
   `MacIngredientLines`. When a new line appears, its field gets the cursor.
 - `MacRecipeDetail.swift`: a "Ingredients" section that lists the names;
@@ -292,14 +295,14 @@ for the ingredient draft later.
    `Ids.swift`.
 2. Try the drag first: build `MacIngredientLines` with the handle, and run
    the UI test's drag. If it does not move the line, use the context-menu
-   fallback, and write that down in Validation.
+   fallback, and write that down in Validation. The UI test comes in this
+   change, because the drag needs it.
 3. Build the rest of the list, the read view section, the fixtures and the
    snapshots.
 
 ### Change 5 — REC-07: the UI test and the demo (about 200 lines, report)
 
-1. Finish the UI test.
-2. Record the demo per document-apple-delivery: the editor with lines, the
+1. Record the demo per document-apple-delivery: the editor with lines, the
    drag, "Name required", and the read view.
 
 ## Checks
@@ -325,4 +328,22 @@ for the ingredient draft later.
 
 ## Validation
 
-Not run yet.
+Change 4:
+
+| Check | Result |
+|---|---|
+| `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings` | Clean. |
+| `cargo test --workspace` | 910 pass (7 new in the FFI). |
+| `mac-bindings debug` | Generates the bindings. |
+| `mac-test --ui MacRecipeUITests` | All unit, snapshot and recipe UI tests pass, with the new `testIngredientLinesAddDragRemoveAndSave`. |
+| `ios-app-build` | Builds. |
+
+The drag works on macOS, so the context-menu fallback was not needed. A
+system drag (`.draggable` and `.dropDestination`) did not start under
+XCUITest: three tries (a drop on the name field, a slow drag with a hold, a
+drop on the handle) left the order unchanged. A `DragGesture` on the handle
+moves the line, as the canvas nodes do.
+
+The 12 editor snapshots (24 images) changed only in the bottom strip:
+"Ingredients Coming soon" became "Ingredients" with ＋ Line, and the canvas
+is a few points shorter.

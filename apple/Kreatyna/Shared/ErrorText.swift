@@ -80,6 +80,14 @@ extension StepTitleError {
     }
 }
 
+extension IngredientLineNameError {
+    var message: String {
+        switch self {
+        case .notEmptyViolated: "Name required"
+        }
+    }
+}
+
 extension DurationError {
     var message: String {
         switch self {

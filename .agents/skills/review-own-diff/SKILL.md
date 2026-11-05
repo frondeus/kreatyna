@@ -32,7 +32,8 @@ why it stays.
    `local_id: i64`.
 2. **Modes and shapes.** For each `bool`, `Option` and tuple, ask:
    - A `bool` that chooses a behavior is a mode. Use an enum with two named
-     variants. For a "did it change" result, use `CanvasChange`.
+     variants. For a "did it change" result, use `DraftChange`
+     (`crate::draft_change`).
    - An `Option` that is `None` in one mode and `Some` in another is a variant
      of that mode.
    - A tuple return holds two values. Give them a named struct.
@@ -54,8 +55,11 @@ why it stays.
    hand-written `parse`, a step lookup.
 4. **Names.** Read each new name without its doc comment. Is it clear what the
    name means? Do two names that are near each other say how they differ?
+   If the meaning depends on a case, such as the direction of a move, the
+   doc comment shows a small example with the project's data, as a table of
+   input and result.
    *Caught before:* `previous` and `switch_to`, `before` in place of
-   `from`/`to`.
+   `from`/`to`, `onto` without its up and down example.
 5. **Tests.** Check the test layout of
    [write-rust-tests](../write-rust-tests/SKILL.md) (green path, validation,
    red cases, support). Check `anyhow::Result` with `?`, and no `unwrap`,

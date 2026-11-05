@@ -497,6 +497,7 @@ fn an_editor_canvas_keeps_the_selection_the_details_the_problems_and_the_arrows(
     };
     let editor = kreatyna::recipes::RecipeEditorView {
         title: "Shakshuka".into(),
+        lines: vec![],
         canvas: kreatyna::recipes::StepCanvasView {
             nodes: kreatyna::recipes::StepNodesView::Selected {
                 selected: untitled,
@@ -681,6 +682,7 @@ fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
+        lines: vec![],
         steps: vec![
             kreatyna::recipes::RecipeDetailStep {
                 id: step_id(1), title: "Fry onion".into(), duration: Some("1 h 30 min".into()),
@@ -710,13 +712,14 @@ fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     "ready with steps in the order added and their details"
 )]
 #[test_case(
-    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Idle },
+    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), lines: vec![], steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Idle },
     RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: RecipeDeletion::Idle };
     "ready without steps"
 )]
 #[test_case(
     kreatyna::recipes::RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
+        lines: vec![],
         steps: vec![],
         deletion: kreatyna::recipes::RecipeDeletion::Confirming {
             confirmation: core::confirmation::ConfirmationView::AwaitingDecision,
@@ -734,12 +737,12 @@ fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     "asking again after a failed delete"
 )]
 #[test_case(
-    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Deleting },
+    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), lines: vec![], steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Deleting },
     RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: RecipeDeletion::Deleting };
     "deleting"
 )]
 #[test_case(
-    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Deleted },
+    kreatyna::recipes::RecipeDetailStatus::Ready { title: "Shakshuka".into(), lines: vec![], steps: vec![], deletion: kreatyna::recipes::RecipeDeletion::Deleted },
     RecipeDetailStatus::Ready { title: "Shakshuka".into(), steps: vec![], deletion: RecipeDeletion::Deleted };
     "deleted"
 )]
@@ -768,6 +771,7 @@ fn a_create_pane_keeps_the_draft_row_and_the_problem() {
     let pane = kreatyna::recipes::RecipePaneView::Create {
         editor: kreatyna::recipes::RecipeEditorView {
             title: "shakshuka ".into(),
+            lines: vec![],
             canvas: kreatyna::recipes::StepCanvasView {
                 nodes: kreatyna::recipes::StepNodesView::Unselected { steps: vec![] },
                 connections: vec![],
@@ -809,6 +813,7 @@ fn an_edit_pane_keeps_the_saved_title_and_the_problem() {
     let pane = kreatyna::recipes::RecipePaneView::Edit {
         editor: kreatyna::recipes::RecipeEditorView {
             title: "Spicy shakshuka".into(),
+            lines: vec![],
             canvas: kreatyna::recipes::StepCanvasView {
                 nodes: kreatyna::recipes::StepNodesView::Unselected { steps: vec![] },
                 connections: vec![],

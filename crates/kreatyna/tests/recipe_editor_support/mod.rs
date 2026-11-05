@@ -11,11 +11,12 @@ use kreatyna::{
     capabilities::ResolveRender,
     confirmation::{ConfirmationEvent, ConfirmationView},
     recipes::{
-        CanvasPoint, DurationChip, DurationEntry, DurationInput, DurationParts, Recipe,
-        RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem,
-        RecipeEditorStatus, RecipeId, RecipeTitleError, Step, StepCanvasEvent, StepCanvasView,
-        StepDurationS, StepDurationView, StepEdge, StepEdges, StepId, StepInstructions, StepKind,
-        StepLabel, StepNodeView, StepNodesView, StepProblems, StepTitle, StepTitleError, StepWrite,
+        CanvasPoint, DurationChip, DurationEntry, DurationInput, DurationParts, IngredientLine,
+        IngredientLineId, IngredientLineName, IngredientLinesEvent, Recipe, RecipeEditor,
+        RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus, RecipeId,
+        RecipeTitleError, Step, StepCanvasEvent, StepCanvasView, StepDurationS, StepDurationView,
+        StepEdge, StepEdges, StepId, StepInstructions, StepKind, StepLabel, StepNodeView,
+        StepNodesView, StepProblems, StepTitle, StepTitleError, StepWrite,
         capabilities::{
             RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
         },
@@ -43,6 +44,29 @@ pub(crate) fn pasta() -> Recipe {
         steps: vec![boil_water(), cook_pasta()],
         edges: StepEdges::default(),
     }
+}
+
+/// `pasta()` with two saved lines: penne pasta, then olive oil.
+pub(crate) fn pasta_with_lines() -> anyhow::Result<Recipe> {
+    Ok(Recipe {
+        lines: vec![penne()?, olive_oil()?],
+        ..pasta()
+    })
+}
+
+pub(crate) fn penne() -> anyhow::Result<IngredientLine> {
+    saved_line(21, "penne pasta")
+}
+
+pub(crate) fn olive_oil() -> anyhow::Result<IngredientLine> {
+    saved_line(22, "olive oil")
+}
+
+pub(crate) fn saved_line(id: u128, name: &str) -> anyhow::Result<IngredientLine> {
+    Ok(IngredientLine {
+        id: IngredientLineId::from(Uuid::from_u128(id)),
+        name: IngredientLineName::try_new(name)?,
+    })
 }
 
 /// `pasta()` with an arrow: Cook pasta comes after Boil water.
@@ -251,6 +275,8 @@ pub(crate) struct Fixture {
     pub(crate) written_steps: Vec<Vec<StepWrite>>,
     /// The edges that each store call wrote, in the order of `writes`.
     pub(crate) written_edges: Vec<StepEdges>,
+    /// The lines that each store call wrote, in the order of `writes`.
+    pub(crate) written_lines: Vec<Vec<IngredientLine>>,
 }
 
 impl Fixture {
@@ -278,6 +304,7 @@ impl Fixture {
             writes: vec![],
             written_steps: vec![],
             written_edges: vec![],
+            written_lines: vec![],
         }
     }
 
@@ -365,6 +392,42 @@ impl Fixture {
         self.canvas(StepCanvasEvent::Delete(id)).await
     }
 
+    /// Sends a line event that changes the lines, and runs its render.
+    pub(crate) async fn lines(&mut self, event: IngredientLinesEvent) -> anyhow::Result<()> {
+        let command = self.send(RecipeEditorEvent::Lines(event));
+        self.render(command).await
+    }
+
+    /// ＋ Line. Returns the new line's id.
+    pub(crate) async fn add_line(&mut self) -> anyhow::Result<IngredientLineId> {
+        self.lines(IngredientLinesEvent::Add).await?;
+        self.editor
+            .view()
+            .lines
+            .last()
+            .map(|line| line.id)
+            .ok_or_else(|| anyhow::anyhow!("＋ Line added no line"))
+    }
+
+    pub(crate) async fn name_line(
+        &mut self,
+        id: IngredientLineId,
+        name: &str,
+    ) -> anyhow::Result<()> {
+        let name = name.into();
+        self.lines(IngredientLinesEvent::SetName { id, name }).await
+    }
+
+    /// The names of the lines as the editor shows them, in list order.
+    pub(crate) fn line_names(&self) -> Vec<String> {
+        self.editor
+            .view()
+            .lines
+            .into_iter()
+            .map(|line| line.name)
+            .collect()
+    }
+
     /// The id of the selected step.
     pub(crate) fn selected(&self) -> anyhow::Result<StepId> {
         match self.editor.view().canvas.nodes {
@@ -394,12 +457,14 @@ impl Fixture {
         let mut write = None;
         let mut steps = None;
         let mut edges = None;
+        let mut lines = None;
         let store = command.step().await?.expect_effect().expect_store();
         match store.request {
             RecipeStoreRequest::Create { .. } => {
                 store
                     .resolve_create(|recipe| {
                         write = Some(Write::Created(recipe.title.as_ref().to_owned()));
+                        lines = Some(recipe.lines);
                         steps = Some(recipe.steps);
                         edges = Some(recipe.edges);
                         async { result }
@@ -410,6 +475,7 @@ impl Fixture {
                 store
                     .resolve_update(|id, recipe| {
                         write = Some(Write::Updated(id, recipe.title.as_ref().to_owned()));
+                        lines = Some(recipe.lines);
                         steps = Some(recipe.steps);
                         edges = Some(recipe.edges);
                         async { result }
@@ -424,6 +490,7 @@ impl Fixture {
         self.writes.extend(write);
         self.written_steps.extend(steps);
         self.written_edges.extend(edges);
+        self.written_lines.extend(lines);
         Ok(finished)
     }
 

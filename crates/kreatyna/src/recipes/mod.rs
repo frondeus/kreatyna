@@ -5,14 +5,15 @@ mod detail;
 mod duration;
 mod editor;
 mod graph;
+mod ingredient_lines;
 mod list;
 mod model;
 mod section;
 mod step_canvas;
 
 pub use detail::{
-    RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome, RecipeDetailStatus,
-    RecipeDetailStep, RecipeDetailView,
+    RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailLine, RecipeDetailOutcome,
+    RecipeDetailStatus, RecipeDetailStep, RecipeDetailView,
 };
 pub use duration::{DurationChip, DurationEntry, DurationError, DurationInput, DurationParts};
 pub use editor::{
@@ -20,6 +21,7 @@ pub use editor::{
     RecipeEditorView,
 };
 pub use graph::{ConnectRefusal, StepEdge, StepEdges};
+pub use ingredient_lines::{IngredientLineView, IngredientLinesEvent};
 pub use list::{
     RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListRow, RecipeListStatus, RecipeListView,
 };

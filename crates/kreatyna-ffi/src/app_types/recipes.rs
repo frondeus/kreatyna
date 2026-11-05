@@ -829,8 +829,10 @@ impl From<core::RecipeDetailStatus> for RecipeDetailStatus {
                 error: error.into(),
             },
             core::RecipeDetailStatus::Missing => Self::Missing,
+            // The lines cross the FFI in REC-07 change 4.
             core::RecipeDetailStatus::Ready {
                 title,
+                lines: _,
                 steps,
                 deletion,
             } => Self::Ready {

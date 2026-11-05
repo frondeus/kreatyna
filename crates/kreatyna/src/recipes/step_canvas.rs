@@ -7,7 +7,7 @@ use super::{
     DurationParts, Step, StepDurationS, StepEdge, StepEdges, StepId, StepInstructions, StepKind,
     StepTitle, StepTitleError, StepWrite, duration::duration_chips,
 };
-use crate::problem_display::ProblemDisplay;
+use crate::{draft_change::DraftChange, problem_display::ProblemDisplay};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StepCanvasEvent {
@@ -153,25 +153,6 @@ pub enum StepLabel {
     Untitled,
 }
 
-/// Whether a canvas call changed the steps or the selection. The editor
-/// renders only after `Changed`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[must_use]
-pub(crate) enum CanvasChange {
-    Changed,
-    Unchanged,
-}
-
-impl CanvasChange {
-    /// `Changed` when either is `Changed`.
-    fn or(self, other: CanvasChange) -> CanvasChange {
-        match (self, other) {
-            (CanvasChange::Unchanged, CanvasChange::Unchanged) => CanvasChange::Unchanged,
-            _ => CanvasChange::Changed,
-        }
-    }
-}
-
 /// A step's duration as the editor keeps it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum DraftDuration {
@@ -281,12 +262,12 @@ impl DraftStep {
     }
 
     /// Puts the step at `to`, and says whether its position changed.
-    fn place(&mut self, to: CanvasPoint) -> CanvasChange {
+    fn place(&mut self, to: CanvasPoint) -> DraftChange {
         if self.position == to {
-            return CanvasChange::Unchanged;
+            return DraftChange::Unchanged;
         }
         self.position = to;
-        CanvasChange::Changed
+        DraftChange::Changed
     }
 
     fn matches(&self, step: &Step) -> bool {
@@ -347,7 +328,7 @@ impl StepCanvas {
     /// Applies `event`, and says whether the steps, the arrows, the
     /// selection, or the refusal changed. Any change other than a refused
     /// `Connect` clears the refusal.
-    pub(crate) fn apply(&mut self, event: StepCanvasEvent) -> CanvasChange {
+    pub(crate) fn apply(&mut self, event: StepCanvasEvent) -> DraftChange {
         if let StepCanvasEvent::Connect { from, to } = event {
             return self.connect(StepEdge { from, to });
         }
@@ -356,8 +337,8 @@ impl StepCanvas {
     }
 
     /// Clears the refusal after a change.
-    fn settle(&mut self, change: CanvasChange) -> CanvasChange {
-        if change == CanvasChange::Changed {
+    fn settle(&mut self, change: DraftChange) -> DraftChange {
+        if change == DraftChange::Changed {
             self.refusal = None;
         }
         change
@@ -365,22 +346,22 @@ impl StepCanvas {
 
     /// Adds `edge`, or keeps why not. A refusal changes nothing but the
     /// refusal itself.
-    fn connect(&mut self, edge: StepEdge) -> CanvasChange {
+    fn connect(&mut self, edge: StepEdge) -> DraftChange {
         if self.step(edge.from).is_none() || self.step(edge.to).is_none() {
-            return CanvasChange::Unchanged;
+            return DraftChange::Unchanged;
         }
         match self.edges.connect(edge) {
-            Ok(()) => self.settle(CanvasChange::Changed),
-            Err(refusal) if self.refusal == Some(refusal) => CanvasChange::Unchanged,
+            Ok(()) => self.settle(DraftChange::Changed),
+            Err(refusal) if self.refusal == Some(refusal) => DraftChange::Unchanged,
             Err(refusal) => {
                 self.refusal = Some(refusal);
-                CanvasChange::Changed
+                DraftChange::Changed
             }
         }
     }
 
     /// Every event but `Connect`.
-    fn change(&mut self, event: StepCanvasEvent) -> CanvasChange {
+    fn change(&mut self, event: StepCanvasEvent) -> DraftChange {
         match event {
             StepCanvasEvent::Add { at } => {
                 let id = StepId::generate();
@@ -393,14 +374,14 @@ impl StepCanvas {
                     instructions: String::new(),
                 });
                 self.selection = Selection::Step(id);
-                CanvasChange::Changed
+                DraftChange::Changed
             }
             StepCanvasEvent::Select(id) => self.select_step(id),
             StepCanvasEvent::ClearSelection => self.set_selection(Selection::None),
             StepCanvasEvent::SetTitle { id, title } => self.edit(id, |step| &mut step.title, title),
             StepCanvasEvent::Move { id, to } => {
                 let Some(step) = self.step_mut(id) else {
-                    return CanvasChange::Unchanged;
+                    return DraftChange::Unchanged;
                 };
                 let placed = step.place(to);
                 // Both run: the position and the selection can each change.
@@ -408,7 +389,7 @@ impl StepCanvas {
             }
             StepCanvasEvent::Delete(id) => {
                 let Some(index) = self.index_of(id) else {
-                    return CanvasChange::Unchanged;
+                    return DraftChange::Unchanged;
                 };
                 self.steps.remove(index);
                 // `edges` only joins steps in `steps`, and `selection` only
@@ -422,7 +403,7 @@ impl StepCanvas {
                 if selected_goes {
                     self.selection = Selection::None;
                 }
-                CanvasChange::Changed
+                DraftChange::Changed
             }
             StepCanvasEvent::SetDuration { id, input } => self.edit(
                 id,
@@ -435,7 +416,7 @@ impl StepCanvas {
             }
             StepCanvasEvent::SelectConnection(edge) => {
                 if !self.edges.contains(edge) {
-                    return CanvasChange::Unchanged;
+                    return DraftChange::Unchanged;
                 }
                 self.set_selection(Selection::Connection(edge))
             }
@@ -446,17 +427,17 @@ impl StepCanvas {
                 self.edges.disconnect(edge)
             }
             // `apply` handles it before `change`.
-            StepCanvasEvent::Connect { .. } => CanvasChange::Unchanged,
+            StepCanvasEvent::Connect { .. } => DraftChange::Unchanged,
         }
     }
 
     /// Sets the selection, and says whether it changed.
-    fn set_selection(&mut self, selection: Selection) -> CanvasChange {
+    fn set_selection(&mut self, selection: Selection) -> DraftChange {
         if self.selection == selection {
-            return CanvasChange::Unchanged;
+            return DraftChange::Unchanged;
         }
         self.selection = selection;
-        CanvasChange::Changed
+        DraftChange::Changed
     }
 
     /// Sets one field of the step `id` to `value`, and says whether it
@@ -466,16 +447,16 @@ impl StepCanvas {
         id: StepId,
         field: impl FnOnce(&mut DraftStep) -> &mut T,
         value: T,
-    ) -> CanvasChange {
+    ) -> DraftChange {
         let Some(step) = self.step_mut(id) else {
-            return CanvasChange::Unchanged;
+            return DraftChange::Unchanged;
         };
         let field = field(step);
         if *field == value {
-            return CanvasChange::Unchanged;
+            return DraftChange::Unchanged;
         }
         *field = value;
-        CanvasChange::Changed
+        DraftChange::Changed
     }
 
     /// Where the step `id` is in `steps`. `None` for an id that names no
@@ -495,16 +476,16 @@ impl StepCanvas {
 
     /// Selects the step `id` for Save, which shows the first step that
     /// breaks a rule. Clears the refusal when the selection changes.
-    pub(crate) fn select(&mut self, id: StepId) -> CanvasChange {
+    pub(crate) fn select(&mut self, id: StepId) -> DraftChange {
         let change = self.select_step(id);
         self.settle(change)
     }
 
     /// Selects the step `id`, and says whether the selection changed. An id
     /// that names no step changes nothing.
-    fn select_step(&mut self, id: StepId) -> CanvasChange {
+    fn select_step(&mut self, id: StepId) -> DraftChange {
         if self.step(id).is_none() {
-            return CanvasChange::Unchanged;
+            return DraftChange::Unchanged;
         }
         self.set_selection(Selection::Step(id))
     }

@@ -23,7 +23,7 @@ Decisions.
 | A line's name is trimmed and must not be empty. A line with an empty name blocks Save and shows "Name required" on that line, from the first Save on. | The epic card; the step title rule (REC-14/Q2). |
 | Two lines may have the same name. | "salt" can appear twice, for example for the dough and for the topping. REC-10 links lines; it does not merge them. |
 | The remove button (−) removes the line at once, with no question. Cancel still asks "Discard changes?" for the whole edit (E-10). | A step deletes the same way (REC-16). |
-| You drag a line by its handle (≡) onto another line. The dragged line takes that line's place, and the lines between move one place. | Q1. |
+| You drag a line by its handle (≡) onto another line. The dragged line takes that line's place, and the lines between move one place. So it ends up before that line when it moves up, and after it when it moves down: with penne, oil, basil, basil onto penne gives basil, penne, oil, and penne onto basil gives oil, basil, penne. | Q1; the name `onto` stays (change 3 review). |
 | If the drag cannot work on macOS, each line gets **Move Up** and **Move Down** in its context menu instead, and Validation says so. | MAC-05/Q4: a drag inside a grouped `Form` did not reorder, and MAC-05 used this fallback. |
 | Save writes the lines with the title, the steps and the arrows, in the same transaction. A line keeps its id through every save. | The epic card; D-40. |
 | The read view lists the lines by name, in their order, above the steps. A recipe with no lines shows "None yet", as today. | The mockup, section 1. |
@@ -157,7 +157,15 @@ pub enum IngredientLinesEvent {
     SetName { id: IngredientLineId, name: String },
     /// The − button.
     Remove { id: IngredientLineId },
-    /// A drop of `id` onto `onto`: `id` takes `onto`'s place (REC-07/Q1).
+    /// A drop of `id` onto `onto`: `id` takes `onto`'s place (REC-07/Q1),
+    /// so it ends up before `onto` when it moves up and after `onto` when
+    /// it moves down. With penne, oil, basil:
+    ///
+    /// | Drag              | Result            | The dragged line ends up |
+    /// |-------------------|-------------------|--------------------------|
+    /// | basil onto penne  | basil, penne, oil | before penne             |
+    /// | penne onto basil  | oil, basil, penne | after basil              |
+    ///
     /// Ignored when either id names no line, or when they are the same.
     Move { id: IngredientLineId, onto: IngredientLineId },
 }

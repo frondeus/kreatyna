@@ -1,11 +1,11 @@
 //! The read view of one saved recipe in the detail pane (REC-03). It loads
-//! the recipe by id each time it opens (E-08). REC-07 adds the ingredient
+//! the recipe by id each time it opens (E-08). REC-07 shows the ingredient
 //! lines, REC-14 the steps, and REC-19 shows the steps as stages (D-16).
 //! REC-05 deletes the shown recipe after a question (MAC-07).
 use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
 use super::{
-    Recipe, RecipeId, StepDurationS, StepId, StepKind,
+    IngredientLineId, Recipe, RecipeId, StepDurationS, StepId, StepKind,
     capabilities::{RecipeCapabilities, RecipeDeleteError, RecipeEffectStream, RecipeLoadError},
 };
 use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
@@ -49,10 +49,20 @@ pub enum RecipeDetailStatus {
     Missing,
     Ready {
         title: String,
+        /// In list order (REC-07/Q1).
+        lines: Vec<RecipeDetailLine>,
         /// In the order added, until REC-19 shows stages (D-16).
         steps: Vec<RecipeDetailStep>,
         deletion: RecipeDeletion,
     },
+}
+
+/// An ingredient line in the read view: its name, such as "penne pasta"
+/// (REC-07). REC-08 adds the amount, unit and note.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecipeDetailLine {
+    pub id: IngredientLineId,
+    pub name: String,
 }
 
 /// A step in the read view's flat list (REC-14): "Boil water · 10 min ·
@@ -332,6 +342,14 @@ impl Widget for RecipeDetail {
             State::Missing => RecipeDetailStatus::Missing,
             State::Ready { recipe, deletion } => RecipeDetailStatus::Ready {
                 title: recipe.title.clone(),
+                lines: recipe
+                    .lines
+                    .iter()
+                    .map(|line| RecipeDetailLine {
+                        id: line.id,
+                        name: line.name.as_ref().to_owned(),
+                    })
+                    .collect(),
                 steps: recipe
                     .steps
                     .iter()

@@ -1,9 +1,10 @@
 use kreatyna::capabilities::ResolveRender;
 use kreatyna::confirmation::{ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 use kreatyna::recipes::{
-    CanvasPoint, Recipe, RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome,
-    RecipeDetailStatus, RecipeDetailStep, RecipeDetailView, RecipeId, Step, StepDurationS,
-    StepEdges, StepId, StepInstructions, StepKind,
+    CanvasPoint, IngredientLine, IngredientLineId, IngredientLineName, Recipe, RecipeDeletion,
+    RecipeDetail, RecipeDetailEvent, RecipeDetailLine, RecipeDetailOutcome, RecipeDetailStatus,
+    RecipeDetailStep, RecipeDetailView, RecipeId, Step, StepDurationS, StepEdges, StepId,
+    StepInstructions, StepKind,
     capabilities::{RecipeDeleteError, RecipeEffectStream, RecipeLoadError, ResolveRecipeStore},
 };
 use krucyfiks::{Command, Latest, Message, Widget, effects::CommandTestExt};
@@ -85,9 +86,40 @@ async fn a_recipe_without_steps_shows_an_empty_step_list() -> anyhow::Result<()>
         f.detail.view(),
         view(RecipeDetailStatus::Ready {
             title: "Toast".into(),
+            lines: vec![],
             steps: vec![],
             deletion: RecipeDeletion::Idle,
         })
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn the_read_view_lists_the_lines_by_name_in_list_order() -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    let load = f.detail.init();
+    let basil = line(23, "basil")?;
+    let penne = line(21, "penne pasta")?;
+    let pasta = Recipe {
+        lines: vec![basil.clone(), penne.clone()],
+        ..shakshuka()
+    };
+    f.finish_load(load, Ok(Some(pasta))).await?;
+    let RecipeDetailStatus::Ready { lines, .. } = f.detail.view().status else {
+        anyhow::bail!("the recipe is not shown");
+    };
+    assert_eq!(
+        lines,
+        [
+            RecipeDetailLine {
+                id: basil.id,
+                name: "basil".into(),
+            },
+            RecipeDetailLine {
+                id: penne.id,
+                name: "penne pasta".into(),
+            },
+        ]
     );
     Ok(())
 }
@@ -401,6 +433,13 @@ fn id() -> RecipeId {
 /// Shakshuka with two steps. Fry onion was added first, so the read view
 /// lists it first, although it is right of Dice onion on the canvas. Fry
 /// onion has a duration, Waiting, and instructions (REC-17).
+fn line(id: u128, name: &str) -> anyhow::Result<IngredientLine> {
+    Ok(IngredientLine {
+        id: IngredientLineId::from(Uuid::from_u128(id)),
+        name: IngredientLineName::try_new(name)?,
+    })
+}
+
 fn shakshuka() -> Recipe {
     Recipe {
         id: id(),
@@ -454,6 +493,7 @@ fn shakshuka_steps() -> Vec<RecipeDetailStep> {
 fn ready(title: &str) -> RecipeDetailStatus {
     RecipeDetailStatus::Ready {
         title: title.into(),
+        lines: vec![],
         steps: shakshuka_steps(),
         deletion: RecipeDeletion::Idle,
     }
@@ -462,6 +502,7 @@ fn ready(title: &str) -> RecipeDetailStatus {
 fn deletion(deletion: RecipeDeletion) -> RecipeDetailStatus {
     RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
+        lines: vec![],
         steps: shakshuka_steps(),
         deletion,
     }

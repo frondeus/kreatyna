@@ -8,6 +8,7 @@ pub mod capabilities;
 
 pub mod confirmation;
 mod create_availability;
+mod draft_change;
 pub use create_availability::CreateAvailability;
 pub mod ingredients;
 mod problem_display;

@@ -5,7 +5,8 @@ use std::collections::{BTreeSet, HashSet};
 
 use uuid::Uuid;
 
-use super::{StepId, step_canvas::CanvasChange};
+use super::StepId;
+use crate::draft_change::DraftChange;
 
 /// "`to` comes after `from`": an arrow from the ● of `from` to the ○ of
 /// `to`.
@@ -66,11 +67,11 @@ impl StepEdges {
     }
 
     /// Removes `edge`, and says whether it was there.
-    pub(crate) fn disconnect(&mut self, edge: StepEdge) -> CanvasChange {
+    pub(crate) fn disconnect(&mut self, edge: StepEdge) -> DraftChange {
         if self.0.remove(&edge) {
-            CanvasChange::Changed
+            DraftChange::Changed
         } else {
-            CanvasChange::Unchanged
+            DraftChange::Unchanged
         }
     }
 

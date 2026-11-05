@@ -27,8 +27,10 @@ pub use list::{
 };
 pub use model::{
     CanvasPoint, IngredientLine, IngredientLineId, IngredientLineIdParseError, IngredientLineName,
-    IngredientLineNameError, NewRecipe, Recipe, RecipeId, RecipeIdParseError, RecipeSummary,
-    RecipeTitle, RecipeTitleError, RecipeUpdate, Step, StepDurationS, StepDurationSError, StepId,
+    IngredientLineNameError, KnownUnit, NewRecipe, Recipe, RecipeId, RecipeIdParseError,
+    RecipeIngredientAmount, RecipeIngredientAmountError, RecipeIngredientNote,
+    RecipeIngredientNoteError, RecipeIngredientQuantity, RecipeSummary, RecipeTitle,
+    RecipeTitleError, RecipeUpdate, Step, StepDurationS, StepDurationSError, StepId,
     StepIdParseError, StepInstructions, StepInstructionsError, StepKind, StepTitle, StepTitleError,
     StepWrite,
 };

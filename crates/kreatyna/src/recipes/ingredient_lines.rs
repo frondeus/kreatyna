@@ -2,7 +2,10 @@
 //! type its name, drag it to another place, or remove it. The lines have no
 //! effects, so they are a plain struct, not a widget: the editor renders
 //! after each change.
-use super::{IngredientLine, IngredientLineId, IngredientLineName, IngredientLineNameError};
+use super::{
+    IngredientLine, IngredientLineId, IngredientLineName, IngredientLineNameError,
+    RecipeIngredientQuantity,
+};
 use crate::{draft_change::DraftChange, problem_display::ProblemDisplay};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -128,7 +131,13 @@ impl DraftLines {
             .iter()
             .map(|line| {
                 IngredientLineName::try_new(line.name.as_str())
-                    .map(|name| IngredientLine { id: line.id, name })
+                    .map(|name| IngredientLine {
+                        id: line.id,
+                        name,
+                        // The editor sets amounts and notes in REC-08 change 3.
+                        quantity: RecipeIngredientQuantity::Unmeasured,
+                        note: None,
+                    })
                     .map_err(|_| UnnamedLine)
             })
             .collect()

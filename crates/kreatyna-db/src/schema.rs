@@ -33,6 +33,9 @@ diesel::table! {
         recipe_local_id -> BigInt,
         ordinal -> BigInt,
         name -> Text,
+        amount -> Nullable<Text>,
+        unit -> Nullable<Text>,
+        note -> Nullable<Text>,
     }
 }
 

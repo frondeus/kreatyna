@@ -14,9 +14,9 @@ use kreatyna::{
         CanvasPoint, DurationChip, DurationEntry, DurationInput, DurationParts, IngredientLine,
         IngredientLineId, IngredientLineName, IngredientLinesEvent, Recipe, RecipeEditor,
         RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus, RecipeId,
-        RecipeTitleError, Step, StepCanvasEvent, StepCanvasView, StepDurationS, StepDurationView,
-        StepEdge, StepEdges, StepId, StepInstructions, StepKind, StepLabel, StepNodeView,
-        StepNodesView, StepProblems, StepTitle, StepTitleError, StepWrite,
+        RecipeIngredientQuantity, RecipeTitleError, Step, StepCanvasEvent, StepCanvasView,
+        StepDurationS, StepDurationView, StepEdge, StepEdges, StepId, StepInstructions, StepKind,
+        StepLabel, StepNodeView, StepNodesView, StepProblems, StepTitle, StepTitleError, StepWrite,
         capabilities::{
             RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
         },
@@ -66,6 +66,8 @@ pub(crate) fn saved_line(id: u128, name: &str) -> anyhow::Result<IngredientLine>
     Ok(IngredientLine {
         id: IngredientLineId::from(Uuid::from_u128(id)),
         name: IngredientLineName::try_new(name)?,
+        quantity: RecipeIngredientQuantity::Unmeasured,
+        note: None,
     })
 }
 

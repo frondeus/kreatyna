@@ -3,8 +3,8 @@ use kreatyna::confirmation::{ConfirmationEvent, ConfirmationOutcome, Confirmatio
 use kreatyna::recipes::{
     CanvasPoint, IngredientLine, IngredientLineId, IngredientLineName, Recipe, RecipeDeletion,
     RecipeDetail, RecipeDetailEvent, RecipeDetailLine, RecipeDetailOutcome, RecipeDetailStatus,
-    RecipeDetailStep, RecipeDetailView, RecipeId, Step, StepDurationS, StepEdges, StepId,
-    StepInstructions, StepKind,
+    RecipeDetailStep, RecipeDetailView, RecipeId, RecipeIngredientQuantity, Step, StepDurationS,
+    StepEdges, StepId, StepInstructions, StepKind,
     capabilities::{RecipeDeleteError, RecipeEffectStream, RecipeLoadError, ResolveRecipeStore},
 };
 use krucyfiks::{Command, Latest, Message, Widget, effects::CommandTestExt};
@@ -437,6 +437,8 @@ fn line(id: u128, name: &str) -> anyhow::Result<IngredientLine> {
     Ok(IngredientLine {
         id: IngredientLineId::from(Uuid::from_u128(id)),
         name: IngredientLineName::try_new(name)?,
+        quantity: RecipeIngredientQuantity::Unmeasured,
+        note: None,
     })
 }
 

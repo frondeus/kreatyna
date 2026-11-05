@@ -1,4 +1,5 @@
 use nutype::nutype;
+use rust_decimal::Decimal;
 use uuid::Uuid;
 
 use super::StepEdges;
@@ -55,12 +56,62 @@ impl IngredientLineId {
 )]
 pub struct IngredientLineName(String);
 
-/// A line of a recipe's ingredient list, such as "penne pasta" (D-10). The
-/// store reads and writes this type, so a stored line has a valid name.
+/// A line's amount, such as 300 in "300 g penne pasta" (REC-08): an exact
+/// decimal, more than 0. `try_new` fails with
+/// `RecipeIngredientAmountError::GreaterViolated`.
+#[nutype(
+    validate(greater = Decimal::ZERO),
+    derive(Debug, Clone, Copy, PartialEq, Eq, Display, TryFrom, Into)
+)]
+pub struct RecipeIngredientAmount(Decimal);
+
+/// The units that the app knows (D-25), in the picker's order. Only these
+/// units can convert later. REC-09 adds custom units.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum KnownUnit {
+    Gram,
+    Kilogram,
+    Millilitre,
+    Litre,
+    Teaspoon,
+    Tablespoon,
+    Cup,
+    Piece,
+}
+
+/// How much of an ingredient a line names (REC-08). A unit without an amount
+/// cannot be built.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RecipeIngredientQuantity {
+    /// "salt, to taste"
+    Unmeasured,
+    /// "2 eggs"
+    Count(RecipeIngredientAmount),
+    /// "300 g penne pasta"
+    Measured {
+        amount: RecipeIngredientAmount,
+        unit: KnownUnit,
+    },
+}
+
+/// A line's note, such as "extra virgin" or "to taste" (D-12): trimmed and
+/// not empty. `try_new` fails with `RecipeIngredientNoteError::NotEmptyViolated`.
+#[nutype(
+    sanitize(trim),
+    validate(not_empty),
+    derive(Debug, Clone, PartialEq, Eq, AsRef)
+)]
+pub struct RecipeIngredientNote(String);
+
+/// A line of a recipe's ingredient list, such as "300 g penne pasta" (D-10,
+/// D-12). The store reads and writes this type, so a stored line has a valid
+/// name, and a unit only with an amount.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IngredientLine {
     pub id: IngredientLineId,
     pub name: IngredientLineName,
+    pub quantity: RecipeIngredientQuantity,
+    pub note: Option<RecipeIngredientNote>,
 }
 
 /// A position on the step canvas in whole points, from the top left corner

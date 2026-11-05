@@ -10,12 +10,16 @@ use diesel::{
 use kreatyna::{
     ingredients::name_key,
     recipes::{
-        CanvasPoint, IngredientLine, IngredientLineId, IngredientLineName, Recipe, RecipeId,
+        CanvasPoint, IngredientLine, IngredientLineId, IngredientLineName, KnownUnit, Recipe,
+        RecipeId, RecipeIngredientAmount, RecipeIngredientNote, RecipeIngredientQuantity,
         RecipeTitle, Step, StepDurationS, StepEdges, StepId, StepInstructions, StepKind, StepWrite,
     },
 };
 
-use super::schema::{recipe_ingredient_lines, recipe_step_edges, recipe_steps, recipes};
+use super::{
+    columns::{db_decimal, db_enum, db_text},
+    schema::{recipe_ingredient_lines, recipe_step_edges, recipe_steps, recipes},
+};
 
 /// The `local_id` of a `recipes` row: the key that its steps point to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, AsExpression, FromSqlRow)]
@@ -118,77 +122,34 @@ impl ToSql<BigInt, Sqlite> for DbDurationS {
     }
 }
 
-/// A step's kind as its text: `active` or `waiting` (REC-17). Any other
-/// text fails to read.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
-#[diesel(sql_type = Text)]
-pub(crate) struct DbStepKind(pub StepKind);
+// A step's kind as its text (REC-17). Any other text fails to read.
+db_enum!(DbStepKind, StepKind {
+    Active => "active",
+    Waiting => "waiting",
+});
 
-impl DbStepKind {
-    fn text(self) -> &'static str {
-        match self.0 {
-            StepKind::Active => "active",
-            StepKind::Waiting => "waiting",
-        }
-    }
-}
+// A step's instructions (REC-17), and a line's name (REC-07) and note
+// (REC-08). Reading a blank text fails, as the tables' CHECKs do not allow it.
+db_text!(DbInstructions, StepInstructions);
+db_text!(DbLineName, IngredientLineName);
+db_text!(DbRecipeIngredientNote, RecipeIngredientNote);
 
-impl FromSql<Text, Sqlite> for DbStepKind {
-    fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
-        match <String as FromSql<Text, Sqlite>>::from_sql(value)?.as_str() {
-            "active" => Ok(Self(StepKind::Active)),
-            "waiting" => Ok(Self(StepKind::Waiting)),
-            other => Err(format!("unknown step kind {other:?}").into()),
-        }
-    }
-}
+// A line's amount as exact decimal text (REC-08). Reading text that is not a
+// decimal more than 0 fails.
+db_decimal!(DbRecipeIngredientAmount, RecipeIngredientAmount);
 
-impl ToSql<Text, Sqlite> for DbStepKind {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
-        out.set_value(self.text());
-        Ok(IsNull::No)
-    }
-}
-
-/// A step's instructions (REC-17). Reading a blank text fails, as the
-/// table's CHECK does not allow it.
-#[derive(Debug, Clone, PartialEq, Eq, AsExpression, FromSqlRow)]
-#[diesel(sql_type = Text)]
-pub(crate) struct DbInstructions(pub StepInstructions);
-
-impl FromSql<Text, Sqlite> for DbInstructions {
-    fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
-        let text = <String as FromSql<Text, Sqlite>>::from_sql(value)?;
-        Ok(Self(StepInstructions::try_new(text)?))
-    }
-}
-
-impl ToSql<Text, Sqlite> for DbInstructions {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
-        out.set_value(self.0.as_ref().to_owned());
-        Ok(IsNull::No)
-    }
-}
-
-/// An ingredient line's name (REC-07). Reading a blank text fails, as the
-/// table's CHECK does not allow it.
-#[derive(Debug, Clone, PartialEq, Eq, AsExpression, FromSqlRow)]
-#[diesel(sql_type = Text)]
-pub(crate) struct DbLineName(pub IngredientLineName);
-
-impl FromSql<Text, Sqlite> for DbLineName {
-    fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
-        let text = <String as FromSql<Text, Sqlite>>::from_sql(value)?;
-        Ok(Self(IngredientLineName::try_new(text)?))
-    }
-}
-
-impl ToSql<Text, Sqlite> for DbLineName {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
-        out.set_value(self.0.as_ref().to_owned());
-        Ok(IsNull::No)
-    }
-}
+// A line's known unit as its symbol (REC-08). Any other text fails to read,
+// as the table's CHECK does not allow it.
+db_enum!(DbKnownUnit, KnownUnit {
+    Gram => "g",
+    Kilogram => "kg",
+    Millilitre => "ml",
+    Litre => "l",
+    Teaspoon => "tsp",
+    Tablespoon => "tbsp",
+    Cup => "cup",
+    Piece => "piece",
+});
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
 #[diesel(sql_type = Text)]
@@ -339,14 +300,34 @@ impl NewStepRow {
 pub(crate) struct LineRow {
     pub remote_id: RemoteLineId,
     pub name: DbLineName,
+    pub amount: Option<DbRecipeIngredientAmount>,
+    pub unit: Option<DbKnownUnit>,
+    pub note: Option<DbRecipeIngredientNote>,
 }
 
+/// A stored line has a unit and no amount. Only a broken file or another
+/// program can write it: the table's CHECK refuses it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("a stored ingredient line has a unit and no amount")]
+pub(crate) struct UnitWithoutAmount;
+
 impl LineRow {
-    pub fn into_domain(self) -> IngredientLine {
-        IngredientLine {
+    pub fn into_domain(self) -> Result<IngredientLine, UnitWithoutAmount> {
+        let quantity = match (self.amount, self.unit) {
+            (None, None) => RecipeIngredientQuantity::Unmeasured,
+            (Some(amount), None) => RecipeIngredientQuantity::Count(amount.0),
+            (Some(amount), Some(unit)) => RecipeIngredientQuantity::Measured {
+                amount: amount.0,
+                unit: unit.0,
+            },
+            (None, Some(_)) => return Err(UnitWithoutAmount),
+        };
+        Ok(IngredientLine {
             id: self.remote_id.0,
             name: self.name.0,
-        }
+            quantity,
+            note: self.note.map(|note| note.0),
+        })
     }
 }
 
@@ -357,6 +338,9 @@ pub(crate) struct NewLineRow {
     pub recipe_local_id: LocalRecipeId,
     pub ordinal: DbOrdinal,
     pub name: DbLineName,
+    pub amount: Option<DbRecipeIngredientAmount>,
+    pub unit: Option<DbKnownUnit>,
+    pub note: Option<DbRecipeIngredientNote>,
 }
 
 impl NewLineRow {
@@ -368,6 +352,18 @@ impl NewLineRow {
             recipe_local_id,
             ordinal,
             name: DbLineName(line.name.clone()),
+            amount: match line.quantity {
+                RecipeIngredientQuantity::Unmeasured => None,
+                RecipeIngredientQuantity::Count(amount)
+                | RecipeIngredientQuantity::Measured { amount, .. } => {
+                    Some(DbRecipeIngredientAmount(amount))
+                }
+            },
+            unit: match line.quantity {
+                RecipeIngredientQuantity::Unmeasured | RecipeIngredientQuantity::Count(_) => None,
+                RecipeIngredientQuantity::Measured { unit, .. } => Some(DbKnownUnit(unit)),
+            },
+            note: line.note.clone().map(DbRecipeIngredientNote),
         }
     }
 }

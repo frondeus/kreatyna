@@ -4,9 +4,10 @@ use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use kreatyna::{
     ingredients::capabilities::IngredientStoreMut,
     recipes::{
-        CanvasPoint, IngredientLine, IngredientLineId, IngredientLineName, NewRecipe, Recipe,
-        RecipeId, RecipeSummary, RecipeTitle, RecipeUpdate, Step, StepDurationS, StepEdge,
-        StepEdges, StepId, StepInstructions, StepKind, StepTitle, StepWrite,
+        CanvasPoint, IngredientLine, IngredientLineId, IngredientLineName, KnownUnit, NewRecipe,
+        Recipe, RecipeId, RecipeIngredientAmount, RecipeIngredientNote, RecipeIngredientQuantity,
+        RecipeSummary, RecipeTitle, RecipeUpdate, Step, StepDurationS, StepEdge, StepEdges, StepId,
+        StepInstructions, StepKind, StepTitle, StepWrite,
     },
 };
 use test_case::test_case;
@@ -150,6 +151,54 @@ async fn a_created_recipe_keeps_its_lines_in_list_order() -> anyhow::Result<()> 
         RecipeStoreMut::get(&mut db, created.id).await,
         Ok(Some(created))
     );
+    Ok(())
+}
+
+#[test_case(None, None, Some("to taste"); "salt, to taste")]
+#[test_case(Some("2"), None, None; "2 eggs")]
+#[test_case(Some("300"), Some(KnownUnit::Gram), None; "300 g penne pasta")]
+#[test_case(Some("12.3400"), Some(KnownUnit::Tablespoon), Some("extra virgin"); "an exact decimal and a note")]
+#[tokio::test]
+async fn a_line_keeps_its_amount_unit_and_note(
+    amount: Option<&str>,
+    unit: Option<KnownUnit>,
+    note: Option<&str>,
+) -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let lines = vec![IngredientLine {
+        quantity: quantity(amount, unit)?,
+        note: note.map(RecipeIngredientNote::try_new).transpose()?,
+        ..line(1, "olive oil")?
+    }];
+    let created = RecipeStoreMut::create(&mut db, with_lines("Pasta", lines.clone())?).await?;
+    assert_eq!(created.lines, lines);
+    let stored = RecipeStoreMut::get(&mut db, created.id)
+        .await?
+        .context("Pasta is gone")?;
+    assert_eq!(stored.lines, lines);
+    Ok(())
+}
+
+#[test_case(KnownUnit::Gram)]
+#[test_case(KnownUnit::Kilogram)]
+#[test_case(KnownUnit::Millilitre)]
+#[test_case(KnownUnit::Litre)]
+#[test_case(KnownUnit::Teaspoon)]
+#[test_case(KnownUnit::Tablespoon)]
+#[test_case(KnownUnit::Cup)]
+#[test_case(KnownUnit::Piece)]
+#[tokio::test]
+async fn each_known_unit_is_stored_and_read_back(unit: KnownUnit) -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let lines = vec![IngredientLine {
+        quantity: quantity(Some("1"), Some(unit))?,
+        ..line(1, "flour")?
+    }];
+    let created = RecipeStoreMut::create(&mut db, with_lines("Bread", lines.clone())?).await?;
+    let stored = RecipeStoreMut::get(&mut db, created.id)
+        .await?
+        .context("Bread is gone")?;
+    assert_eq!(stored.lines, lines);
     Ok(())
 }
 
@@ -467,6 +516,40 @@ async fn a_recipe_from_before_rec_07_upgrades_with_no_lines() -> anyhow::Result<
 }
 
 #[tokio::test]
+async fn a_line_from_before_rec_08_upgrades_with_no_amount_unit_or_note() -> anyhow::Result<()> {
+    let folder = tempfile::tempdir()?;
+    let path = folder.path().join("app.sqlite");
+    let path = path.to_str().context("the temporary path is not UTF-8")?;
+    {
+        let mut db = SqliteConnection::establish(path)?;
+        // The schema before REC-08: up to and with the ingredient lines.
+        for _ in 0..8 {
+            db.run_next_migration(MIGRATIONS)
+                .map_err(|error| anyhow!(error))?;
+        }
+        db.batch_execute(TWO_RECIPES)?;
+        db.batch_execute(&format!(
+            "INSERT INTO recipe_ingredient_lines (remote_id, recipe_local_id, ordinal, name)
+             VALUES ('{LINE}', (SELECT local_id FROM recipes WHERE title = 'Shakshuka'), 0, 'eggs')"
+        ))?;
+    }
+    let mut db = SqliteDatabase::new(path).await?;
+    let shakshuka = RecipeStoreMut::get(&mut db, SHAKSHUKA.parse()?)
+        .await?
+        .context("Shakshuka is gone")?;
+    assert_eq!(
+        shakshuka.lines,
+        vec![IngredientLine {
+            id: LINE.parse()?,
+            name: IngredientLineName::try_new("eggs")?,
+            quantity: RecipeIngredientQuantity::Unmeasured,
+            note: None,
+        }]
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn a_recipe_from_before_rec_14_upgrades_with_no_steps() -> anyhow::Result<()> {
     let folder = tempfile::tempdir()?;
     let path = folder.path().join("app.sqlite");
@@ -578,6 +661,21 @@ fn the_line_table_refuses_invalid_rows(values: &str) -> anyhow::Result<()> {
     let sql = format!(
         "INSERT INTO recipe_ingredient_lines (remote_id, recipe_local_id, name, ordinal)
          VALUES ('{LINE}', (SELECT local_id FROM recipes WHERE title = 'Shakshuka'), {values})"
+    );
+    assert!(db.batch_execute(&sql).is_err());
+    Ok(())
+}
+
+#[test_case("NULL, 'g', NULL"; "a unit without an amount")]
+#[test_case("'1', 'pinch', NULL"; "an unknown unit")]
+#[test_case("NULL, NULL, '  '"; "a blank note")]
+fn the_line_table_refuses_invalid_amounts_units_and_notes(values: &str) -> anyhow::Result<()> {
+    let mut db = migrated_connection()?;
+    let sql = format!(
+        "INSERT INTO recipe_ingredient_lines
+             (remote_id, recipe_local_id, ordinal, name, amount, unit, note)
+         VALUES ('{LINE}', (SELECT local_id FROM recipes WHERE title = 'Shakshuka'), 0, 'flour',
+                 {values})"
     );
     assert!(db.batch_execute(&sql).is_err());
     Ok(())
@@ -916,6 +1014,31 @@ async fn a_blank_stored_line_name_fails_get() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Only a broken file or another program can write these: the table's
+/// CHECK refuses the unit, and the store never writes the amounts.
+#[test_case("amount = NULL, unit = 'g'"; "a unit without an amount")]
+#[test_case("amount = '0'"; "a zero amount")]
+#[test_case("amount = 'lots'"; "an amount that is not a number")]
+#[tokio::test]
+async fn a_broken_stored_line_quantity_fails_get(set: &str) -> anyhow::Result<()> {
+    let mut db = SqliteDatabase::new(":memory:").await?;
+    let created =
+        RecipeStoreMut::create(&mut db, with_lines("Pasta", vec![line(1, "basil")?])?).await?;
+    let sql = format!(
+        "PRAGMA ignore_check_constraints = ON; \
+         UPDATE recipe_ingredient_lines SET {set}; \
+         PRAGMA ignore_check_constraints = OFF;"
+    );
+    db.connection
+        .spawn_blocking(move |conn| conn.batch_execute(&sql))
+        .await?;
+    assert_eq!(
+        RecipeStoreMut::get(&mut db, created.id).await,
+        Err(RecipeLoadError::Storage)
+    );
+    Ok(())
+}
+
 /// Only a broken file or another program can write these: the store never
 /// does.
 #[test_case("(1, 2), (2, 1)"; "a loop")]
@@ -985,6 +1108,29 @@ fn line(id: u128, name: &str) -> anyhow::Result<IngredientLine> {
     Ok(IngredientLine {
         id: format!("6f1c1d3e-0000-4000-8000-{id:012x}").parse::<IngredientLineId>()?,
         name: IngredientLineName::try_new(name)?,
+        quantity: RecipeIngredientQuantity::Unmeasured,
+        note: None,
+    })
+}
+
+/// A line's quantity from an amount as text and a unit, as a test names it.
+/// A unit needs an amount.
+fn quantity(
+    amount: Option<&str>,
+    unit: Option<KnownUnit>,
+) -> anyhow::Result<RecipeIngredientQuantity> {
+    let amount = amount
+        .map(|text| {
+            anyhow::Ok(RecipeIngredientAmount::try_new(
+                rust_decimal::Decimal::from_str_exact(text)?,
+            )?)
+        })
+        .transpose()?;
+    Ok(match (amount, unit) {
+        (None, None) => RecipeIngredientQuantity::Unmeasured,
+        (Some(amount), None) => RecipeIngredientQuantity::Count(amount),
+        (Some(amount), Some(unit)) => RecipeIngredientQuantity::Measured { amount, unit },
+        (None, Some(_)) => anyhow::bail!("a unit needs an amount"),
     })
 }
 

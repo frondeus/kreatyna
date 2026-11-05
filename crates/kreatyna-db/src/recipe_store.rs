@@ -18,7 +18,8 @@ use kreatyna::{
 use super::{
     recipe_models::{
         DbOrdinal, LineRow, LocalRecipeId, LocalStepId, NewLineRow, NewRecipeRow, NewStepRow,
-        RecipeRow, RemoteRecipeId, RemoteStepId, StepEdgeRow, StepRow, saved_step,
+        RecipeRow, RemoteRecipeId, RemoteStepId, StepEdgeRow, StepRow, UnitWithoutAmount,
+        saved_step,
     },
     schema::{recipe_ingredient_lines, recipe_step_edges, recipe_steps, recipes},
     sqlite::SqliteDatabase,
@@ -40,6 +41,8 @@ enum StoreFailure {
     EdgeOutsideRecipe,
     #[error("the stored edges break the step graph: {0}")]
     InvalidEdges(#[from] ConnectRefusal),
+    #[error(transparent)]
+    UnitWithoutAmount(#[from] UnitWithoutAmount),
 }
 
 /// A summary of every recipe. One query reads the recipes, one counts the
@@ -101,19 +104,20 @@ fn record(connection: &mut SqliteConnection, id: RecipeId) -> Result<Option<Reci
 }
 
 /// The lines of the recipe row `recipe_local_id`, in list order. A blank
-/// stored name fails the load (`DbLineName`).
+/// stored name or note, or a unit without an amount, fails the load.
 fn load_lines(
     connection: &mut SqliteConnection,
     recipe_local_id: LocalRecipeId,
 ) -> Result<Vec<IngredientLine>, StoreFailure> {
-    Ok(recipe_ingredient_lines::table
+    let lines = recipe_ingredient_lines::table
         .filter(recipe_ingredient_lines::recipe_local_id.eq(recipe_local_id))
         .order(recipe_ingredient_lines::ordinal.asc())
         .select(LineRow::as_select())
         .load::<LineRow>(connection)?
         .into_iter()
         .map(LineRow::into_domain)
-        .collect())
+        .collect::<Result<_, _>>()?;
+    Ok(lines)
 }
 
 /// Inserts `lines` for the recipe row `recipe_local_id`, with their place in

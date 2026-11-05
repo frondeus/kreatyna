@@ -14,7 +14,10 @@ use kreatyna::ingredients::{
 };
 use rust_decimal::Decimal;
 
-use super::schema::{ingredient_units, ingredients};
+use super::{
+    columns::{db_decimal, db_text},
+    schema::{ingredient_units, ingredients},
+};
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub(crate) enum ModelError {
@@ -168,82 +171,11 @@ impl ToSql<Integer, Sqlite> for DbNutritionBasis {
     }
 }
 
-macro_rules! db_quantity {
-    ($name:ident, $domain:ty) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
-        #[diesel(sql_type = Text)]
-        pub(crate) struct $name(pub $domain);
-
-        impl From<$domain> for $name {
-            fn from(value: $domain) -> Self {
-                Self(value)
-            }
-        }
-
-        impl From<$name> for $domain {
-            fn from(value: $name) -> Self {
-                value.0
-            }
-        }
-
-        impl FromSql<Text, Sqlite> for $name {
-            fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
-                let text = <String as FromSql<Text, Sqlite>>::from_sql(value)?;
-                let decimal = Decimal::from_str_exact(&text)?;
-                Ok(Self(<$domain>::try_new(decimal)?))
-            }
-        }
-
-        impl ToSql<Text, Sqlite> for $name {
-            fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
-                out.set_value(Decimal::from(self.0).to_string());
-                Ok(IsNull::No)
-            }
-        }
-    };
-}
-
-db_quantity!(DbCalories, Kilocalories);
-db_quantity!(DbGrams, Grams);
-db_quantity!(DbMillilitres, Millilitres);
-
-/// A name column. Reading a blank name fails, because the domain type rejects it.
-macro_rules! db_name {
-    ($name:ident, $domain:ty) => {
-        #[derive(Debug, Clone, PartialEq, Eq, AsExpression, FromSqlRow)]
-        #[diesel(sql_type = Text)]
-        pub(crate) struct $name(pub $domain);
-
-        impl From<$domain> for $name {
-            fn from(value: $domain) -> Self {
-                Self(value)
-            }
-        }
-
-        impl From<$name> for $domain {
-            fn from(value: $name) -> Self {
-                value.0
-            }
-        }
-
-        impl FromSql<Text, Sqlite> for $name {
-            fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
-                let text = <String as FromSql<Text, Sqlite>>::from_sql(value)?;
-                Ok(Self(<$domain>::try_new(text)?))
-            }
-        }
-
-        impl ToSql<Text, Sqlite> for $name {
-            fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
-                out.set_value(self.0.as_ref());
-                Ok(IsNull::No)
-            }
-        }
-    };
-}
-
-db_name!(DbIngredientName, IngredientName);
-db_name!(DbUnitName, UnitName);
+db_decimal!(DbCalories, Kilocalories);
+db_decimal!(DbGrams, Grams);
+db_decimal!(DbMillilitres, Millilitres);
+db_text!(DbIngredientName, IngredientName);
+db_text!(DbUnitName, UnitName);
 
 #[derive(Debug, Clone, Queryable, Selectable)]
 #[diesel(table_name = ingredients)]

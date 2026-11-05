@@ -43,6 +43,16 @@ compiler then checks the rule, and Swift's exhaustive `switch` checks it again.
 8. **The FFI mirrors the Rust shape.** A Rust enum with data becomes a
    `uniffi::Enum` with named fields. Do not flatten it into a record of
    optionals for Swift's convenience; Swift `switch`es on it.
+9. **One concept, one prefix.** All the types of one domain concept start
+   with the same name, the noun the brief or the user uses for it:
+   `RecipeIngredient`, `RecipeIngredientId`, `RecipeIngredientAmount`. Do not
+   shorten the prefix for new types (`LineAmount` next to
+   `IngredientLineName`), and do not invent a word the domain does not use
+   ("line"). UniFFI puts every type into one Swift namespace, so the prefix
+   must not clash with another concept: a recipe's ingredient is not the
+   catalog's `Ingredient`. (The user, on `LineAmount`: "Actually from where
+   do we have "Line" naming?" and "I'd drop "Line" and find better name",
+   REC-08/Q3, 2026-11-06.)
 
 ## Examples in this codebase
 
@@ -98,6 +108,8 @@ pub struct SplitAppView {
 - For each `Vec`: may it be empty, or contain duplicates? If not, say why the
   type prevents it, or use a type that does.
 - For each FFI type: does Swift receive the same enum shape as Rust?
+- For each new type: does its name start with its concept's prefix, as
+  the concept's other types do?
 
 When a rule costs more than it saves (for example, a non-empty list type for a
 list that is validated once and never changes), keep the simple type and write

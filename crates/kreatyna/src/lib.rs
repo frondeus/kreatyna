@@ -8,6 +8,7 @@ pub mod capabilities;
 
 pub mod confirmation;
 pub mod ingredients;
+mod problem_display;
 pub mod recipes;
 mod scoped_child;
 

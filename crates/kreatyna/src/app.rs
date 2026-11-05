@@ -123,9 +123,15 @@ struct SplitLayout {
     ingredients: ScopedChild<IngredientSplitCatalog>,
 }
 
+/// Whether `init` ran. A second `init` starts nothing.
+enum Startup {
+    NotStarted,
+    Started,
+}
+
 pub struct AppWidget {
     layout: Layout,
-    initialized: bool,
+    startup: Startup,
 }
 
 impl AppWidget {
@@ -144,7 +150,7 @@ impl AppWidget {
         };
         Self {
             layout,
-            initialized: false,
+            startup: Startup::NotStarted,
         }
     }
 
@@ -204,10 +210,10 @@ impl Widget for AppWidget {
     type Outcome = AppOutcome;
 
     fn init(&mut self) -> Command<AppOutcome> {
-        if self.initialized {
-            return Command::empty();
+        match self.startup {
+            Startup::Started => return Command::empty(),
+            Startup::NotStarted => self.startup = Startup::Started,
         }
-        self.initialized = true;
         match &mut self.layout {
             Layout::Stack(catalog) => {
                 let command = catalog.widget.init();

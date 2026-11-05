@@ -16,6 +16,7 @@ use super::{
     IngredientId, IngredientList, IngredientListEvent, IngredientListOutcome, IngredientListView,
     NutritionBasis,
     capabilities::{IngredientCapabilities, IngredientEffectStream},
+    list::ListRefresh,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -421,8 +422,8 @@ impl IngredientSplitCatalog {
                 {
                     return Command::empty();
                 }
-                let complete = self.list.widget.apply_deleted(id);
-                self.refresh_list_and_show(complete, None)
+                let refresh = self.list.widget.apply_deleted(id);
+                self.refresh_list_and_show(refresh, None)
             }
             outcome => {
                 let command = detail
@@ -445,8 +446,8 @@ impl IngredientSplitCatalog {
                 if pane.form.view().status != IngredientFormStatus::Finished {
                     return Command::empty();
                 }
-                let complete = self.list.widget.apply_saved(ingredient.clone());
-                self.refresh_list_and_show(complete, Some(ingredient))
+                let refresh = self.list.widget.apply_saved(ingredient.clone());
+                self.refresh_list_and_show(refresh, Some(ingredient))
             }
             IngredientFormOutcome::Discarded => {
                 if pane.form.view().status != IngredientFormStatus::Finished {
@@ -473,10 +474,13 @@ impl IngredientSplitCatalog {
     /// it could not apply the write to a complete catalog.
     fn refresh_list_and_show(
         &mut self,
-        complete: bool,
+        refresh: ListRefresh,
         ingredient: Option<Ingredient>,
     ) -> Command<IngredientSplitCatalogOutcome> {
-        let reload = (!complete).then(|| self.list.widget.reload());
+        let reload = match refresh {
+            ListRefresh::Resume => None,
+            ListRefresh::Reload => Some(self.list.widget.reload()),
+        };
         let show = self.show_detail(ingredient);
         match reload {
             Some(reload) => Command::select_all(vec![self.list_command(reload), show]),

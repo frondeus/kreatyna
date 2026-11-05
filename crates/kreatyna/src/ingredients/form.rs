@@ -1,6 +1,9 @@
 use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
-use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
+use crate::{
+    confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView},
+    problem_display::ProblemDisplay,
+};
 
 use super::{
     Ingredient, IngredientDraft, IngredientDraftField, IngredientWrite, NutritionBasis,
@@ -64,8 +67,7 @@ pub struct IngredientForm {
     caps: IngredientCapabilities,
     initial: IngredientDraft,
     draft: IngredientDraft,
-    validation_attempted: bool,
-    issues: Vec<ValidationIssue>,
+    problems: ProblemDisplay,
     save_error: Option<IngredientSaveError>,
     state: FormState,
     confirmation: LatestCommandSlot,
@@ -78,8 +80,7 @@ impl IngredientForm {
             caps,
             initial: draft.clone(),
             draft,
-            validation_attempted: false,
-            issues: Vec::new(),
+            problems: ProblemDisplay::Hidden,
             save_error: None,
             state: FormState::Editing,
             confirmation: LatestCommandSlot::new(),
@@ -106,11 +107,13 @@ impl IngredientForm {
         })
     }
 
-    fn update_issues(&mut self) {
-        if self.validation_attempted {
-            self.issues = IngredientWrite::try_from(&self.draft)
+    /// The draft's problems, once the first Save showed them.
+    fn issues(&self) -> Vec<ValidationIssue> {
+        match self.problems {
+            ProblemDisplay::Hidden => Vec::new(),
+            ProblemDisplay::Shown => IngredientWrite::try_from(&self.draft)
                 .err()
-                .unwrap_or_default();
+                .unwrap_or_default(),
         }
     }
 
@@ -139,16 +142,14 @@ impl Widget for IngredientForm {
             Message::Event(IngredientFormEvent::Save)
                 if matches!(self.state, FormState::Editing) =>
             {
-                self.validation_attempted = true;
+                self.problems = ProblemDisplay::Shown;
                 let write = match IngredientWrite::try_from(&self.draft) {
                     Ok(write) => write,
-                    Err(issues) => {
-                        self.issues = issues;
+                    Err(_) => {
                         self.save_error = None;
                         return self.render();
                     }
                 };
-                self.issues.clear();
                 self.save_error = None;
                 self.state = FormState::Saving;
                 let render = self.caps.render.clone();
@@ -188,7 +189,6 @@ impl Widget for IngredientForm {
                     return Command::empty();
                 }
                 self.save_error = None;
-                self.update_issues();
                 self.render()
             }
             Message::Outcome(IngredientFormOutcome::ConfirmationDecided(decided)) => {
@@ -250,7 +250,7 @@ impl Widget for IngredientForm {
         IngredientFormView {
             draft: self.draft.clone(),
             dirty: self.draft != self.initial,
-            issues: self.issues.clone(),
+            issues: self.issues(),
             save_error: self.save_error.clone(),
             status,
         }

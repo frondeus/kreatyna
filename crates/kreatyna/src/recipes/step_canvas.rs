@@ -7,6 +7,7 @@ use super::{
     DurationParts, Step, StepDurationS, StepEdge, StepEdges, StepId, StepInstructions, StepKind,
     StepTitle, StepTitleError, StepWrite, duration::duration_chips,
 };
+use crate::problem_display::ProblemDisplay;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StepCanvasEvent {
@@ -169,15 +170,6 @@ impl CanvasChange {
             _ => CanvasChange::Changed,
         }
     }
-}
-
-/// Whether the nodes and the editor show the title and duration problems.
-/// They are hidden until the first Save; after it, every change checks
-/// again (REC-14/Q2).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ProblemDisplay {
-    Hidden,
-    Shown,
 }
 
 /// A step's duration as the editor keeps it.

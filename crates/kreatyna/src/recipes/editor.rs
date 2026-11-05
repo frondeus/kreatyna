@@ -4,12 +4,15 @@
 //! (REC-16), sets their details (REC-17), and connects them (REC-18).
 use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
-use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
+use crate::{
+    confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView},
+    problem_display::ProblemDisplay,
+};
 
 use super::{
     NewRecipe, Recipe, RecipeTitle, RecipeTitleError, RecipeUpdate, Step, StepEdges, StepWrite,
     capabilities::{RecipeCapabilities, RecipeEffectStream, RecipeSaveError},
-    step_canvas::{CanvasChange, ProblemDisplay, StepCanvas, StepCanvasEvent, StepCanvasView},
+    step_canvas::{CanvasChange, StepCanvas, StepCanvasEvent, StepCanvasView},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

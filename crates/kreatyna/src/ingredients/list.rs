@@ -53,6 +53,22 @@ pub struct IngredientListView {
     pub status: IngredientListStatus,
 }
 
+/// What the list does when its screen shows again.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ListRefresh {
+    /// Show the cached catalog, and restart a load that `suspend` stopped.
+    Resume,
+    /// Load the catalog again.
+    Reload,
+}
+
+/// Whether `resume` must restart a load. `suspend` stops a running load.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OnResume {
+    Nothing,
+    RestartLoad,
+}
+
 enum ListState {
     InitialLoading,
     InitialFailed(IngredientLoadError),
@@ -119,7 +135,7 @@ pub struct IngredientList {
     search: String,
     state: ListState,
     load: LatestCommandSlot,
-    interrupted_load: bool,
+    on_resume: OnResume,
 }
 
 impl IngredientList {
@@ -129,7 +145,7 @@ impl IngredientList {
             search: String::new(),
             state: ListState::InitialLoading,
             load: LatestCommandSlot::new(),
-            interrupted_load: false,
+            on_resume: OnResume::Nothing,
         }
     }
 
@@ -167,7 +183,7 @@ impl IngredientList {
     }
 
     fn start_load(&mut self) -> Command<IngredientListOutcome> {
-        self.interrupted_load = false;
+        self.on_resume = OnResume::Nothing;
         let render = self.caps.render.clone();
         let store = self.caps.store.clone();
         Command::single(async move {
@@ -197,41 +213,45 @@ impl IngredientList {
                 }
         );
         if loading {
-            self.interrupted_load = true;
+            self.on_resume = OnResume::RestartLoad;
         }
         self.load.stop();
     }
 
     pub(crate) fn resume(&mut self) -> Option<Command<IngredientListOutcome>> {
-        self.interrupted_load.then(|| self.begin_load())
+        match self.on_resume {
+            OnResume::Nothing => None,
+            OnResume::RestartLoad => Some(self.begin_load()),
+        }
     }
 
     pub(crate) fn reload(&mut self) -> Command<IngredientListOutcome> {
         self.begin_load()
     }
 
-    /// Update a complete cached catalog. Returns false while the initial catalog
-    /// is unavailable, so the coordinator can reload instead of showing a partial list.
-    pub(crate) fn apply_saved(&mut self, ingredient: Ingredient) -> bool {
+    /// Update a complete cached catalog. Returns `Reload` while the initial
+    /// catalog is unavailable, so the coordinator reloads instead of showing a
+    /// partial list.
+    pub(crate) fn apply_saved(&mut self, ingredient: Ingredient) -> ListRefresh {
         let ListState::Ready { catalog, refresh } = &mut self.state else {
-            return false;
+            return ListRefresh::Reload;
         };
         self.load.stop();
-        self.interrupted_load = false;
+        self.on_resume = OnResume::Nothing;
         catalog.upsert(ingredient);
         *refresh = IngredientListRefresh::Idle;
-        true
+        ListRefresh::Resume
     }
 
-    pub(crate) fn apply_deleted(&mut self, id: IngredientId) -> bool {
+    pub(crate) fn apply_deleted(&mut self, id: IngredientId) -> ListRefresh {
         let ListState::Ready { catalog, refresh } = &mut self.state else {
-            return false;
+            return ListRefresh::Reload;
         };
         self.load.stop();
-        self.interrupted_load = false;
+        self.on_resume = OnResume::Nothing;
         catalog.remove(id);
         *refresh = IngredientListRefresh::Idle;
-        true
+        ListRefresh::Resume
     }
 }
 

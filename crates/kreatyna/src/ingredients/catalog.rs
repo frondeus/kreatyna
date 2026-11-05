@@ -9,6 +9,7 @@ use super::{
     IngredientFormView, IngredientList, IngredientListEvent, IngredientListOutcome,
     IngredientListView, IngredientNavigation, IngredientNavigationAction, NutritionBasis,
     capabilities::{IngredientCapabilities, IngredientEffectStream},
+    list::ListRefresh,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -215,13 +216,12 @@ impl IngredientCatalog {
         Command::select_all(vec![self.form_command(init), self.render()])
     }
 
-    fn activate_list(&mut self, reload: bool) -> Command<IngredientCatalogOutcome> {
+    fn activate_list(&mut self, refresh: ListRefresh) -> Command<IngredientCatalogOutcome> {
         self.active = ActiveScreen::List;
         self.replace_scope();
-        let load = if reload {
-            Some(self.list.reload())
-        } else {
-            self.list.resume()
+        let load = match refresh {
+            ListRefresh::Resume => self.list.resume(),
+            ListRefresh::Reload => Some(self.list.reload()),
         };
         match load {
             Some(load) => self.list_command(load),
@@ -251,7 +251,7 @@ impl IngredientCatalog {
                     {
                         return Command::empty();
                     }
-                    self.activate_list(false)
+                    self.activate_list(ListRefresh::Resume)
                 }
                 IngredientDetailDeletion::Confirming { .. } => {
                     let command = detail.update(Message::Event(
@@ -340,8 +340,8 @@ impl IngredientCatalog {
                 {
                     return Command::empty();
                 }
-                let complete = self.list.apply_deleted(id);
-                self.activate_list(!complete)
+                let refresh = self.list.apply_deleted(id);
+                self.activate_list(refresh)
             }
             outcome => {
                 let ActiveScreen::Detail(detail) = &mut self.active else {
@@ -377,13 +377,13 @@ impl IngredientCatalog {
                 {
                     return Command::empty();
                 }
-                let complete = self.list.apply_saved(ingredient.clone());
+                let refresh = self.list.apply_saved(ingredient.clone());
                 match std::mem::replace(&mut self.active, ActiveScreen::List) {
                     ActiveScreen::EditFromDetail { .. } => {
                         self.activate_detail(IngredientDetail::new(self.caps.clone(), ingredient))
                     }
                     ActiveScreen::Create(_) | ActiveScreen::EditFromList(_) => {
-                        self.activate_list(!complete)
+                        self.activate_list(refresh)
                     }
                     _ => unreachable!(),
                 }
@@ -402,7 +402,7 @@ impl IngredientCatalog {
                 match std::mem::replace(&mut self.active, ActiveScreen::List) {
                     ActiveScreen::EditFromDetail { detail, .. } => self.activate_detail(detail),
                     ActiveScreen::Create(_) | ActiveScreen::EditFromList(_) => {
-                        self.activate_list(false)
+                        self.activate_list(ListRefresh::Resume)
                     }
                     _ => unreachable!(),
                 }

@@ -8,7 +8,7 @@
 //! view keeps the pane until it ends, then empties it (REC-05).
 use krucyfiks::{Command, CommandExt, CommandScopeId, Message, Scoped, Widget};
 
-use crate::scoped_child::ScopedChild;
+use crate::{CreateAvailability, scoped_child::ScopedChild};
 
 use super::{
     Recipe, RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailOutcome,
@@ -76,8 +76,7 @@ pub struct RecipeSectionView {
     pub selected: Option<RecipeId>,
     /// The scope goes with read view and editor events.
     pub pane: Scoped<RecipePaneView>,
-    /// Whether New Recipe works now. False while the editor is open.
-    pub can_create: bool,
+    pub create: CreateAvailability,
 }
 
 /// An editor, and where the pane goes when it is discarded. The ingredient
@@ -169,11 +168,14 @@ impl RecipeSection {
         }
     }
 
-    fn can_create(&self) -> bool {
+    fn create(&self) -> CreateAvailability {
         match &self.pane.widget {
-            Pane::Empty => true,
-            Pane::Detail(detail) => !Self::detail_is_locked(detail),
-            Pane::Create(_) | Pane::Edit { .. } => false,
+            Pane::Empty => CreateAvailability::Available,
+            Pane::Detail(detail) if Self::detail_is_locked(detail) => {
+                CreateAvailability::Unavailable
+            }
+            Pane::Detail(_) => CreateAvailability::Available,
+            Pane::Create(_) | Pane::Edit { .. } => CreateAvailability::Unavailable,
         }
     }
 
@@ -455,7 +457,7 @@ impl Widget for RecipeSection {
             list: self.list.view(),
             selected: self.selected(),
             pane: self.pane.view(Pane::view),
-            can_create: self.can_create(),
+            create: self.create(),
         }
     }
 }

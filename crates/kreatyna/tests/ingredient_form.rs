@@ -32,12 +32,12 @@ async fn initialization_does_nothing_and_exposes_the_supplied_draft_as_clean(
         fixture.form.view(),
         IngredientFormView {
             draft,
-            dirty: false,
             issues: vec![],
             save_error: None,
             status: IngredientFormStatus::Editing,
         }
     );
+    assert!(!fixture.form.is_dirty());
     fixture.form.expect_noop_init().await;
     Ok(())
 }
@@ -59,7 +59,8 @@ async fn editing_a_field_keeps_raw_text_marks_dirty_and_shows_no_issues_before_s
         .form
         .update(Message::Event(field(target, value)))
         .driver(&mut fixture.effects);
-    assert_eq!(fixture.form.view(), editing_view(expected, true));
+    assert_eq!(fixture.form.view(), editing_view(expected));
+    assert!(fixture.form.is_dirty());
 
     command
         .step()
@@ -83,11 +84,9 @@ async fn changing_the_basis_marks_the_draft_dirty() -> anyhow::Result<()> {
         .driver(&mut fixture.effects);
     assert_eq!(
         fixture.form.view(),
-        editing_view(
-            IngredientDraft::new(NutritionBasis::Per100Millilitres),
-            true
-        )
+        editing_view(IngredientDraft::new(NutritionBasis::Per100Millilitres))
     );
+    assert!(fixture.form.is_dirty());
 
     command
         .step()
@@ -107,7 +106,7 @@ async fn reverting_every_change_makes_the_draft_clean_again() -> anyhow::Result<
         .form
         .update(Message::Event(field(IngredientDraftField::Name, "Garlic")))
         .driver(&mut fixture.effects);
-    assert!(fixture.form.view().dirty);
+    assert!(fixture.form.is_dirty());
     command
         .step()
         .await?
@@ -124,7 +123,7 @@ async fn reverting_every_change_makes_the_draft_clean_again() -> anyhow::Result<
             NutritionBasis::Per100Millilitres,
         )))
         .driver(&mut fixture.effects);
-    assert!(fixture.form.view().dirty);
+    assert!(fixture.form.is_dirty());
     command
         .step()
         .await?
@@ -140,7 +139,7 @@ async fn reverting_every_change_makes_the_draft_clean_again() -> anyhow::Result<
         .form
         .update(Message::Event(field(IngredientDraftField::Name, "")))
         .driver(&mut fixture.effects);
-    assert!(fixture.form.view().dirty);
+    assert!(fixture.form.is_dirty());
     command
         .step()
         .await?
@@ -157,7 +156,8 @@ async fn reverting_every_change_makes_the_draft_clean_again() -> anyhow::Result<
             NutritionBasis::Per100Grams,
         )))
         .driver(&mut fixture.effects);
-    assert_eq!(fixture.form.view(), editing_view(blank_draft(), false));
+    assert_eq!(fixture.form.view(), editing_view(blank_draft()));
+    assert!(!fixture.form.is_dirty());
     command
         .step()
         .await?
@@ -178,13 +178,11 @@ async fn adding_a_unit_appends_an_empty_unit() -> anyhow::Result<()> {
         .driver(&mut fixture.effects);
     assert_eq!(
         fixture.form.view(),
-        editing_view(
-            edited(draft_with_units(), |d| d
-                .units
-                .push(ReferenceUnitDraft::default())),
-            true
-        )
+        editing_view(edited(draft_with_units(), |d| d
+            .units
+            .push(ReferenceUnitDraft::default())))
     );
+    assert!(fixture.form.is_dirty());
 
     command
         .step()
@@ -211,7 +209,8 @@ async fn editing_a_unit_field_changes_only_that_unit(
         .form
         .update(Message::Event(field(target, value)))
         .driver(&mut fixture.effects);
-    assert_eq!(fixture.form.view(), editing_view(expected, true));
+    assert_eq!(fixture.form.view(), editing_view(expected));
+    assert!(fixture.form.is_dirty());
 
     command
         .step()
@@ -240,7 +239,7 @@ async fn moving_a_unit_places_it_at_the_target_index(
         .driver(&mut fixture.effects);
     let view = fixture.form.view();
     assert_eq!(unit_names(&view.draft), expected);
-    assert!(view.dirty);
+    assert!(fixture.form.is_dirty());
     assert_eq!(view.status, IngredientFormStatus::Editing);
 
     command
@@ -269,7 +268,7 @@ async fn removing_a_unit_keeps_the_remaining_order(
         .driver(&mut fixture.effects);
     let view = fixture.form.view();
     assert_eq!(unit_names(&view.draft), expected);
-    assert!(view.dirty);
+    assert!(fixture.form.is_dirty());
     assert_eq!(view.status, IngredientFormStatus::Editing);
 
     command
@@ -287,13 +286,14 @@ async fn removing_a_unit_keeps_the_remaining_order(
 async fn removing_an_added_unit_makes_the_draft_clean_again() -> anyhow::Result<()> {
     let mut fixture = FormFixture::new(draft_with_units());
     fixture.apply(IngredientFormEvent::AddUnit).await?;
-    assert!(fixture.form.view().dirty);
+    assert!(fixture.form.is_dirty());
 
     let mut command = fixture
         .form
         .update(Message::Event(IngredientFormEvent::RemoveUnit { index: 3 }))
         .driver(&mut fixture.effects);
-    assert_eq!(fixture.form.view(), editing_view(draft_with_units(), false));
+    assert_eq!(fixture.form.view(), editing_view(draft_with_units()));
+    assert!(!fixture.form.is_dirty());
 
     command
         .step()
@@ -538,7 +538,6 @@ async fn saving_a_valid_create_draft_sends_a_normalized_create_and_finishes_with
         fixture.form.view(),
         IngredientFormView {
             draft: raw.clone(),
-            dirty: true,
             issues: vec![],
             save_error: None,
             status: IngredientFormStatus::Saving,
@@ -635,7 +634,7 @@ async fn saving_an_edited_draft_sends_an_update_for_the_original_id() -> anyhow:
     let view = fixture.form.view();
     assert_eq!(view.status, IngredientFormStatus::Saving);
     assert_eq!(view.draft.name, "  Updated garlic  ");
-    assert!(view.dirty);
+    assert!(fixture.form.is_dirty());
 
     command
         .step()
@@ -740,7 +739,7 @@ async fn closing_a_dirty_draft_asks_for_confirmation() -> anyhow::Result<()> {
         IngredientFormStatus::ConfirmingDiscard(ConfirmationView::AwaitingDecision)
     );
     assert_eq!(view.draft.name, "Changed");
-    assert!(view.dirty);
+    assert!(fixture.form.is_dirty());
 
     command
         .step()
@@ -842,8 +841,9 @@ async fn cancelling_discard_returns_to_editing_with_the_dirty_draft() -> anyhow:
         .driver(&mut fixture.effects);
     assert_eq!(
         fixture.form.view(),
-        editing_view(edited(named_draft(), |d| d.name = "Changed".into()), true)
+        editing_view(edited(named_draft(), |d| d.name = "Changed".into()))
     );
+    assert!(fixture.form.is_dirty());
 
     command
         .step()
@@ -1234,7 +1234,6 @@ async fn a_rejected_save_returns_to_editing_with_the_error_and_the_draft(
         fixture.form.view(),
         IngredientFormView {
             draft: raw,
-            dirty: true,
             issues: vec![],
             save_error: Some(error),
             status: IngredientFormStatus::Editing,
@@ -1508,7 +1507,6 @@ async fn cancelling_discard_keeps_a_rejected_save_visible() -> anyhow::Result<()
         fixture.form.view(),
         IngredientFormView {
             draft: edited(named_draft(), |d| d.name = "Changed".into()),
-            dirty: true,
             issues: vec![],
             save_error: Some(IngredientSaveError::Storage),
             status: IngredientFormStatus::Editing,
@@ -1650,10 +1648,9 @@ async fn render_then_finish(
     Ok(())
 }
 
-fn editing_view(draft: IngredientDraft, dirty: bool) -> IngredientFormView {
+fn editing_view(draft: IngredientDraft) -> IngredientFormView {
     IngredientFormView {
         draft,
-        dirty,
         issues: vec![],
         save_error: None,
         status: IngredientFormStatus::Editing,

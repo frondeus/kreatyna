@@ -50,7 +50,6 @@ pub enum IngredientFormStatus {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IngredientFormView {
     pub draft: IngredientDraft,
-    pub dirty: bool,
     pub issues: Vec<ValidationIssue>,
     pub save_error: Option<IngredientSaveError>,
     pub status: IngredientFormStatus,
@@ -105,6 +104,12 @@ impl IngredientForm {
             render.render().await;
             IngredientFormOutcome::Discarded
         })
+    }
+
+    /// Whether the draft differs from the one the form opened with. A dirty
+    /// form asks "Discard changes?" before it closes (E-10).
+    pub fn is_dirty(&self) -> bool {
+        self.draft != self.initial
     }
 
     /// The draft's problems, once the first Save showed them.
@@ -164,12 +169,12 @@ impl Widget for IngredientForm {
             Message::Event(IngredientFormEvent::RequestClose)
                 if matches!(self.state, FormState::Editing) =>
             {
-                if self.draft == self.initial {
-                    self.finish_discard()
-                } else {
+                if self.is_dirty() {
                     self.confirmation.stop();
                     self.state = FormState::ConfirmingDiscard(Confirmation::new());
                     self.render()
+                } else {
+                    self.finish_discard()
                 }
             }
             Message::Event(IngredientFormEvent::Confirmation(event)) => {
@@ -249,7 +254,6 @@ impl Widget for IngredientForm {
         };
         IngredientFormView {
             draft: self.draft.clone(),
-            dirty: self.draft != self.initial,
             issues: self.issues(),
             save_error: self.save_error.clone(),
             status,

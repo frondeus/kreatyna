@@ -81,7 +81,6 @@ impl From<core::IngredientFormStatus> for IngredientFormStatus {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct IngredientFormView {
     pub draft: IngredientDraft,
-    pub dirty: bool,
     pub issues: Vec<ValidationIssue>,
     pub save_error: Option<IngredientSaveError>,
     pub status: IngredientFormStatus,
@@ -93,7 +92,6 @@ impl TryFrom<core::IngredientFormView> for IngredientFormView {
     fn try_from(value: core::IngredientFormView) -> Result<Self, Self::Error> {
         Ok(Self {
             draft: value.draft.into(),
-            dirty: value.dirty,
             issues: value
                 .issues
                 .into_iter()

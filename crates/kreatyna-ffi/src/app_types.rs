@@ -18,7 +18,7 @@ pub use ingredient::*;
 pub use list::*;
 pub use recipes::*;
 pub use split_catalog::*;
-pub use support::{AppTypeConversionError, ScopeId};
+pub use support::{AppTypeConversionError, CreateAvailability, ScopeId};
 
 #[cfg(test)]
 mod tests;

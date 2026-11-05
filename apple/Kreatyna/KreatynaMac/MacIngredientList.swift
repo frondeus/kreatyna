@@ -10,7 +10,7 @@ struct MacIngredientList: View {
     let selected: IngredientId?
     /// The typed name of the ingredient being created; empty before a name.
     let draftRow: String?
-    let canCreate: Bool
+    let create: CreateAvailability
     let select: (IngredientId?) -> Void
     let send: (IngredientListEvent) -> Void
 
@@ -33,7 +33,7 @@ struct MacIngredientList: View {
             ToolbarItem(placement: .primaryAction) {
                 Button("Add Ingredient", systemImage: "plus") { send(.createRequested) }
                     .keyboardShortcut("n", modifiers: .command)
-                    .disabled(!canCreate)
+                    .disabled(create == .unavailable)
                     .accessibilityIdentifier("addIngredient")
             }
         }

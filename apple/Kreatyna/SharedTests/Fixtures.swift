@@ -53,12 +53,11 @@ enum Fixtures {
 
     static func form(
         _ draft: IngredientDraft,
-        dirty: Bool = false,
         issues: [ValidationIssue] = [],
         saveError: IngredientSaveError? = nil,
         status: IngredientFormStatus = .editing
     ) -> IngredientFormView {
-        IngredientFormView(draft: draft, dirty: dirty, issues: issues, saveError: saveError, status: status)
+        IngredientFormView(draft: draft, issues: issues, saveError: saveError, status: status)
     }
 
     static func catalog(
@@ -101,7 +100,7 @@ enum Fixtures {
             list: ScopedIngredientListView(scope: ScopeId(value: 3), value: list),
             selected: form == nil ? selected?.id : nil,
             pane: ScopedIngredientSplitPaneView(scope: ScopeId(value: 4), value: pane),
-            canCreate: form == nil && !deleteRuns,
+            create: form == nil && !deleteRuns ? .available : .unavailable,
             draftRow: form.map { $0.draft.name.trimmingCharacters(in: .whitespaces) }
         )
     }
@@ -195,18 +194,18 @@ enum Fixtures {
         search: String = "",
         pane: RecipePaneView = .empty
     ) -> RecipeSectionView {
-        let canCreate = switch pane {
-        case .empty: true
+        let create: CreateAvailability = switch pane {
+        case .empty: .available
         case .detail(let detail):
-            if case .ready(_, _, let deletion) = detail.status, deletion != .idle { false } else { true }
-        case .create, .edit: false
+            if case .ready(_, _, let deletion) = detail.status, deletion != .idle { .unavailable } else { .available }
+        case .create, .edit: .unavailable
         }
         let selected = if case .detail(let detail) = pane { detail.id } else { nil as RecipeId? }
         return RecipeSectionView(
             list: recipeList(status, search: search),
             selected: selected,
             pane: ScopedRecipePaneView(scope: ScopeId(value: 5), value: pane),
-            canCreate: canCreate
+            create: create
         )
     }
 
@@ -223,7 +222,7 @@ enum Fixtures {
             pane: ScopedRecipePaneView(
                 scope: ScopeId(value: 5), value: .edit(editor: editor, savedTitle: saved.title)
             ),
-            canCreate: false
+            create: .unavailable
         )
     }
 
@@ -236,7 +235,7 @@ enum Fixtures {
             pane: ScopedIngredientSplitPaneView(
                 scope: ScopeId(value: 5), value: .edit(savedName: saved.name, form: form)
             ),
-            canCreate: false,
+            create: .unavailable,
             draftRow: nil
         )
     }

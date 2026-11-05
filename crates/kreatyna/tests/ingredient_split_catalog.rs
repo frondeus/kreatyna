@@ -1,3 +1,4 @@
+use kreatyna::CreateAvailability;
 use kreatyna::{
     capabilities::ResolveRender,
     confirmation::{ConfirmationEvent, ConfirmationView},
@@ -206,7 +207,7 @@ async fn create_opens_the_form_in_a_new_pane_scope() -> anyhow::Result<()> {
     let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.select(id(1)).await?;
     let before = fixture.catalog.view();
-    assert!(before.can_create);
+    assert_eq!(before.create, CreateAvailability::Available);
 
     fixture.create().await?;
 
@@ -219,7 +220,7 @@ async fn create_opens_the_form_in_a_new_pane_scope() -> anyhow::Result<()> {
     assert_eq!(form.status, IngredientFormStatus::Editing);
     assert_eq!(view.selected, None);
     assert_eq!(view.draft_row.as_deref(), Some(""));
-    assert!(!view.can_create);
+    assert_eq!(view.create, CreateAvailability::Unavailable);
     assert_eq!(row_names(&view.list.value)?, ["Garlic"]);
     Ok(())
 }
@@ -277,7 +278,7 @@ async fn saving_adds_the_row_and_shows_its_detail() -> anyhow::Result<()> {
         view.pane.value,
         IngredientSplitPaneView::Detail(idle_detail(&paprika))
     );
-    assert!(view.can_create);
+    assert_eq!(view.create, CreateAvailability::Available);
     Ok(())
 }
 
@@ -323,7 +324,7 @@ async fn cancel_on_a_clean_form_returns_to_the_previous_detail() -> anyhow::Resu
         IngredientSplitPaneView::Detail(idle_detail(&garlic))
     );
     assert_eq!(view.draft_row, None);
-    assert!(view.can_create);
+    assert_eq!(view.create, CreateAvailability::Available);
     Ok(())
 }
 
@@ -444,10 +445,9 @@ async fn edit_opens_the_form_in_a_new_pane_scope() -> anyhow::Result<()> {
     let form = fixture.form()?;
     assert_eq!(form.draft.name, "Garlic");
     assert_eq!(form.status, IngredientFormStatus::Editing);
-    assert!(!form.dirty);
     assert_eq!(view.selected, Some(id(1)));
     assert_eq!(view.draft_row, None);
-    assert!(!view.can_create);
+    assert_eq!(view.create, CreateAvailability::Unavailable);
     Ok(())
 }
 
@@ -490,7 +490,7 @@ async fn saving_an_edit_updates_the_row_and_shows_its_detail() -> anyhow::Result
         view.pane.value,
         IngredientSplitPaneView::Detail(idle_detail(&renamed))
     );
-    assert!(view.can_create);
+    assert_eq!(view.create, CreateAvailability::Available);
     Ok(())
 }
 
@@ -844,7 +844,7 @@ async fn create_is_ignored_while_a_form_is_open_or_a_delete_runs(busy: Busy) -> 
         }
     }
     let before = fixture.catalog.view();
-    assert!(!before.can_create);
+    assert_eq!(before.create, CreateAvailability::Unavailable);
 
     let outcome = fixture
         .choose(list_event(
@@ -895,15 +895,15 @@ async fn clearing_the_selection_is_ignored_while_a_form_is_open() -> anyhow::Res
     Ok(())
 }
 
-#[test_case(false; "clean")]
-#[test_case(true; "dirty")]
+#[test_case(None; "clean")]
+#[test_case(Some("Black Garlic"); "dirty")]
 #[tokio::test]
-async fn clicking_the_edited_row_does_nothing(dirty: bool) -> anyhow::Result<()> {
+async fn clicking_the_edited_row_does_nothing(typed_name: Option<&str>) -> anyhow::Result<()> {
     let mut fixture = SplitFixture::ready(vec![ingredient(1, "Garlic")?], "").await?;
     fixture.select(id(1)).await?;
     fixture.edit().await?;
-    if dirty {
-        fixture.type_name("Black Garlic").await?;
+    if let Some(name) = typed_name {
+        fixture.type_name(name).await?;
     }
     let before = fixture.catalog.view();
 

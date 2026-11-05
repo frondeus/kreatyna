@@ -12,7 +12,7 @@ struct MacRecipeList: View {
     let selected: RecipeId?
     /// The typed title of the recipe being created; empty before a title.
     let draftRow: String?
-    let canCreate: Bool
+    let create: CreateAvailability
     let newRecipe: () -> Void
     let select: (RecipeId?) -> Void
     let send: (RecipeListEvent) -> Void
@@ -36,7 +36,7 @@ struct MacRecipeList: View {
             ToolbarItem(placement: .primaryAction) {
                 Button("New Recipe", systemImage: "plus", action: newRecipe)
                     .keyboardShortcut("n", modifiers: .command)
-                    .disabled(!canCreate)
+                    .disabled(create == .unavailable)
                     .accessibilityIdentifier("newRecipe")
             }
         }

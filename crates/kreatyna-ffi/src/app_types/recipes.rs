@@ -1,7 +1,7 @@
 use kreatyna::recipes as core;
 use krucyfiks::Scoped;
 
-use super::{ConfirmationEvent, ConfirmationView, ScopeId};
+use super::{ConfirmationEvent, ConfirmationView, CreateAvailability, ScopeId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum RecipeLoadError {
@@ -924,7 +924,7 @@ pub struct RecipeSectionView {
     pub selected: Option<core::RecipeId>,
     pub pane: ScopedRecipePaneView,
     /// Whether New Recipe works now.
-    pub can_create: bool,
+    pub create: CreateAvailability,
 }
 
 impl From<core::RecipeSectionView> for RecipeSectionView {
@@ -933,7 +933,7 @@ impl From<core::RecipeSectionView> for RecipeSectionView {
             list: value.list.into(),
             selected: value.selected,
             pane: value.pane.into(),
-            can_create: value.can_create,
+            create: value.create.into(),
         }
     }
 }

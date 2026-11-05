@@ -68,7 +68,7 @@ extension MainActorTests {
         func newIngredientForm(appearance: Appearance) {
             var draft = Fixtures.blankDraft
             draft.units = [ReferenceUnitDraft(name: "", grams: "", millilitres: "")]
-            snapshot(creating(Fixtures.form(draft, dirty: true)), appearance: appearance)
+            snapshot(creating(Fixtures.form(draft)), appearance: appearance)
         }
 
         @Test(arguments: Appearance.allCases)
@@ -81,7 +81,7 @@ extension MainActorTests {
                 ValidationIssue(field: .calories, reason: .invalidNumber),
                 ValidationIssue(field: .unitMeasurements(index: 0), reason: .required),
             ]
-            snapshot(creating(Fixtures.form(draft, dirty: true, issues: issues)), appearance: appearance)
+            snapshot(creating(Fixtures.form(draft, issues: issues)), appearance: appearance)
         }
 
         @Test(arguments: Appearance.allCases)
@@ -89,7 +89,7 @@ extension MainActorTests {
             var draft = Fixtures.blankDraft
             draft.name = "garlic"
             snapshot(
-                creating(Fixtures.form(draft, dirty: true, saveError: .duplicateName)),
+                creating(Fixtures.form(draft, saveError: .duplicateName)),
                 appearance: appearance
             )
         }
@@ -99,7 +99,7 @@ extension MainActorTests {
         func editIngredientForm(appearance: Appearance) {
             var draft = Fixtures.garlicDraft
             draft.name = "Black Garlic"
-            snapshot(editing(Fixtures.form(draft, dirty: true)), appearance: appearance)
+            snapshot(editing(Fixtures.form(draft)), appearance: appearance)
         }
 
         /// The Mac app opens on Recipes; a new database has none (REC-01).

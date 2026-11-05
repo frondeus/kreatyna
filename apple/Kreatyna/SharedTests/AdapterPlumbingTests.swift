@@ -46,7 +46,7 @@ struct EventCompositionTests {
         let editor = RecipeEditorView(title: " Shakshuka ", canvas: Fixtures.canvas(.unselected(steps: [])), status: .editing(problem: nil))
         let creating = Fixtures.recipeSection(pane: .create(editor: editor, draftRow: "Shakshuka"))
         #expect(creating.draftRow == "Shakshuka")
-        #expect(!creating.canCreate)
+        #expect(creating.create == .unavailable)
     }
 
     /// The edit editor has no draft row, and its events carry the pane scope.
@@ -65,7 +65,7 @@ struct EventCompositionTests {
         let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: "Shakshuka", steps: [], deletion: .idle))
         let reading = Fixtures.recipeSection(pane: .detail(detail: detail))
         #expect(reading.selected == shakshuka.id)
-        #expect(reading.canCreate)
+        #expect(reading.create == .available)
         #expect(reading.draftRow == nil)
         let pasta = Fixtures.recipeRow("Pasta").id
         #expect(reading.select(pasta) == .select(id: pasta))

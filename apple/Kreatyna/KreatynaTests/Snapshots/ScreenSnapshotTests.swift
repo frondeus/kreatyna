@@ -90,15 +90,15 @@ extension MainActorTests {
                 ValidationIssue(field: .calories, reason: .invalidNumber),
                 ValidationIssue(field: .unitGrams(index: 0), reason: .mustBePositive),
             ]
-            snapshot(formScreen(Fixtures.form(draft, dirty: true, issues: issues)))
+            snapshot(formScreen(Fixtures.form(draft, issues: issues)))
         }
 
         @Test func formDuplicateNameSaveError() {
-            snapshot(formScreen(Fixtures.form(Fixtures.garlicDraft, dirty: true, saveError: .duplicateName)))
+            snapshot(formScreen(Fixtures.form(Fixtures.garlicDraft, saveError: .duplicateName)))
         }
 
         @Test func formSaving() {
-            snapshot(formScreen(Fixtures.form(Fixtures.garlicDraft, dirty: true, status: .saving)))
+            snapshot(formScreen(Fixtures.form(Fixtures.garlicDraft, status: .saving)))
         }
 
         // MARK: Support

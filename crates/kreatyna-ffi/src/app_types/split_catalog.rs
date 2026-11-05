@@ -2,8 +2,8 @@ use kreatyna::ingredients as core;
 use krucyfiks::Scoped;
 
 use super::{
-    AppTypeConversionError, IngredientDetailEvent, IngredientDetailView, IngredientFormEvent,
-    IngredientFormView, IngredientListEvent, IngredientListView, ScopeId,
+    AppTypeConversionError, CreateAvailability, IngredientDetailEvent, IngredientDetailView,
+    IngredientFormEvent, IngredientFormView, IngredientListEvent, IngredientListView, ScopeId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -126,7 +126,7 @@ pub struct IngredientSplitCatalogView {
     pub selected: Option<core::IngredientId>,
     pub pane: ScopedIngredientSplitPaneView,
     /// Whether **＋** opens the create form now.
-    pub can_create: bool,
+    pub create: CreateAvailability,
     /// The draft row's text while the create form is open: the typed name,
     /// trimmed. Empty until a name is typed.
     pub draft_row: Option<String>,
@@ -140,7 +140,7 @@ impl TryFrom<core::IngredientSplitCatalogView> for IngredientSplitCatalogView {
             list: value.list.try_into()?,
             selected: value.selected,
             pane: value.pane.try_into()?,
-            can_create: value.can_create,
+            create: value.create.into(),
             draft_row: value.draft_row,
         })
     }

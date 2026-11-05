@@ -6,6 +6,22 @@ use kreatyna::{
 use crate::AppFfiError;
 use krucyfiks::CommandScopeId;
 
+/// Whether the New button opens a create form now.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum CreateAvailability {
+    Available,
+    Unavailable,
+}
+
+impl From<kreatyna::CreateAvailability> for CreateAvailability {
+    fn from(value: kreatyna::CreateAvailability) -> Self {
+        match value {
+            kreatyna::CreateAvailability::Available => Self::Available,
+            kreatyna::CreateAvailability::Unavailable => Self::Unavailable,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct ScopeId {
     pub value: u64,

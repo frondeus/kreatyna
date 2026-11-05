@@ -96,7 +96,7 @@ fn split_view_conversion_keeps_the_selection_and_the_detail() -> anyhow::Result<
                 deletion: ingredient::IngredientDetailDeletion::Idle,
             }),
         ),
-        can_create: true,
+        create: core::CreateAvailability::Available,
         draft_row: None,
     };
 
@@ -108,7 +108,7 @@ fn split_view_conversion_keeps_the_selection_and_the_detail() -> anyhow::Result<
         anyhow::bail!("expected a detail pane");
     };
     assert_eq!(detail.ingredient.name, "Garlic");
-    assert!(catalog.can_create);
+    assert_eq!(catalog.create, CreateAvailability::Available);
     assert_eq!(catalog.draft_row, None);
     Ok(())
 }
@@ -151,25 +151,23 @@ fn split_view_conversion_carries_the_create_form_and_the_draft_row() -> anyhow::
             CommandScopeId::from(6),
             ingredient::IngredientSplitPaneView::Create(ingredient::IngredientFormView {
                 draft,
-                dirty: true,
                 issues: vec![],
                 save_error: None,
                 status: ingredient::IngredientFormStatus::Editing,
             }),
         ),
-        can_create: false,
+        create: core::CreateAvailability::Unavailable,
         draft_row: Some("Paprika".into()),
     };
 
     let catalog = IngredientSplitCatalogView::try_from(view)?;
     assert_eq!(catalog.pane.scope, ScopeId { value: 6 });
-    assert!(!catalog.can_create);
+    assert_eq!(catalog.create, CreateAvailability::Unavailable);
     assert_eq!(catalog.draft_row.as_deref(), Some("Paprika"));
     let IngredientSplitPaneView::Create { form } = catalog.pane.value else {
         anyhow::bail!("expected the create form");
     };
     assert_eq!(form.draft.name, "Paprika");
-    assert!(form.dirty);
     Ok(())
 }
 
@@ -196,14 +194,13 @@ fn split_view_conversion_carries_the_edit_form_and_its_saved_name() -> anyhow::R
                 saved_name: "Garlic".into(),
                 form: ingredient::IngredientFormView {
                     draft,
-                    dirty: true,
                     issues: vec![],
                     save_error: None,
                     status: ingredient::IngredientFormStatus::Editing,
                 },
             },
         ),
-        can_create: false,
+        create: core::CreateAvailability::Unavailable,
         draft_row: None,
     };
 
@@ -883,7 +880,7 @@ fn split_app_view_conversion_keeps_the_section_and_the_recipe_rows() -> anyhow::
     );
     assert_eq!(app.recipes.pane.value, RecipePaneView::Empty);
     assert_eq!(app.recipes.selected, None);
-    assert!(app.recipes.can_create);
+    assert_eq!(app.recipes.create, CreateAvailability::Available);
     Ok(())
 }
 
@@ -1010,7 +1007,6 @@ fn draft_conversion_preserves_raw_invalid_text_and_validation_indices() -> anyho
                 millilitres: "250,00".into(),
             }],
         },
-        dirty: true,
         issues: vec![ingredient::ValidationIssue {
             field: ingredient::ValidationField::UnitGrams { index: 0 },
             reason: ingredient::ValidationReason::InvalidNumber,
@@ -1347,7 +1343,6 @@ fn detail_of(ingredient: &ingredient::Ingredient) -> ingredient::IngredientDetai
 fn form_of(ingredient: &ingredient::Ingredient) -> ingredient::IngredientFormView {
     ingredient::IngredientFormView {
         draft: ingredient::IngredientDraft::from(ingredient),
-        dirty: false,
         issues: vec![],
         save_error: None,
         status: ingredient::IngredientFormStatus::Editing,

@@ -34,7 +34,7 @@ struct MacMainView: View {
                     view: section.list,
                     selected: section.selected,
                     draftRow: section.draftRow,
-                    canCreate: section.canCreate,
+                    create: section.create,
                     newRecipe: { send(app.recipes(section.newRecipe)) },
                     select: { id in
                         send(app.recipes(id.map { section.select($0) } ?? section.clearSelection))
@@ -48,7 +48,7 @@ struct MacMainView: View {
                     view: catalog.list.value,
                     selected: catalog.selected,
                     draftRow: catalog.draftRow,
-                    canCreate: catalog.canCreate,
+                    create: catalog.create,
                     select: { id in
                         send(app.ingredients(id.map { catalog.list(.select(id: $0)) } ?? catalog.clearSelection))
                     },

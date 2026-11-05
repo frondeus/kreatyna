@@ -7,7 +7,7 @@
 //! edit form.
 use krucyfiks::{Command, CommandExt, CommandScopeId, Message, Scoped, Widget};
 
-use crate::scoped_child::ScopedChild;
+use crate::{CreateAvailability, scoped_child::ScopedChild};
 
 use super::{
     Ingredient, IngredientDetail, IngredientDetailDeletion, IngredientDetailEvent,
@@ -65,9 +65,7 @@ pub struct IngredientSplitCatalogView {
     /// while the create form is open.
     pub selected: Option<IngredientId>,
     pub pane: Scoped<IngredientSplitPaneView>,
-    /// Whether **＋** opens the create form now. False while a form is open
-    /// or a delete runs.
-    pub can_create: bool,
+    pub create: CreateAvailability,
     /// The draft row at the top of the list while the create form is open:
     /// the typed name, trimmed. An empty name has no text yet (MAC-05/Q2).
     /// The search never hides it.
@@ -252,11 +250,14 @@ impl IngredientSplitCatalog {
         detail.view().deletion != IngredientDetailDeletion::Idle
     }
 
-    fn can_create(&self) -> bool {
+    fn create(&self) -> CreateAvailability {
         match &self.pane.widget {
-            Pane::Empty => true,
-            Pane::Detail(detail) => !Self::detail_is_locked(detail),
-            Pane::Create(_) | Pane::Edit { .. } => false,
+            Pane::Empty => CreateAvailability::Available,
+            Pane::Detail(detail) if Self::detail_is_locked(detail) => {
+                CreateAvailability::Unavailable
+            }
+            Pane::Detail(_) => CreateAvailability::Available,
+            Pane::Create(_) | Pane::Edit { .. } => CreateAvailability::Unavailable,
         }
     }
 
@@ -374,11 +375,10 @@ impl IngredientSplitCatalog {
                 return Command::empty();
             }
             Pane::Create(pane) | Pane::Edit { form: pane, .. } => {
-                let form = pane.form.view();
-                if form.status != IngredientFormStatus::Editing {
+                if pane.form.view().status != IngredientFormStatus::Editing {
                     return Command::empty();
                 }
-                if form.dirty {
+                if pane.form.is_dirty() {
                     pane.clicked_row = Some(ingredient);
                     let command = pane
                         .form
@@ -555,7 +555,7 @@ impl Widget for IngredientSplitCatalog {
             list: self.list.view(IngredientList::view),
             selected: self.selected(),
             pane: self.pane.view(Pane::view),
-            can_create: self.can_create(),
+            create: self.create(),
             draft_row: self.draft_row(),
         }
     }

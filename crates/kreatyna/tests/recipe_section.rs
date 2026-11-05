@@ -1,3 +1,4 @@
+use kreatyna::CreateAvailability;
 use kreatyna::{
     capabilities::ResolveRender,
     confirmation::{ConfirmationEvent, ConfirmationView},
@@ -31,7 +32,7 @@ async fn the_section_starts_with_the_list_and_an_empty_pane() -> anyhow::Result<
     assert_eq!(view.list.status, ready(&[shakshuka()]));
     assert_eq!(view.pane.value, RecipePaneView::Empty);
     assert_eq!(view.selected, None);
-    assert!(view.can_create);
+    assert_eq!(view.create, CreateAvailability::Available);
     Ok(())
 }
 
@@ -47,7 +48,7 @@ async fn selecting_a_row_highlights_it_and_opens_its_read_view() -> anyhow::Resu
         detail(&shakshuka(), RecipeDetailStatus::Loading)
     );
     assert_ne!(view.pane.scope, before);
-    assert!(view.can_create);
+    assert_eq!(view.create, CreateAvailability::Available);
 
     f.settle(command).await?;
     assert_eq!(f.section.view().pane.value, read(&shakshuka()));
@@ -88,7 +89,7 @@ async fn new_recipe_opens_the_editor_with_an_empty_draft_row() -> anyhow::Result
     let view = f.section.view();
     assert_eq!(view.pane.value, create("", ""));
     assert_ne!(view.pane.scope, before);
-    assert!(!view.can_create);
+    assert_eq!(view.create, CreateAvailability::Unavailable);
     f.settle(command).await
 }
 
@@ -147,7 +148,7 @@ async fn cancel_on_an_untouched_editor_empties_the_pane() -> anyhow::Result<()> 
     let command = f.editor(RecipeEditorEvent::RequestClose);
     f.settle(command).await?;
     assert_eq!(f.section.view().pane.value, RecipePaneView::Empty);
-    assert!(f.section.view().can_create);
+    assert_eq!(f.section.view().create, CreateAvailability::Available);
     Ok(())
 }
 
@@ -221,7 +222,7 @@ async fn edit_opens_the_editor_with_the_saved_title_and_keeps_the_row_selected()
     assert_ne!(view.pane.scope, read_scope);
     assert_eq!(view.pane.value, editing(&shakshuka(), "Shakshuka"));
     assert_eq!(view.selected, Some(shakshuka().id));
-    assert!(!view.can_create);
+    assert_eq!(view.create, CreateAvailability::Unavailable);
     Ok(())
 }
 
@@ -245,7 +246,7 @@ async fn saving_an_edit_shows_the_updated_read_view_and_loads_the_list_again() -
     let view = f.section.view();
     assert_eq!(view.pane.value, read(&spicy));
     assert_eq!(view.list.status, ready(&[pasta(), spicy]));
-    assert!(view.can_create);
+    assert_eq!(view.create, CreateAvailability::Available);
     Ok(())
 }
 
@@ -337,7 +338,7 @@ async fn a_confirmed_delete_empties_the_pane_and_loads_the_list_again() -> anyho
     assert_eq!(view.pane.value, RecipePaneView::Empty);
     assert_eq!(view.selected, None);
     assert_eq!(view.list.status, ready(&[pasta()]));
-    assert!(view.can_create);
+    assert_eq!(view.create, CreateAvailability::Available);
     Ok(())
 }
 
@@ -349,7 +350,7 @@ async fn cancel_keeps_the_read_view() -> anyhow::Result<()> {
     f.answer_delete(ConfirmationEvent::Cancel).await?;
     let view = f.section.view();
     assert_eq!(view.pane.value, read(&shakshuka()));
-    assert!(view.can_create);
+    assert_eq!(view.create, CreateAvailability::Available);
     Ok(())
 }
 
@@ -445,7 +446,7 @@ async fn the_pane_is_locked_while_the_delete_question_waits() -> anyhow::Result<
         detail(&shakshuka(), deletion(&shakshuka(), asking_delete(None)))
     );
     assert_eq!(view.selected, Some(shakshuka().id));
-    assert!(!view.can_create);
+    assert_eq!(view.create, CreateAvailability::Unavailable);
 
     f.expect_ignored(RecipeSectionEvent::Select(pasta().id))
         .await?;

@@ -1,0 +1,5 @@
+# A bool field or parameter is usually a mode with two unnamed states. Use an
+# enum, or an `#[expect(..., reason = "...")]` that says why (Introspection 1,
+# 2026-11-04).
+max-fn-params-bools = 0
+max-struct-bools = 0

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Line Amounts Design</title>
+<style>
+  :root {
+    --bg: #f5f5f7; --surface: #ffffff; --surface-2: #f4f4f6; --border: #d8d8de;
+    --text: #1d1d1f; --muted: #6e6e73; --accent: #0a74e6; --accent-soft: rgba(10, 116, 230, 0.12);
+    --d: #2b8a3e; --d-soft: rgba(43, 138, 62, 0.1); --bad: #d92d20; --field: #ffffff;
+    --canvas: #fafafb; --node: #ffffff; --edge: #8e8e96;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111113; --surface: #1e1e21; --surface-2: #26262a; --border: #38383e;
+      --text: #f2f2f4; --muted: #9a9aa2; --accent: #4aa3ff; --accent-soft: rgba(74, 163, 255, 0.16);
+      --d: #69db7c; --d-soft: rgba(105, 219, 124, 0.1); --bad: #ff6b6b; --field: #2a2a2e;
+      --canvas: #18181b; --node: #2a2a2e; --edge: #7a7a82; --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111113; --surface: #1e1e21; --surface-2: #26262a; --border: #38383e;
+    --text: #f2f2f4; --muted: #9a9aa2; --accent: #4aa3ff; --accent-soft: rgba(74, 163, 255, 0.16);
+    --d: #69db7c; --d-soft: rgba(105, 219, 124, 0.1); --bad: #ff6b6b; --field: #2a2a2e;
+    --canvas: #18181b; --node: #2a2a2e; --edge: #7a7a82; --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; }
+  .page { max-width: 1160px; margin: 0 auto; padding: 32px 16px 80px; }
+  header.top { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
+  header.top h1 { margin: 0 0 4px; font-size: 28px; letter-spacing: -0.01em; }
+  header.top p { margin: 0; color: var(--muted); max-width: 72ch; }
+  .theme-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    border-radius: 8px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  h2 { margin: 36px 0 6px; font-size: 20px; }
+  .lede { color: var(--muted); margin: 0 0 16px; max-width: 80ch; }
+  .win { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
+    overflow: hidden; }
+  .titlebar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border);
+    background: var(--surface-2); }
+  .lights { display: flex; gap: 6px; } .lights i { width: 11px; height: 11px; border-radius: 50%; background: var(--border); }
+  .titlebar .title { font-weight: 600; font-size: 13px; } .spacer { flex: 1; }
+  .tb { border: 1px solid var(--border); background: var(--field); color: var(--text); border-radius: 6px;
+    padding: 3px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+  .tb.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .editor { display: grid; grid-template-columns: minmax(0, 1fr) 240px; min-height: 520px; }
+  @media (max-width: 720px) { .editor { grid-template-columns: 1fr; } .inspector { border-left: 0; border-top: 1px solid var(--border); } }
+  .left { display: flex; flex-direction: column; min-width: 0; }
+  .heading { font-size: 20px; font-weight: 700; padding: 14px 18px 0; }
+  .titlefield { display: flex; gap: 8px; align-items: center; padding: 10px 18px 12px; border-bottom: 1px solid var(--border); }
+  input.f { background: var(--field); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 8px; font: inherit; outline: none; width: 100%; min-width: 0; }
+  input.f:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  input.f.bad { border-color: var(--bad); }
+  .canvas { flex: 1; min-height: 200px; background: var(--canvas); position: relative; border-bottom: 1px solid var(--border);
+    background-image: radial-gradient(var(--border) 1px, transparent 1px); background-size: 18px 18px; }
+  .node { position: absolute; width: 150px; padding: 9px 11px; border-radius: 10px; background: var(--node);
+    border: 1.2px solid var(--border); font-size: 12px; }
+  .node b { display: block; font-size: 13px; } .node span { color: var(--muted); }
+  .ings { padding: 10px 18px 14px; }
+  .ings-h { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .ings-h h3 { margin: 0; font-size: 14px; }
+  .lines { max-height: calc(6 * 40px); overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .line { display: grid; grid-template-columns: 20px minmax(0, 1fr) 26px; gap: 8px; align-items: start; padding: 3px 4px;
+    border-radius: 7px; border: 1px solid transparent; }
+  .line.over { border-color: var(--accent); background: var(--accent-soft); }
+  .line.dragging { opacity: 0.4; }
+  .handle { color: var(--muted); cursor: grab; user-select: none; text-align: center; padding-top: 5px; font-size: 15px; }
+  .rm { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; padding-top: 4px; }
+  .rm:hover { color: var(--bad); }
+  .problem { color: var(--bad); font-size: 12px; margin-top: 2px; }
+  .empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
+  .inspector { border-left: 1px solid var(--border); background: var(--surface-2); padding: 14px; color: var(--muted); font-size: 13px; }
+  .read { padding: 16px 20px 24px; max-width: 560px; }
+  .read h1 { margin: 0 0 14px; font-size: 22px; }
+  .sect { margin: 16px 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .group { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
+  .group div { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .group div:last-child { border-bottom: 0; }
+  .group .meta { color: var(--muted); font-size: 12px; }
+  .boxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 18px; }
+  .box { border-radius: 12px; padding: 12px 16px; background: var(--d-soft); }
+  .box h4 { margin: 0 0 6px; font-size: 13px; }
+  .box ul { margin: 0; padding-left: 18px; } .box li { margin: 4px 0; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+  code { font: 12px ui-monospace, Menlo, monospace; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+
+  .line { grid-template-columns: 20px minmax(0, 1fr) 26px; }
+  .summary { padding: 5px 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+  .summary:hover, .summary.open { background: var(--accent-soft); }
+  .summary.open { border-color: var(--accent); }
+  .amt { font-weight: 600; margin-right: 6px; }
+  .note { color: var(--muted); }
+  .ph { color: var(--muted); font-style: italic; }
+  .pop-wrap { position: relative; }
+  .pop { position: absolute; z-index: 2; left: 40px; top: 6px; width: 340px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; box-shadow: var(--shadow); padding: 14px; }
+  .pop.static { position: static; }
+  .pop::before { content: ""; position: absolute; top: -7px; left: 40px; width: 12px; height: 12px; background: var(--surface);
+    border-left: 1px solid var(--border); border-top: 1px solid var(--border); transform: rotate(45deg); }
+  .pop .grid { display: grid; grid-template-columns: 90px 1fr; gap: 10px 10px; align-items: start; }
+  .pop .full { grid-column: 1 / -1; }
+  .pop label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+  .sel { background: var(--field); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; display: flex; justify-content: space-between; }
+  .unitpick { position: relative; }
+  .unitpick .menu { position: absolute; z-index: 3; left: 0; right: 0; top: 100%; }
+  .menu { margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px; box-shadow: var(--shadow); font-size: 13px; }
+  .menu div { padding: 3px 8px; border-radius: 5px; } .menu .hl { background: var(--accent); color: #fff; }
+  .menu .sep { height: 1px; background: var(--border); margin: 4px 0; padding: 0; }
+  .rline { display: grid; grid-template-columns: 90px 1fr; gap: 8px; }
+  .rline .amt { text-align: right; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div>
+      <h1>REC-08 · Amount, known unit and note on a line</h1>
+      <p>Each line row shows a summary: <b>amount</b>, the name, and the note in grey. A click on the summary opens a popover
+        with Amount, Unit, Name and Note (REC-08/Q1). ＋ Line opens the popover for the new line, with the cursor in Name.
+        The handle ≡ still drags, and − still removes.</p>
+    </div>
+    <button class="theme-btn" type="button" id="themeBtn">Light / dark</button>
+  </header>
+
+  <h2>1 · The editor with the popover open</h2>
+  <p class="lede">The popover belongs to "olive oil". The row shows what Rust returns as the summary. The Unit menu is open:
+    "No unit", then the 8 known units (D-25). REC-09 adds "Custom unit…" below them, and REC-10 adds the catalog link.</p>
+  <div class="win" style="overflow:visible">
+    <div class="titlebar"><span class="lights"><i></i><i></i><i></i></span><span class="title">Pasta</span><span class="spacer"></span>
+      <button class="tb" type="button">Cancel</button><button class="tb primary" type="button">Save</button></div>
+    <div class="editor">
+      <div class="left">
+        <div class="heading">Pasta</div>
+        <div class="titlefield"><span>Title</span><input class="f" value="Pasta" aria-label="Title"></div>
+        <div class="canvas" style="min-height:140px"><div class="node" style="left:24px;top:20px"><b>Boil water</b><span>10 min · waiting</span></div></div>
+        <div class="ings">
+          <div class="ings-h"><h3>Ingredients</h3><span class="spacer"></span><button class="tb" type="button">＋ Line</button></div>
+          <div class="lines" style="max-height:none;overflow:visible">
+            <div class="line"><div class="handle">≡</div><div class="summary"><span class="amt">300 g</span>penne pasta</div><button class="rm" type="button" aria-label="Remove">⊖</button></div>
+            <div class="line"><div class="handle">≡</div>
+              <div class="pop-wrap"><div class="summary open"><span class="amt">1 tbsp</span>olive oil<span class="note">, extra virgin</span></div>
+                <div class="pop">
+                  <div class="grid">
+                    <div><label>Amount</label><input class="f" value="1" aria-label="Amount"></div>
+                    <div class="unitpick"><label>Unit</label><div class="sel"><span>tbsp</span><span>▾</span></div>
+                      <div class="menu"><div>No unit</div><div class="sep"></div><div>g</div><div>kg</div><div>ml</div><div>l</div><div>tsp</div><div class="hl">tbsp</div><div>cup</div><div>piece</div></div></div>
+                    <div class="full"><label>Name</label><input class="f" value="olive oil" aria-label="Name"></div>
+                    <div class="full"><label>Note</label><input class="f" value="extra virgin" aria-label="Note"></div>
+                  </div>
+                </div>
+              </div>
+              <button class="rm" type="button" aria-label="Remove">⊖</button></div>
+            <div class="line"><div class="handle">≡</div><div class="summary">salt<span class="note">, to taste</span></div><button class="rm" type="button" aria-label="Remove">⊖</button></div>
+            <div class="line"><div class="handle">≡</div><div class="summary"><span class="amt">2</span>eggs</div><button class="rm" type="button" aria-label="Remove">⊖</button></div>
+            <div style="height:150px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="inspector">Select a step</div>
+    </div>
+  </div>
+
+  <h2>2 · Problems after the first Save</h2>
+  <p class="lede">Save is refused. Each row with a problem shows it in red under its summary, and the popover shows it under
+    its field. Rust decides each problem; Swift only shows the text for it.</p>
+  <div class="two">
+    <div class="win" style="padding:14px 18px">
+      <div class="lines" style="max-height:none">
+        <div class="line"><div class="handle">≡</div><div><div class="summary"><span class="amt">g</span>flour</div><div class="problem">Amount needed for a unit</div></div><button class="rm" type="button" aria-label="Remove">⊖</button></div>
+        <div class="line"><div class="handle">≡</div><div><div class="summary"><span class="amt">0 ml</span>milk</div><div class="problem">Amount must be more than 0</div></div><button class="rm" type="button" aria-label="Remove">⊖</button></div>
+        <div class="line"><div class="handle">≡</div><div><div class="summary"><span class="amt">1.2.3</span>sugar</div><div class="problem">Amount is not a number</div></div><button class="rm" type="button" aria-label="Remove">⊖</button></div>
+        <div class="line"><div class="handle">≡</div><div><div class="summary"><span class="amt">2</span><span class="ph">No name</span></div><div class="problem">Name required</div></div><button class="rm" type="button" aria-label="Remove">⊖</button></div>
+      </div>
+    </div>
+    <div class="pop static">
+      <div class="grid">
+        <div><label>Amount</label><input class="f bad" value="" placeholder="Amount" aria-label="Amount"><div class="problem">Amount needed for a unit</div></div>
+        <div><label>Unit</label><div class="sel"><span>g</span><span>▾</span></div></div>
+        <div class="full"><label>Name</label><input class="f" value="flour" aria-label="Name"></div>
+        <div class="full"><label>Note</label><input class="f" value="" placeholder="Optional" aria-label="Note"></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>3 · The read view</h2>
+  <p class="lede">The amount and unit are in a column on the left, as in the mockup's "How lines look in the list". Rust
+    formats the amount: "1,50" was typed and shows as "1.5". "cup" and "piece" get a plural for an amount other than 1.</p>
+  <div class="win"><div class="read">
+    <h1>Pasta</h1>
+    <div class="sect">Ingredients</div>
+    <div class="group">
+      <div class="rline"><span class="amt">300 g</span><span>penne pasta</span></div>
+      <div class="rline"><span class="amt">1 tbsp</span><span>olive oil<span class="note">, extra virgin</span></span></div>
+      <div class="rline"><span class="amt">1.5 kg</span><span>tomatoes</span></div>
+      <div class="rline"><span class="amt">2 cups</span><span>stock</span></div>
+      <div class="rline"><span class="amt">2</span><span>eggs</span></div>
+      <div class="rline"><span class="amt"></span><span>salt<span class="note">, to taste</span></span></div>
+    </div>
+    <div class="sect">Steps</div>
+    <div class="group"><div>Boil water <span class="meta">· 10 min · waiting</span></div></div>
+  </div></div>
+
+  <div class="boxes">
+    <div class="box"><h4>Decided</h4><ul>
+      <li><b>REC-08/Q1</b> The row shows a summary; a click opens the popover with Amount, Unit, Name and Note.</li>
+      <li>The amount is an exact decimal: "1.5" or "1,5", at most 6 decimal places, more than 0 (the catalog rules).</li>
+      <li>A unit needs an amount. An amount without a unit is fine ("2 eggs").</li>
+      <li>The note is optional and shows after the name, in grey.</li>
+    </ul></div>
+    <div class="box"><h4>Not in this slice</h4><ul>
+      <li>Custom units ("1 knob ginger"): REC-09.</li>
+      <li>The catalog link and its reference units: REC-10, REC-12.</li>
+      <li>Fractions such as "½".</li>
+    </ul></div>
+  </div>
+</div>
+<script>
+  const asked = new URLSearchParams(location.search).get("theme");
+  if (asked === "light" || asked === "dark") document.documentElement.dataset.theme = asked;
+  document.getElementById("themeBtn").onclick = () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = dark ? "light" : "dark";
+  };
+</script>
+</body>
+</html>

@@ -347,3 +347,7 @@ moves the line, as the canvas nodes do.
 The 12 editor snapshots (24 images) changed only in the bottom strip:
 "Ingredients Coming soon" became "Ingredients" with ＋ Line, and the canvas
 is a few points shorter.
+
+Change 5: the demo capture test `testCaptureREC07Demo` ran on macOS 27.0.1,
+in a 900 × 552 pt window, in dark mode. It saved 5 screenshots in
+`REC-07-demo/`. It edits no Rust files.

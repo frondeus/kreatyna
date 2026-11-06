@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The Ingredients list in the recipe editor (REC-07), under the canvas.
 /// ＋ Line, each name, the − button and each drop go to Rust as
-/// `RecipeIngredientsEvent`s; Rust keeps the lines, their order and their
+/// `RecipeIngredientsEvent`s; Rust keeps the ingredients, their order and their
 /// problems.
 ///
 /// The rows are plain views in a `ScrollView`, not a `List` or `Form`: a drag
@@ -10,12 +10,12 @@ import SwiftUI
 /// uses a `DragGesture`, as the canvas nodes do, not a system drag: Swift
 /// finds the row under the pointer, and the drop sends `Move` to Rust.
 struct MacRecipeIngredients: View {
-    let lines: [RecipeIngredientView]
+    let ingredients: [RecipeIngredientView]
     let send: (RecipeIngredientsEvent) -> Void
 
-    /// Presentation only: a new line's name field gets the cursor.
+    /// Presentation only: a new ingredient's name field gets the cursor.
     @FocusState private var focused: RecipeIngredientId?
-    /// Presentation only: the line being dragged and the row under the
+    /// Presentation only: the ingredient being dragged and the row under the
     /// pointer, which shows the drop.
     @State private var drag: RecipeIngredientDrag?
     /// Presentation only: each row's frame, to find the row under the pointer.
@@ -36,11 +36,11 @@ struct MacRecipeIngredients: View {
                 Button("＋ Line") { send(.add) }
                     .accessibilityIdentifier("addRecipeIngredient")
             }
-            if !lines.isEmpty {
+            if !ingredients.isEmpty {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(lines.enumerated()), id: \.element.id) { index, line in
-                            row(index: index, line)
+                        ForEach(Array(ingredients.enumerated()), id: \.element.id) { index, ingredient in
+                            row(index: index, ingredient)
                         }
                     }
                     .coordinateSpace(.named(Self.space))
@@ -52,13 +52,13 @@ struct MacRecipeIngredients: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
-        .onChange(of: lines.map(\.id)) { old, new in
+        .onChange(of: ingredients.map(\.id)) { old, new in
             // ＋ Line adds one id at the bottom; a move or a remove adds none.
             if let added = new.last, !old.contains(added) { focused = added }
         }
     }
 
-    private func row(index: Int, _ line: RecipeIngredientView) -> some View {
+    private func row(index: Int, _ ingredient: RecipeIngredientView) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text("≡")
                 .font(.system(size: 15))
@@ -66,23 +66,23 @@ struct MacRecipeIngredients: View {
                 .frame(width: 18)
                 .contentShape(Rectangle())
                 .help("Drag to reorder")
-                .gesture(reorder(line.id))
+                .gesture(reorder(ingredient.id))
                 .accessibilityLabel("Reorder")
                 .accessibilityIdentifier("recipeIngredientHandle.\(index)")
             VStack(alignment: .leading, spacing: 2) {
-                SyncedTextField("Name", value: line.name, prompt: "Name") { send(.setName(id: line.id, name: $0)) }
+                SyncedTextField("Name", value: ingredient.name, prompt: "Name") { send(.setName(id: ingredient.id, name: $0)) }
                     .labelsHidden()
                     .textFieldStyle(.roundedBorder)
-                    .focused($focused, equals: line.id)
+                    .focused($focused, equals: ingredient.id)
                     .accessibilityIdentifier("recipeIngredientName.\(index)")
-                if let problem = line.problem {
+                if let problem = ingredient.problem {
                     Text(problem.message)
                         .font(.footnote)
                         .foregroundStyle(.red)
                         .accessibilityIdentifier("recipeIngredientProblem.\(index)")
                 }
             }
-            Button("Remove Line", systemImage: "minus.circle.fill") { send(.remove(id: line.id)) }
+            Button("Remove Line", systemImage: "minus.circle.fill") { send(.remove(id: ingredient.id)) }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)
                 .foregroundStyle(.red)
@@ -92,16 +92,16 @@ struct MacRecipeIngredients: View {
         .padding(.horizontal, 4)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(drag?.target == line.id ? Color.accentColor.opacity(0.15) : .clear)
+                .fill(drag?.target == ingredient.id ? Color.accentColor.opacity(0.15) : .clear)
         )
-        .opacity(drag?.id == line.id ? 0.5 : 1)
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { rowFrames[line.id] = $0 }
+        .opacity(drag?.id == ingredient.id ? 0.5 : 1)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { rowFrames[ingredient.id] = $0 }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("recipeIngredientRow.\(index)")
     }
 
-    /// A drag of the line `id` by its handle. The drop on a row sends `Move`;
-    /// Rust decides what it does, also for a drop on the line itself.
+    /// A drag of the ingredient `id` by its handle. The drop on a row sends `Move`;
+    /// Rust decides what it does, also for a drop on the ingredient itself.
     private func reorder(_ id: RecipeIngredientId) -> some Gesture {
         DragGesture(minimumDistance: 3, coordinateSpace: .named(Self.space))
             .onChanged { value in
@@ -115,7 +115,7 @@ struct MacRecipeIngredients: View {
     }
 }
 
-/// A handle drag in progress: the dragged line, and the row under the
+/// A handle drag in progress: the dragged ingredient, and the row under the
 /// pointer, if any.
 struct RecipeIngredientDrag: Equatable {
     let id: RecipeIngredientId

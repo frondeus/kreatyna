@@ -1,6 +1,6 @@
 //! The read view of one saved recipe in the detail pane (REC-03). It loads
 //! the recipe by id each time it opens (E-08). REC-07 shows the ingredient
-//! lines, REC-14 the steps, and REC-19 shows the steps as stages (D-16).
+//! ingredients, REC-14 the steps, and REC-19 shows the steps as stages (D-16).
 //! REC-05 deletes the shown recipe after a question (MAC-07).
 use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
@@ -50,7 +50,7 @@ pub enum RecipeDetailStatus {
     Ready {
         title: String,
         /// In list order (REC-07/Q1).
-        lines: Vec<RecipeDetailIngredient>,
+        ingredients: Vec<RecipeDetailIngredient>,
         /// In the order added, until REC-19 shows stages (D-16).
         steps: Vec<RecipeDetailStep>,
         deletion: RecipeDeletion,
@@ -342,12 +342,12 @@ impl Widget for RecipeDetail {
             State::Missing => RecipeDetailStatus::Missing,
             State::Ready { recipe, deletion } => RecipeDetailStatus::Ready {
                 title: recipe.title.clone(),
-                lines: recipe
-                    .lines
+                ingredients: recipe
+                    .ingredients
                     .iter()
-                    .map(|line| RecipeDetailIngredient {
-                        id: line.id,
-                        name: line.name.as_ref().to_owned(),
+                    .map(|ingredient| RecipeDetailIngredient {
+                        id: ingredient.id,
+                        name: ingredient.name.as_ref().to_owned(),
                     })
                     .collect(),
                 steps: recipe

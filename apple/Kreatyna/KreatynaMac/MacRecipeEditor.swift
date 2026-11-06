@@ -39,7 +39,7 @@ struct MacRecipeEditor: View {
                         .accessibilityIdentifier("connectRefusal")
                 }
                 Divider()
-                MacRecipeIngredients(lines: view.lines) { send(.lines(event: $0)) }
+                MacRecipeIngredients(ingredients: view.ingredients) { send(.ingredients(event: $0)) }
             }
             Divider()
             MacStepInspector(canvas: view.canvas) { send(.canvas(event: $0)) }

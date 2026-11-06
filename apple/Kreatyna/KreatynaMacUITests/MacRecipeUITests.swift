@@ -442,7 +442,7 @@ final class MacRecipeUITests: MacUITestCase {
 
     /// ＋ Line three times with a name each; a drag of basil's handle onto
     /// penne pasta puts basil first; − removes olive oil. Save keeps the
-    /// two lines in the new order, and the read view lists them (REC-07).
+    /// two ingredients in the new order, and the read view lists them (REC-07).
     @MainActor
     func testRecipeIngredientsAddDragRemoveAndSave() throws {
         let app = try launch(json: nil, openIngredients: false)
@@ -451,7 +451,7 @@ final class MacRecipeUITests: MacUITestCase {
         XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
         app.typeText("Pasta")
 
-        // The new line's name field has the focus.
+        // The new ingredient's name field has the focus.
         for (index, name) in ["penne pasta", "olive oil", "basil"].enumerated() {
             app.buttons["addRecipeIngredient"].click()
             let field = app.textFields["recipeIngredientName.\(index)"]
@@ -472,10 +472,10 @@ final class MacRecipeUITests: MacUITestCase {
         app.typeKey("s", modifierFlags: .command)
 
         XCTAssertTrue(waitForTitle(in: app, "Pasta"))
-        let lines = app.staticTexts.matching(identifier: "recipeIngredient")
-        XCTAssertTrue(waitFor(lines.element(boundBy: 0), value: "basil"))
-        XCTAssertTrue(waitFor(lines.element(boundBy: 1), value: "penne pasta"))
-        XCTAssertEqual(lines.count, 2)
+        let ingredients = app.staticTexts.matching(identifier: "recipeIngredient")
+        XCTAssertTrue(waitFor(ingredients.element(boundBy: 0), value: "basil"))
+        XCTAssertTrue(waitFor(ingredients.element(boundBy: 1), value: "penne pasta"))
+        XCTAssertEqual(ingredients.count, 2)
     }
 
     /// Presses on `element`, moves the pointer by `offset` points, and releases.

@@ -269,7 +269,7 @@ impl From<core::RecipeIngredientView> for RecipeIngredientView {
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum RecipeIngredientsEvent {
-    /// ＋ Line: an empty line at the bottom.
+    /// ＋ Line: an empty ingredient at the bottom.
     Add,
     /// The name field, as typed.
     SetName {
@@ -278,14 +278,14 @@ pub enum RecipeIngredientsEvent {
     },
     /// The − button.
     Remove { id: core::RecipeIngredientId },
-    /// A drop of the line `id` onto the line `onto`: `id` takes `onto`'s
+    /// A drop of the ingredient `id` onto the ingredient `onto`: `id` takes `onto`'s
     /// place. So it ends up before `onto` when it moves up, and after
-    /// `onto` when it moves down. With the lines penne, oil, basil:
+    /// `onto` when it moves down. With the ingredients penne, oil, basil:
     ///
-    /// | Drag              | Result            | The dragged line ends up |
-    /// |-------------------|-------------------|--------------------------|
-    /// | basil onto penne  | basil, penne, oil | before penne             |
-    /// | penne onto basil  | oil, basil, penne | after basil              |
+    /// | Drag              | Result            | The dragged ingredient ends up |
+    /// |-------------------|-------------------|--------------------------------|
+    /// | basil onto penne  | basil, penne, oil | before penne                   |
+    /// | penne onto basil  | oil, basil, penne | after basil                    |
     Move {
         id: core::RecipeIngredientId,
         onto: core::RecipeIngredientId,
@@ -697,7 +697,7 @@ pub struct RecipeEditorView {
     /// The title as typed.
     pub title: String,
     /// The recipe ingredients, in list order.
-    pub lines: Vec<RecipeIngredientView>,
+    pub ingredients: Vec<RecipeIngredientView>,
     pub canvas: StepCanvasView,
     pub status: RecipeEditorStatus,
 }
@@ -706,7 +706,7 @@ impl From<core::RecipeEditorView> for RecipeEditorView {
     fn from(value: core::RecipeEditorView) -> Self {
         Self {
             title: value.title,
-            lines: value.lines.into_iter().map(Into::into).collect(),
+            ingredients: value.ingredients.into_iter().map(Into::into).collect(),
             canvas: value.canvas.into(),
             status: value.status.into(),
         }
@@ -778,7 +778,7 @@ pub enum RecipeEditorEvent {
         title: String,
     },
     /// The recipe ingredients.
-    Lines {
+    Ingredients {
         event: RecipeIngredientsEvent,
     },
     /// The steps on the canvas and in the inspector.
@@ -786,7 +786,7 @@ pub enum RecipeEditorEvent {
         event: StepCanvasEvent,
     },
     Save,
-    /// Cancel. A changed title, line list or step list asks "Discard
+    /// Cancel. A changed title, ingredient list or step list asks "Discard
     /// changes?" first.
     RequestClose,
     Confirmation {
@@ -798,7 +798,7 @@ impl From<RecipeEditorEvent> for core::RecipeEditorEvent {
     fn from(value: RecipeEditorEvent) -> Self {
         match value {
             RecipeEditorEvent::SetTitle { title } => Self::SetTitle(title),
-            RecipeEditorEvent::Lines { event } => Self::Lines(event.into()),
+            RecipeEditorEvent::Ingredients { event } => Self::Ingredients(event.into()),
             RecipeEditorEvent::Canvas { event } => Self::Canvas(event.into()),
             RecipeEditorEvent::Save => Self::Save,
             RecipeEditorEvent::RequestClose => Self::RequestClose,
@@ -841,7 +841,7 @@ pub enum RecipeDetailStatus {
     Ready {
         title: String,
         /// The recipe ingredients, in list order. Empty shows "None yet".
-        lines: Vec<RecipeDetailIngredient>,
+        ingredients: Vec<RecipeDetailIngredient>,
         /// In the order added. Empty shows "None yet".
         steps: Vec<RecipeDetailStep>,
         deletion: RecipeDeletion,
@@ -929,12 +929,12 @@ impl From<core::RecipeDetailStatus> for RecipeDetailStatus {
             core::RecipeDetailStatus::Missing => Self::Missing,
             core::RecipeDetailStatus::Ready {
                 title,
-                lines,
+                ingredients,
                 steps,
                 deletion,
             } => Self::Ready {
                 title,
-                lines: lines.into_iter().map(Into::into).collect(),
+                ingredients: ingredients.into_iter().map(Into::into).collect(),
                 steps: steps.into_iter().map(Into::into).collect(),
                 deletion: deletion.into(),
             },

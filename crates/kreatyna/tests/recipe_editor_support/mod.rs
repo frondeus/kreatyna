@@ -30,7 +30,7 @@ pub(crate) fn shakshuka() -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(1)),
         title: "Shakshuka".into(),
-        lines: vec![],
+        ingredients: vec![],
         steps: vec![],
         edges: StepEdges::default(),
     }
@@ -41,29 +41,29 @@ pub(crate) fn pasta() -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(2)),
         title: "Pasta".into(),
-        lines: vec![],
+        ingredients: vec![],
         steps: vec![boil_water(), cook_pasta()],
         edges: StepEdges::default(),
     }
 }
 
-/// `pasta()` with two saved lines: penne pasta, then olive oil.
-pub(crate) fn pasta_with_lines() -> anyhow::Result<Recipe> {
+/// `pasta()` with two saved ingredients: penne pasta, then olive oil.
+pub(crate) fn pasta_with_ingredients() -> anyhow::Result<Recipe> {
     Ok(Recipe {
-        lines: vec![penne()?, olive_oil()?],
+        ingredients: vec![penne()?, olive_oil()?],
         ..pasta()
     })
 }
 
 pub(crate) fn penne() -> anyhow::Result<RecipeIngredient> {
-    saved_line(21, "penne pasta")
+    saved_ingredient(21, "penne pasta")
 }
 
 pub(crate) fn olive_oil() -> anyhow::Result<RecipeIngredient> {
-    saved_line(22, "olive oil")
+    saved_ingredient(22, "olive oil")
 }
 
-pub(crate) fn saved_line(id: u128, name: &str) -> anyhow::Result<RecipeIngredient> {
+pub(crate) fn saved_ingredient(id: u128, name: &str) -> anyhow::Result<RecipeIngredient> {
     Ok(RecipeIngredient {
         id: RecipeIngredientId::from(Uuid::from_u128(id)),
         name: RecipeIngredientName::try_new(name)?,
@@ -127,7 +127,7 @@ pub(crate) fn sauce() -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(3)),
         title: "Sauce".into(),
-        lines: vec![],
+        ingredients: vec![],
         steps: vec![bake_sauce()],
         edges: StepEdges::default(),
     }
@@ -278,8 +278,8 @@ pub(crate) struct Fixture {
     pub(crate) written_steps: Vec<Vec<StepWrite>>,
     /// The edges that each store call wrote, in the order of `writes`.
     pub(crate) written_edges: Vec<StepEdges>,
-    /// The lines that each store call wrote, in the order of `writes`.
-    pub(crate) written_lines: Vec<Vec<RecipeIngredient>>,
+    /// The ingredients that each store call wrote, in the order of `writes`.
+    pub(crate) written_ingredients: Vec<Vec<RecipeIngredient>>,
 }
 
 impl Fixture {
@@ -307,7 +307,7 @@ impl Fixture {
             writes: vec![],
             written_steps: vec![],
             written_edges: vec![],
-            written_lines: vec![],
+            written_ingredients: vec![],
         }
     }
 
@@ -395,40 +395,43 @@ impl Fixture {
         self.canvas(StepCanvasEvent::Delete(id)).await
     }
 
-    /// Sends a line event that changes the lines, and runs its render.
-    pub(crate) async fn lines(&mut self, event: RecipeIngredientsEvent) -> anyhow::Result<()> {
-        let command = self.send(RecipeEditorEvent::Lines(event));
+    /// Sends an ingredient event that changes the ingredients, and runs its render.
+    pub(crate) async fn ingredients(
+        &mut self,
+        event: RecipeIngredientsEvent,
+    ) -> anyhow::Result<()> {
+        let command = self.send(RecipeEditorEvent::Ingredients(event));
         self.render(command).await
     }
 
-    /// ＋ Line. Returns the new line's id.
-    pub(crate) async fn add_line(&mut self) -> anyhow::Result<RecipeIngredientId> {
-        self.lines(RecipeIngredientsEvent::Add).await?;
+    /// ＋ Line. Returns the new ingredient's id.
+    pub(crate) async fn add_ingredient(&mut self) -> anyhow::Result<RecipeIngredientId> {
+        self.ingredients(RecipeIngredientsEvent::Add).await?;
         self.editor
             .view()
-            .lines
+            .ingredients
             .last()
-            .map(|line| line.id)
-            .ok_or_else(|| anyhow::anyhow!("＋ Line added no line"))
+            .map(|ingredient| ingredient.id)
+            .ok_or_else(|| anyhow::anyhow!("＋ Line added no ingredient"))
     }
 
-    pub(crate) async fn name_line(
+    pub(crate) async fn name_ingredient(
         &mut self,
         id: RecipeIngredientId,
         name: &str,
     ) -> anyhow::Result<()> {
         let name = name.into();
-        self.lines(RecipeIngredientsEvent::SetName { id, name })
+        self.ingredients(RecipeIngredientsEvent::SetName { id, name })
             .await
     }
 
-    /// The names of the lines as the editor shows them, in list order.
-    pub(crate) fn line_names(&self) -> Vec<String> {
+    /// The names of the ingredients as the editor shows them, in list order.
+    pub(crate) fn ingredient_names(&self) -> Vec<String> {
         self.editor
             .view()
-            .lines
+            .ingredients
             .into_iter()
-            .map(|line| line.name)
+            .map(|ingredient| ingredient.name)
             .collect()
     }
 
@@ -461,14 +464,14 @@ impl Fixture {
         let mut write = None;
         let mut steps = None;
         let mut edges = None;
-        let mut lines = None;
+        let mut ingredients = None;
         let store = command.step().await?.expect_effect().expect_store();
         match store.request {
             RecipeStoreRequest::Create { .. } => {
                 store
                     .resolve_create(|recipe| {
                         write = Some(Write::Created(recipe.title.as_ref().to_owned()));
-                        lines = Some(recipe.lines);
+                        ingredients = Some(recipe.ingredients);
                         steps = Some(recipe.steps);
                         edges = Some(recipe.edges);
                         async { result }
@@ -479,7 +482,7 @@ impl Fixture {
                 store
                     .resolve_update(|id, recipe| {
                         write = Some(Write::Updated(id, recipe.title.as_ref().to_owned()));
-                        lines = Some(recipe.lines);
+                        ingredients = Some(recipe.ingredients);
                         steps = Some(recipe.steps);
                         edges = Some(recipe.edges);
                         async { result }
@@ -494,7 +497,7 @@ impl Fixture {
         self.writes.extend(write);
         self.written_steps.extend(steps);
         self.written_edges.extend(edges);
-        self.written_lines.extend(lines);
+        self.written_ingredients.extend(ingredients);
         Ok(finished)
     }
 

@@ -98,15 +98,15 @@ struct MacRecipeDetail: View {
                 Text("This recipe no longer exists.")
             }
             .accessibilityIdentifier("recipeDetailMissing")
-        case .ready(let title, let lines, let steps, _):
+        case .ready(let title, let ingredients, let steps, _):
             Form {
                 // In list order (REC-07); stages arrive with REC-19.
-                if lines.isEmpty {
+                if ingredients.isEmpty {
                     noneYet("Ingredients")
                 } else {
                     Section("Ingredients") {
-                        ForEach(lines, id: \.id) { line in
-                            Text(line.name)
+                        ForEach(ingredients, id: \.id) { ingredient in
+                            Text(ingredient.name)
                                 .accessibilityIdentifier("recipeIngredient")
                         }
                     }

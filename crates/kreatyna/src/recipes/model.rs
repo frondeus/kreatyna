@@ -33,7 +33,7 @@ impl StepId {
 }
 
 /// Stable recipe ingredient identity. The editor generates it when you add a
-/// line (REC-07), and the line keeps it through every save.
+/// ingredient (REC-07), and the ingredient keeps it through every save.
 #[nutype(derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Display, FromStr, From, Into
 ))]
@@ -46,7 +46,7 @@ impl RecipeIngredientId {
     }
 }
 
-/// A line's name: trimmed and not empty (REC-07). `try_new` keeps the
+/// An ingredient's name: trimmed and not empty (REC-07). `try_new` keeps the
 /// spaces inside the name and fails with
 /// `RecipeIngredientNameError::NotEmptyViolated`.
 #[nutype(
@@ -56,7 +56,7 @@ impl RecipeIngredientId {
 )]
 pub struct RecipeIngredientName(String);
 
-/// A line's amount, such as 300 in "300 g penne pasta" (REC-08): an exact
+/// An ingredient's amount, such as 300 in "300 g penne pasta" (REC-08): an exact
 /// decimal, more than 0. `try_new` fails with
 /// `RecipeIngredientAmountError::GreaterViolated`.
 #[nutype(
@@ -79,7 +79,7 @@ pub enum KnownUnit {
     Piece,
 }
 
-/// How much of an ingredient a line names (REC-08). A unit without an amount
+/// How much of the ingredient the recipe needs (REC-08). A unit without an amount
 /// cannot be built.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RecipeIngredientQuantity {
@@ -94,7 +94,7 @@ pub enum RecipeIngredientQuantity {
     },
 }
 
-/// A line's note, such as "extra virgin" or "to taste" (D-12): trimmed and
+/// An ingredient's note, such as "extra virgin" or "to taste" (D-12): trimmed and
 /// not empty. `try_new` fails with `RecipeIngredientNoteError::NotEmptyViolated`.
 #[nutype(
     sanitize(trim),
@@ -103,8 +103,8 @@ pub enum RecipeIngredientQuantity {
 )]
 pub struct RecipeIngredientNote(String);
 
-/// A line of a recipe's ingredient list, such as "300 g penne pasta" (D-10,
-/// D-12). The store reads and writes this type, so a stored line has a valid
+/// An ingredient of a recipe's ingredient list, such as "300 g penne pasta" (D-10,
+/// D-12). The store reads and writes this type, so a stored ingredient has a valid
 /// name, and a unit only with an amount.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecipeIngredient {
@@ -173,7 +173,7 @@ pub struct Recipe {
     pub id: RecipeId,
     pub title: String,
     /// In list order: the order added, then moved by drag (REC-07/Q1).
-    pub lines: Vec<RecipeIngredient>,
+    pub ingredients: Vec<RecipeIngredient>,
     /// In the order added.
     pub steps: Vec<Step>,
     /// The arrows between `steps` (REC-18).
@@ -224,7 +224,7 @@ pub struct StepWrite {
 pub struct NewRecipe {
     pub title: RecipeTitle,
     /// In list order (REC-07/Q1).
-    pub lines: Vec<RecipeIngredient>,
+    pub ingredients: Vec<RecipeIngredient>,
     /// In the order added.
     pub steps: Vec<StepWrite>,
     /// The arrows between `steps` (REC-18).
@@ -237,8 +237,8 @@ pub struct NewRecipe {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecipeUpdate {
     pub title: RecipeTitle,
-    /// The whole new line list, in list order. Lines keep their ids.
-    pub lines: Vec<RecipeIngredient>,
+    /// The whole new ingredient list, in list order. Ingredients keep their ids.
+    pub ingredients: Vec<RecipeIngredient>,
     /// The whole new step list, in the order added. Steps keep their ids.
     pub steps: Vec<StepWrite>,
     /// The whole new edge set between `steps` (REC-18).

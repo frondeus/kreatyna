@@ -543,7 +543,7 @@ async fn save_with_an_untitled_step_selects_the_first_one_and_does_not_call_the_
         f.editor.view(),
         RecipeEditorView {
             title: title.into(),
-            lines: vec![],
+            ingredients: vec![],
             canvas: canvas(StepNodesView::Selected {
                 selected: node(
                     first,
@@ -584,7 +584,7 @@ async fn save_with_a_duration_past_365_days_selects_that_step_and_does_not_call_
         f.editor.view(),
         RecipeEditorView {
             title: "Pasta".into(),
-            lines: vec![],
+            ingredients: vec![],
             canvas: canvas(StepNodesView::Selected {
                 selected: StepNodeView {
                     duration: StepDurationView::TooLong { parts: too_long },

@@ -588,7 +588,7 @@ final class MacDemoCaptureUITests: MacUITestCase {
     }
 
     /// REC-07: three recipe ingredients; basil dragged to the top; an empty
-    /// line refused by Save; the read view; and Edit again, with the saved lines.
+    /// ingredient refused by Save; the read view; and Edit again, with the saved ingredients.
     @MainActor
     func testCaptureREC07Demo() throws {
         let app = try launch(json: nil, openIngredients: false)
@@ -606,11 +606,11 @@ final class MacDemoCaptureUITests: MacUITestCase {
         app.typeText("Boil water")
 
         let name = { (index: Int) in app.textFields["recipeIngredientName.\(index)"] }
-        for (index, line) in ["penne pasta", "olive oil", "basil"].enumerated() {
+        for (index, ingredient) in ["penne pasta", "olive oil", "basil"].enumerated() {
             app.buttons["addRecipeIngredient"].click()
             XCTAssertTrue(name(index).waitForExistence(timeout: 5))
-            app.typeText(line)
-            XCTAssertTrue(waitFor(name(index), value: line))
+            app.typeText(ingredient)
+            XCTAssertTrue(waitFor(name(index), value: ingredient))
         }
         capture("01-lines", app)
 
@@ -629,8 +629,8 @@ final class MacDemoCaptureUITests: MacUITestCase {
         app.buttons["removeRecipeIngredient.3"].click()
         XCTAssertTrue(waitForNonExistence(name(3)))
         app.typeKey("s", modifierFlags: .command)
-        let lines = app.staticTexts.matching(identifier: "recipeIngredient")
-        XCTAssertTrue(waitFor(lines.element(boundBy: 0), value: "basil"))
+        let ingredients = app.staticTexts.matching(identifier: "recipeIngredient")
+        XCTAssertTrue(waitFor(ingredients.element(boundBy: 0), value: "basil"))
         capture("04-read-view", app)
 
         app.buttons["editRecipe"].click()

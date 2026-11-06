@@ -92,7 +92,7 @@ fn record(connection: &mut SqliteConnection, id: RecipeId) -> Result<Option<Reci
         return Ok(None);
     };
     let row = checked(row)?;
-    let lines = load_lines(connection, row.local_id)?;
+    let ingredients = load_ingredients(connection, row.local_id)?;
     let rows = step_rows(connection, row.local_id)?;
     let step_ids: HashMap<LocalStepId, StepId> = rows
         .iter()
@@ -100,16 +100,16 @@ fn record(connection: &mut SqliteConnection, id: RecipeId) -> Result<Option<Reci
         .collect();
     let edges = edges(connection, &step_ids)?;
     let steps = rows.into_iter().map(StepRow::into_domain).collect();
-    Ok(Some(row.into_domain(lines, steps, edges)))
+    Ok(Some(row.into_domain(ingredients, steps, edges)))
 }
 
-/// The lines of the recipe row `recipe_local_id`, in list order. A blank
+/// The ingredients of the recipe row `recipe_local_id`, in list order. A blank
 /// stored name or note, or a unit without an amount, fails the load.
-fn load_lines(
+fn load_ingredients(
     connection: &mut SqliteConnection,
     recipe_local_id: LocalRecipeId,
 ) -> Result<Vec<RecipeIngredient>, StoreFailure> {
-    let lines = recipe_ingredient_lines::table
+    let ingredients = recipe_ingredient_lines::table
         .filter(recipe_ingredient_lines::recipe_local_id.eq(recipe_local_id))
         .order(recipe_ingredient_lines::ordinal.asc())
         .select(RecipeIngredientRow::as_select())
@@ -117,19 +117,21 @@ fn load_lines(
         .into_iter()
         .map(RecipeIngredientRow::into_domain)
         .collect::<Result<_, _>>()?;
-    Ok(lines)
+    Ok(ingredients)
 }
 
-/// Inserts `lines` for the recipe row `recipe_local_id`, with their place in
+/// Inserts `ingredients` for the recipe row `recipe_local_id`, with their place in
 /// the list as `ordinal`.
-fn insert_lines(
+fn insert_ingredients(
     connection: &mut SqliteConnection,
     recipe_local_id: LocalRecipeId,
-    lines: &[RecipeIngredient],
+    ingredients: &[RecipeIngredient],
 ) -> Result<(), StoreFailure> {
     let rows: Vec<NewRecipeIngredientRow> = DbOrdinal::sequence()
-        .zip(lines)
-        .map(|(ordinal, line)| NewRecipeIngredientRow::new(recipe_local_id, ordinal, line))
+        .zip(ingredients)
+        .map(|(ordinal, ingredient)| {
+            NewRecipeIngredientRow::new(recipe_local_id, ordinal, ingredient)
+        })
         .collect();
     diesel::insert_into(recipe_ingredient_lines::table)
         .values(&rows)
@@ -248,15 +250,15 @@ fn create_in_transaction(
         .filter(recipes::remote_id.eq(&row.remote_id))
         .select(recipes::local_id)
         .first::<LocalRecipeId>(connection)?;
-    insert_lines(connection, local_id, &recipe.lines)?;
+    insert_ingredients(connection, local_id, &recipe.ingredients)?;
     let steps = insert_steps(connection, local_id, &recipe.steps)?;
     insert_edges(connection, local_id, &recipe.edges)?;
-    Ok(row.into_domain(recipe.lines, steps, recipe.edges))
+    Ok(row.into_domain(recipe.ingredients, steps, recipe.edges))
 }
 
 /// Runs inside an immediate transaction, like `create_in_transaction`. The
 /// recipe's own title key is not a conflict, so "Shakshuka" can become
-/// "shakshuka". The new lines, steps and edges replace the old ones; a line
+/// "shakshuka". The new ingredients, steps and edges replace the old ones; an ingredient
 /// and a step keep their ids.
 fn update_in_transaction(
     connection: &mut SqliteConnection,
@@ -296,10 +298,10 @@ fn update_in_transaction(
     // The cascade deletes the old steps' edges too.
     diesel::delete(recipe_steps::table.filter(recipe_steps::recipe_local_id.eq(local_id)))
         .execute(connection)?;
-    insert_lines(connection, local_id, &recipe.lines)?;
+    insert_ingredients(connection, local_id, &recipe.ingredients)?;
     let steps = insert_steps(connection, local_id, &recipe.steps)?;
     insert_edges(connection, local_id, &recipe.edges)?;
-    Ok(row.into_domain(recipe.lines, steps, recipe.edges))
+    Ok(row.into_domain(recipe.ingredients, steps, recipe.edges))
 }
 
 /// A taken title key fails with `DuplicateTitle`, also when the unique index

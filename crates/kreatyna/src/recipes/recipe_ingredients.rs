@@ -1,5 +1,5 @@
 //! The recipe ingredients in the recipe editor (REC-07): ＋ Line adds one, you
-//! type its name, drag it to another place, or remove it. The lines have no
+//! type its name, drag it to another place, or remove it. The ingredients have no
 //! effects, so they are a plain struct, not a widget: the editor renders
 //! after each change.
 use super::{
@@ -10,34 +10,34 @@ use crate::{draft_change::DraftChange, problem_display::ProblemDisplay};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecipeIngredientsEvent {
-    /// ＋ Line: an empty line at the bottom, with a new id.
+    /// ＋ Line: an empty ingredient at the bottom, with a new id.
     Add,
     /// The raw text of a name field. Rust trims it only on Save. Ignored for
-    /// an id that names no line.
+    /// an id that names no ingredient.
     SetName {
         id: RecipeIngredientId,
         name: String,
     },
-    /// The − button. Ignored for an id that names no line.
+    /// The − button. Ignored for an id that names no ingredient.
     Remove { id: RecipeIngredientId },
-    /// A drop of the line `id` onto the line `onto`: `id` takes `onto`'s
-    /// place, and the lines between move one place (REC-07/Q1). So the
-    /// dragged line ends up before `onto` when it moves up, and after `onto`
-    /// when it moves down. With the lines penne, oil, basil:
+    /// A drop of the ingredient `id` onto the ingredient `onto`: `id` takes `onto`'s
+    /// place, and the ingredients between move one place (REC-07/Q1). So the
+    /// dragged ingredient ends up before `onto` when it moves up, and after `onto`
+    /// when it moves down. With the ingredients penne, oil, basil:
     ///
-    /// | Drag              | Result            | The dragged line ends up |
-    /// |-------------------|-------------------|--------------------------|
-    /// | basil onto penne  | basil, penne, oil | before penne             |
-    /// | penne onto basil  | oil, basil, penne | after basil              |
+    /// | Drag              | Result            | The dragged ingredient ends up |
+    /// |-------------------|-------------------|--------------------------------|
+    /// | basil onto penne  | basil, penne, oil | before penne                   |
+    /// | penne onto basil  | oil, basil, penne | after basil                    |
     ///
-    /// Ignored when either id names no line, or when both are the same line.
+    /// Ignored when either id names no ingredient, or when both are the same ingredient.
     Move {
         id: RecipeIngredientId,
         onto: RecipeIngredientId,
     },
 }
 
-/// One line as the editor shows it.
+/// One ingredient as the editor shows it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecipeIngredientView {
     pub id: RecipeIngredientId,
@@ -47,31 +47,31 @@ pub struct RecipeIngredientView {
     pub problem: Option<RecipeIngredientNameError>,
 }
 
-/// Save found a line with an empty name. Each such line shows its problem
+/// Save found an ingredient with an empty name. Each such ingredient shows its problem
 /// (`RecipeIngredientView::problem`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct UnnamedRecipeIngredient;
 
-/// A line as the editor keeps it: the name as typed.
+/// An ingredient as the editor keeps it: the name as typed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DraftRecipeIngredient {
     id: RecipeIngredientId,
     name: String,
 }
 
-/// The editor's lines, in list order.
+/// The editor's ingredients, in list order.
 pub(crate) struct DraftRecipeIngredients(Vec<DraftRecipeIngredient>);
 
 impl DraftRecipeIngredients {
-    /// The lines that the editor opens with: none for a new recipe, the
+    /// The ingredients that the editor opens with: none for a new recipe, the
     /// stored ones for a saved one.
-    pub(crate) fn new(lines: &[RecipeIngredient]) -> Self {
+    pub(crate) fn new(ingredients: &[RecipeIngredient]) -> Self {
         Self(
-            lines
+            ingredients
                 .iter()
-                .map(|line| DraftRecipeIngredient {
-                    id: line.id,
-                    name: line.name.as_ref().to_owned(),
+                .map(|ingredient| DraftRecipeIngredient {
+                    id: ingredient.id,
+                    name: ingredient.name.as_ref().to_owned(),
                 })
                 .collect(),
         )
@@ -87,9 +87,9 @@ impl DraftRecipeIngredients {
                 DraftChange::Changed
             }
             RecipeIngredientsEvent::SetName { id, name } => {
-                match self.0.iter_mut().find(|line| line.id == id) {
-                    Some(line) if line.name != name => {
-                        line.name = name;
+                match self.0.iter_mut().find(|ingredient| ingredient.id == id) {
+                    Some(ingredient) if ingredient.name != name => {
+                        ingredient.name = name;
                         DraftChange::Changed
                     }
                     Some(_) | None => DraftChange::Unchanged,
@@ -104,8 +104,8 @@ impl DraftRecipeIngredients {
             },
             RecipeIngredientsEvent::Move { id, onto } => match (self.index(id), self.index(onto)) {
                 (Some(from), Some(to)) if from != to => {
-                    let line = self.0.remove(from);
-                    self.0.insert(to, line);
+                    let ingredient = self.0.remove(from);
+                    self.0.insert(to, ingredient);
                     DraftChange::Changed
                 }
                 _ => DraftChange::Unchanged,
@@ -116,28 +116,28 @@ impl DraftRecipeIngredients {
     pub(crate) fn view(&self, problems: ProblemDisplay) -> Vec<RecipeIngredientView> {
         self.0
             .iter()
-            .map(|line| RecipeIngredientView {
-                id: line.id,
-                name: line.name.clone(),
+            .map(|ingredient| RecipeIngredientView {
+                id: ingredient.id,
+                name: ingredient.name.clone(),
                 problem: match problems {
                     ProblemDisplay::Hidden => None,
                     ProblemDisplay::Shown => {
-                        RecipeIngredientName::try_new(line.name.as_str()).err()
+                        RecipeIngredientName::try_new(ingredient.name.as_str()).err()
                     }
                 },
             })
             .collect()
     }
 
-    /// Every line as Save writes it, with its name trimmed, or `UnnamedRecipeIngredient`
+    /// Every ingredient as Save writes it, with its name trimmed, or `UnnamedRecipeIngredient`
     /// when a name is empty.
     pub(crate) fn writes(&self) -> Result<Vec<RecipeIngredient>, UnnamedRecipeIngredient> {
         self.0
             .iter()
-            .map(|line| {
-                RecipeIngredientName::try_new(line.name.as_str())
+            .map(|ingredient| {
+                RecipeIngredientName::try_new(ingredient.name.as_str())
                     .map(|name| RecipeIngredient {
-                        id: line.id,
+                        id: ingredient.id,
                         name,
                         // The editor sets amounts and notes in REC-08 change 3.
                         quantity: RecipeIngredientQuantity::Unmeasured,
@@ -148,18 +148,16 @@ impl DraftRecipeIngredients {
             .collect()
     }
 
-    /// Whether the lines differ from `saved`: in order, ids or names as
+    /// Whether the ingredients differ from `saved`: in order, ids or names as
     /// typed.
     pub(crate) fn differs_from(&self, saved: &[RecipeIngredient]) -> bool {
         self.0.len() != saved.len()
-            || self
-                .0
-                .iter()
-                .zip(saved)
-                .any(|(line, saved)| line.id != saved.id || line.name != saved.name.as_ref())
+            || self.0.iter().zip(saved).any(|(ingredient, saved)| {
+                ingredient.id != saved.id || ingredient.name != saved.name.as_ref()
+            })
     }
 
     fn index(&self, id: RecipeIngredientId) -> Option<usize> {
-        self.0.iter().position(|line| line.id == id)
+        self.0.iter().position(|ingredient| ingredient.id == id)
     }
 }

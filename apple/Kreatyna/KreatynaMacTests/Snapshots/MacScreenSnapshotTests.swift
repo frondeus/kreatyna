@@ -351,7 +351,7 @@ extension MainActorTests {
         func recipeReadView(appearance: Appearance) {
             let shakshuka = Fixtures.recipeRow("Shakshuka", stepCount: 3)
             let steps = ["Fry onion", "Dice onion", "Crack eggs"].map { Fixtures.detailStep($0) }
-            let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: shakshuka.title, lines: [], steps: steps, deletion: .idle))
+            let detail = RecipeDetailView(id: shakshuka.id, status: .ready(title: shakshuka.title, ingredients: [], steps: steps, deletion: .idle))
             snapshot(
                 MacMainView(
                     app: Fixtures.splitApp(
@@ -379,7 +379,7 @@ extension MainActorTests {
                 Fixtures.detailStep("Rest the dough", kind: .waiting),
                 Fixtures.detailStep("Plate"),
             ]
-            let detail = RecipeDetailView(id: pasta.id, status: .ready(title: pasta.title, lines: [], steps: steps, deletion: .idle))
+            let detail = RecipeDetailView(id: pasta.id, status: .ready(title: pasta.title, ingredients: [], steps: steps, deletion: .idle))
             snapshot(
                 MacMainView(
                     app: Fixtures.splitApp(
@@ -396,12 +396,12 @@ extension MainActorTests {
         /// Pasta's read view with three recipe ingredients in list order, above
         /// the steps (REC-07).
         @Test(arguments: Appearance.allCases)
-        func recipeReadViewLines(appearance: Appearance) {
+        func recipeReadViewIngredients(appearance: Appearance) {
             let pasta = Fixtures.recipeRow("Pasta", stepCount: 1)
-            let lines = ["penne pasta", "olive oil", "basil"].map { Fixtures.detailIngredient($0) }
+            let ingredients = ["penne pasta", "olive oil", "basil"].map { Fixtures.detailIngredient($0) }
             let detail = RecipeDetailView(
                 id: pasta.id,
-                status: .ready(title: pasta.title, lines: lines, steps: [Fixtures.detailStep("Boil water")], deletion: .idle)
+                status: .ready(title: pasta.title, ingredients: ingredients, steps: [Fixtures.detailStep("Boil water")], deletion: .idle)
             )
             snapshot(
                 MacMainView(
@@ -419,39 +419,39 @@ extension MainActorTests {
         /// The Pasta editor with three recipe ingredients under the canvas, each
         /// with its handle, name field and − button (REC-07).
         @Test(arguments: Appearance.allCases)
-        func recipeEditorLines(appearance: Appearance) {
-            let lines = ["penne pasta", "olive oil", "basil"].map { Fixtures.line($0) }
+        func recipeEditorIngredients(appearance: Appearance) {
+            let ingredients = ["penne pasta", "olive oil", "basil"].map { Fixtures.ingredient($0) }
             snapshot(
                 recipes(
                     .ready(rows: []), editor: ("Pasta", nil),
-                    canvas: .unselected(steps: [Fixtures.stepNode("Boil water", x: 20, y: 20)]), lines: lines
+                    canvas: .unselected(steps: [Fixtures.stepNode("Boil water", x: 20, y: 20)]), ingredients: ingredients
                 ),
                 appearance: appearance
             )
         }
 
-        /// After Save, an empty line shows "Name required" under its field;
-        /// the named lines show nothing (REC-07).
+        /// After Save, an empty ingredient shows "Name required" under its field;
+        /// the named ingredients show nothing (REC-07).
         @Test(arguments: Appearance.allCases)
-        func recipeEditorLineProblem(appearance: Appearance) {
-            let lines = [
-                Fixtures.line("penne pasta"),
-                Fixtures.line("", problem: .notEmptyViolated, key: "empty"),
-                Fixtures.line("basil"),
+        func recipeEditorIngredientProblem(appearance: Appearance) {
+            let ingredients = [
+                Fixtures.ingredient("penne pasta"),
+                Fixtures.ingredient("", problem: .notEmptyViolated, key: "empty"),
+                Fixtures.ingredient("basil"),
             ]
             snapshot(
-                recipes(.ready(rows: []), editor: ("Pasta", nil), lines: lines),
+                recipes(.ready(rows: []), editor: ("Pasta", nil), ingredients: ingredients),
                 appearance: appearance
             )
         }
 
-        /// Seven lines: the list shows 6 rows and scrolls, so the canvas keeps
+        /// Seven ingredients: the list shows 6 rows and scrolls, so the canvas keeps
         /// its height (REC-07).
         @Test(arguments: Appearance.allCases)
-        func recipeEditorManyLines(appearance: Appearance) {
+        func recipeEditorManyIngredients(appearance: Appearance) {
             let names = ["penne pasta", "olive oil", "basil", "garlic", "salt", "pepper", "parmesan"]
             snapshot(
-                recipes(.ready(rows: []), editor: ("Pasta", nil), lines: names.map { Fixtures.line($0) }),
+                recipes(.ready(rows: []), editor: ("Pasta", nil), ingredients: names.map { Fixtures.ingredient($0) }),
                 appearance: appearance
             )
         }
@@ -462,7 +462,7 @@ extension MainActorTests {
         func deletingRecipe(appearance: Appearance) {
             let shakshuka = Fixtures.recipeRow("Shakshuka")
             let detail = RecipeDetailView(
-                id: shakshuka.id, status: .ready(title: shakshuka.title, lines: [], steps: [], deletion: .deleting)
+                id: shakshuka.id, status: .ready(title: shakshuka.title, ingredients: [], steps: [], deletion: .deleting)
             )
             snapshot(
                 MacMainView(
@@ -491,7 +491,7 @@ extension MainActorTests {
                 Fixtures.stepNode("Fry onion", x: 200, y: 110),
             ]
             let editor = RecipeEditorView(
-                title: "Spicy shakshuka", lines: [], canvas: Fixtures.canvas(.unselected(steps: steps)), status: .editing(problem: nil)
+                title: "Spicy shakshuka", ingredients: [], canvas: Fixtures.canvas(.unselected(steps: steps)), status: .editing(problem: nil)
             )
             snapshot(
                 MacMainView(
@@ -606,13 +606,13 @@ extension MainActorTests {
             canvas: StepNodesView = .unselected(steps: []),
             connections: [StepEdge] = [],
             refusal: ConnectRefusal? = nil,
-            lines: [RecipeIngredientView] = [],
+            ingredients: [RecipeIngredientView] = [],
         ) -> some View {
             let canvas = StepCanvasView(
                 nodes: canvas, connections: connections, refusal: refusal, durationChips: Fixtures.durationChips
             )
             let view = RecipeEditorView(
-                title: editor.title, lines: lines, canvas: canvas, status: .editing(problem: editor.problem)
+                title: editor.title, ingredients: ingredients, canvas: canvas, status: .editing(problem: editor.problem)
             )
             let pane = RecipePaneView.create(
                 editor: view, draftRow: editor.title.trimmingCharacters(in: .whitespaces)

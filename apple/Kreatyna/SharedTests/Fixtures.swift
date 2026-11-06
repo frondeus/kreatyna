@@ -173,15 +173,15 @@ enum Fixtures {
 
     /// A recipe ingredient of the editor. The ID only has to be unique in
     /// the recipe; `key` stands in for the name when it is empty.
-    static func line(
+    static func ingredient(
         _ name: String, problem: RecipeIngredientNameError? = nil, key: String? = nil
     ) -> RecipeIngredientView {
-        RecipeIngredientView(id: RecipeIngredientId(uuid: "line-\(key ?? name)"), name: name, problem: problem)
+        RecipeIngredientView(id: RecipeIngredientId(uuid: "ingredient-\(key ?? name)"), name: name, problem: problem)
     }
 
     /// A recipe ingredient of the read view.
     static func detailIngredient(_ name: String) -> RecipeDetailIngredient {
-        RecipeDetailIngredient(id: RecipeIngredientId(uuid: "line-\(name)"), name: name)
+        RecipeDetailIngredient(id: RecipeIngredientId(uuid: "ingredient-\(name)"), name: name)
     }
 
     /// A step of the read view. The ID only has to be unique in the recipe.

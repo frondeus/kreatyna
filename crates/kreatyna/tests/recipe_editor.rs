@@ -208,7 +208,7 @@ async fn keep_editing_returns_to_the_editor_with_its_problem() -> anyhow::Result
 }
 
 #[tokio::test]
-async fn edits_steps_lines_save_and_cancel_are_ignored_while_saving() -> anyhow::Result<()> {
+async fn edits_steps_ingredients_save_and_cancel_are_ignored_while_saving() -> anyhow::Result<()> {
     let mut f = Fixture::new();
     f.type_title("Shakshuka").await?;
     let onion = f.add_step(point(40, 40)).await?;
@@ -246,7 +246,7 @@ async fn edits_steps_lines_save_and_cancel_are_ignored_while_saving() -> anyhow:
             from: onion,
             to: onion,
         })),
-        RecipeEditorEvent::Lines(RecipeIngredientsEvent::Add),
+        RecipeEditorEvent::Ingredients(RecipeIngredientsEvent::Add),
         RecipeEditorEvent::Save,
         RecipeEditorEvent::RequestClose,
     ] {
@@ -257,7 +257,7 @@ async fn edits_steps_lines_save_and_cancel_are_ignored_while_saving() -> anyhow:
         f.editor.view(),
         RecipeEditorView {
             title: "Shakshuka".into(),
-            lines: vec![],
+            ingredients: vec![],
             canvas: canvas(StepNodesView::Selected {
                 selected: node(
                     onion,
@@ -471,7 +471,7 @@ fn no_steps() -> StepCanvasView {
 fn editing(title: &str, problem: Option<RecipeEditorProblem>) -> RecipeEditorView {
     RecipeEditorView {
         title: title.into(),
-        lines: vec![],
+        ingredients: vec![],
         canvas: no_steps(),
         status: RecipeEditorStatus::Editing { problem },
     }

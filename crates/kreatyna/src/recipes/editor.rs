@@ -26,11 +26,11 @@ pub enum RecipeEditorEvent {
     /// The steps on the canvas and in the inspector (REC-14).
     Canvas(StepCanvasEvent),
     /// The recipe ingredients under the canvas (REC-07).
-    Lines(RecipeIngredientsEvent),
-    /// Checks the recipe title, every step title and every line name, then
+    Ingredients(RecipeIngredientsEvent),
+    /// Checks the recipe title, every step title and every ingredient name, then
     /// saves.
     Save,
-    /// Cancel. A changed title, line, step, or arrow asks "Discard changes?"
+    /// Cancel. A changed title, ingredient, step, or arrow asks "Discard changes?"
     /// first (E-10).
     RequestClose,
     Confirmation(ConfirmationEvent),
@@ -50,7 +50,7 @@ pub enum RecipeEditorOutcome {
 }
 
 /// Why the last Save did not save. A step's problems live on its node
-/// (`StepNodeView::problems`), a line's on the line
+/// (`StepNodeView::problems`), an ingredient's on the ingredient
 /// (`RecipeIngredientView::problem`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecipeEditorProblem {
@@ -75,7 +75,7 @@ pub struct RecipeEditorView {
     /// The title as typed.
     pub title: String,
     /// In list order (REC-07/Q1).
-    pub lines: Vec<RecipeIngredientView>,
+    pub ingredients: Vec<RecipeIngredientView>,
     pub canvas: StepCanvasView,
     pub status: RecipeEditorStatus,
 }
@@ -103,11 +103,11 @@ enum EditorTarget {
     Saved { recipe: Recipe },
 }
 
-/// The title, the lines, the steps, and the edges the editor opens with.
+/// The title, the ingredients, the steps, and the edges the editor opens with.
 /// `is_dirty` compares the edits with them.
 struct OpenedWith<'a> {
     title: &'a str,
-    lines: &'a [RecipeIngredient],
+    ingredients: &'a [RecipeIngredient],
     steps: &'a [Step],
     edges: &'a StepEdges,
 }
@@ -120,13 +120,13 @@ impl EditorTarget {
         match self {
             EditorTarget::New => OpenedWith {
                 title: "",
-                lines: &[],
+                ingredients: &[],
                 steps: &[],
                 edges: &NO_EDGES,
             },
             EditorTarget::Saved { recipe } => OpenedWith {
                 title: &recipe.title,
-                lines: &recipe.lines,
+                ingredients: &recipe.ingredients,
                 steps: &recipe.steps,
                 edges: &recipe.edges,
             },
@@ -138,7 +138,7 @@ pub struct RecipeEditor {
     caps: RecipeCapabilities,
     target: EditorTarget,
     title: String,
-    lines: DraftRecipeIngredients,
+    ingredients: DraftRecipeIngredients,
     canvas: StepCanvas,
     problems: ProblemDisplay,
     state: EditorState,
@@ -164,13 +164,13 @@ impl RecipeEditor {
     fn open(caps: RecipeCapabilities, target: EditorTarget) -> Self {
         let opened_with = target.opened_with();
         let title = opened_with.title.to_owned();
-        let lines = DraftRecipeIngredients::new(opened_with.lines);
+        let ingredients = DraftRecipeIngredients::new(opened_with.ingredients);
         let canvas = StepCanvas::new(opened_with.steps, opened_with.edges);
         Self {
             caps,
             target,
             title,
-            lines,
+            ingredients,
             canvas,
             problems: ProblemDisplay::Hidden,
             state: EditorState::Editing { problem: None },
@@ -189,13 +189,13 @@ impl RecipeEditor {
         (Self::edit(caps, recipe), effects)
     }
 
-    /// Whether the title, the lines, the steps, or the arrows differ from
+    /// Whether the title, the ingredients, the steps, or the arrows differ from
     /// the ones the editor opened with: an empty title and nothing else for a
     /// new recipe, the stored ones for a saved one.
     pub(crate) fn is_dirty(&self) -> bool {
         let opened_with = self.target.opened_with();
         self.title != opened_with.title
-            || self.lines.differs_from(opened_with.lines)
+            || self.ingredients.differs_from(opened_with.ingredients)
             || self
                 .canvas
                 .differs_from(opened_with.steps, opened_with.edges)
@@ -218,8 +218,8 @@ impl RecipeEditor {
 
     /// Save. A recipe title that breaks the rule becomes the editor's
     /// problem. A step title that breaks the rule selects the first such
-    /// step, so the inspector shows its problem (REC-14/Q2). A line with an
-    /// empty name shows its problem on the line (REC-07).
+    /// step, so the inspector shows its problem (REC-14/Q2). An ingredient with an
+    /// empty name shows its problem on the ingredient (REC-07).
     fn save(&mut self) -> Command<RecipeEditorOutcome> {
         self.problems = ProblemDisplay::Shown;
         let title = RecipeTitle::try_new(self.title.as_str());
@@ -229,9 +229,9 @@ impl RecipeEditor {
             // or not.
             let _ = self.canvas.select(untitled);
         }
-        let lines = self.lines.writes();
-        match (title, steps, lines) {
-            (Ok(title), Ok(steps), Ok(lines)) => self.start_save(title, lines, steps),
+        let ingredients = self.ingredients.writes();
+        match (title, steps, ingredients) {
+            (Ok(title), Ok(steps), Ok(ingredients)) => self.start_save(title, ingredients, steps),
             (title, _, _) => {
                 self.state = EditorState::Editing {
                     problem: title.err().map(RecipeEditorProblem::Invalid),
@@ -246,7 +246,7 @@ impl RecipeEditor {
     fn start_save(
         &mut self,
         title: RecipeTitle,
-        lines: Vec<RecipeIngredient>,
+        ingredients: Vec<RecipeIngredient>,
         steps: Vec<StepWrite>,
     ) -> Command<RecipeEditorOutcome> {
         let edges = self.canvas.edges().clone();
@@ -263,7 +263,7 @@ impl RecipeEditor {
                 None => {
                     let recipe = NewRecipe {
                         title,
-                        lines,
+                        ingredients,
                         steps,
                         edges,
                     };
@@ -272,7 +272,7 @@ impl RecipeEditor {
                 Some(id) => {
                     let recipe = RecipeUpdate {
                         title,
-                        lines,
+                        ingredients,
                         steps,
                         edges,
                     };
@@ -310,10 +310,13 @@ impl RecipeEditor {
         }
     }
 
-    /// A line change keeps the problem, as a step change does: a save error
-    /// or a bad recipe title does not depend on the lines.
-    fn change_lines(&mut self, event: RecipeIngredientsEvent) -> Command<RecipeEditorOutcome> {
-        match self.lines.apply(event) {
+    /// An ingredient change keeps the problem, as a step change does: a save error
+    /// or a bad recipe title does not depend on the ingredients.
+    fn change_ingredients(
+        &mut self,
+        event: RecipeIngredientsEvent,
+    ) -> Command<RecipeEditorOutcome> {
+        match self.ingredients.apply(event) {
             DraftChange::Changed => self.render(),
             DraftChange::Unchanged => Command::empty(),
         }
@@ -350,8 +353,8 @@ impl Widget for RecipeEditor {
                 (EditorState::Editing { .. }, RecipeEditorEvent::Canvas(event)) => {
                     self.change_canvas(event)
                 }
-                (EditorState::Editing { .. }, RecipeEditorEvent::Lines(event)) => {
-                    self.change_lines(event)
+                (EditorState::Editing { .. }, RecipeEditorEvent::Ingredients(event)) => {
+                    self.change_ingredients(event)
                 }
                 (EditorState::Editing { .. }, RecipeEditorEvent::Save) => self.save(),
                 (EditorState::Editing { .. }, RecipeEditorEvent::RequestClose) => {
@@ -429,7 +432,7 @@ impl Widget for RecipeEditor {
         };
         RecipeEditorView {
             title: self.title.clone(),
-            lines: self.lines.view(self.problems),
+            ingredients: self.ingredients.view(self.problems),
             canvas: self.canvas.view(self.problems),
             status,
         }

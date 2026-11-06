@@ -77,7 +77,7 @@ async fn a_recipe_without_steps_shows_an_empty_step_list() -> anyhow::Result<()>
     let toast = Recipe {
         id: id(),
         title: "Toast".into(),
-        lines: vec![],
+        ingredients: vec![],
         steps: vec![],
         edges: StepEdges::default(),
     };
@@ -86,7 +86,7 @@ async fn a_recipe_without_steps_shows_an_empty_step_list() -> anyhow::Result<()>
         f.detail.view(),
         view(RecipeDetailStatus::Ready {
             title: "Toast".into(),
-            lines: vec![],
+            ingredients: vec![],
             steps: vec![],
             deletion: RecipeDeletion::Idle,
         })
@@ -95,21 +95,21 @@ async fn a_recipe_without_steps_shows_an_empty_step_list() -> anyhow::Result<()>
 }
 
 #[tokio::test]
-async fn the_read_view_lists_the_lines_by_name_in_list_order() -> anyhow::Result<()> {
+async fn the_read_view_lists_the_ingredients_by_name_in_list_order() -> anyhow::Result<()> {
     let mut f = Fixture::new();
     let load = f.detail.init();
-    let basil = line(23, "basil")?;
-    let penne = line(21, "penne pasta")?;
+    let basil = ingredient(23, "basil")?;
+    let penne = ingredient(21, "penne pasta")?;
     let pasta = Recipe {
-        lines: vec![basil.clone(), penne.clone()],
+        ingredients: vec![basil.clone(), penne.clone()],
         ..shakshuka()
     };
     f.finish_load(load, Ok(Some(pasta))).await?;
-    let RecipeDetailStatus::Ready { lines, .. } = f.detail.view().status else {
+    let RecipeDetailStatus::Ready { ingredients, .. } = f.detail.view().status else {
         anyhow::bail!("the recipe is not shown");
     };
     assert_eq!(
-        lines,
+        ingredients,
         [
             RecipeDetailIngredient {
                 id: basil.id,
@@ -433,7 +433,7 @@ fn id() -> RecipeId {
 /// Shakshuka with two steps. Fry onion was added first, so the read view
 /// lists it first, although it is right of Dice onion on the canvas. Fry
 /// onion has a duration, Waiting, and instructions (REC-17).
-fn line(id: u128, name: &str) -> anyhow::Result<RecipeIngredient> {
+fn ingredient(id: u128, name: &str) -> anyhow::Result<RecipeIngredient> {
     Ok(RecipeIngredient {
         id: RecipeIngredientId::from(Uuid::from_u128(id)),
         name: RecipeIngredientName::try_new(name)?,
@@ -446,7 +446,7 @@ fn shakshuka() -> Recipe {
     Recipe {
         id: id(),
         title: "Shakshuka".into(),
-        lines: vec![],
+        ingredients: vec![],
         steps: vec![
             Step {
                 duration: StepDurationS::try_new(5_400).ok(),
@@ -495,7 +495,7 @@ fn shakshuka_steps() -> Vec<RecipeDetailStep> {
 fn ready(title: &str) -> RecipeDetailStatus {
     RecipeDetailStatus::Ready {
         title: title.into(),
-        lines: vec![],
+        ingredients: vec![],
         steps: shakshuka_steps(),
         deletion: RecipeDeletion::Idle,
     }
@@ -504,7 +504,7 @@ fn ready(title: &str) -> RecipeDetailStatus {
 fn deletion(deletion: RecipeDeletion) -> RecipeDetailStatus {
     RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
-        lines: vec![],
+        ingredients: vec![],
         steps: shakshuka_steps(),
         deletion,
     }

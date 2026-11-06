@@ -58,13 +58,13 @@ impl ToSql<BigInt, Sqlite> for LocalStepId {
     }
 }
 
-/// A row's place in its recipe's list: 0 for the first step or line.
+/// A row's place in its recipe's list: 0 for the first step or ingredient.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
 #[diesel(sql_type = BigInt)]
 pub(crate) struct DbOrdinal(i64);
 
 impl DbOrdinal {
-    /// 0, 1, 2, … for the steps or the lines of a recipe, in list order.
+    /// 0, 1, 2, … for the steps or the ingredients of a recipe, in list order.
     pub fn sequence() -> impl Iterator<Item = Self> {
         (0..).map(Self)
     }
@@ -128,17 +128,17 @@ db_enum!(DbStepKind, StepKind {
     Waiting => "waiting",
 });
 
-// A step's instructions (REC-17), and a line's name (REC-07) and note
+// A step's instructions (REC-17), and an ingredient's name (REC-07) and note
 // (REC-08). Reading a blank text fails, as the tables' CHECKs do not allow it.
 db_text!(DbInstructions, StepInstructions);
 db_text!(DbRecipeIngredientName, RecipeIngredientName);
 db_text!(DbRecipeIngredientNote, RecipeIngredientNote);
 
-// A line's amount as exact decimal text (REC-08). Reading text that is not a
+// An ingredient's amount as exact decimal text (REC-08). Reading text that is not a
 // decimal more than 0 fails.
 db_decimal!(DbRecipeIngredientAmount, RecipeIngredientAmount);
 
-// A line's known unit as its symbol (REC-08). Any other text fails to read,
+// An ingredient's known unit as its symbol (REC-08). Any other text fails to read,
 // as the table's CHECK does not allow it.
 db_enum!(DbKnownUnit, KnownUnit {
     Gram => "g",
@@ -215,18 +215,18 @@ pub(crate) struct RecipeRow {
 }
 
 impl RecipeRow {
-    /// The recipe with `lines` and `steps`, which the store read in list
+    /// The recipe with `ingredients` and `steps`, which the store read in list
     /// order, and the steps' `edges`.
     pub fn into_domain(
         self,
-        lines: Vec<RecipeIngredient>,
+        ingredients: Vec<RecipeIngredient>,
         steps: Vec<Step>,
         edges: StepEdges,
     ) -> Recipe {
         Recipe {
             id: self.remote_id.0,
             title: self.title,
-            lines,
+            ingredients,
             steps,
             edges,
         }
@@ -305,7 +305,7 @@ pub(crate) struct RecipeIngredientRow {
     pub note: Option<DbRecipeIngredientNote>,
 }
 
-/// A stored line has a unit and no amount. Only a broken file or another
+/// A stored ingredient has a unit and no amount. Only a broken file or another
 /// program can write it: the table's CHECK refuses it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 #[error("a stored recipe ingredient has a unit and no amount")]
@@ -344,30 +344,30 @@ pub(crate) struct NewRecipeIngredientRow {
 }
 
 impl NewRecipeIngredientRow {
-    /// The line at `ordinal` (its place in the list) of the recipe row
+    /// The ingredient at `ordinal` (its place in the list) of the recipe row
     /// `recipe_local_id`.
     pub fn new(
         recipe_local_id: LocalRecipeId,
         ordinal: DbOrdinal,
-        line: &RecipeIngredient,
+        ingredient: &RecipeIngredient,
     ) -> Self {
         Self {
-            remote_id: RemoteRecipeIngredientId(line.id),
+            remote_id: RemoteRecipeIngredientId(ingredient.id),
             recipe_local_id,
             ordinal,
-            name: DbRecipeIngredientName(line.name.clone()),
-            amount: match line.quantity {
+            name: DbRecipeIngredientName(ingredient.name.clone()),
+            amount: match ingredient.quantity {
                 RecipeIngredientQuantity::Unmeasured => None,
                 RecipeIngredientQuantity::Count(amount)
                 | RecipeIngredientQuantity::Measured { amount, .. } => {
                     Some(DbRecipeIngredientAmount(amount))
                 }
             },
-            unit: match line.quantity {
+            unit: match ingredient.quantity {
                 RecipeIngredientQuantity::Unmeasured | RecipeIngredientQuantity::Count(_) => None,
                 RecipeIngredientQuantity::Measured { unit, .. } => Some(DbKnownUnit(unit)),
             },
-            note: line.note.clone().map(DbRecipeIngredientNote),
+            note: ingredient.note.clone().map(DbRecipeIngredientNote),
         }
     }
 }
@@ -410,18 +410,18 @@ impl NewRecipeRow {
         }
     }
 
-    /// The saved recipe with `lines`, `steps` and `edges`, as the store wrote
+    /// The saved recipe with `ingredients`, `steps` and `edges`, as the store wrote
     /// them.
     pub fn into_domain(
         self,
-        lines: Vec<RecipeIngredient>,
+        ingredients: Vec<RecipeIngredient>,
         steps: Vec<Step>,
         edges: StepEdges,
     ) -> Recipe {
         Recipe {
             id: self.remote_id.0,
             title: self.title,
-            lines,
+            ingredients,
             steps,
             edges,
         }

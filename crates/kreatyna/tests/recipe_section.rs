@@ -771,7 +771,7 @@ fn recipe(id: u128, title: &str) -> Recipe {
     Recipe {
         id: RecipeId::from(Uuid::from_u128(id)),
         title: title.into(),
-        lines: vec![],
+        ingredients: vec![],
         steps: vec![],
         edges: StepEdges::default(),
     }
@@ -837,7 +837,7 @@ fn read(recipe: &Recipe) -> RecipePaneView {
         recipe,
         RecipeDetailStatus::Ready {
             title: recipe.title.clone(),
-            lines: vec![],
+            ingredients: vec![],
             steps: detail_steps(recipe),
             deletion: RecipeDeletion::Idle,
         },
@@ -863,7 +863,7 @@ fn detail_steps(recipe: &Recipe) -> Vec<RecipeDetailStep> {
 fn deletion(recipe: &Recipe, deletion: RecipeDeletion) -> RecipeDetailStatus {
     RecipeDetailStatus::Ready {
         title: recipe.title.clone(),
-        lines: vec![],
+        ingredients: vec![],
         steps: detail_steps(recipe),
         deletion,
     }
@@ -881,7 +881,7 @@ fn create(title: &str, draft_row: &str) -> RecipePaneView {
     RecipePaneView::Create {
         editor: RecipeEditorView {
             title: title.into(),
-            lines: vec![],
+            ingredients: vec![],
             canvas: canvas(StepNodesView::Unselected { steps: vec![] }),
             status: RecipeEditorStatus::Editing { problem: None },
         },
@@ -913,7 +913,7 @@ fn editing(saved: &Recipe, title: &str) -> RecipePaneView {
     RecipePaneView::Edit {
         editor: RecipeEditorView {
             title: title.into(),
-            lines: vec![],
+            ingredients: vec![],
             canvas: canvas(StepNodesView::Unselected { steps }),
             status: RecipeEditorStatus::Editing { problem: None },
         },

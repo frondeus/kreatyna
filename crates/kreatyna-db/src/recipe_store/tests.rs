@@ -142,11 +142,12 @@ async fn a_created_recipe_keeps_its_steps_in_the_order_added() -> anyhow::Result
 }
 
 #[tokio::test]
-async fn a_created_recipe_keeps_its_lines_in_list_order() -> anyhow::Result<()> {
+async fn a_created_recipe_keeps_its_ingredients_in_list_order() -> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
-    let lines = vec![line(1, "penne pasta")?, line(2, "olive oil")?];
-    let created = RecipeStoreMut::create(&mut db, with_lines("Pasta", lines.clone())?).await?;
-    assert_eq!(created.lines, lines);
+    let ingredients = vec![ingredient(1, "penne pasta")?, ingredient(2, "olive oil")?];
+    let created =
+        RecipeStoreMut::create(&mut db, with_ingredients("Pasta", ingredients.clone())?).await?;
+    assert_eq!(created.ingredients, ingredients);
     assert_eq!(
         RecipeStoreMut::get(&mut db, created.id).await,
         Ok(Some(created))
@@ -159,23 +160,24 @@ async fn a_created_recipe_keeps_its_lines_in_list_order() -> anyhow::Result<()> 
 #[test_case(Some("300"), Some(KnownUnit::Gram), None; "300 g penne pasta")]
 #[test_case(Some("12.3400"), Some(KnownUnit::Tablespoon), Some("extra virgin"); "an exact decimal and a note")]
 #[tokio::test]
-async fn a_line_keeps_its_amount_unit_and_note(
+async fn an_ingredient_keeps_its_amount_unit_and_note(
     amount: Option<&str>,
     unit: Option<KnownUnit>,
     note: Option<&str>,
 ) -> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
-    let lines = vec![RecipeIngredient {
+    let ingredients = vec![RecipeIngredient {
         quantity: quantity(amount, unit)?,
         note: note.map(RecipeIngredientNote::try_new).transpose()?,
-        ..line(1, "olive oil")?
+        ..ingredient(1, "olive oil")?
     }];
-    let created = RecipeStoreMut::create(&mut db, with_lines("Pasta", lines.clone())?).await?;
-    assert_eq!(created.lines, lines);
+    let created =
+        RecipeStoreMut::create(&mut db, with_ingredients("Pasta", ingredients.clone())?).await?;
+    assert_eq!(created.ingredients, ingredients);
     let stored = RecipeStoreMut::get(&mut db, created.id)
         .await?
         .context("Pasta is gone")?;
-    assert_eq!(stored.lines, lines);
+    assert_eq!(stored.ingredients, ingredients);
     Ok(())
 }
 
@@ -190,50 +192,58 @@ async fn a_line_keeps_its_amount_unit_and_note(
 #[tokio::test]
 async fn each_known_unit_is_stored_and_read_back(unit: KnownUnit) -> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
-    let lines = vec![RecipeIngredient {
+    let ingredients = vec![RecipeIngredient {
         quantity: quantity(Some("1"), Some(unit))?,
-        ..line(1, "flour")?
+        ..ingredient(1, "flour")?
     }];
-    let created = RecipeStoreMut::create(&mut db, with_lines("Bread", lines.clone())?).await?;
+    let created =
+        RecipeStoreMut::create(&mut db, with_ingredients("Bread", ingredients.clone())?).await?;
     let stored = RecipeStoreMut::get(&mut db, created.id)
         .await?
         .context("Bread is gone")?;
-    assert_eq!(stored.lines, lines);
+    assert_eq!(stored.ingredients, ingredients);
     Ok(())
 }
 
 #[tokio::test]
-async fn an_update_replaces_the_lines_and_a_kept_line_keeps_its_id() -> anyhow::Result<()> {
+async fn an_update_replaces_the_ingredients_and_a_kept_ingredient_keeps_its_id()
+-> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
-    let lines = vec![line(1, "penne pasta")?, line(2, "olive oil")?];
-    let created = RecipeStoreMut::create(&mut db, with_lines("Pasta", lines)?).await?;
+    let ingredients = vec![ingredient(1, "penne pasta")?, ingredient(2, "olive oil")?];
+    let created = RecipeStoreMut::create(&mut db, with_ingredients("Pasta", ingredients)?).await?;
 
     // Olive oil goes, basil is new and moves to the top, penne gets a new
     // name.
-    let lines = vec![line(3, "basil")?, line(1, "penne rigate")?];
+    let ingredients = vec![ingredient(3, "basil")?, ingredient(1, "penne rigate")?];
     let update = RecipeUpdate {
-        lines: lines.clone(),
+        ingredients: ingredients.clone(),
         ..update("Pasta")?
     };
     let updated = RecipeStoreMut::update(&mut db, created.id, update).await?;
-    assert_eq!(updated.lines, lines);
+    assert_eq!(updated.ingredients, ingredients);
     assert_eq!(
         RecipeStoreMut::get(&mut db, created.id).await,
         Ok(Some(updated))
     );
-    assert_eq!(line_rows(&mut db).await?, 2);
+    assert_eq!(ingredient_rows(&mut db).await?, 2);
     Ok(())
 }
 
 #[tokio::test]
-async fn a_deleted_recipe_takes_its_lines_with_it() -> anyhow::Result<()> {
+async fn a_deleted_recipe_takes_its_ingredients_with_it() -> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
-    let pasta =
-        RecipeStoreMut::create(&mut db, with_lines("Pasta", vec![line(1, "penne pasta")?])?)
-            .await?;
-    RecipeStoreMut::create(&mut db, with_lines("Pesto", vec![line(2, "basil")?])?).await?;
+    let pasta = RecipeStoreMut::create(
+        &mut db,
+        with_ingredients("Pasta", vec![ingredient(1, "penne pasta")?])?,
+    )
+    .await?;
+    RecipeStoreMut::create(
+        &mut db,
+        with_ingredients("Pesto", vec![ingredient(2, "basil")?])?,
+    )
+    .await?;
     RecipeStoreMut::delete(&mut db, pasta.id).await?;
-    assert_eq!(line_rows(&mut db).await?, 1);
+    assert_eq!(ingredient_rows(&mut db).await?, 1);
     Ok(())
 }
 
@@ -282,7 +292,7 @@ async fn an_update_replaces_the_steps_and_a_kept_step_keeps_its_id() -> anyhow::
     let steps = vec![fry, serve];
     let update = RecipeUpdate {
         title: RecipeTitle::try_new("Shakshuka")?,
-        lines: vec![],
+        ingredients: vec![],
         steps: steps.clone(),
         edges: StepEdges::default(),
     };
@@ -321,7 +331,7 @@ async fn a_step_keeps_its_duration_kind_and_instructions_through_create_and_upda
     let steps = vec![bake, sear, starter];
     let update = RecipeUpdate {
         title: RecipeTitle::try_new("Pasta")?,
-        lines: vec![],
+        ingredients: vec![],
         steps: steps.clone(),
         edges: StepEdges::default(),
     };
@@ -409,7 +419,7 @@ async fn create_and_update_keep_the_edges_when_the_step_rows_change() -> anyhow:
     let plate = step(4, "Plate", 400, 100)?;
     let update = RecipeUpdate {
         title: RecipeTitle::try_new("Shakshuka")?,
-        lines: vec![],
+        ingredients: vec![],
         steps: vec![dice.clone(), fry.clone(), plate.clone()],
         edges: StepEdges::from_saved([edge(&dice, &fry), edge(&fry, &plate), edge(&dice, &plate)])?,
     };
@@ -454,7 +464,7 @@ async fn a_deleted_step_or_recipe_takes_its_edges_with_it() -> anyhow::Result<()
     );
     let update = RecipeUpdate {
         title: RecipeTitle::try_new("Pasta")?,
-        lines: vec![],
+        ingredients: vec![],
         steps: vec![boil.clone(), drain.clone()],
         edges: StepEdges::from_saved([edge(&boil, &drain)])?,
     };
@@ -494,7 +504,7 @@ async fn a_recipe_from_before_rec_18_upgrades_with_no_edges() -> anyhow::Result<
 }
 
 #[tokio::test]
-async fn a_recipe_from_before_rec_07_upgrades_with_no_lines() -> anyhow::Result<()> {
+async fn a_recipe_from_before_rec_07_upgrades_with_no_ingredients() -> anyhow::Result<()> {
     let folder = tempfile::tempdir()?;
     let path = folder.path().join("app.sqlite");
     let path = path.to_str().context("the temporary path is not UTF-8")?;
@@ -511,12 +521,13 @@ async fn a_recipe_from_before_rec_07_upgrades_with_no_lines() -> anyhow::Result<
     let shakshuka = RecipeStoreMut::get(&mut db, SHAKSHUKA.parse()?)
         .await?
         .context("Shakshuka is gone")?;
-    assert_eq!(shakshuka.lines, vec![]);
+    assert_eq!(shakshuka.ingredients, vec![]);
     Ok(())
 }
 
 #[tokio::test]
-async fn a_line_from_before_rec_08_upgrades_with_no_amount_unit_or_note() -> anyhow::Result<()> {
+async fn an_ingredient_from_before_rec_08_upgrades_with_no_amount_unit_or_note()
+-> anyhow::Result<()> {
     let folder = tempfile::tempdir()?;
     let path = folder.path().join("app.sqlite");
     let path = path.to_str().context("the temporary path is not UTF-8")?;
@@ -538,7 +549,7 @@ async fn a_line_from_before_rec_08_upgrades_with_no_amount_unit_or_note() -> any
         .await?
         .context("Shakshuka is gone")?;
     assert_eq!(
-        shakshuka.lines,
+        shakshuka.ingredients,
         vec![RecipeIngredient {
             id: LINE.parse()?,
             name: RecipeIngredientName::try_new("eggs")?,
@@ -656,7 +667,7 @@ fn the_step_table_refuses_invalid_details(column: &str, value: &str) -> anyhow::
 
 #[test_case("'  ', 0"; "blank name")]
 #[test_case("'basil', -1"; "negative ordinal")]
-fn the_line_table_refuses_invalid_rows(values: &str) -> anyhow::Result<()> {
+fn the_ingredient_table_refuses_invalid_rows(values: &str) -> anyhow::Result<()> {
     let mut db = migrated_connection()?;
     let sql = format!(
         "INSERT INTO recipe_ingredient_lines (remote_id, recipe_local_id, name, ordinal)
@@ -669,7 +680,9 @@ fn the_line_table_refuses_invalid_rows(values: &str) -> anyhow::Result<()> {
 #[test_case("NULL, 'g', NULL"; "a unit without an amount")]
 #[test_case("'1', 'pinch', NULL"; "an unknown unit")]
 #[test_case("NULL, NULL, '  '"; "a blank note")]
-fn the_line_table_refuses_invalid_amounts_units_and_notes(values: &str) -> anyhow::Result<()> {
+fn the_ingredient_table_refuses_invalid_amounts_units_and_notes(
+    values: &str,
+) -> anyhow::Result<()> {
     let mut db = migrated_connection()?;
     let sql = format!(
         "INSERT INTO recipe_ingredient_lines
@@ -683,7 +696,9 @@ fn the_line_table_refuses_invalid_amounts_units_and_notes(values: &str) -> anyho
 
 #[test_case("'6f1c1d3e-0000-4000-8000-0000000000ff', 0"; "same ordinal")]
 #[test_case("'6f1c1d3e-0000-4000-8000-0000000000f1', 1"; "same id")]
-fn the_line_table_refuses_a_second_line_with_the_same(values: &str) -> anyhow::Result<()> {
+fn the_ingredient_table_refuses_a_second_ingredient_with_the_same(
+    values: &str,
+) -> anyhow::Result<()> {
     let mut db = migrated_connection()?;
     let insert = |id_and_ordinal: &str| {
         format!(
@@ -760,7 +775,7 @@ async fn an_edge_to_a_step_the_recipe_does_not_have_fails_the_save_and_changes_n
     // Fry is not in the update, but the edge still names it.
     let update = RecipeUpdate {
         title: RecipeTitle::try_new("Shakshuka")?,
-        lines: vec![],
+        ingredients: vec![],
         steps: vec![dice.clone()],
         edges: StepEdges::from_saved([edge(&dice, &step(2, "Fry", 200, 0)?)])?,
     };
@@ -992,10 +1007,13 @@ async fn step_details_that_break_the_rules_fail_get(assignment: &str) -> anyhow:
 }
 
 #[tokio::test]
-async fn a_blank_stored_line_name_fails_get() -> anyhow::Result<()> {
+async fn a_blank_stored_ingredient_name_fails_get() -> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
-    let created =
-        RecipeStoreMut::create(&mut db, with_lines("Pasta", vec![line(1, "basil")?])?).await?;
+    let created = RecipeStoreMut::create(
+        &mut db,
+        with_ingredients("Pasta", vec![ingredient(1, "basil")?])?,
+    )
+    .await?;
     // Only a broken file or another program can write it: the CHECK refuses
     // it, so the test turns the CHECKs off.
     db.connection
@@ -1020,10 +1038,13 @@ async fn a_blank_stored_line_name_fails_get() -> anyhow::Result<()> {
 #[test_case("amount = '0'"; "a zero amount")]
 #[test_case("amount = 'lots'"; "an amount that is not a number")]
 #[tokio::test]
-async fn a_broken_stored_line_quantity_fails_get(set: &str) -> anyhow::Result<()> {
+async fn a_broken_stored_ingredient_quantity_fails_get(set: &str) -> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
-    let created =
-        RecipeStoreMut::create(&mut db, with_lines("Pasta", vec![line(1, "basil")?])?).await?;
+    let created = RecipeStoreMut::create(
+        &mut db,
+        with_ingredients("Pasta", vec![ingredient(1, "basil")?])?,
+    )
+    .await?;
     let sql = format!(
         "PRAGMA ignore_check_constraints = ON; \
          UPDATE recipe_ingredient_lines SET {set}; \
@@ -1104,7 +1125,7 @@ fn summary_of(recipe: &Recipe) -> RecipeSummary {
     }
 }
 
-fn line(id: u128, name: &str) -> anyhow::Result<RecipeIngredient> {
+fn ingredient(id: u128, name: &str) -> anyhow::Result<RecipeIngredient> {
     Ok(RecipeIngredient {
         id: format!("6f1c1d3e-0000-4000-8000-{id:012x}").parse::<RecipeIngredientId>()?,
         name: RecipeIngredientName::try_new(name)?,
@@ -1113,7 +1134,7 @@ fn line(id: u128, name: &str) -> anyhow::Result<RecipeIngredient> {
     })
 }
 
-/// A line's quantity from an amount as text and a unit, as a test names it.
+/// An ingredient's quantity from an amount as text and a unit, as a test names it.
 /// A unit needs an amount.
 fn quantity(
     amount: Option<&str>,
@@ -1134,9 +1155,9 @@ fn quantity(
     })
 }
 
-fn with_lines(title: &str, lines: Vec<RecipeIngredient>) -> anyhow::Result<NewRecipe> {
+fn with_ingredients(title: &str, ingredients: Vec<RecipeIngredient>) -> anyhow::Result<NewRecipe> {
     Ok(NewRecipe {
-        lines,
+        ingredients,
         ..new_recipe(title)?
     })
 }
@@ -1185,7 +1206,7 @@ fn saved(steps: &[StepWrite]) -> Vec<Step> {
 fn with_steps(title: &str, steps: Vec<StepWrite>) -> anyhow::Result<NewRecipe> {
     Ok(NewRecipe {
         title: RecipeTitle::try_new(title)?,
-        lines: vec![],
+        ingredients: vec![],
         steps,
         edges: StepEdges::default(),
     })
@@ -1207,8 +1228,8 @@ async fn edge_rows(db: &mut SqliteDatabase) -> anyhow::Result<i64> {
         .await?)
 }
 
-/// How many line rows the database has, over all recipes.
-async fn line_rows(db: &mut SqliteDatabase) -> anyhow::Result<i64> {
+/// How many ingredient rows the database has, over all recipes.
+async fn ingredient_rows(db: &mut SqliteDatabase) -> anyhow::Result<i64> {
     Ok(db
         .connection
         .spawn_blocking(|conn| {
@@ -1231,7 +1252,7 @@ fn recipe(id: &str, title: &str) -> anyhow::Result<Recipe> {
     Ok(Recipe {
         id: id.parse()?,
         title: title.into(),
-        lines: vec![],
+        ingredients: vec![],
         steps: vec![],
         edges: StepEdges::default(),
     })
@@ -1244,7 +1265,7 @@ fn new_recipe(title: &str) -> anyhow::Result<NewRecipe> {
 fn update(title: &str) -> anyhow::Result<RecipeUpdate> {
     Ok(RecipeUpdate {
         title: RecipeTitle::try_new(title)?,
-        lines: vec![],
+        ingredients: vec![],
         steps: vec![],
         edges: StepEdges::default(),
     })

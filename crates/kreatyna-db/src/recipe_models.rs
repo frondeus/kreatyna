@@ -1,4 +1,4 @@
-//! Typed SQLite rows for recipes, their ingredient lines and their steps,
+//! Typed SQLite rows for recipes, their recipe ingredients and their steps,
 //! and their conversion to the domain types. `recipe_store` reads and writes them.
 use diesel::{
     AsExpression, FromSqlRow, Insertable, Queryable, Selectable,
@@ -10,8 +10,8 @@ use diesel::{
 use kreatyna::{
     ingredients::name_key,
     recipes::{
-        CanvasPoint, IngredientLine, IngredientLineId, IngredientLineName, KnownUnit, Recipe,
-        RecipeId, RecipeIngredientAmount, RecipeIngredientNote, RecipeIngredientQuantity,
+        CanvasPoint, KnownUnit, Recipe, RecipeId, RecipeIngredient, RecipeIngredientAmount,
+        RecipeIngredientId, RecipeIngredientName, RecipeIngredientNote, RecipeIngredientQuantity,
         RecipeTitle, Step, StepDurationS, StepEdges, StepId, StepInstructions, StepKind, StepWrite,
     },
 };
@@ -131,7 +131,7 @@ db_enum!(DbStepKind, StepKind {
 // A step's instructions (REC-17), and a line's name (REC-07) and note
 // (REC-08). Reading a blank text fails, as the tables' CHECKs do not allow it.
 db_text!(DbInstructions, StepInstructions);
-db_text!(DbLineName, IngredientLineName);
+db_text!(DbRecipeIngredientName, RecipeIngredientName);
 db_text!(DbRecipeIngredientNote, RecipeIngredientNote);
 
 // A line's amount as exact decimal text (REC-08). Reading text that is not a
@@ -189,16 +189,16 @@ impl ToSql<Text, Sqlite> for RemoteStepId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsExpression, FromSqlRow)]
 #[diesel(sql_type = Text)]
-pub(crate) struct RemoteLineId(pub IngredientLineId);
+pub(crate) struct RemoteRecipeIngredientId(pub RecipeIngredientId);
 
-impl FromSql<Text, Sqlite> for RemoteLineId {
+impl FromSql<Text, Sqlite> for RemoteRecipeIngredientId {
     fn from_sql(value: SqliteValue<'_, '_, '_>) -> diesel::deserialize::Result<Self> {
         let text = <String as FromSql<Text, Sqlite>>::from_sql(value)?;
         Ok(Self(text.parse()?))
     }
 }
 
-impl ToSql<Text, Sqlite> for RemoteLineId {
+impl ToSql<Text, Sqlite> for RemoteRecipeIngredientId {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
         out.set_value(self.0.to_string());
         Ok(IsNull::No)
@@ -219,7 +219,7 @@ impl RecipeRow {
     /// order, and the steps' `edges`.
     pub fn into_domain(
         self,
-        lines: Vec<IngredientLine>,
+        lines: Vec<RecipeIngredient>,
         steps: Vec<Step>,
         edges: StepEdges,
     ) -> Recipe {
@@ -297,9 +297,9 @@ impl NewStepRow {
 
 #[derive(Debug, Clone, Queryable, Selectable)]
 #[diesel(table_name = recipe_ingredient_lines)]
-pub(crate) struct LineRow {
-    pub remote_id: RemoteLineId,
-    pub name: DbLineName,
+pub(crate) struct RecipeIngredientRow {
+    pub remote_id: RemoteRecipeIngredientId,
+    pub name: DbRecipeIngredientName,
     pub amount: Option<DbRecipeIngredientAmount>,
     pub unit: Option<DbKnownUnit>,
     pub note: Option<DbRecipeIngredientNote>,
@@ -308,11 +308,11 @@ pub(crate) struct LineRow {
 /// A stored line has a unit and no amount. Only a broken file or another
 /// program can write it: the table's CHECK refuses it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
-#[error("a stored ingredient line has a unit and no amount")]
+#[error("a stored recipe ingredient has a unit and no amount")]
 pub(crate) struct UnitWithoutAmount;
 
-impl LineRow {
-    pub fn into_domain(self) -> Result<IngredientLine, UnitWithoutAmount> {
+impl RecipeIngredientRow {
+    pub fn into_domain(self) -> Result<RecipeIngredient, UnitWithoutAmount> {
         let quantity = match (self.amount, self.unit) {
             (None, None) => RecipeIngredientQuantity::Unmeasured,
             (Some(amount), None) => RecipeIngredientQuantity::Count(amount.0),
@@ -322,7 +322,7 @@ impl LineRow {
             },
             (None, Some(_)) => return Err(UnitWithoutAmount),
         };
-        Ok(IngredientLine {
+        Ok(RecipeIngredient {
             id: self.remote_id.0,
             name: self.name.0,
             quantity,
@@ -333,25 +333,29 @@ impl LineRow {
 
 #[derive(Debug, Clone, Insertable)]
 #[diesel(table_name = recipe_ingredient_lines)]
-pub(crate) struct NewLineRow {
-    pub remote_id: RemoteLineId,
+pub(crate) struct NewRecipeIngredientRow {
+    pub remote_id: RemoteRecipeIngredientId,
     pub recipe_local_id: LocalRecipeId,
     pub ordinal: DbOrdinal,
-    pub name: DbLineName,
+    pub name: DbRecipeIngredientName,
     pub amount: Option<DbRecipeIngredientAmount>,
     pub unit: Option<DbKnownUnit>,
     pub note: Option<DbRecipeIngredientNote>,
 }
 
-impl NewLineRow {
+impl NewRecipeIngredientRow {
     /// The line at `ordinal` (its place in the list) of the recipe row
     /// `recipe_local_id`.
-    pub fn new(recipe_local_id: LocalRecipeId, ordinal: DbOrdinal, line: &IngredientLine) -> Self {
+    pub fn new(
+        recipe_local_id: LocalRecipeId,
+        ordinal: DbOrdinal,
+        line: &RecipeIngredient,
+    ) -> Self {
         Self {
-            remote_id: RemoteLineId(line.id),
+            remote_id: RemoteRecipeIngredientId(line.id),
             recipe_local_id,
             ordinal,
-            name: DbLineName(line.name.clone()),
+            name: DbRecipeIngredientName(line.name.clone()),
             amount: match line.quantity {
                 RecipeIngredientQuantity::Unmeasured => None,
                 RecipeIngredientQuantity::Count(amount)
@@ -410,7 +414,7 @@ impl NewRecipeRow {
     /// them.
     pub fn into_domain(
         self,
-        lines: Vec<IngredientLine>,
+        lines: Vec<RecipeIngredient>,
         steps: Vec<Step>,
         edges: StepEdges,
     ) -> Recipe {

@@ -2,7 +2,7 @@
 //! (REC-02) or edits a saved recipe's title (REC-04). On a canvas it adds
 //! and names the recipe's steps (REC-14), moves them (REC-15), deletes them
 //! (REC-16), sets their details (REC-17), and connects them (REC-18). Under
-//! the canvas it adds, names, moves and removes ingredient lines (REC-07).
+//! the canvas it adds, names, moves and removes recipe ingredients (REC-07).
 use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
 use crate::{
@@ -12,10 +12,10 @@ use crate::{
 };
 
 use super::{
-    IngredientLine, NewRecipe, Recipe, RecipeTitle, RecipeTitleError, RecipeUpdate, Step,
+    NewRecipe, Recipe, RecipeIngredient, RecipeTitle, RecipeTitleError, RecipeUpdate, Step,
     StepEdges, StepWrite,
     capabilities::{RecipeCapabilities, RecipeEffectStream, RecipeSaveError},
-    ingredient_lines::{DraftLines, IngredientLineView, IngredientLinesEvent},
+    recipe_ingredients::{DraftRecipeIngredients, RecipeIngredientView, RecipeIngredientsEvent},
     step_canvas::{StepCanvas, StepCanvasEvent, StepCanvasView},
 };
 
@@ -25,8 +25,8 @@ pub enum RecipeEditorEvent {
     SetTitle(String),
     /// The steps on the canvas and in the inspector (REC-14).
     Canvas(StepCanvasEvent),
-    /// The ingredient lines under the canvas (REC-07).
-    Lines(IngredientLinesEvent),
+    /// The recipe ingredients under the canvas (REC-07).
+    Lines(RecipeIngredientsEvent),
     /// Checks the recipe title, every step title and every line name, then
     /// saves.
     Save,
@@ -51,7 +51,7 @@ pub enum RecipeEditorOutcome {
 
 /// Why the last Save did not save. A step's problems live on its node
 /// (`StepNodeView::problems`), a line's on the line
-/// (`IngredientLineView::problem`).
+/// (`RecipeIngredientView::problem`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecipeEditorProblem {
     Invalid(RecipeTitleError),
@@ -75,7 +75,7 @@ pub struct RecipeEditorView {
     /// The title as typed.
     pub title: String,
     /// In list order (REC-07/Q1).
-    pub lines: Vec<IngredientLineView>,
+    pub lines: Vec<RecipeIngredientView>,
     pub canvas: StepCanvasView,
     pub status: RecipeEditorStatus,
 }
@@ -107,7 +107,7 @@ enum EditorTarget {
 /// `is_dirty` compares the edits with them.
 struct OpenedWith<'a> {
     title: &'a str,
-    lines: &'a [IngredientLine],
+    lines: &'a [RecipeIngredient],
     steps: &'a [Step],
     edges: &'a StepEdges,
 }
@@ -138,7 +138,7 @@ pub struct RecipeEditor {
     caps: RecipeCapabilities,
     target: EditorTarget,
     title: String,
-    lines: DraftLines,
+    lines: DraftRecipeIngredients,
     canvas: StepCanvas,
     problems: ProblemDisplay,
     state: EditorState,
@@ -164,7 +164,7 @@ impl RecipeEditor {
     fn open(caps: RecipeCapabilities, target: EditorTarget) -> Self {
         let opened_with = target.opened_with();
         let title = opened_with.title.to_owned();
-        let lines = DraftLines::new(opened_with.lines);
+        let lines = DraftRecipeIngredients::new(opened_with.lines);
         let canvas = StepCanvas::new(opened_with.steps, opened_with.edges);
         Self {
             caps,
@@ -246,7 +246,7 @@ impl RecipeEditor {
     fn start_save(
         &mut self,
         title: RecipeTitle,
-        lines: Vec<IngredientLine>,
+        lines: Vec<RecipeIngredient>,
         steps: Vec<StepWrite>,
     ) -> Command<RecipeEditorOutcome> {
         let edges = self.canvas.edges().clone();
@@ -312,7 +312,7 @@ impl RecipeEditor {
 
     /// A line change keeps the problem, as a step change does: a save error
     /// or a bad recipe title does not depend on the lines.
-    fn change_lines(&mut self, event: IngredientLinesEvent) -> Command<RecipeEditorOutcome> {
+    fn change_lines(&mut self, event: RecipeIngredientsEvent) -> Command<RecipeEditorOutcome> {
         match self.lines.apply(event) {
             DraftChange::Changed => self.render(),
             DraftChange::Unchanged => Command::empty(),

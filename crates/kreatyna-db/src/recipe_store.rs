@@ -9,7 +9,7 @@ use diesel::{
 use kreatyna::{
     ingredients::name_key,
     recipes::{
-        ConnectRefusal, IngredientLine, NewRecipe, Recipe, RecipeId, RecipeSummary, RecipeUpdate,
+        ConnectRefusal, NewRecipe, Recipe, RecipeId, RecipeIngredient, RecipeSummary, RecipeUpdate,
         Step, StepEdge, StepEdges, StepId, StepWrite,
         capabilities::{RecipeDeleteError, RecipeLoadError, RecipeSaveError, RecipeStoreMut},
     },
@@ -17,9 +17,9 @@ use kreatyna::{
 
 use super::{
     recipe_models::{
-        DbOrdinal, LineRow, LocalRecipeId, LocalStepId, NewLineRow, NewRecipeRow, NewStepRow,
-        RecipeRow, RemoteRecipeId, RemoteStepId, StepEdgeRow, StepRow, UnitWithoutAmount,
-        saved_step,
+        DbOrdinal, LocalRecipeId, LocalStepId, NewRecipeIngredientRow, NewRecipeRow, NewStepRow,
+        RecipeIngredientRow, RecipeRow, RemoteRecipeId, RemoteStepId, StepEdgeRow, StepRow,
+        UnitWithoutAmount, saved_step,
     },
     schema::{recipe_ingredient_lines, recipe_step_edges, recipe_steps, recipes},
     sqlite::SqliteDatabase,
@@ -108,14 +108,14 @@ fn record(connection: &mut SqliteConnection, id: RecipeId) -> Result<Option<Reci
 fn load_lines(
     connection: &mut SqliteConnection,
     recipe_local_id: LocalRecipeId,
-) -> Result<Vec<IngredientLine>, StoreFailure> {
+) -> Result<Vec<RecipeIngredient>, StoreFailure> {
     let lines = recipe_ingredient_lines::table
         .filter(recipe_ingredient_lines::recipe_local_id.eq(recipe_local_id))
         .order(recipe_ingredient_lines::ordinal.asc())
-        .select(LineRow::as_select())
-        .load::<LineRow>(connection)?
+        .select(RecipeIngredientRow::as_select())
+        .load::<RecipeIngredientRow>(connection)?
         .into_iter()
-        .map(LineRow::into_domain)
+        .map(RecipeIngredientRow::into_domain)
         .collect::<Result<_, _>>()?;
     Ok(lines)
 }
@@ -125,11 +125,11 @@ fn load_lines(
 fn insert_lines(
     connection: &mut SqliteConnection,
     recipe_local_id: LocalRecipeId,
-    lines: &[IngredientLine],
+    lines: &[RecipeIngredient],
 ) -> Result<(), StoreFailure> {
-    let rows: Vec<NewLineRow> = DbOrdinal::sequence()
+    let rows: Vec<NewRecipeIngredientRow> = DbOrdinal::sequence()
         .zip(lines)
-        .map(|(ordinal, line)| NewLineRow::new(recipe_local_id, ordinal, line))
+        .map(|(ordinal, line)| NewRecipeIngredientRow::new(recipe_local_id, ordinal, line))
         .collect();
     diesel::insert_into(recipe_ingredient_lines::table)
         .values(&rows)

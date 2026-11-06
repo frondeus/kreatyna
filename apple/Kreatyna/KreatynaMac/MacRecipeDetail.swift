@@ -107,7 +107,7 @@ struct MacRecipeDetail: View {
                     Section("Ingredients") {
                         ForEach(lines, id: \.id) { line in
                             Text(line.name)
-                                .accessibilityIdentifier("recipeIngredientLine")
+                                .accessibilityIdentifier("recipeIngredient")
                         }
                     }
                 }

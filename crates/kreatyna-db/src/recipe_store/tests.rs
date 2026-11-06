@@ -4,10 +4,10 @@ use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use kreatyna::{
     ingredients::capabilities::IngredientStoreMut,
     recipes::{
-        CanvasPoint, IngredientLine, IngredientLineId, IngredientLineName, KnownUnit, NewRecipe,
-        Recipe, RecipeId, RecipeIngredientAmount, RecipeIngredientNote, RecipeIngredientQuantity,
-        RecipeSummary, RecipeTitle, RecipeUpdate, Step, StepDurationS, StepEdge, StepEdges, StepId,
-        StepInstructions, StepKind, StepTitle, StepWrite,
+        CanvasPoint, KnownUnit, NewRecipe, Recipe, RecipeId, RecipeIngredient,
+        RecipeIngredientAmount, RecipeIngredientId, RecipeIngredientName, RecipeIngredientNote,
+        RecipeIngredientQuantity, RecipeSummary, RecipeTitle, RecipeUpdate, Step, StepDurationS,
+        StepEdge, StepEdges, StepId, StepInstructions, StepKind, StepTitle, StepWrite,
     },
 };
 use test_case::test_case;
@@ -165,7 +165,7 @@ async fn a_line_keeps_its_amount_unit_and_note(
     note: Option<&str>,
 ) -> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
-    let lines = vec![IngredientLine {
+    let lines = vec![RecipeIngredient {
         quantity: quantity(amount, unit)?,
         note: note.map(RecipeIngredientNote::try_new).transpose()?,
         ..line(1, "olive oil")?
@@ -190,7 +190,7 @@ async fn a_line_keeps_its_amount_unit_and_note(
 #[tokio::test]
 async fn each_known_unit_is_stored_and_read_back(unit: KnownUnit) -> anyhow::Result<()> {
     let mut db = SqliteDatabase::new(":memory:").await?;
-    let lines = vec![IngredientLine {
+    let lines = vec![RecipeIngredient {
         quantity: quantity(Some("1"), Some(unit))?,
         ..line(1, "flour")?
     }];
@@ -522,7 +522,7 @@ async fn a_line_from_before_rec_08_upgrades_with_no_amount_unit_or_note() -> any
     let path = path.to_str().context("the temporary path is not UTF-8")?;
     {
         let mut db = SqliteConnection::establish(path)?;
-        // The schema before REC-08: up to and with the ingredient lines.
+        // The schema before REC-08: up to and with the recipe ingredients.
         for _ in 0..8 {
             db.run_next_migration(MIGRATIONS)
                 .map_err(|error| anyhow!(error))?;
@@ -539,9 +539,9 @@ async fn a_line_from_before_rec_08_upgrades_with_no_amount_unit_or_note() -> any
         .context("Shakshuka is gone")?;
     assert_eq!(
         shakshuka.lines,
-        vec![IngredientLine {
+        vec![RecipeIngredient {
             id: LINE.parse()?,
-            name: IngredientLineName::try_new("eggs")?,
+            name: RecipeIngredientName::try_new("eggs")?,
             quantity: RecipeIngredientQuantity::Unmeasured,
             note: None,
         }]
@@ -1104,10 +1104,10 @@ fn summary_of(recipe: &Recipe) -> RecipeSummary {
     }
 }
 
-fn line(id: u128, name: &str) -> anyhow::Result<IngredientLine> {
-    Ok(IngredientLine {
-        id: format!("6f1c1d3e-0000-4000-8000-{id:012x}").parse::<IngredientLineId>()?,
-        name: IngredientLineName::try_new(name)?,
+fn line(id: u128, name: &str) -> anyhow::Result<RecipeIngredient> {
+    Ok(RecipeIngredient {
+        id: format!("6f1c1d3e-0000-4000-8000-{id:012x}").parse::<RecipeIngredientId>()?,
+        name: RecipeIngredientName::try_new(name)?,
         quantity: RecipeIngredientQuantity::Unmeasured,
         note: None,
     })
@@ -1134,7 +1134,7 @@ fn quantity(
     })
 }
 
-fn with_lines(title: &str, lines: Vec<IngredientLine>) -> anyhow::Result<NewRecipe> {
+fn with_lines(title: &str, lines: Vec<RecipeIngredient>) -> anyhow::Result<NewRecipe> {
     Ok(NewRecipe {
         lines,
         ..new_recipe(title)?

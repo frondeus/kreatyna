@@ -1,19 +1,20 @@
 # REC-08 — Amount, known unit and note on a line
 
-Tracked in beads: `vibetyna-hrx.8`. Changes: five, listed in Steps.
+Tracked in beads: `vibetyna-hrx.8`. Changes: seven, listed in Steps.
 Dependencies: REC-07 (`vibetyna-hrx.7`), closed. This plan builds on its
 lines, their store table and the Mac list.
 
 ## Open questions
 
-None. You answered one question in the REC-08 Inbox thread. It is in
-Decisions.
+None. You answered the questions in the REC-08 Inbox thread. They are
+in Decisions.
 
 ## Decisions
 
 | ID | Question | Answer |
 |---|---|---|
 | REC-08/Q1 | How do you edit a line's amount, unit, name and note? | The row shows a summary, and a click opens a popover with Amount, Unit ▾, Name and Note, as in the mockup. ＋ Line opens the popover for the new line, with the cursor in Name. REC-09 (custom unit) and REC-10 (catalog link) add their fields to the same popover. |
+| REC-08/Q3 | What name do a recipe's ingredients get, instead of "ingredient line"? (It replaces Q2, which asked only about the prefix.) | `RecipeIngredient…`: `RecipeIngredient`, `RecipeIngredientId`, `RecipeIngredientName`, `RecipeIngredientAmount`, `RecipeIngredientQuantity`, `RecipeIngredientNote`, `RecipeIngredientsEvent`. The catalog keeps its names. The table keeps its name, `recipe_ingredient_lines`. The button text stays "＋ Line". |
 
 ## Decided in the plan
 
@@ -59,7 +60,7 @@ and that line shows "Amount needed for a unit".
 | Known unit | One of the 8 units that the app knows: g, kg, ml, l, tsp, tbsp, cup, piece (D-25). Only known units can convert later. REC-09 adds custom units such as "knob". |
 | Note | Free text after the name, such as "extra virgin" or "to taste" (D-12). |
 | Popover | A small floating panel that points at the control that opened it. SwiftUI shows one with `.popover`. |
-| `nutype` | The crate that makes a validated newtype from a field, such as `IngredientLineName`. `try_new` returns the value or a generated error. |
+| `nutype` | The crate that makes a validated newtype from a field, such as `RecipeIngredientName`. `try_new` returns the value or a generated error. |
 
 ## Design
 
@@ -81,7 +82,7 @@ A new forward-only migration,
 `2026-11-07-120000-0000_add_line_amounts` (*sketch*):
 
 ```sql
--- A line's amount, known unit and note (REC-08). The amount is exact
+-- An ingredient's amount, known unit and note (REC-08). The amount is exact
 -- decimal text, as in the catalog. A unit needs an amount.
 ALTER TABLE recipe_ingredient_lines ADD COLUMN amount TEXT;
 ALTER TABLE recipe_ingredient_lines ADD COLUMN unit TEXT
@@ -98,12 +99,12 @@ SQLite accepts a column `CHECK` that names another column in `ADD COLUMN`.
 A quick check with `sqlite3` refused "g" with no amount and kept the older
 rows.
 
-`recipe_models.rs`: `LineRow` and `NewLineRow` get `amount`, `unit` and
-`note`. `DbLineAmount(LineAmount)` stores the decimal as text, as the
+`recipe_models.rs`: `RecipeIngredientRow` and `NewRecipeIngredientRow` get `amount`, `unit` and
+`note`. `DbRecipeIngredientAmount(RecipeIngredientAmount)` stores the decimal as text, as the
 catalog's quantities do. `DbKnownUnit(KnownUnit)` stores the unit's code. A
 row with a unit and no amount fails to read, as a blank name does.
 
-`recipe_store.rs`: no new query. `load_lines` and `insert_lines` carry the
+`recipe_store.rs`: no new query. `load_ingredients` and `insert_ingredients` carry the
 new columns.
 
 ### rust (`crates/kreatyna/src/recipes`)
@@ -111,40 +112,40 @@ new columns.
 `model.rs` (*sketch*):
 
 ```rust
-/// A line's amount: an exact decimal, more than 0 (REC-08). `try_new`
-/// fails with `LineAmountError::GreaterViolated`.
+/// An ingredient's amount: an exact decimal, more than 0 (REC-08). `try_new`
+/// fails with `RecipeIngredientAmountError::GreaterViolated`.
 #[nutype(validate(greater = Decimal::ZERO), derive(Debug, Clone, Copy, PartialEq, Eq, Display, TryFrom, Into))]
-pub struct LineAmount(Decimal);
+pub struct RecipeIngredientAmount(Decimal);
 
 /// The units that the app knows (D-25), in picker order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KnownUnit { Gram, Kilogram, Millilitre, Litre, Teaspoon, Tablespoon, Cup, Piece }
 
-/// How much of an ingredient a line names. A unit without an amount
+/// How much of the ingredient the recipe needs. A unit without an amount
 /// cannot be built.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LineQuantity {
+pub enum RecipeIngredientQuantity {
     /// "salt, to taste"
     Unmeasured,
     /// "2 eggs"
-    Count(LineAmount),
+    Count(RecipeIngredientAmount),
     /// "300 g penne pasta"
-    Measured { amount: LineAmount, unit: KnownUnit },
+    Measured { amount: RecipeIngredientAmount, unit: KnownUnit },
 }
 
-/// A line's note, such as "extra virgin": trimmed and not empty.
+/// An ingredient's note, such as "extra virgin": trimmed and not empty.
 #[nutype(sanitize(trim), validate(not_empty), derive(Debug, Clone, PartialEq, Eq, AsRef))]
-pub struct LineNote(String);
+pub struct RecipeIngredientNote(String);
 
-pub struct IngredientLine {
-    pub id: IngredientLineId,
-    pub name: IngredientLineName,
-    pub quantity: LineQuantity,
-    pub note: Option<LineNote>,
+pub struct RecipeIngredient {
+    pub id: RecipeIngredientId,
+    pub name: RecipeIngredientName,
+    pub quantity: RecipeIngredientQuantity,
+    pub note: Option<RecipeIngredientNote>,
 }
 ```
 
-REC-09 changes `Measured`'s unit into a `LineUnit` with a custom case. The
+REC-09 changes `Measured`'s unit into a `RecipeIngredientUnit` with a custom case. The
 other cases stay.
 
 A new module `crate::decimal_input` holds the catalog's text-to-decimal
@@ -159,24 +160,24 @@ pub(crate) enum DecimalInputError { NotANumber, TooManyDecimalPlaces, OutOfRange
 pub(crate) fn parse_decimal(input: &str) -> Result<Decimal, DecimalInputError>;
 ```
 
-`ingredient_lines.rs` (*sketch*):
+`recipe_ingredients.rs` (*sketch*):
 
 ```rust
-pub enum IngredientLinesEvent {
+pub enum RecipeIngredientsEvent {
     Add,
-    SetName { id: IngredientLineId, name: String },
+    SetName { id: RecipeIngredientId, name: String },
     /// The Amount field, as typed. Rust parses it only on Save.
-    SetAmount { id: IngredientLineId, amount: String },
+    SetAmount { id: RecipeIngredientId, amount: String },
     /// The Unit picker. `None` is "No unit".
-    SetUnit { id: IngredientLineId, unit: Option<KnownUnit> },
+    SetUnit { id: RecipeIngredientId, unit: Option<KnownUnit> },
     /// The Note field, as typed.
-    SetNote { id: IngredientLineId, note: String },
-    Remove { id: IngredientLineId },
-    Move { id: IngredientLineId, onto: IngredientLineId },
+    SetNote { id: RecipeIngredientId, note: String },
+    Remove { id: RecipeIngredientId },
+    Move { id: RecipeIngredientId, onto: RecipeIngredientId },
 }
 
-/// Why Save refuses a line's amount.
-pub enum LineAmountProblem {
+/// Why Save refuses an ingredient's amount.
+pub enum RecipeIngredientAmountProblem {
     NotANumber,
     TooManyDecimalPlaces,
     OutOfRange,
@@ -186,82 +187,82 @@ pub enum LineAmountProblem {
     MissingForUnit,
 }
 
-pub struct LineProblems {
-    pub name: Option<IngredientLineNameError>,
-    pub amount: Option<LineAmountProblem>,
+pub struct RecipeIngredientProblems {
+    pub name: Option<RecipeIngredientNameError>,
+    pub amount: Option<RecipeIngredientAmountProblem>,
 }
 
-pub struct IngredientLineView {
-    pub id: IngredientLineId,
+pub struct RecipeIngredientView {
+    pub id: RecipeIngredientId,
     /// The popover's fields, as typed.
     pub name: String,
     pub amount: String,
     pub unit: Option<KnownUnit>,
     pub note: String,
     /// What the row shows.
-    pub summary: LineSummary,
+    pub summary: RecipeIngredientSummary,
     /// All `None` until the first Save.
-    pub problems: LineProblems,
+    pub problems: RecipeIngredientProblems,
 }
 
 /// The row's text: "1,50 kg" + "tomatoes" + "chopped". Swift joins the parts.
-pub struct LineSummary {
+pub struct RecipeIngredientSummary {
     /// The amount as typed and trimmed, and the unit's label. `None` with
     /// neither.
     pub amount: Option<String>,
-    pub name: LineLabel,
+    pub name: RecipeIngredientLabel,
     pub note: Option<String>,
 }
 
-pub enum LineLabel { Named { name: String }, Unnamed }
+pub enum RecipeIngredientLabel { Named { name: String }, Unnamed }
 
 /// One choice of the Unit picker, after "No unit".
 pub struct UnitOption { pub unit: KnownUnit, pub label: String }
 ```
 
-`DraftLine` gets `amount: String`, `unit: Option<KnownUnit>` and
-`note: String`. `writes()` builds each `IngredientLine` or returns the
+`DraftRecipeIngredient` gets `amount: String`, `unit: Option<KnownUnit>` and
+`note: String`. `writes()` builds each `RecipeIngredient` or returns the
 problems. `differs_from` compares the new fields too, so a changed amount
 makes Cancel ask "Discard changes?".
 
 `editor.rs`: `RecipeEditorView` gets `units: Vec<UnitOption>`.
 
-`detail.rs`: `RecipeDetailLine` gets `amount: Option<String>` ("300 g",
+`detail.rs`: `RecipeDetailIngredient` gets `amount: Option<String>` ("300 g",
 "2 cups", formatted) and `note: Option<String>`.
 
 A widget test (*sketch*):
 
 ```rust
 #[tokio::test]
-async fn a_unit_without_an_amount_blocks_save_on_that_line() -> anyhow::Result<()> {
+async fn a_unit_without_an_amount_blocks_save_on_that_ingredient() -> anyhow::Result<()> {
     let mut f = Fixture::new_recipe("Pasta").await?;
-    let flour = f.add_line("flour").await?;
-    f.send(Lines(SetUnit { id: flour, unit: Some(KnownUnit::Gram) })).await?;
+    let flour = f.add_ingredient("flour").await?;
+    f.send(Ingredients(SetUnit { id: flour, unit: Some(KnownUnit::Gram) })).await?;
     f.save_refused().await?;
-    assert_eq!(f.line(flour)?.problems.amount, Some(LineAmountProblem::MissingForUnit));
+    assert_eq!(f.ingredient(flour)?.problems.amount, Some(RecipeIngredientAmountProblem::MissingForUnit));
     Ok(())
 }
 ```
 
 ### ffi (`crates/kreatyna-ffi`)
 
-`recipes.rs` mirrors `KnownUnit`, `LineAmountProblem`, `LineProblems`,
-`LineSummary`, `LineLabel`, `UnitOption`, the new events, and the new
-view fields. `IngredientLineView.problem` becomes `problems`.
+`recipes.rs` mirrors `KnownUnit`, `RecipeIngredientAmountProblem`, `RecipeIngredientProblems`,
+`RecipeIngredientSummary`, `RecipeIngredientLabel`, `UnitOption`, the new events, and the new
+view fields. `RecipeIngredientView.problem` becomes `problems`.
 
 ### swift
 
-- `MacIngredientLines.swift`: each row shows the summary as text, not a name
+- `MacRecipeIngredients.swift`: each row shows the summary as text, not a name
   field: the amount in bold, the name, and ", note" in grey
-  (`ingredientLineSummary.<n>`). The problems show in red under it
-  (`ingredientLineProblem.<n>`). A click on the summary opens the popover.
+  (`recipeIngredientSummary.<n>`). The problems show in red under it
+  (`recipeIngredientProblem.<n>`). A click on the summary opens the popover.
   ＋ Line opens the popover for the new line, with the cursor in Name.
-- New `MacIngredientLineEditor.swift`: the popover. Amount
-  (`ingredientLineAmount`), a Unit `Picker` with "No unit" and Rust's
-  options (`ingredientLineUnit`), Name (`ingredientLineName`) and Note
-  (`ingredientLineNote`), each a `SyncedTextField`, with each problem under
+- New `MacRecipeIngredientEditor.swift`: the popover. Amount
+  (`recipeIngredientAmount`), a Unit `Picker` with "No unit" and Rust's
+  options (`recipeIngredientUnit`), Name (`recipeIngredientName`) and Note
+  (`recipeIngredientNote`), each a `SyncedTextField`, with each problem under
   its field.
-- `ErrorText.swift`: the text for each `LineAmountProblem`: "Amount is not a
+- `ErrorText.swift`: the text for each `RecipeIngredientAmountProblem`: "Amount is not a
   number", "At most 6 decimal places", "Amount is too large", "Amount must be
   more than 0", "Amount needed for a unit".
 - `MacRecipeDetail.swift`: each line shows its amount in a column on the
@@ -270,7 +271,7 @@ view fields. `IngredientLineView.problem` becomes `problems`.
 - Snapshots (`MacScreenSnapshotTests`): the row summaries, the popover
   (filled, and with problems), and the read view with amounts, in light and
   dark. REC-07's editor snapshots change: the rows show summaries.
-- UI test (`MacRecipeUITests`): `testIngredientLinesAddDragRemoveAndSave`
+- UI test (`MacRecipeUITests`): `testRecipeIngredientsAddDragRemoveAndSave`
   types names in the popover. A new test sets 300 g and a note, saves, and
   finds "300 g" in the read view.
 
@@ -291,24 +292,36 @@ view fields. `IngredientLineView.problem` becomes `problems`.
 ### Change 2 — REC-08: lines store an amount, a unit and a note (about 450 lines, review)
 
 1. Add the migration and the schema columns. Empty REC-07's `down.sql`.
-2. Add `LineAmount`, `KnownUnit`, `LineQuantity` and `LineNote`, and the new
-   `IngredientLine` fields.
-3. Add `DbLineAmount` and `DbKnownUnit`, and carry the columns in
-   `load_lines` and `insert_lines`.
+2. Add `RecipeIngredientAmount`, `KnownUnit`, `RecipeIngredientQuantity` and `RecipeIngredientNote`, and the new
+   `RecipeIngredient` fields.
+3. Add `DbRecipeIngredientAmount` and `DbKnownUnit`, and carry the columns in
+   `load_ingredients` and `insert_ingredients`.
 4. Add store tests: each quantity case and a note round-trip; a unit without
    an amount and a blank note fail in the database; a REC-07 line upgrades
    with no amount, no unit and no note.
-5. Keep the editor writing `LineQuantity::Unmeasured` and no note until
+5. Keep the editor writing `RecipeIngredientQuantity::Unmeasured` and no note until
    change 3.
+
+### Change 2a — REC-08: ingredient lines become recipe ingredients (about 630 lines, review)
+
+1. Rename the types, the modules and the files of REC-07 and change 2 to
+   the `RecipeIngredient…` names (REC-08/Q3).
+2. Rename the Swift accessibility ids to `recipeIngredient…`.
+3. Rename the code names in this plan.
+
+### Change 2b — REC-08: recipe ingredients in fields, variables and tests (about 700 lines, review)
+
+1. Rename the `lines` fields, the `Lines` event variant, the variables, the
+   test names, the comments and the snapshot files.
 
 ### Change 3 — REC-08: the editor edits amounts, units and notes (about 800 lines, review)
 
 1. Move the catalog's decimal rules to `crate::decimal_input`. The catalog
    tests do not change.
 2. Add the new events, fields, problems, summary and unit options to
-   `ingredient_lines.rs` and the editor.
+   `recipe_ingredients.rs` and the editor.
 3. Format the read view's amount and note in `detail.rs`.
-4. Add Rust tests in `tests/ingredient_lines.rs`: each event; each amount
+4. Add Rust tests in `tests/recipe_ingredients.rs`: each event; each amount
    problem; a unit without an amount; "2 eggs" and "salt, to taste" save;
    the summary as typed; the read view's "1.5 kg", "1 cup", "2 cups"; a
    changed amount, unit or note makes Cancel ask.

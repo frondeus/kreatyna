@@ -5,14 +5,14 @@ mod detail;
 mod duration;
 mod editor;
 mod graph;
-mod ingredient_lines;
 mod list;
 mod model;
+mod recipe_ingredients;
 mod section;
 mod step_canvas;
 
 pub use detail::{
-    RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailLine, RecipeDetailOutcome,
+    RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailIngredient, RecipeDetailOutcome,
     RecipeDetailStatus, RecipeDetailStep, RecipeDetailView,
 };
 pub use duration::{DurationChip, DurationEntry, DurationError, DurationInput, DurationParts};
@@ -21,19 +21,19 @@ pub use editor::{
     RecipeEditorView,
 };
 pub use graph::{ConnectRefusal, StepEdge, StepEdges};
-pub use ingredient_lines::{IngredientLineView, IngredientLinesEvent};
 pub use list::{
     RecipeList, RecipeListEvent, RecipeListOutcome, RecipeListRow, RecipeListStatus, RecipeListView,
 };
 pub use model::{
-    CanvasPoint, IngredientLine, IngredientLineId, IngredientLineIdParseError, IngredientLineName,
-    IngredientLineNameError, KnownUnit, NewRecipe, Recipe, RecipeId, RecipeIdParseError,
-    RecipeIngredientAmount, RecipeIngredientAmountError, RecipeIngredientNote,
-    RecipeIngredientNoteError, RecipeIngredientQuantity, RecipeSummary, RecipeTitle,
-    RecipeTitleError, RecipeUpdate, Step, StepDurationS, StepDurationSError, StepId,
+    CanvasPoint, KnownUnit, NewRecipe, Recipe, RecipeId, RecipeIdParseError, RecipeIngredient,
+    RecipeIngredientAmount, RecipeIngredientAmountError, RecipeIngredientId,
+    RecipeIngredientIdParseError, RecipeIngredientName, RecipeIngredientNameError,
+    RecipeIngredientNote, RecipeIngredientNoteError, RecipeIngredientQuantity, RecipeSummary,
+    RecipeTitle, RecipeTitleError, RecipeUpdate, Step, StepDurationS, StepDurationSError, StepId,
     StepIdParseError, StepInstructions, StepInstructionsError, StepKind, StepTitle, StepTitleError,
     StepWrite,
 };
+pub use recipe_ingredients::{RecipeIngredientView, RecipeIngredientsEvent};
 pub use section::{
     RecipePaneOutcome, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
     RecipeSectionView,

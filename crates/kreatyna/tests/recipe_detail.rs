@@ -1,10 +1,10 @@
 use kreatyna::capabilities::ResolveRender;
 use kreatyna::confirmation::{ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 use kreatyna::recipes::{
-    CanvasPoint, IngredientLine, IngredientLineId, IngredientLineName, Recipe, RecipeDeletion,
-    RecipeDetail, RecipeDetailEvent, RecipeDetailLine, RecipeDetailOutcome, RecipeDetailStatus,
-    RecipeDetailStep, RecipeDetailView, RecipeId, RecipeIngredientQuantity, Step, StepDurationS,
-    StepEdges, StepId, StepInstructions, StepKind,
+    CanvasPoint, Recipe, RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailIngredient,
+    RecipeDetailOutcome, RecipeDetailStatus, RecipeDetailStep, RecipeDetailView, RecipeId,
+    RecipeIngredient, RecipeIngredientId, RecipeIngredientName, RecipeIngredientQuantity, Step,
+    StepDurationS, StepEdges, StepId, StepInstructions, StepKind,
     capabilities::{RecipeDeleteError, RecipeEffectStream, RecipeLoadError, ResolveRecipeStore},
 };
 use krucyfiks::{Command, Latest, Message, Widget, effects::CommandTestExt};
@@ -111,11 +111,11 @@ async fn the_read_view_lists_the_lines_by_name_in_list_order() -> anyhow::Result
     assert_eq!(
         lines,
         [
-            RecipeDetailLine {
+            RecipeDetailIngredient {
                 id: basil.id,
                 name: "basil".into(),
             },
-            RecipeDetailLine {
+            RecipeDetailIngredient {
                 id: penne.id,
                 name: "penne pasta".into(),
             },
@@ -433,10 +433,10 @@ fn id() -> RecipeId {
 /// Shakshuka with two steps. Fry onion was added first, so the read view
 /// lists it first, although it is right of Dice onion on the canvas. Fry
 /// onion has a duration, Waiting, and instructions (REC-17).
-fn line(id: u128, name: &str) -> anyhow::Result<IngredientLine> {
-    Ok(IngredientLine {
-        id: IngredientLineId::from(Uuid::from_u128(id)),
-        name: IngredientLineName::try_new(name)?,
+fn line(id: u128, name: &str) -> anyhow::Result<RecipeIngredient> {
+    Ok(RecipeIngredient {
+        id: RecipeIngredientId::from(Uuid::from_u128(id)),
+        name: RecipeIngredientName::try_new(name)?,
         quantity: RecipeIngredientQuantity::Unmeasured,
         note: None,
     })

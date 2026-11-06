@@ -1,11 +1,12 @@
-//! The ingredient lines of the recipe editor (REC-07): adding, naming,
+//! The recipe ingredients of the recipe editor (REC-07): adding, naming,
 //! moving and removing lines, and the line rule that Save checks. The tests
 //! drive the lines through the editor.
 use kreatyna::{
     confirmation::ConfirmationEvent,
     recipes::{
-        IngredientLine, IngredientLineId, IngredientLineNameError, IngredientLineView,
-        IngredientLinesEvent, Recipe, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorStatus,
+        Recipe, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorStatus, RecipeIngredient,
+        RecipeIngredientId, RecipeIngredientNameError, RecipeIngredientView,
+        RecipeIngredientsEvent,
     },
 };
 use krucyfiks::{Message, Widget, effects::CommandTestExt};
@@ -27,7 +28,7 @@ async fn an_edit_editor_opens_with_the_saved_lines_in_list_order() -> anyhow::Re
 #[tokio::test]
 async fn add_line_adds_an_empty_line_at_the_bottom_with_a_new_id() -> anyhow::Result<()> {
     let mut f = Fixture::edit_recipe(&pasta_with_lines()?);
-    let command = f.send(RecipeEditorEvent::Lines(IngredientLinesEvent::Add));
+    let command = f.send(RecipeEditorEvent::Lines(RecipeIngredientsEvent::Add));
     let lines = f.editor.view().lines;
     let added = lines.last().map(|line| line.id);
     let Some(id) = added else {
@@ -40,7 +41,7 @@ async fn add_line_adds_an_empty_line_at_the_bottom_with_a_new_id() -> anyhow::Re
         vec![
             shown(&penne()?),
             shown(&olive_oil()?),
-            IngredientLineView {
+            RecipeIngredientView {
                 id,
                 name: String::new(),
                 problem: None,
@@ -81,7 +82,7 @@ async fn save_writes_the_lines_with_trimmed_names_in_list_order() -> anyhow::Res
 #[tokio::test]
 async fn remove_removes_only_that_line() -> anyhow::Result<()> {
     let mut f = Fixture::edit_recipe(&pasta_with_lines()?);
-    f.lines(IngredientLinesEvent::Remove { id: penne()?.id })
+    f.lines(RecipeIngredientsEvent::Remove { id: penne()?.id })
         .await?;
     assert_eq!(f.editor.view().lines, vec![shown(&olive_oil()?)]);
     Ok(())
@@ -98,7 +99,7 @@ async fn a_dropped_line_takes_the_place_of_the_line_it_lands_on(
     expected: [&str; 3],
 ) -> anyhow::Result<()> {
     let mut f = Fixture::edit_recipe(&three_lines()?);
-    f.lines(IngredientLinesEvent::Move {
+    f.lines(RecipeIngredientsEvent::Move {
         id: line_id(id),
         onto: line_id(onto),
     })
@@ -111,7 +112,7 @@ async fn a_dropped_line_takes_the_place_of_the_line_it_lands_on(
 async fn a_moved_line_keeps_its_id_and_saves_in_its_new_place() -> anyhow::Result<()> {
     let recipe = three_lines()?;
     let mut f = Fixture::edit_recipe(&recipe);
-    f.lines(IngredientLinesEvent::Move {
+    f.lines(RecipeIngredientsEvent::Move {
         id: line_id(23),
         onto: line_id(21),
     })
@@ -145,7 +146,11 @@ async fn save_with_an_unnamed_line_shows_name_required_on_that_line_only(
     );
     assert_eq!(
         problems(&f),
-        [None, None, Some(IngredientLineNameError::NotEmptyViolated)]
+        [
+            None,
+            None,
+            Some(RecipeIngredientNameError::NotEmptyViolated)
+        ]
     );
     f.render(save).await?;
     assert!(f.writes.is_empty());
@@ -165,7 +170,7 @@ async fn after_the_first_save_each_name_change_checks_again() -> anyhow::Result<
     f.name_line(id, " ").await?;
     assert_eq!(
         problems(&f),
-        [Some(IngredientLineNameError::NotEmptyViolated)]
+        [Some(RecipeIngredientNameError::NotEmptyViolated)]
     );
     Ok(())
 }
@@ -189,12 +194,12 @@ async fn a_line_change_makes_cancel_ask_and_changing_it_back_does_not() -> anyho
     Ok(())
 }
 
-#[test_case(IngredientLinesEvent::Add; "an added line")]
-#[test_case(IngredientLinesEvent::Remove { id: line_id(21) }; "a removed line")]
-#[test_case(IngredientLinesEvent::Move { id: line_id(22), onto: line_id(21) }; "a moved line")]
+#[test_case(RecipeIngredientsEvent::Add; "an added line")]
+#[test_case(RecipeIngredientsEvent::Remove { id: line_id(21) }; "a removed line")]
+#[test_case(RecipeIngredientsEvent::Move { id: line_id(22), onto: line_id(21) }; "a moved line")]
 #[tokio::test]
 async fn an_added_removed_or_moved_line_makes_cancel_ask(
-    event: IngredientLinesEvent,
+    event: RecipeIngredientsEvent,
 ) -> anyhow::Result<()> {
     let mut f = Fixture::edit_recipe(&pasta_with_lines()?);
     f.lines(event).await?;
@@ -203,15 +208,15 @@ async fn an_added_removed_or_moved_line_makes_cancel_ask(
 
 // Red cases
 
-#[test_case(IngredientLinesEvent::SetName { id: unknown_line(), name: "basil".into() }; "naming an unknown line")]
-#[test_case(IngredientLinesEvent::SetName { id: line_id(21), name: "penne pasta".into() }; "the same name again")]
-#[test_case(IngredientLinesEvent::Remove { id: unknown_line() }; "removing an unknown line")]
-#[test_case(IngredientLinesEvent::Move { id: unknown_line(), onto: line_id(21) }; "moving an unknown line")]
-#[test_case(IngredientLinesEvent::Move { id: line_id(21), onto: unknown_line() }; "moving onto an unknown line")]
-#[test_case(IngredientLinesEvent::Move { id: line_id(21), onto: line_id(21) }; "moving a line onto itself")]
+#[test_case(RecipeIngredientsEvent::SetName { id: unknown_line(), name: "basil".into() }; "naming an unknown line")]
+#[test_case(RecipeIngredientsEvent::SetName { id: line_id(21), name: "penne pasta".into() }; "the same name again")]
+#[test_case(RecipeIngredientsEvent::Remove { id: unknown_line() }; "removing an unknown line")]
+#[test_case(RecipeIngredientsEvent::Move { id: unknown_line(), onto: line_id(21) }; "moving an unknown line")]
+#[test_case(RecipeIngredientsEvent::Move { id: line_id(21), onto: unknown_line() }; "moving onto an unknown line")]
+#[test_case(RecipeIngredientsEvent::Move { id: line_id(21), onto: line_id(21) }; "moving a line onto itself")]
 #[tokio::test]
 async fn a_line_event_that_changes_nothing_does_not_render(
-    event: IngredientLinesEvent,
+    event: RecipeIngredientsEvent,
 ) -> anyhow::Result<()> {
     let mut f = Fixture::edit_recipe(&pasta_with_lines()?);
     let before = f.editor.view();
@@ -241,35 +246,35 @@ fn three_lines() -> anyhow::Result<Recipe> {
     })
 }
 
-fn basil() -> anyhow::Result<IngredientLine> {
+fn basil() -> anyhow::Result<RecipeIngredient> {
     saved_line(23, "basil")
 }
 
-fn line_id(id: u128) -> IngredientLineId {
-    IngredientLineId::from(Uuid::from_u128(id))
+fn line_id(id: u128) -> RecipeIngredientId {
+    RecipeIngredientId::from(Uuid::from_u128(id))
 }
 
-fn unknown_line() -> IngredientLineId {
+fn unknown_line() -> RecipeIngredientId {
     line_id(99)
 }
 
-fn line(id: IngredientLineId, name: &str) -> anyhow::Result<IngredientLine> {
-    Ok(IngredientLine {
+fn line(id: RecipeIngredientId, name: &str) -> anyhow::Result<RecipeIngredient> {
+    Ok(RecipeIngredient {
         id,
         ..saved_line(0, name)?
     })
 }
 
 /// A saved line as the editor shows it before the first Save.
-fn shown(line: &IngredientLine) -> IngredientLineView {
-    IngredientLineView {
+fn shown(line: &RecipeIngredient) -> RecipeIngredientView {
+    RecipeIngredientView {
         id: line.id,
         name: line.name.as_ref().to_owned(),
         problem: None,
     }
 }
 
-fn problems(f: &Fixture) -> Vec<Option<IngredientLineNameError>> {
+fn problems(f: &Fixture) -> Vec<Option<RecipeIngredientNameError>> {
     f.editor
         .view()
         .lines

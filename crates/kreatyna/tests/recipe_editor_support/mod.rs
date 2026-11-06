@@ -11,12 +11,13 @@ use kreatyna::{
     capabilities::ResolveRender,
     confirmation::{ConfirmationEvent, ConfirmationView},
     recipes::{
-        CanvasPoint, DurationChip, DurationEntry, DurationInput, DurationParts, IngredientLine,
-        IngredientLineId, IngredientLineName, IngredientLinesEvent, Recipe, RecipeEditor,
-        RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem, RecipeEditorStatus, RecipeId,
-        RecipeIngredientQuantity, RecipeTitleError, Step, StepCanvasEvent, StepCanvasView,
-        StepDurationS, StepDurationView, StepEdge, StepEdges, StepId, StepInstructions, StepKind,
-        StepLabel, StepNodeView, StepNodesView, StepProblems, StepTitle, StepTitleError, StepWrite,
+        CanvasPoint, DurationChip, DurationEntry, DurationInput, DurationParts, Recipe,
+        RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem,
+        RecipeEditorStatus, RecipeId, RecipeIngredient, RecipeIngredientId, RecipeIngredientName,
+        RecipeIngredientQuantity, RecipeIngredientsEvent, RecipeTitleError, Step, StepCanvasEvent,
+        StepCanvasView, StepDurationS, StepDurationView, StepEdge, StepEdges, StepId,
+        StepInstructions, StepKind, StepLabel, StepNodeView, StepNodesView, StepProblems,
+        StepTitle, StepTitleError, StepWrite,
         capabilities::{
             RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
         },
@@ -54,18 +55,18 @@ pub(crate) fn pasta_with_lines() -> anyhow::Result<Recipe> {
     })
 }
 
-pub(crate) fn penne() -> anyhow::Result<IngredientLine> {
+pub(crate) fn penne() -> anyhow::Result<RecipeIngredient> {
     saved_line(21, "penne pasta")
 }
 
-pub(crate) fn olive_oil() -> anyhow::Result<IngredientLine> {
+pub(crate) fn olive_oil() -> anyhow::Result<RecipeIngredient> {
     saved_line(22, "olive oil")
 }
 
-pub(crate) fn saved_line(id: u128, name: &str) -> anyhow::Result<IngredientLine> {
-    Ok(IngredientLine {
-        id: IngredientLineId::from(Uuid::from_u128(id)),
-        name: IngredientLineName::try_new(name)?,
+pub(crate) fn saved_line(id: u128, name: &str) -> anyhow::Result<RecipeIngredient> {
+    Ok(RecipeIngredient {
+        id: RecipeIngredientId::from(Uuid::from_u128(id)),
+        name: RecipeIngredientName::try_new(name)?,
         quantity: RecipeIngredientQuantity::Unmeasured,
         note: None,
     })
@@ -278,7 +279,7 @@ pub(crate) struct Fixture {
     /// The edges that each store call wrote, in the order of `writes`.
     pub(crate) written_edges: Vec<StepEdges>,
     /// The lines that each store call wrote, in the order of `writes`.
-    pub(crate) written_lines: Vec<Vec<IngredientLine>>,
+    pub(crate) written_lines: Vec<Vec<RecipeIngredient>>,
 }
 
 impl Fixture {
@@ -395,14 +396,14 @@ impl Fixture {
     }
 
     /// Sends a line event that changes the lines, and runs its render.
-    pub(crate) async fn lines(&mut self, event: IngredientLinesEvent) -> anyhow::Result<()> {
+    pub(crate) async fn lines(&mut self, event: RecipeIngredientsEvent) -> anyhow::Result<()> {
         let command = self.send(RecipeEditorEvent::Lines(event));
         self.render(command).await
     }
 
     /// ＋ Line. Returns the new line's id.
-    pub(crate) async fn add_line(&mut self) -> anyhow::Result<IngredientLineId> {
-        self.lines(IngredientLinesEvent::Add).await?;
+    pub(crate) async fn add_line(&mut self) -> anyhow::Result<RecipeIngredientId> {
+        self.lines(RecipeIngredientsEvent::Add).await?;
         self.editor
             .view()
             .lines
@@ -413,11 +414,12 @@ impl Fixture {
 
     pub(crate) async fn name_line(
         &mut self,
-        id: IngredientLineId,
+        id: RecipeIngredientId,
         name: &str,
     ) -> anyhow::Result<()> {
         let name = name.into();
-        self.lines(IngredientLinesEvent::SetName { id, name }).await
+        self.lines(RecipeIngredientsEvent::SetName { id, name })
+            .await
     }
 
     /// The names of the lines as the editor shows them, in list order.

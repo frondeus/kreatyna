@@ -232,33 +232,33 @@ impl From<core::StepTitleError> for StepTitleError {
     }
 }
 
-/// The save rule an ingredient line's name breaks (nutype's error in Rust).
+/// The save rule a recipe ingredient's name breaks (nutype's error in Rust).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum IngredientLineNameError {
+pub enum RecipeIngredientNameError {
     NotEmptyViolated,
 }
 
-impl From<core::IngredientLineNameError> for IngredientLineNameError {
-    fn from(value: core::IngredientLineNameError) -> Self {
+impl From<core::RecipeIngredientNameError> for RecipeIngredientNameError {
+    fn from(value: core::RecipeIngredientNameError) -> Self {
         match value {
-            core::IngredientLineNameError::NotEmptyViolated => Self::NotEmptyViolated,
+            core::RecipeIngredientNameError::NotEmptyViolated => Self::NotEmptyViolated,
         }
     }
 }
 
-/// One ingredient line as the editor shows it.
+/// One recipe ingredient as the editor shows it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct IngredientLineView {
-    pub id: core::IngredientLineId,
+pub struct RecipeIngredientView {
+    pub id: core::RecipeIngredientId,
     /// The name as typed.
     pub name: String,
     /// `nil` until the first Save. After it, the name's problem, if any:
     /// Swift shows "Name required".
-    pub problem: Option<IngredientLineNameError>,
+    pub problem: Option<RecipeIngredientNameError>,
 }
 
-impl From<core::IngredientLineView> for IngredientLineView {
-    fn from(value: core::IngredientLineView) -> Self {
+impl From<core::RecipeIngredientView> for RecipeIngredientView {
+    fn from(value: core::RecipeIngredientView) -> Self {
         Self {
             id: value.id,
             name: value.name,
@@ -268,16 +268,16 @@ impl From<core::IngredientLineView> for IngredientLineView {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum IngredientLinesEvent {
+pub enum RecipeIngredientsEvent {
     /// ＋ Line: an empty line at the bottom.
     Add,
     /// The name field, as typed.
     SetName {
-        id: core::IngredientLineId,
+        id: core::RecipeIngredientId,
         name: String,
     },
     /// The − button.
-    Remove { id: core::IngredientLineId },
+    Remove { id: core::RecipeIngredientId },
     /// A drop of the line `id` onto the line `onto`: `id` takes `onto`'s
     /// place. So it ends up before `onto` when it moves up, and after
     /// `onto` when it moves down. With the lines penne, oil, basil:
@@ -287,18 +287,18 @@ pub enum IngredientLinesEvent {
     /// | basil onto penne  | basil, penne, oil | before penne             |
     /// | penne onto basil  | oil, basil, penne | after basil              |
     Move {
-        id: core::IngredientLineId,
-        onto: core::IngredientLineId,
+        id: core::RecipeIngredientId,
+        onto: core::RecipeIngredientId,
     },
 }
 
-impl From<IngredientLinesEvent> for core::IngredientLinesEvent {
-    fn from(value: IngredientLinesEvent) -> Self {
+impl From<RecipeIngredientsEvent> for core::RecipeIngredientsEvent {
+    fn from(value: RecipeIngredientsEvent) -> Self {
         match value {
-            IngredientLinesEvent::Add => Self::Add,
-            IngredientLinesEvent::SetName { id, name } => Self::SetName { id, name },
-            IngredientLinesEvent::Remove { id } => Self::Remove { id },
-            IngredientLinesEvent::Move { id, onto } => Self::Move { id, onto },
+            RecipeIngredientsEvent::Add => Self::Add,
+            RecipeIngredientsEvent::SetName { id, name } => Self::SetName { id, name },
+            RecipeIngredientsEvent::Remove { id } => Self::Remove { id },
+            RecipeIngredientsEvent::Move { id, onto } => Self::Move { id, onto },
         }
     }
 }
@@ -696,8 +696,8 @@ impl From<core::StepNodesView> for StepNodesView {
 pub struct RecipeEditorView {
     /// The title as typed.
     pub title: String,
-    /// The ingredient lines, in list order.
-    pub lines: Vec<IngredientLineView>,
+    /// The recipe ingredients, in list order.
+    pub lines: Vec<RecipeIngredientView>,
     pub canvas: StepCanvasView,
     pub status: RecipeEditorStatus,
 }
@@ -777,9 +777,9 @@ pub enum RecipeEditorEvent {
     SetTitle {
         title: String,
     },
-    /// The ingredient lines.
+    /// The recipe ingredients.
     Lines {
-        event: IngredientLinesEvent,
+        event: RecipeIngredientsEvent,
     },
     /// The steps on the canvas and in the inspector.
     Canvas {
@@ -840,23 +840,23 @@ pub enum RecipeDetailStatus {
     Missing,
     Ready {
         title: String,
-        /// The ingredient lines, in list order. Empty shows "None yet".
-        lines: Vec<RecipeDetailLine>,
+        /// The recipe ingredients, in list order. Empty shows "None yet".
+        lines: Vec<RecipeDetailIngredient>,
         /// In the order added. Empty shows "None yet".
         steps: Vec<RecipeDetailStep>,
         deletion: RecipeDeletion,
     },
 }
 
-/// An ingredient line in the read view: its name.
+/// A recipe ingredient in the read view: its name.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct RecipeDetailLine {
-    pub id: core::IngredientLineId,
+pub struct RecipeDetailIngredient {
+    pub id: core::RecipeIngredientId,
     pub name: String,
 }
 
-impl From<core::RecipeDetailLine> for RecipeDetailLine {
-    fn from(value: core::RecipeDetailLine) -> Self {
+impl From<core::RecipeDetailIngredient> for RecipeDetailIngredient {
+    fn from(value: core::RecipeDetailIngredient) -> Self {
         Self {
             id: value.id,
             name: value.name,

@@ -29,8 +29,8 @@ public struct StepId: Hashable, Sendable {
     }
 }
 
-/// An ingredient line's id.
-public struct IngredientLineId: Hashable, Sendable {
+/// A recipe ingredient's id.
+public struct RecipeIngredientId: Hashable, Sendable {
     public let uuid: String
 
     public init(uuid: String) {

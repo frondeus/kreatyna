@@ -3,9 +3,9 @@
 use kreatyna::{
     confirmation::ConfirmationEvent,
     recipes::{
-        DurationInput, IngredientLinesEvent, Recipe, RecipeEditorEvent, RecipeEditorOutcome,
-        RecipeEditorProblem, RecipeEditorStatus, RecipeEditorView, StepCanvasEvent, StepCanvasView,
-        StepEdge, StepKind, StepNodesView, capabilities::RecipeSaveError,
+        DurationInput, Recipe, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem,
+        RecipeEditorStatus, RecipeEditorView, RecipeIngredientsEvent, StepCanvasEvent,
+        StepCanvasView, StepEdge, StepKind, StepNodesView, capabilities::RecipeSaveError,
     },
 };
 use krucyfiks::{Message, Widget, effects::CommandTestExt, test_utils::EmptyInitTest};
@@ -246,7 +246,7 @@ async fn edits_steps_lines_save_and_cancel_are_ignored_while_saving() -> anyhow:
             from: onion,
             to: onion,
         })),
-        RecipeEditorEvent::Lines(IngredientLinesEvent::Add),
+        RecipeEditorEvent::Lines(RecipeIngredientsEvent::Add),
         RecipeEditorEvent::Save,
         RecipeEditorEvent::RequestClose,
     ] {

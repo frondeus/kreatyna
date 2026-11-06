@@ -32,14 +32,14 @@ impl StepId {
     }
 }
 
-/// Stable ingredient line identity. The editor generates it when you add a
+/// Stable recipe ingredient identity. The editor generates it when you add a
 /// line (REC-07), and the line keeps it through every save.
 #[nutype(derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Display, FromStr, From, Into
 ))]
-pub struct IngredientLineId(Uuid);
+pub struct RecipeIngredientId(Uuid);
 
-impl IngredientLineId {
+impl RecipeIngredientId {
     /// Generate a new version 4 identifier.
     pub fn generate() -> Self {
         Self::new(Uuid::new_v4())
@@ -48,13 +48,13 @@ impl IngredientLineId {
 
 /// A line's name: trimmed and not empty (REC-07). `try_new` keeps the
 /// spaces inside the name and fails with
-/// `IngredientLineNameError::NotEmptyViolated`.
+/// `RecipeIngredientNameError::NotEmptyViolated`.
 #[nutype(
     sanitize(trim),
     validate(not_empty),
     derive(Debug, Clone, PartialEq, Eq, AsRef)
 )]
-pub struct IngredientLineName(String);
+pub struct RecipeIngredientName(String);
 
 /// A line's amount, such as 300 in "300 g penne pasta" (REC-08): an exact
 /// decimal, more than 0. `try_new` fails with
@@ -107,9 +107,9 @@ pub struct RecipeIngredientNote(String);
 /// D-12). The store reads and writes this type, so a stored line has a valid
 /// name, and a unit only with an amount.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct IngredientLine {
-    pub id: IngredientLineId,
-    pub name: IngredientLineName,
+pub struct RecipeIngredient {
+    pub id: RecipeIngredientId,
+    pub name: RecipeIngredientName,
     pub quantity: RecipeIngredientQuantity,
     pub note: Option<RecipeIngredientNote>,
 }
@@ -173,7 +173,7 @@ pub struct Recipe {
     pub id: RecipeId,
     pub title: String,
     /// In list order: the order added, then moved by drag (REC-07/Q1).
-    pub lines: Vec<IngredientLine>,
+    pub lines: Vec<RecipeIngredient>,
     /// In the order added.
     pub steps: Vec<Step>,
     /// The arrows between `steps` (REC-18).
@@ -224,7 +224,7 @@ pub struct StepWrite {
 pub struct NewRecipe {
     pub title: RecipeTitle,
     /// In list order (REC-07/Q1).
-    pub lines: Vec<IngredientLine>,
+    pub lines: Vec<RecipeIngredient>,
     /// In the order added.
     pub steps: Vec<StepWrite>,
     /// The arrows between `steps` (REC-18).
@@ -238,7 +238,7 @@ pub struct NewRecipe {
 pub struct RecipeUpdate {
     pub title: RecipeTitle,
     /// The whole new line list, in list order. Lines keep their ids.
-    pub lines: Vec<IngredientLine>,
+    pub lines: Vec<RecipeIngredient>,
     /// The whole new step list, in the order added. Steps keep their ids.
     pub steps: Vec<StepWrite>,
     /// The whole new edge set between `steps` (REC-18).

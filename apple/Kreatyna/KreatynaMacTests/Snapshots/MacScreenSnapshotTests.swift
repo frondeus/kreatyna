@@ -393,12 +393,12 @@ extension MainActorTests {
             )
         }
 
-        /// Pasta's read view with three ingredient lines in list order, above
+        /// Pasta's read view with three recipe ingredients in list order, above
         /// the steps (REC-07).
         @Test(arguments: Appearance.allCases)
         func recipeReadViewLines(appearance: Appearance) {
             let pasta = Fixtures.recipeRow("Pasta", stepCount: 1)
-            let lines = ["penne pasta", "olive oil", "basil"].map { Fixtures.detailLine($0) }
+            let lines = ["penne pasta", "olive oil", "basil"].map { Fixtures.detailIngredient($0) }
             let detail = RecipeDetailView(
                 id: pasta.id,
                 status: .ready(title: pasta.title, lines: lines, steps: [Fixtures.detailStep("Boil water")], deletion: .idle)
@@ -416,7 +416,7 @@ extension MainActorTests {
             )
         }
 
-        /// The Pasta editor with three ingredient lines under the canvas, each
+        /// The Pasta editor with three recipe ingredients under the canvas, each
         /// with its handle, name field and − button (REC-07).
         @Test(arguments: Appearance.allCases)
         func recipeEditorLines(appearance: Appearance) {
@@ -606,7 +606,7 @@ extension MainActorTests {
             canvas: StepNodesView = .unselected(steps: []),
             connections: [StepEdge] = [],
             refusal: ConnectRefusal? = nil,
-            lines: [IngredientLineView] = [],
+            lines: [RecipeIngredientView] = [],
         ) -> some View {
             let canvas = StepCanvasView(
                 nodes: canvas, connections: connections, refusal: refusal, durationChips: Fixtures.durationChips

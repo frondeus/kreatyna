@@ -5,7 +5,7 @@
 use krucyfiks::{Command, CommandExt, Latest, LatestCommandSlot, Message, Widget};
 
 use super::{
-    IngredientLineId, Recipe, RecipeId, StepDurationS, StepId, StepKind,
+    Recipe, RecipeId, RecipeIngredientId, StepDurationS, StepId, StepKind,
     capabilities::{RecipeCapabilities, RecipeDeleteError, RecipeEffectStream, RecipeLoadError},
 };
 use crate::confirmation::{Confirmation, ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
@@ -50,18 +50,18 @@ pub enum RecipeDetailStatus {
     Ready {
         title: String,
         /// In list order (REC-07/Q1).
-        lines: Vec<RecipeDetailLine>,
+        lines: Vec<RecipeDetailIngredient>,
         /// In the order added, until REC-19 shows stages (D-16).
         steps: Vec<RecipeDetailStep>,
         deletion: RecipeDeletion,
     },
 }
 
-/// An ingredient line in the read view: its name, such as "penne pasta"
+/// A recipe ingredient in the read view: its name, such as "penne pasta"
 /// (REC-07). REC-08 adds the amount, unit and note.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RecipeDetailLine {
-    pub id: IngredientLineId,
+pub struct RecipeDetailIngredient {
+    pub id: RecipeIngredientId,
     pub name: String,
 }
 
@@ -345,7 +345,7 @@ impl Widget for RecipeDetail {
                 lines: recipe
                     .lines
                     .iter()
-                    .map(|line| RecipeDetailLine {
+                    .map(|line| RecipeDetailIngredient {
                         id: line.id,
                         name: line.name.as_ref().to_owned(),
                     })

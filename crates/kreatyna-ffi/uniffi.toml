@@ -13,6 +13,6 @@ lower = "{}.uuid"
 lift = "IngredientId(uuid: {})"
 lower = "{}.uuid"
 
-[bindings.swift.custom_types.IngredientLineId]
-lift = "IngredientLineId(uuid: {})"
+[bindings.swift.custom_types.RecipeIngredientId]
+lift = "RecipeIngredientId(uuid: {})"
 lower = "{}.uuid"

@@ -444,7 +444,7 @@ final class MacRecipeUITests: MacUITestCase {
     /// penne pasta puts basil first; − removes olive oil. Save keeps the
     /// two lines in the new order, and the read view lists them (REC-07).
     @MainActor
-    func testIngredientLinesAddDragRemoveAndSave() throws {
+    func testRecipeIngredientsAddDragRemoveAndSave() throws {
         let app = try launch(json: nil, openIngredients: false)
         XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
         app.typeKey("n", modifierFlags: .command)
@@ -453,26 +453,26 @@ final class MacRecipeUITests: MacUITestCase {
 
         // The new line's name field has the focus.
         for (index, name) in ["penne pasta", "olive oil", "basil"].enumerated() {
-            app.buttons["addIngredientLine"].click()
-            let field = app.textFields["ingredientLineName.\(index)"]
+            app.buttons["addRecipeIngredient"].click()
+            let field = app.textFields["recipeIngredientName.\(index)"]
             XCTAssertTrue(field.waitForExistence(timeout: 5))
             app.typeText(name)
             XCTAssertTrue(waitFor(field, value: name))
         }
 
-        let handle = app.descendants(matching: .any)["ingredientLineHandle.2"]
-        let top = app.textFields["ingredientLineName.0"]
+        let handle = app.descendants(matching: .any)["recipeIngredientHandle.2"]
+        let top = app.textFields["recipeIngredientName.0"]
         handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
             .click(forDuration: 0.2, thenDragTo: top.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
-        XCTAssertTrue(waitFor(app.textFields["ingredientLineName.0"], value: "basil"))
-        XCTAssertTrue(waitFor(app.textFields["ingredientLineName.1"], value: "penne pasta"))
+        XCTAssertTrue(waitFor(app.textFields["recipeIngredientName.0"], value: "basil"))
+        XCTAssertTrue(waitFor(app.textFields["recipeIngredientName.1"], value: "penne pasta"))
 
-        app.buttons["removeIngredientLine.2"].click()
-        XCTAssertTrue(waitForNonExistence(app.textFields["ingredientLineName.2"], timeout: 5))
+        app.buttons["removeRecipeIngredient.2"].click()
+        XCTAssertTrue(waitForNonExistence(app.textFields["recipeIngredientName.2"], timeout: 5))
         app.typeKey("s", modifierFlags: .command)
 
         XCTAssertTrue(waitForTitle(in: app, "Pasta"))
-        let lines = app.staticTexts.matching(identifier: "recipeIngredientLine")
+        let lines = app.staticTexts.matching(identifier: "recipeIngredient")
         XCTAssertTrue(waitFor(lines.element(boundBy: 0), value: "basil"))
         XCTAssertTrue(waitFor(lines.element(boundBy: 1), value: "penne pasta"))
         XCTAssertEqual(lines.count, 2)

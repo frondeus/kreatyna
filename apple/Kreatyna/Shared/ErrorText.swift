@@ -80,7 +80,7 @@ extension StepTitleError {
     }
 }
 
-extension IngredientLineNameError {
+extension RecipeIngredientNameError {
     var message: String {
         switch self {
         case .notEmptyViolated: "Name required"

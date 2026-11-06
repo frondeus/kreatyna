@@ -6,7 +6,7 @@ import SwiftUI
 /// shows next.
 ///
 /// The layout is REC-14/Q1: the Title field, the step canvas, and the
-/// ingredient lines (REC-07) on the left; the step inspector on the right.
+/// recipe ingredients (REC-07) on the left; the step inspector on the right.
 struct MacRecipeEditor: View {
     /// "New Recipe", or the saved title while it is edited.
     let heading: String
@@ -39,7 +39,7 @@ struct MacRecipeEditor: View {
                         .accessibilityIdentifier("connectRefusal")
                 }
                 Divider()
-                MacIngredientLines(lines: view.lines) { send(.lines(event: $0)) }
+                MacRecipeIngredients(lines: view.lines) { send(.lines(event: $0)) }
             }
             Divider()
             MacStepInspector(canvas: view.canvas) { send(.canvas(event: $0)) }

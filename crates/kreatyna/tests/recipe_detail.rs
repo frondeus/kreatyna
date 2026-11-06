@@ -1,13 +1,15 @@
 use kreatyna::capabilities::ResolveRender;
 use kreatyna::confirmation::{ConfirmationEvent, ConfirmationOutcome, ConfirmationView};
 use kreatyna::recipes::{
-    CanvasPoint, Recipe, RecipeDeletion, RecipeDetail, RecipeDetailEvent, RecipeDetailIngredient,
-    RecipeDetailOutcome, RecipeDetailStatus, RecipeDetailStep, RecipeDetailView, RecipeId,
-    RecipeIngredient, RecipeIngredientId, RecipeIngredientName, RecipeIngredientQuantity, Step,
-    StepDurationS, StepEdges, StepId, StepInstructions, StepKind,
+    CanvasPoint, KnownUnit, Recipe, RecipeDeletion, RecipeDetail, RecipeDetailEvent,
+    RecipeDetailIngredient, RecipeDetailOutcome, RecipeDetailStatus, RecipeDetailStep,
+    RecipeDetailView, RecipeId, RecipeIngredient, RecipeIngredientAmount, RecipeIngredientId,
+    RecipeIngredientName, RecipeIngredientNote, RecipeIngredientQuantity, Step, StepDurationS,
+    StepEdges, StepId, StepInstructions, StepKind,
     capabilities::{RecipeDeleteError, RecipeEffectStream, RecipeLoadError, ResolveRecipeStore},
 };
 use krucyfiks::{Command, Latest, Message, Widget, effects::CommandTestExt};
+use rust_decimal::Decimal;
 use test_case::test_case;
 use uuid::Uuid;
 
@@ -113,13 +115,58 @@ async fn the_read_view_lists_the_ingredients_by_name_in_list_order() -> anyhow::
         [
             RecipeDetailIngredient {
                 id: basil.id,
+                amount: None,
                 name: "basil".into(),
+                note: None,
             },
             RecipeDetailIngredient {
                 id: penne.id,
+                amount: None,
                 name: "penne pasta".into(),
+                note: None,
             },
         ]
+    );
+    Ok(())
+}
+
+#[test_case(None, None, None, Some("to taste"); "no amount shows only the note")]
+#[test_case(Some("2"), None, Some("2"), None; "a count shows the number")]
+#[test_case(Some("300"), Some(KnownUnit::Gram), Some("300 g"), None; "a symbol follows the number")]
+#[test_case(Some("1.50"), Some(KnownUnit::Kilogram), Some("1.5 kg"), None; "trailing zeros go")]
+#[test_case(Some("1"), Some(KnownUnit::Cup), Some("1 cup"), None; "one cup")]
+#[test_case(Some("2"), Some(KnownUnit::Cup), Some("2 cups"), Some("packed"); "two cups")]
+#[test_case(Some("0.5"), Some(KnownUnit::Piece), Some("0.5 pieces"), None; "half a piece is plural")]
+#[tokio::test]
+async fn the_read_view_shows_the_amount_with_its_unit_and_the_note(
+    amount: Option<&str>,
+    unit: Option<KnownUnit>,
+    text: Option<&str>,
+    note: Option<&str>,
+) -> anyhow::Result<()> {
+    let mut f = Fixture::new();
+    let load = f.detail.init();
+    let flour = RecipeIngredient {
+        quantity: quantity(amount, unit)?,
+        note: note.map(RecipeIngredientNote::try_new).transpose()?,
+        ..ingredient(21, "flour")?
+    };
+    let pasta = Recipe {
+        ingredients: vec![flour.clone()],
+        ..shakshuka()
+    };
+    f.finish_load(load, Ok(Some(pasta))).await?;
+    let RecipeDetailStatus::Ready { ingredients, .. } = f.detail.view().status else {
+        anyhow::bail!("the recipe is not shown");
+    };
+    assert_eq!(
+        ingredients,
+        [RecipeDetailIngredient {
+            id: flour.id,
+            amount: text.map(Into::into),
+            name: "flour".into(),
+            note: note.map(Into::into),
+        }]
     );
     Ok(())
 }
@@ -430,9 +477,6 @@ fn id() -> RecipeId {
     RecipeId::from(Uuid::from_u128(1))
 }
 
-/// Shakshuka with two steps. Fry onion was added first, so the read view
-/// lists it first, although it is right of Dice onion on the canvas. Fry
-/// onion has a duration, Waiting, and instructions (REC-17).
 fn ingredient(id: u128, name: &str) -> anyhow::Result<RecipeIngredient> {
     Ok(RecipeIngredient {
         id: RecipeIngredientId::from(Uuid::from_u128(id)),
@@ -442,6 +486,30 @@ fn ingredient(id: u128, name: &str) -> anyhow::Result<RecipeIngredient> {
     })
 }
 
+/// A stored quantity: `amount` as exact decimal text, with or without a
+/// unit.
+fn quantity(
+    amount: Option<&str>,
+    unit: Option<KnownUnit>,
+) -> anyhow::Result<RecipeIngredientQuantity> {
+    let amount = amount
+        .map(|text| {
+            Ok::<_, anyhow::Error>(RecipeIngredientAmount::try_new(Decimal::from_str_exact(
+                text,
+            )?)?)
+        })
+        .transpose()?;
+    Ok(match (amount, unit) {
+        (None, None) => RecipeIngredientQuantity::Unmeasured,
+        (None, Some(_)) => anyhow::bail!("a unit needs an amount"),
+        (Some(amount), None) => RecipeIngredientQuantity::Count(amount),
+        (Some(amount), Some(unit)) => RecipeIngredientQuantity::Measured { amount, unit },
+    })
+}
+
+/// Shakshuka with two steps. Fry onion was added first, so the read view
+/// lists it first, although it is right of Dice onion on the canvas. Fry
+/// onion has a duration, Waiting, and instructions (REC-17).
 fn shakshuka() -> Recipe {
     Recipe {
         id: id(),

@@ -769,8 +769,12 @@ fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     kreatyna::recipes::RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
         ingredients: vec![
-            kreatyna::recipes::RecipeDetailIngredient { id: ingredient_id(1), name: "eggs".into() },
-            kreatyna::recipes::RecipeDetailIngredient { id: ingredient_id(2), name: "tomatoes".into() },
+            kreatyna::recipes::RecipeDetailIngredient {
+                id: ingredient_id(1), amount: None, name: "eggs".into(), note: None,
+            },
+            kreatyna::recipes::RecipeDetailIngredient {
+                id: ingredient_id(2), amount: None, name: "tomatoes".into(), note: None,
+            },
         ],
         steps: vec![
             kreatyna::recipes::RecipeDetailStep {

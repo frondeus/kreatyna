@@ -1,6 +1,6 @@
 # REC-08 — Amount, known unit and note on a line
 
-Tracked in beads: `vibetyna-hrx.8`. Changes: seven, listed in Steps.
+Tracked in beads: `vibetyna-hrx.8`. Changes: eight, listed in Steps.
 Dependencies: REC-07 (`vibetyna-hrx.7`), closed. This plan builds on its
 lines, their store table and the Mac list.
 
@@ -15,6 +15,7 @@ in Decisions.
 |---|---|---|
 | REC-08/Q1 | How do you edit a line's amount, unit, name and note? | The row shows a summary, and a click opens a popover with Amount, Unit ▾, Name and Note, as in the mockup. ＋ Line opens the popover for the new line, with the cursor in Name. REC-09 (custom unit) and REC-10 (catalog link) add their fields to the same popover. |
 | REC-08/Q3 | What name do a recipe's ingredients get, instead of "ingredient line"? (It replaces Q2, which asked only about the prefix.) | `RecipeIngredient…`: `RecipeIngredient`, `RecipeIngredientId`, `RecipeIngredientName`, `RecipeIngredientAmount`, `RecipeIngredientQuantity`, `RecipeIngredientNote`, `RecipeIngredientsEvent`. The catalog keeps its names. The table keeps its name, `recipe_ingredient_lines`. The button text stays "＋ Line". |
+| REC-08/Q4 | Should an existing crate turn the text into a decimal? | No. Keep the check of the characters and the decimal places, then `rust_decimal`'s `from_str_exact`. `rust_decimal` alone refuses "1,5", accepts "1_000", ".5", "1." and "+2", and has no typed error. No crate parses "1.5" and "1,5" with a place limit. |
 
 ## Decided in the plan
 
@@ -314,17 +315,25 @@ view fields. `RecipeIngredientView.problem` becomes `problems`.
 1. Rename the `lines` fields, the `Lines` event variant, the variables, the
    test names, the comments and the snapshot files.
 
-### Change 3 — REC-08: the editor edits amounts, units and notes (about 800 lines, review)
+### Change 3a — REC-08: the read view shows amounts and notes (about 230 lines, review)
+
+Change 3 was about 1,010 lines, so it is two changes.
 
 1. Move the catalog's decimal rules to `crate::decimal_input`. The catalog
    tests do not change.
-2. Add the new events, fields, problems, summary and unit options to
-   `recipe_ingredients.rs` and the editor.
+2. Give `KnownUnit` its picker order and names, and
+   `RecipeIngredientQuantity` its read-view text.
 3. Format the read view's amount and note in `detail.rs`.
-4. Add Rust tests in `tests/recipe_ingredients.rs`: each event; each amount
+4. Add Rust tests in `tests/recipe_detail.rs`: "2", "300 g", "1.5 kg",
+   "1 cup", "2 cups", "0.5 pieces", and a note without an amount.
+
+### Change 3b — REC-08: the editor edits amounts, units and notes (about 790 lines, review)
+
+1. Add the new events, fields, problems, summary and unit options to
+   `recipe_ingredients.rs` and the editor.
+2. Add Rust tests in `tests/recipe_ingredients.rs`: each event; each amount
    problem; a unit without an amount; "2 eggs" and "salt, to taste" save;
-   the summary as typed; the read view's "1.5 kg", "1 cup", "2 cups"; a
-   changed amount, unit or note makes Cancel ask.
+   the summary as typed; a changed amount, unit or note makes Cancel ask.
 
 ### Change 4 — REC-08: the line popover on the Mac (about 700 lines, review of the FFI)
 

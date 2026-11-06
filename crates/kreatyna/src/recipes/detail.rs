@@ -57,12 +57,16 @@ pub enum RecipeDetailStatus {
     },
 }
 
-/// A recipe ingredient in the read view: its name, such as "penne pasta"
-/// (REC-07). REC-08 adds the amount, unit and note.
+/// A recipe ingredient in the read view: "300 g", "penne pasta" (REC-07)
+/// and "extra virgin" (REC-08).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecipeDetailIngredient {
     pub id: RecipeIngredientId,
+    /// The amount and unit with no trailing zeros, such as "1.5 kg" or
+    /// "2 cups" (`RecipeIngredientQuantity::text`). `None` shows nothing.
+    pub amount: Option<String>,
     pub name: String,
+    pub note: Option<String>,
 }
 
 /// A step in the read view's flat list (REC-14): "Boil water · 10 min ·
@@ -347,7 +351,12 @@ impl Widget for RecipeDetail {
                     .iter()
                     .map(|ingredient| RecipeDetailIngredient {
                         id: ingredient.id,
+                        amount: ingredient.quantity.text(),
                         name: ingredient.name.as_ref().to_owned(),
+                        note: ingredient
+                            .note
+                            .as_ref()
+                            .map(|note| note.as_ref().to_owned()),
                     })
                     .collect(),
                 steps: recipe

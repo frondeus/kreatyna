@@ -79,6 +79,49 @@ pub enum KnownUnit {
     Piece,
 }
 
+impl KnownUnit {
+    /// Every unit, in the picker's order (D-25).
+    pub const ALL: [Self; 8] = [
+        Self::Gram,
+        Self::Kilogram,
+        Self::Millilitre,
+        Self::Litre,
+        Self::Teaspoon,
+        Self::Tablespoon,
+        Self::Cup,
+        Self::Piece,
+    ];
+
+    /// The unit's name in the picker: "g", "tsp", "cup".
+    pub fn picker_label(self) -> &'static str {
+        self.label_for(Decimal::ONE)
+    }
+
+    /// The unit's name after `amount`. Only "cup" and "piece" are words, so
+    /// only they get a plural:
+    ///
+    /// | Amount | Gram | Cup  | Piece  |
+    /// |--------|------|------|--------|
+    /// | 1      | g    | cup  | piece  |
+    /// | 1.5    | g    | cups | pieces |
+    /// | 2      | g    | cups | pieces |
+    pub fn label_for(self, amount: Decimal) -> &'static str {
+        let one = amount == Decimal::ONE;
+        match self {
+            Self::Gram => "g",
+            Self::Kilogram => "kg",
+            Self::Millilitre => "ml",
+            Self::Litre => "l",
+            Self::Teaspoon => "tsp",
+            Self::Tablespoon => "tbsp",
+            Self::Cup if one => "cup",
+            Self::Cup => "cups",
+            Self::Piece if one => "piece",
+            Self::Piece => "pieces",
+        }
+    }
+}
+
 /// How much of the ingredient the recipe needs (REC-08). A unit without an amount
 /// cannot be built.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -92,6 +135,27 @@ pub enum RecipeIngredientQuantity {
         amount: RecipeIngredientAmount,
         unit: KnownUnit,
     },
+}
+
+impl RecipeIngredientQuantity {
+    /// The read view's amount column (REC-08), with no trailing zeros:
+    ///
+    /// | Quantity                   | Text     |
+    /// |----------------------------|----------|
+    /// | `Unmeasured`               | `None`   |
+    /// | `Count(2)`                 | "2"      |
+    /// | `Measured(1.50, Kilogram)` | "1.5 kg" |
+    /// | `Measured(2, Cup)`         | "2 cups" |
+    pub fn text(self) -> Option<String> {
+        match self {
+            Self::Unmeasured => None,
+            Self::Count(amount) => Some(Decimal::from(amount).normalize().to_string()),
+            Self::Measured { amount, unit } => {
+                let amount = Decimal::from(amount).normalize();
+                Some(format!("{amount} {}", unit.label_for(amount)))
+            }
+        }
+    }
 }
 
 /// An ingredient's note, such as "extra virgin" or "to taste" (D-12): trimmed and

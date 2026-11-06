@@ -2,6 +2,8 @@ use std::collections::HashSet;
 
 use rust_decimal::Decimal;
 
+use crate::decimal_input::{DecimalInputError, parse_decimal};
+
 use super::{
     Ingredient, IngredientId, IngredientName, IngredientNameError, Nutrition, NutritionBasis,
     ReferenceUnit, UnitName, UnitNameError, name_key,
@@ -344,19 +346,11 @@ fn parse_number<Q: TryFrom<Decimal>>(
     input: &str,
     accepts_zero: AcceptsZero,
 ) -> Result<Q, ValidationReason> {
-    let unsigned = input.strip_prefix('-').unwrap_or(input);
-    let mut parts = unsigned.split(['.', ',']);
-    let integer = parts.next().unwrap_or_default();
-    let fractional = parts.next();
-    let digits = |text: &str| !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit());
-    if !digits(integer) || fractional.is_some_and(|part| !digits(part)) || parts.next().is_some() {
-        return Err(ValidationReason::InvalidNumber);
-    }
-    if fractional.is_some_and(|part| part.len() > 6) {
-        return Err(ValidationReason::TooManyDecimalPlaces);
-    }
-    let value = Decimal::from_str_exact(&input.replace(',', "."))
-        .map_err(|_| ValidationReason::OutOfRange)?;
+    let value = parse_decimal(input).map_err(|error| match error {
+        DecimalInputError::NotANumber => ValidationReason::InvalidNumber,
+        DecimalInputError::TooManyDecimalPlaces => ValidationReason::TooManyDecimalPlaces,
+        DecimalInputError::OutOfRange => ValidationReason::OutOfRange,
+    })?;
     if matches!(accepts_zero, AcceptsZero::No) && value <= Decimal::ZERO {
         return Err(ValidationReason::MustBePositive);
     }

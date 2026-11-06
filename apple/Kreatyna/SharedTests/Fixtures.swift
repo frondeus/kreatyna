@@ -171,17 +171,51 @@ enum Fixtures {
         return .set(text: text, parts: parts, entry: entry)
     }
 
-    /// A recipe ingredient of the editor. The ID only has to be unique in
-    /// the recipe; `key` stands in for the name when it is empty.
+    /// A recipe ingredient of the editor, with the summary Rust would give
+    /// (`summary` is the amount and unit as Rust joins them). The ID only
+    /// has to be unique in the recipe; `key` stands in for the name when it
+    /// is empty.
     static func ingredient(
-        _ name: String, problem: RecipeIngredientNameError? = nil, key: String? = nil
+        _ name: String,
+        amount: String = "",
+        unit: KnownUnit? = nil,
+        summary: String? = nil,
+        note: String = "",
+        problems: RecipeIngredientProblems = RecipeIngredientProblems(name: nil, amount: nil),
+        key: String? = nil
     ) -> RecipeIngredientView {
-        RecipeIngredientView(id: RecipeIngredientId(uuid: "ingredient-\(key ?? name)"), name: name, problem: problem)
+        RecipeIngredientView(
+            id: RecipeIngredientId(uuid: "ingredient-\(key ?? name)"),
+            name: name,
+            amount: amount,
+            unit: unit,
+            note: note,
+            summary: RecipeIngredientSummary(
+                amount: summary,
+                name: name.isEmpty ? .unnamed : .named(name: name),
+                note: note.isEmpty ? nil : note
+            ),
+            problems: problems
+        )
     }
 
-    /// A recipe ingredient of the read view.
-    static func detailIngredient(_ name: String) -> RecipeDetailIngredient {
-        RecipeDetailIngredient(id: RecipeIngredientId(uuid: "ingredient-\(name)"), name: name)
+    /// The Unit picker's choices, as Rust gives them (D-25).
+    static let units: [KnownUnitOption] = [
+        KnownUnitOption(unit: .gram, label: "g"),
+        KnownUnitOption(unit: .kilogram, label: "kg"),
+        KnownUnitOption(unit: .millilitre, label: "ml"),
+        KnownUnitOption(unit: .litre, label: "l"),
+        KnownUnitOption(unit: .teaspoon, label: "tsp"),
+        KnownUnitOption(unit: .tablespoon, label: "tbsp"),
+        KnownUnitOption(unit: .cup, label: "cup"),
+        KnownUnitOption(unit: .piece, label: "piece"),
+    ]
+
+    /// A recipe ingredient of the read view, with Rust's formatted amount.
+    static func detailIngredient(
+        _ name: String, amount: String? = nil, note: String? = nil
+    ) -> RecipeDetailIngredient {
+        RecipeDetailIngredient(id: RecipeIngredientId(uuid: "ingredient-\(name)"), amount: amount, name: name, note: note)
     }
 
     /// A step of the read view. The ID only has to be unique in the recipe.

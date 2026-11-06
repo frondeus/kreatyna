@@ -458,6 +458,26 @@ fn canvas_events_reach_the_editor_in_their_pane_scope(
     "a name as typed"
 )]
 #[test_case(
+    RecipeIngredientsEvent::SetAmount { id: ingredient_id(1), amount: " 1,5 ".into() },
+    kreatyna::recipes::RecipeIngredientsEvent::SetAmount { id: ingredient_id(1), amount: " 1,5 ".into() };
+    "an amount as typed"
+)]
+#[test_case(
+    RecipeIngredientsEvent::SetUnit { id: ingredient_id(1), unit: Some(KnownUnit::Tablespoon) },
+    kreatyna::recipes::RecipeIngredientsEvent::SetUnit { id: ingredient_id(1), unit: Some(kreatyna::recipes::KnownUnit::Tablespoon) };
+    "a picked unit"
+)]
+#[test_case(
+    RecipeIngredientsEvent::SetUnit { id: ingredient_id(1), unit: None },
+    kreatyna::recipes::RecipeIngredientsEvent::SetUnit { id: ingredient_id(1), unit: None };
+    "no unit"
+)]
+#[test_case(
+    RecipeIngredientsEvent::SetNote { id: ingredient_id(1), note: " to taste ".into() },
+    kreatyna::recipes::RecipeIngredientsEvent::SetNote { id: ingredient_id(1), note: " to taste ".into() };
+    "a note as typed"
+)]
+#[test_case(
     RecipeIngredientsEvent::Remove { id: ingredient_id(1) },
     kreatyna::recipes::RecipeIngredientsEvent::Remove { id: ingredient_id(1) };
     "remove an ingredient"
@@ -485,22 +505,22 @@ fn ingredient_events_reach_the_editor_in_their_pane_scope(
 }
 
 #[test]
-fn an_editor_keeps_the_ingredients_in_order_with_their_names_as_typed_and_problems() {
+fn an_editor_keeps_each_ingredients_fields_summary_and_problems_and_the_units() {
     let editor = kreatyna::recipes::RecipeEditorView {
         title: "Shakshuka".into(),
         ingredients: vec![
             kreatyna::recipes::RecipeIngredientView {
                 id: ingredient_id(1),
-                name: " eggs ".into(),
-                amount: String::new(),
-                unit: None,
-                note: String::new(),
+                name: " tomatoes ".into(),
+                amount: "1,50".into(),
+                unit: Some(kreatyna::recipes::KnownUnit::Kilogram),
+                note: " chopped ".into(),
                 summary: kreatyna::recipes::RecipeIngredientSummary {
-                    amount: None,
+                    amount: Some("1,50 kg".into()),
                     name: kreatyna::recipes::RecipeIngredientLabel::Named {
-                        name: "eggs".into(),
+                        name: "tomatoes".into(),
                     },
-                    note: None,
+                    note: Some("chopped".into()),
                 },
                 problems: kreatyna::recipes::RecipeIngredientProblems {
                     name: None,
@@ -511,20 +531,23 @@ fn an_editor_keeps_the_ingredients_in_order_with_their_names_as_typed_and_proble
                 id: ingredient_id(2),
                 name: " ".into(),
                 amount: String::new(),
-                unit: None,
+                unit: Some(kreatyna::recipes::KnownUnit::Gram),
                 note: String::new(),
                 summary: kreatyna::recipes::RecipeIngredientSummary {
-                    amount: None,
+                    amount: Some("g".into()),
                     name: kreatyna::recipes::RecipeIngredientLabel::Unnamed,
                     note: None,
                 },
                 problems: kreatyna::recipes::RecipeIngredientProblems {
                     name: Some(kreatyna::recipes::RecipeIngredientNameError::NotEmptyViolated),
-                    amount: None,
+                    amount: Some(kreatyna::recipes::RecipeIngredientAmountProblem::MissingForUnit),
                 },
             },
         ],
-        units: vec![],
+        units: vec![kreatyna::recipes::KnownUnitOption {
+            unit: kreatyna::recipes::KnownUnit::Cup,
+            label: "cup".into(),
+        }],
         canvas: kreatyna::recipes::StepCanvasView {
             nodes: kreatyna::recipes::StepNodesView::Unselected { steps: vec![] },
             connections: vec![],
@@ -533,21 +556,78 @@ fn an_editor_keeps_the_ingredients_in_order_with_their_names_as_typed_and_proble
         },
         status: kreatyna::recipes::RecipeEditorStatus::Editing { problem: None },
     };
+    let view = RecipeEditorView::from(editor);
     assert_eq!(
-        RecipeEditorView::from(editor).ingredients,
+        view.ingredients,
         [
             RecipeIngredientView {
                 id: ingredient_id(1),
-                name: " eggs ".into(),
-                problem: None,
+                name: " tomatoes ".into(),
+                amount: "1,50".into(),
+                unit: Some(KnownUnit::Kilogram),
+                note: " chopped ".into(),
+                summary: RecipeIngredientSummary {
+                    amount: Some("1,50 kg".into()),
+                    name: RecipeIngredientLabel::Named {
+                        name: "tomatoes".into(),
+                    },
+                    note: Some("chopped".into()),
+                },
+                problems: RecipeIngredientProblems {
+                    name: None,
+                    amount: None,
+                },
             },
             RecipeIngredientView {
                 id: ingredient_id(2),
                 name: " ".into(),
-                problem: Some(RecipeIngredientNameError::NotEmptyViolated),
+                amount: String::new(),
+                unit: Some(KnownUnit::Gram),
+                note: String::new(),
+                summary: RecipeIngredientSummary {
+                    amount: Some("g".into()),
+                    name: RecipeIngredientLabel::Unnamed,
+                    note: None,
+                },
+                problems: RecipeIngredientProblems {
+                    name: Some(RecipeIngredientNameError::NotEmptyViolated),
+                    amount: Some(RecipeIngredientAmountProblem::MissingForUnit),
+                },
             },
         ]
     );
+    assert_eq!(
+        view.units,
+        [KnownUnitOption {
+            unit: KnownUnit::Cup,
+            label: "cup".into(),
+        }]
+    );
+}
+
+#[test_case(kreatyna::recipes::KnownUnit::Gram, KnownUnit::Gram; "gram")]
+#[test_case(kreatyna::recipes::KnownUnit::Kilogram, KnownUnit::Kilogram; "kilogram")]
+#[test_case(kreatyna::recipes::KnownUnit::Millilitre, KnownUnit::Millilitre; "millilitre")]
+#[test_case(kreatyna::recipes::KnownUnit::Litre, KnownUnit::Litre; "litre")]
+#[test_case(kreatyna::recipes::KnownUnit::Teaspoon, KnownUnit::Teaspoon; "teaspoon")]
+#[test_case(kreatyna::recipes::KnownUnit::Tablespoon, KnownUnit::Tablespoon; "tablespoon")]
+#[test_case(kreatyna::recipes::KnownUnit::Cup, KnownUnit::Cup; "cup")]
+#[test_case(kreatyna::recipes::KnownUnit::Piece, KnownUnit::Piece; "piece")]
+fn each_known_unit_crosses_the_ffi_both_ways(core: kreatyna::recipes::KnownUnit, swift: KnownUnit) {
+    assert_eq!(KnownUnit::from(core), swift);
+    assert_eq!(kreatyna::recipes::KnownUnit::from(swift), core);
+}
+
+#[test_case(kreatyna::recipes::RecipeIngredientAmountProblem::NotANumber, RecipeIngredientAmountProblem::NotANumber; "not a number")]
+#[test_case(kreatyna::recipes::RecipeIngredientAmountProblem::TooManyDecimalPlaces, RecipeIngredientAmountProblem::TooManyDecimalPlaces; "too many decimal places")]
+#[test_case(kreatyna::recipes::RecipeIngredientAmountProblem::OutOfRange, RecipeIngredientAmountProblem::OutOfRange; "out of range")]
+#[test_case(kreatyna::recipes::RecipeIngredientAmountProblem::NotPositive, RecipeIngredientAmountProblem::NotPositive; "not positive")]
+#[test_case(kreatyna::recipes::RecipeIngredientAmountProblem::MissingForUnit, RecipeIngredientAmountProblem::MissingForUnit; "missing for a unit")]
+fn each_amount_problem_crosses_the_ffi(
+    core: kreatyna::recipes::RecipeIngredientAmountProblem,
+    swift: RecipeIngredientAmountProblem,
+) {
+    assert_eq!(RecipeIngredientAmountProblem::from(core), swift);
 }
 
 #[test]
@@ -624,6 +704,7 @@ fn an_editor_canvas_keeps_the_selection_the_details_the_problems_and_the_arrows(
         RecipeEditorView {
             title: "Shakshuka".into(),
             ingredients: vec![],
+            units: vec![],
             canvas: StepCanvasView {
                 nodes: StepNodesView::Selected {
                     selected: StepNodeView {
@@ -796,10 +877,11 @@ fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
         title: "Shakshuka".into(),
         ingredients: vec![
             kreatyna::recipes::RecipeDetailIngredient {
-                id: ingredient_id(1), amount: None, name: "eggs".into(), note: None,
+                id: ingredient_id(1), amount: Some("2".into()), name: "eggs".into(), note: None,
             },
             kreatyna::recipes::RecipeDetailIngredient {
-                id: ingredient_id(2), amount: None, name: "tomatoes".into(), note: None,
+                id: ingredient_id(2), amount: Some("400 g".into()), name: "tomatoes".into(),
+                note: Some("chopped".into()),
             },
         ],
         steps: vec![
@@ -817,8 +899,13 @@ fn a_step_id_crosses_the_ffi_as_its_uuid_text() -> anyhow::Result<()> {
     RecipeDetailStatus::Ready {
         title: "Shakshuka".into(),
         ingredients: vec![
-            RecipeDetailIngredient { id: ingredient_id(1), name: "eggs".into() },
-            RecipeDetailIngredient { id: ingredient_id(2), name: "tomatoes".into() },
+            RecipeDetailIngredient {
+                id: ingredient_id(1), amount: Some("2".into()), name: "eggs".into(), note: None,
+            },
+            RecipeDetailIngredient {
+                id: ingredient_id(2), amount: Some("400 g".into()), name: "tomatoes".into(),
+                note: Some("chopped".into()),
+            },
         ],
         steps: vec![
             RecipeDetailStep {
@@ -917,6 +1004,7 @@ fn a_create_pane_keeps_the_draft_row_and_the_problem() {
             editor: RecipeEditorView {
                 title: "shakshuka ".into(),
                 ingredients: vec![],
+                units: vec![],
                 canvas: StepCanvasView {
                     nodes: StepNodesView::Unselected { steps: vec![] },
                     connections: vec![],
@@ -961,6 +1049,7 @@ fn an_edit_pane_keeps_the_saved_title_and_the_problem() {
             editor: RecipeEditorView {
                 title: "Spicy shakshuka".into(),
                 ingredients: vec![],
+                units: vec![],
                 canvas: StepCanvasView {
                     nodes: StepNodesView::Unselected { steps: vec![] },
                     connections: vec![],

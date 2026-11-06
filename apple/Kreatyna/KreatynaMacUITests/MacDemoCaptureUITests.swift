@@ -605,36 +605,35 @@ final class MacDemoCaptureUITests: MacUITestCase {
         XCTAssertTrue(app.textFields["stepTitleField"].waitForExistence(timeout: 5))
         app.typeText("Boil water")
 
-        let name = { (index: Int) in app.textFields["recipeIngredientName.\(index)"] }
+        // Since REC-08 the names are typed in each ingredient's popover.
+        let summary = { (index: Int) in app.buttons["recipeIngredientSummary.\(index)"] }
         for (index, ingredient) in ["penne pasta", "olive oil", "basil"].enumerated() {
-            app.buttons["addRecipeIngredient"].click()
-            XCTAssertTrue(name(index).waitForExistence(timeout: 5))
-            app.typeText(ingredient)
-            XCTAssertTrue(waitFor(name(index), value: ingredient))
+            addRecipeIngredient(ingredient, at: index, in: app)
         }
         capture("01-lines", app)
 
         let handle = app.descendants(matching: .any)["recipeIngredientHandle.2"]
         handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            .click(forDuration: 0.2, thenDragTo: name(0).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
-        XCTAssertTrue(waitFor(name(0), value: "basil"))
+            .click(forDuration: 0.2, thenDragTo: summary(0).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
+        XCTAssertTrue(waitFor(summary(0), label: "basil"))
         capture("02-after-drag", app)
 
         app.buttons["addRecipeIngredient"].click()
-        XCTAssertTrue(name(3).waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["recipeIngredientName"].waitForExistence(timeout: 5))
+        app.typeKey(.escape, modifierFlags: [])
         app.typeKey("s", modifierFlags: .command)
         XCTAssertTrue(app.staticTexts["recipeIngredientProblem.3"].waitForExistence(timeout: 5))
         capture("03-name-required", app)
 
         app.buttons["removeRecipeIngredient.3"].click()
-        XCTAssertTrue(waitForNonExistence(name(3)))
+        XCTAssertTrue(waitForNonExistence(summary(3)))
         app.typeKey("s", modifierFlags: .command)
         let ingredients = app.staticTexts.matching(identifier: "recipeIngredient")
         XCTAssertTrue(waitFor(ingredients.element(boundBy: 0), value: "basil"))
         capture("04-read-view", app)
 
         app.buttons["editRecipe"].click()
-        XCTAssertTrue(waitFor(name(0), value: "basil"))
+        XCTAssertTrue(waitFor(summary(0), label: "basil"))
         capture("05-edit-again", app)
         app.terminate()
     }

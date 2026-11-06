@@ -106,8 +106,7 @@ struct MacRecipeDetail: View {
                 } else {
                     Section("Ingredients") {
                         ForEach(ingredients, id: \.id) { ingredient in
-                            Text(ingredient.name)
-                                .accessibilityIdentifier("recipeIngredient")
+                            MacRecipeDetailIngredientRow(ingredient: ingredient)
                         }
                     }
                 }
@@ -174,5 +173,30 @@ struct MacRecipeDetailStepRow: View {
     static func details(_ step: RecipeDetailStep) -> String? {
         let parts = [step.duration, step.kind == .waiting ? "waiting" : nil].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
+/// An ingredient in the read view: Rust's amount in a column on the left,
+/// such as "1.5 kg", then the name, then ", note" in grey (REC-08).
+struct MacRecipeDetailIngredientRow: View {
+    let ingredient: RecipeDetailIngredient
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(ingredient.amount ?? "")
+                .bold()
+                .frame(width: 72, alignment: .leading)
+                .accessibilityIdentifier("recipeIngredientAmount")
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                Text(ingredient.name)
+                    .accessibilityIdentifier("recipeIngredient")
+                if let note = ingredient.note {
+                    Text(verbatim: ", \(note)")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("recipeIngredientNote")
+                }
+            }
+            Spacer(minLength: 0)
+        }
     }
 }

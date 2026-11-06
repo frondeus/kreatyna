@@ -246,15 +246,161 @@ impl From<core::RecipeIngredientNameError> for RecipeIngredientNameError {
     }
 }
 
+/// The units that the app knows (D-25), in the picker's order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum KnownUnit {
+    Gram,
+    Kilogram,
+    Millilitre,
+    Litre,
+    Teaspoon,
+    Tablespoon,
+    Cup,
+    Piece,
+}
+
+impl From<core::KnownUnit> for KnownUnit {
+    fn from(value: core::KnownUnit) -> Self {
+        match value {
+            core::KnownUnit::Gram => Self::Gram,
+            core::KnownUnit::Kilogram => Self::Kilogram,
+            core::KnownUnit::Millilitre => Self::Millilitre,
+            core::KnownUnit::Litre => Self::Litre,
+            core::KnownUnit::Teaspoon => Self::Teaspoon,
+            core::KnownUnit::Tablespoon => Self::Tablespoon,
+            core::KnownUnit::Cup => Self::Cup,
+            core::KnownUnit::Piece => Self::Piece,
+        }
+    }
+}
+
+impl From<KnownUnit> for core::KnownUnit {
+    fn from(value: KnownUnit) -> Self {
+        match value {
+            KnownUnit::Gram => Self::Gram,
+            KnownUnit::Kilogram => Self::Kilogram,
+            KnownUnit::Millilitre => Self::Millilitre,
+            KnownUnit::Litre => Self::Litre,
+            KnownUnit::Teaspoon => Self::Teaspoon,
+            KnownUnit::Tablespoon => Self::Tablespoon,
+            KnownUnit::Cup => Self::Cup,
+            KnownUnit::Piece => Self::Piece,
+        }
+    }
+}
+
+/// One choice of the Unit picker, after "No unit": `gram` with "g".
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct KnownUnitOption {
+    pub unit: KnownUnit,
+    pub label: String,
+}
+
+impl From<core::KnownUnitOption> for KnownUnitOption {
+    fn from(value: core::KnownUnitOption) -> Self {
+        Self {
+            unit: value.unit.into(),
+            label: value.label,
+        }
+    }
+}
+
+/// Why Save refuses an ingredient's amount (REC-08). Swift shows the text
+/// for each one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum RecipeIngredientAmountProblem {
+    /// "lots" or "1.2.3".
+    NotANumber,
+    /// More than 6 decimal places.
+    TooManyDecimalPlaces,
+    /// A number too large to keep.
+    OutOfRange,
+    /// "0" or "-1".
+    NotPositive,
+    /// A unit is picked, and the amount is empty.
+    MissingForUnit,
+}
+
+impl From<core::RecipeIngredientAmountProblem> for RecipeIngredientAmountProblem {
+    fn from(value: core::RecipeIngredientAmountProblem) -> Self {
+        match value {
+            core::RecipeIngredientAmountProblem::NotANumber => Self::NotANumber,
+            core::RecipeIngredientAmountProblem::TooManyDecimalPlaces => Self::TooManyDecimalPlaces,
+            core::RecipeIngredientAmountProblem::OutOfRange => Self::OutOfRange,
+            core::RecipeIngredientAmountProblem::NotPositive => Self::NotPositive,
+            core::RecipeIngredientAmountProblem::MissingForUnit => Self::MissingForUnit,
+        }
+    }
+}
+
+/// An ingredient's problems. Both are `nil` until the first Save.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct RecipeIngredientProblems {
+    /// Swift shows "Name required".
+    pub name: Option<RecipeIngredientNameError>,
+    pub amount: Option<RecipeIngredientAmountProblem>,
+}
+
+impl From<core::RecipeIngredientProblems> for RecipeIngredientProblems {
+    fn from(value: core::RecipeIngredientProblems) -> Self {
+        Self {
+            name: value.name.map(Into::into),
+            amount: value.amount.map(Into::into),
+        }
+    }
+}
+
+/// The name in the row's summary.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum RecipeIngredientLabel {
+    /// The name, trimmed: "penne pasta".
+    Named { name: String },
+    /// The name is empty. Swift shows "No name" in grey.
+    Unnamed,
+}
+
+impl From<core::RecipeIngredientLabel> for RecipeIngredientLabel {
+    fn from(value: core::RecipeIngredientLabel) -> Self {
+        match value {
+            core::RecipeIngredientLabel::Named { name } => Self::Named { name },
+            core::RecipeIngredientLabel::Unnamed => Self::Unnamed,
+        }
+    }
+}
+
+/// The row's text in three parts, which Swift joins: "1,50 kg" (as typed,
+/// with the unit's name), "tomatoes", and "chopped".
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct RecipeIngredientSummary {
+    /// `nil` with neither an amount nor a unit.
+    pub amount: Option<String>,
+    pub name: RecipeIngredientLabel,
+    /// `nil` when the note is empty.
+    pub note: Option<String>,
+}
+
+impl From<core::RecipeIngredientSummary> for RecipeIngredientSummary {
+    fn from(value: core::RecipeIngredientSummary) -> Self {
+        Self {
+            amount: value.amount,
+            name: value.name.into(),
+            note: value.note,
+        }
+    }
+}
+
 /// One recipe ingredient as the editor shows it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct RecipeIngredientView {
     pub id: core::RecipeIngredientId,
-    /// The name as typed.
+    /// The popover's fields, as typed. `unit` is `nil` for "No unit".
     pub name: String,
-    /// `nil` until the first Save. After it, the name's problem, if any:
-    /// Swift shows "Name required".
-    pub problem: Option<RecipeIngredientNameError>,
+    pub amount: String,
+    pub unit: Option<KnownUnit>,
+    pub note: String,
+    /// What the row shows.
+    pub summary: RecipeIngredientSummary,
+    pub problems: RecipeIngredientProblems,
 }
 
 impl From<core::RecipeIngredientView> for RecipeIngredientView {
@@ -262,9 +408,11 @@ impl From<core::RecipeIngredientView> for RecipeIngredientView {
         Self {
             id: value.id,
             name: value.name,
-            // REC-08 change 4 mirrors the amount, the unit, the note, the
-            // summary and the amount's problem.
-            problem: value.problems.name.map(Into::into),
+            amount: value.amount,
+            unit: value.unit.map(Into::into),
+            note: value.note,
+            summary: value.summary.into(),
+            problems: value.problems.into(),
         }
     }
 }
@@ -273,10 +421,25 @@ impl From<core::RecipeIngredientView> for RecipeIngredientView {
 pub enum RecipeIngredientsEvent {
     /// ＋ Line: an empty ingredient at the bottom.
     Add,
-    /// The name field, as typed.
+    /// The Name field, as typed.
     SetName {
         id: core::RecipeIngredientId,
         name: String,
+    },
+    /// The Amount field, as typed.
+    SetAmount {
+        id: core::RecipeIngredientId,
+        amount: String,
+    },
+    /// The Unit picker. `nil` is "No unit".
+    SetUnit {
+        id: core::RecipeIngredientId,
+        unit: Option<KnownUnit>,
+    },
+    /// The Note field, as typed.
+    SetNote {
+        id: core::RecipeIngredientId,
+        note: String,
     },
     /// The − button.
     Remove { id: core::RecipeIngredientId },
@@ -299,6 +462,12 @@ impl From<RecipeIngredientsEvent> for core::RecipeIngredientsEvent {
         match value {
             RecipeIngredientsEvent::Add => Self::Add,
             RecipeIngredientsEvent::SetName { id, name } => Self::SetName { id, name },
+            RecipeIngredientsEvent::SetAmount { id, amount } => Self::SetAmount { id, amount },
+            RecipeIngredientsEvent::SetUnit { id, unit } => Self::SetUnit {
+                id,
+                unit: unit.map(Into::into),
+            },
+            RecipeIngredientsEvent::SetNote { id, note } => Self::SetNote { id, note },
             RecipeIngredientsEvent::Remove { id } => Self::Remove { id },
             RecipeIngredientsEvent::Move { id, onto } => Self::Move { id, onto },
         }
@@ -700,6 +869,8 @@ pub struct RecipeEditorView {
     pub title: String,
     /// The recipe ingredients, in list order.
     pub ingredients: Vec<RecipeIngredientView>,
+    /// The Unit picker's choices after "No unit".
+    pub units: Vec<KnownUnitOption>,
     pub canvas: StepCanvasView,
     pub status: RecipeEditorStatus,
 }
@@ -709,6 +880,7 @@ impl From<core::RecipeEditorView> for RecipeEditorView {
         Self {
             title: value.title,
             ingredients: value.ingredients.into_iter().map(Into::into).collect(),
+            units: value.units.into_iter().map(Into::into).collect(),
             canvas: value.canvas.into(),
             status: value.status.into(),
         }
@@ -850,18 +1022,24 @@ pub enum RecipeDetailStatus {
     },
 }
 
-/// A recipe ingredient in the read view: its name.
+/// A recipe ingredient in the read view: "300 g", "penne pasta" and
+/// "extra virgin".
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct RecipeDetailIngredient {
     pub id: core::RecipeIngredientId,
+    /// Formatted by Rust: "1.5 kg", "2 cups". `nil` shows nothing.
+    pub amount: Option<String>,
     pub name: String,
+    pub note: Option<String>,
 }
 
 impl From<core::RecipeDetailIngredient> for RecipeDetailIngredient {
     fn from(value: core::RecipeDetailIngredient) -> Self {
         Self {
             id: value.id,
+            amount: value.amount,
             name: value.name,
+            note: value.note,
         }
     }
 }

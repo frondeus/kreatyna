@@ -43,7 +43,7 @@ struct EventCompositionTests {
     /// The draft row is Rust's trimmed title, and only while the create editor is open.
     @Test func recipeDraftRowFollowsThePane() {
         #expect(Fixtures.recipeSection().draftRow == nil)
-        let editor = RecipeEditorView(title: " Shakshuka ", ingredients: [], canvas: Fixtures.canvas(.unselected(steps: [])), status: .editing(problem: nil))
+        let editor = RecipeEditorView(title: " Shakshuka ", ingredients: [], units: Fixtures.units, canvas: Fixtures.canvas(.unselected(steps: [])), status: .editing(problem: nil))
         let creating = Fixtures.recipeSection(pane: .create(editor: editor, draftRow: "Shakshuka"))
         #expect(creating.draftRow == "Shakshuka")
         #expect(creating.create == .unavailable)
@@ -52,7 +52,7 @@ struct EventCompositionTests {
     /// The edit editor has no draft row, and its events carry the pane scope.
     @Test func recipeEditPaneEventsCarryThePaneScope() {
         let shakshuka = Fixtures.recipeRow("Shakshuka")
-        let editor = RecipeEditorView(title: "Spicy shakshuka", ingredients: [], canvas: Fixtures.canvas(.unselected(steps: [])), status: .editing(problem: nil))
+        let editor = RecipeEditorView(title: "Spicy shakshuka", ingredients: [], units: Fixtures.units, canvas: Fixtures.canvas(.unselected(steps: [])), status: .editing(problem: nil))
         let editing = Fixtures.recipeSection(.ready(rows: [shakshuka]), editing: shakshuka, editor: editor)
         #expect(editing.draftRow == nil)
         #expect(editing.editor(.save) == .editor(scope: ScopeId(value: 5), event: .save))

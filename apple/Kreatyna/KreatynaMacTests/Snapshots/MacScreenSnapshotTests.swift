@@ -393,12 +393,18 @@ extension MainActorTests {
             )
         }
 
-        /// Pasta's read view with three recipe ingredients in list order, above
-        /// the steps (REC-07).
+        /// Pasta's read view with four recipe ingredients in list order, above
+        /// the steps (REC-07): Rust's amount in a column, the name, and the
+        /// note in grey (REC-08). Salt has no amount.
         @Test(arguments: Appearance.allCases)
         func recipeReadViewIngredients(appearance: Appearance) {
             let pasta = Fixtures.recipeRow("Pasta", stepCount: 1)
-            let ingredients = ["penne pasta", "olive oil", "basil"].map { Fixtures.detailIngredient($0) }
+            let ingredients = [
+                Fixtures.detailIngredient("penne pasta", amount: "300 g"),
+                Fixtures.detailIngredient("olive oil", amount: "1 tbsp", note: "extra virgin"),
+                Fixtures.detailIngredient("salt", note: "to taste"),
+                Fixtures.detailIngredient("milk", amount: "2 cups"),
+            ]
             let detail = RecipeDetailView(
                 id: pasta.id,
                 status: .ready(title: pasta.title, ingredients: ingredients, steps: [Fixtures.detailStep("Boil water")], deletion: .idle)
@@ -416,11 +422,17 @@ extension MainActorTests {
             )
         }
 
-        /// The Pasta editor with three recipe ingredients under the canvas, each
-        /// with its handle, name field and − button (REC-07).
+        /// The Pasta editor with four recipe ingredients under the canvas, each
+        /// with its handle, Rust's summary and the − button (REC-07, REC-08):
+        /// the amount in bold, the name, and ", note" in grey.
         @Test(arguments: Appearance.allCases)
         func recipeEditorIngredients(appearance: Appearance) {
-            let ingredients = ["penne pasta", "olive oil", "basil"].map { Fixtures.ingredient($0) }
+            let ingredients = [
+                Fixtures.ingredient("penne pasta", amount: "300", unit: .gram, summary: "300 g"),
+                Fixtures.ingredient("olive oil", amount: "1", unit: .tablespoon, summary: "1 tbsp", note: "extra virgin"),
+                Fixtures.ingredient("salt", note: "to taste"),
+                Fixtures.ingredient("eggs", amount: "2", summary: "2"),
+            ]
             snapshot(
                 recipes(
                     .ready(rows: []), editor: ("Pasta", nil),
@@ -430,14 +442,24 @@ extension MainActorTests {
             )
         }
 
-        /// After Save, an empty ingredient shows "Name required" under its field;
-        /// the named ingredients show nothing (REC-07).
+        /// After Save, each row with a problem shows it in red under its
+        /// summary: "Name required" (REC-07), and each amount problem
+        /// (REC-08). The row without a name shows "No name".
         @Test(arguments: Appearance.allCases)
         func recipeEditorIngredientProblem(appearance: Appearance) {
             let ingredients = [
-                Fixtures.ingredient("penne pasta"),
-                Fixtures.ingredient("", problem: .notEmptyViolated, key: "empty"),
-                Fixtures.ingredient("basil"),
+                Fixtures.ingredient(
+                    "flour", unit: .gram, summary: "g",
+                    problems: RecipeIngredientProblems(name: nil, amount: .missingForUnit)
+                ),
+                Fixtures.ingredient(
+                    "milk", amount: "0", unit: .millilitre, summary: "0 ml",
+                    problems: RecipeIngredientProblems(name: nil, amount: .notPositive)
+                ),
+                Fixtures.ingredient(
+                    "", amount: "2", summary: "2",
+                    problems: RecipeIngredientProblems(name: .notEmptyViolated, amount: nil), key: "empty"
+                ),
             ]
             snapshot(
                 recipes(.ready(rows: []), editor: ("Pasta", nil), ingredients: ingredients),
@@ -454,6 +476,25 @@ extension MainActorTests {
                 recipes(.ready(rows: []), editor: ("Pasta", nil), ingredients: names.map { Fixtures.ingredient($0) }),
                 appearance: appearance
             )
+        }
+
+        /// The popover of olive oil: Amount, Unit, Name and Note as typed
+        /// (REC-08/Q1). The Unit picker shows Rust's unit.
+        @Test(arguments: Appearance.allCases)
+        func recipeIngredientPopover(appearance: Appearance) {
+            let oil = Fixtures.ingredient("olive oil", amount: "1", unit: .tablespoon, summary: "1 tbsp", note: "extra virgin")
+            snapshot(popover(oil), appearance: appearance, width: 320, height: 240)
+        }
+
+        /// The popover after Save, with a unit and no amount: the problem
+        /// shows under Amount (REC-08).
+        @Test(arguments: Appearance.allCases)
+        func recipeIngredientPopoverProblem(appearance: Appearance) {
+            let flour = Fixtures.ingredient(
+                "flour", unit: .gram, summary: "g",
+                problems: RecipeIngredientProblems(name: nil, amount: .missingForUnit)
+            )
+            snapshot(popover(flour), appearance: appearance, width: 320, height: 240)
         }
 
         /// Rust is deleting Shakshuka: the overlay shows, Edit and Delete are off,
@@ -491,7 +532,7 @@ extension MainActorTests {
                 Fixtures.stepNode("Fry onion", x: 200, y: 110),
             ]
             let editor = RecipeEditorView(
-                title: "Spicy shakshuka", ingredients: [], canvas: Fixtures.canvas(.unselected(steps: steps)), status: .editing(problem: nil)
+                title: "Spicy shakshuka", ingredients: [], units: Fixtures.units, canvas: Fixtures.canvas(.unselected(steps: steps)), status: .editing(problem: nil)
             )
             snapshot(
                 MacMainView(
@@ -612,7 +653,7 @@ extension MainActorTests {
                 nodes: canvas, connections: connections, refusal: refusal, durationChips: Fixtures.durationChips
             )
             let view = RecipeEditorView(
-                title: editor.title, ingredients: ingredients, canvas: canvas, status: .editing(problem: editor.problem)
+                title: editor.title, ingredients: ingredients, units: Fixtures.units, canvas: canvas, status: .editing(problem: editor.problem)
             )
             let pane = RecipePaneView.create(
                 editor: view, draftRow: editor.title.trimmingCharacters(in: .whitespaces)
@@ -622,6 +663,13 @@ extension MainActorTests {
                 columnVisibility: .doubleColumn,
                 send: { _ in }
             )
+        }
+
+        /// One ingredient's popover content, as the window's popover shows it.
+        private func popover(_ ingredient: RecipeIngredientView) -> some View {
+            MacRecipeIngredientEditor(ingredient: ingredient, units: Fixtures.units, send: { _ in })
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background(.background)
         }
 
         /// The Recipes section with an empty pane.
@@ -676,6 +724,7 @@ extension MainActorTests {
             _ view: some View,
             appearance: Appearance,
             width: CGFloat = 960,
+            height: CGFloat = 600,
             fileID: StaticString = #fileID,
             filePath: StaticString = #filePath,
             testName: String = #function,
@@ -686,7 +735,7 @@ extension MainActorTests {
             // hosted in an off-screen window. The window's frame view is
             // captured so the title bar and toolbar are included.
             let window = InactiveWindow(
-                contentRect: CGRect(x: 0, y: 0, width: width, height: 600),
+                contentRect: CGRect(x: 0, y: 0, width: width, height: height),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
@@ -701,10 +750,10 @@ extension MainActorTests {
             // The fixed frame keeps SwiftUI from resizing the window to its content.
             window.contentViewController = NSHostingController(
                 rootView: view
-                    .frame(width: width, height: 600)
+                    .frame(width: width, height: height)
                     .environment(\.locale, Locale(identifier: "en_US"))
             )
-            window.setContentSize(CGSize(width: width, height: 600))
+            window.setContentSize(CGSize(width: width, height: height))
             window.setFrameOrigin(CGPoint(x: -10_000, y: -10_000))
             window.orderFront(nil)
             defer { window.close() }

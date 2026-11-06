@@ -88,6 +88,18 @@ extension RecipeIngredientNameError {
     }
 }
 
+extension RecipeIngredientAmountProblem {
+    var message: String {
+        switch self {
+        case .notANumber: "Amount is not a number"
+        case .tooManyDecimalPlaces: "At most 6 decimal places"
+        case .outOfRange: "Amount is too large"
+        case .notPositive: "Amount must be more than 0"
+        case .missingForUnit: "Amount needed for a unit"
+        }
+    }
+}
+
 extension DurationError {
     var message: String {
         switch self {

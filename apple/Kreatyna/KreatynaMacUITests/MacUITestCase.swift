@@ -55,6 +55,26 @@ class MacUITestCase: XCTestCase {
         return XCTWaiter().wait(for: [match], timeout: timeout) == .completed
     }
 
+    /// Waits until `element`'s accessibility label is `label`, such as a
+    /// recipe ingredient's summary "300 g penne pasta, al dente".
+    func waitFor(_ element: XCUIElement, label: String, timeout: TimeInterval = 5) -> Bool {
+        let match = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: element)
+        return XCTWaiter().wait(for: [match], timeout: timeout) == .completed
+    }
+
+    /// ＋ Line, then `name` in the popover's Name field, which has the
+    /// cursor; Escape closes the popover (REC-08/Q1).
+    @MainActor
+    func addRecipeIngredient(_ name: String, at index: Int, in app: XCUIApplication) {
+        app.buttons["addRecipeIngredient"].click()
+        let field = app.textFields["recipeIngredientName"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        app.typeText(name)
+        XCTAssertTrue(waitFor(field, value: name))
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(waitFor(app.buttons["recipeIngredientSummary.\(index)"], label: name))
+    }
+
     /// Drags from the ● on the right edge of the node `from` and drops on
     /// the middle of the node `to` (REC-18).
     @MainActor

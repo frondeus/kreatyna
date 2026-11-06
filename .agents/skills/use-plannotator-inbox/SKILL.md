@@ -85,8 +85,8 @@ jj diff -r @ --name-only 'glob:**/*.rs'
 
 ### No Rust files: no review
 
-Do not ask for a review. Do not open `plannotator review`, do not send a
-guided review, and do not ask "Does the app behave as the demo shows?".
+Do not ask for a review. Do not open `plannotator review`, and do not send a
+guided review.
 Send one short Inbox report: what changed, the checks and their results, and
 "No Rust files changed, so there is no review." Include the demo in that
 report when there is one, for information only. The change does not wait for a review; continue
@@ -100,8 +100,12 @@ review (`plannotator review`) unless the user asks for it.
 1. Send the demo first, if the slice has one, as its own message: the text
    in the body, each screenshot embedded with `![...](path)` and listed in
    `attachments`, no `demo.md` file (see
-   [document-apple-delivery](../document-apple-delivery/SKILL.md)). End it
-   with the question "Does the app behave as the demo shows?".
+   [document-apple-delivery](../document-apple-delivery/SKILL.md)). It shows
+   the change, and asks nothing: the UI tests prove that the app behaves as
+   it shows. The user comments on the demo when something looks wrong, and
+   approves the change on the guided review. (The user, on "Does the app
+   behave as the pictures show?": "Why do you ask me. You have automation
+   tests.", REC-08, 2026-11-06.)
 2. Complete the checklist in [review-own-diff](../review-own-diff/SKILL.md)
    on the patch, and fix what it finds. This is required before every guided
    review, also after a round of review fixes.

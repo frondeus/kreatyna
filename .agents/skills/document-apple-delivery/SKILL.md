@@ -38,11 +38,12 @@ snapshot diffs before accepting them. Record the checks and any unavailable
 evidence in the demo message; never imply that an unrun check passed. Check
 that every embedded image path exists before you send the message.
 
-Send the demo message to the slice's Inbox thread. When the change edits Rust
-files, end it with one question: "Does the app behave as the demo shows?".
-The user annotates the demo there, and a guided review of the Rust side
-follows in the same thread. When it edits no Rust files, the demo is part of
-the report, for information only, without the question. See "Code review:
+Send the demo message to the slice's Inbox thread. It asks no question: the
+UI tests and snapshot tests prove the behavior, and the message says which
+ones ran. The user annotates the demo when something looks wrong. When the
+change edits Rust files, a guided review of the Rust side follows in the same
+thread, and the user approves the change there. When it edits no Rust files,
+the demo is part of the report, for information only. See "Code review:
 count the Rust files first" in
 [use-plannotator-inbox](../use-plannotator-inbox/SKILL.md).
 

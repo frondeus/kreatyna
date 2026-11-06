@@ -440,9 +440,10 @@ final class MacRecipeUITests: MacUITestCase {
         return field
     }
 
-    /// ＋ Line three times with a name each; a drag of basil's handle onto
-    /// penne pasta puts basil first; − removes olive oil. Save keeps the
-    /// two ingredients in the new order, and the read view lists them (REC-07).
+    /// ＋ Line three times with a name each, typed in the popover; a drag
+    /// of basil's handle onto penne pasta puts basil first; − removes olive
+    /// oil. Save keeps the two ingredients in the new order, and the read
+    /// view lists them (REC-07).
     @MainActor
     func testRecipeIngredientsAddDragRemoveAndSave() throws {
         let app = try launch(json: nil, openIngredients: false)
@@ -451,24 +452,19 @@ final class MacRecipeUITests: MacUITestCase {
         XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
         app.typeText("Pasta")
 
-        // The new ingredient's name field has the focus.
         for (index, name) in ["penne pasta", "olive oil", "basil"].enumerated() {
-            app.buttons["addRecipeIngredient"].click()
-            let field = app.textFields["recipeIngredientName.\(index)"]
-            XCTAssertTrue(field.waitForExistence(timeout: 5))
-            app.typeText(name)
-            XCTAssertTrue(waitFor(field, value: name))
+            addRecipeIngredient(name, at: index, in: app)
         }
+        let summary = { (index: Int) in app.buttons["recipeIngredientSummary.\(index)"] }
 
         let handle = app.descendants(matching: .any)["recipeIngredientHandle.2"]
-        let top = app.textFields["recipeIngredientName.0"]
         handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            .click(forDuration: 0.2, thenDragTo: top.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
-        XCTAssertTrue(waitFor(app.textFields["recipeIngredientName.0"], value: "basil"))
-        XCTAssertTrue(waitFor(app.textFields["recipeIngredientName.1"], value: "penne pasta"))
+            .click(forDuration: 0.2, thenDragTo: summary(0).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
+        XCTAssertTrue(waitFor(summary(0), label: "basil"))
+        XCTAssertTrue(waitFor(summary(1), label: "penne pasta"))
 
         app.buttons["removeRecipeIngredient.2"].click()
-        XCTAssertTrue(waitForNonExistence(app.textFields["recipeIngredientName.2"], timeout: 5))
+        XCTAssertTrue(waitForNonExistence(summary(2), timeout: 5))
         app.typeKey("s", modifierFlags: .command)
 
         XCTAssertTrue(waitForTitle(in: app, "Pasta"))
@@ -476,6 +472,38 @@ final class MacRecipeUITests: MacUITestCase {
         XCTAssertTrue(waitFor(ingredients.element(boundBy: 0), value: "basil"))
         XCTAssertTrue(waitFor(ingredients.element(boundBy: 1), value: "penne pasta"))
         XCTAssertEqual(ingredients.count, 2)
+    }
+
+    /// In the popover: 300 as the amount, g from the Unit menu, and "al
+    /// dente" as the note. The row shows Rust's summary, and after Save the
+    /// read view shows "300 g" and the note (REC-08).
+    @MainActor
+    func testRecipeIngredientAmountUnitNoteAndSave() throws {
+        let app = try launch(json: nil, openIngredients: false)
+        XCTAssertTrue(app.buttons["newRecipe"].waitForExistence(timeout: 5))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(recipeDraftRow(in: app).waitForExistence(timeout: 5))
+        app.typeText("Pasta")
+        addRecipeIngredient("penne pasta", at: 0, in: app)
+
+        app.buttons["recipeIngredientSummary.0"].click()
+        let amount = app.textFields["recipeIngredientAmount"]
+        XCTAssertTrue(amount.waitForExistence(timeout: 5))
+        amount.click()
+        app.typeText("300")
+        app.popUpButtons["recipeIngredientUnit"].click()
+        app.menuItems["g"].click()
+        app.textFields["recipeIngredientNote"].click()
+        app.typeText("al dente")
+        XCTAssertTrue(waitFor(app.textFields["recipeIngredientNote"], value: "al dente"))
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(waitFor(app.buttons["recipeIngredientSummary.0"], label: "300 g penne pasta, al dente"))
+
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitForTitle(in: app, "Pasta"))
+        XCTAssertTrue(waitFor(app.staticTexts["recipeIngredientAmount"], value: "300 g"))
+        XCTAssertTrue(waitFor(app.staticTexts["recipeIngredient"], value: "penne pasta"))
+        XCTAssertTrue(waitFor(app.staticTexts["recipeIngredientNote"], value: ", al dente"))
     }
 
     /// Presses on `element`, moves the pointer by `offset` points, and releases.

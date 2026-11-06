@@ -258,6 +258,7 @@ async fn edits_steps_ingredients_save_and_cancel_are_ignored_while_saving() -> a
         RecipeEditorView {
             title: "Shakshuka".into(),
             ingredients: vec![],
+            units: units(),
             canvas: canvas(StepNodesView::Selected {
                 selected: node(
                     onion,
@@ -472,6 +473,7 @@ fn editing(title: &str, problem: Option<RecipeEditorProblem>) -> RecipeEditorVie
     RecipeEditorView {
         title: title.into(),
         ingredients: vec![],
+        units: units(),
         canvas: no_steps(),
         status: RecipeEditorStatus::Editing { problem },
     }

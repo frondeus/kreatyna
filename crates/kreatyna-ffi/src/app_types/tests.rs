@@ -492,14 +492,39 @@ fn an_editor_keeps_the_ingredients_in_order_with_their_names_as_typed_and_proble
             kreatyna::recipes::RecipeIngredientView {
                 id: ingredient_id(1),
                 name: " eggs ".into(),
-                problem: None,
+                amount: String::new(),
+                unit: None,
+                note: String::new(),
+                summary: kreatyna::recipes::RecipeIngredientSummary {
+                    amount: None,
+                    name: kreatyna::recipes::RecipeIngredientLabel::Named {
+                        name: "eggs".into(),
+                    },
+                    note: None,
+                },
+                problems: kreatyna::recipes::RecipeIngredientProblems {
+                    name: None,
+                    amount: None,
+                },
             },
             kreatyna::recipes::RecipeIngredientView {
                 id: ingredient_id(2),
                 name: " ".into(),
-                problem: Some(kreatyna::recipes::RecipeIngredientNameError::NotEmptyViolated),
+                amount: String::new(),
+                unit: None,
+                note: String::new(),
+                summary: kreatyna::recipes::RecipeIngredientSummary {
+                    amount: None,
+                    name: kreatyna::recipes::RecipeIngredientLabel::Unnamed,
+                    note: None,
+                },
+                problems: kreatyna::recipes::RecipeIngredientProblems {
+                    name: Some(kreatyna::recipes::RecipeIngredientNameError::NotEmptyViolated),
+                    amount: None,
+                },
             },
         ],
+        units: vec![],
         canvas: kreatyna::recipes::StepCanvasView {
             nodes: kreatyna::recipes::StepNodesView::Unselected { steps: vec![] },
             connections: vec![],
@@ -576,6 +601,7 @@ fn an_editor_canvas_keeps_the_selection_the_details_the_problems_and_the_arrows(
     let editor = kreatyna::recipes::RecipeEditorView {
         title: "Shakshuka".into(),
         ingredients: vec![],
+        units: vec![],
         canvas: kreatyna::recipes::StepCanvasView {
             nodes: kreatyna::recipes::StepNodesView::Selected {
                 selected: untitled,
@@ -870,6 +896,7 @@ fn a_create_pane_keeps_the_draft_row_and_the_problem() {
         editor: kreatyna::recipes::RecipeEditorView {
             title: "shakshuka ".into(),
             ingredients: vec![],
+            units: vec![],
             canvas: kreatyna::recipes::StepCanvasView {
                 nodes: kreatyna::recipes::StepNodesView::Unselected { steps: vec![] },
                 connections: vec![],
@@ -913,6 +940,7 @@ fn an_edit_pane_keeps_the_saved_title_and_the_problem() {
         editor: kreatyna::recipes::RecipeEditorView {
             title: "Spicy shakshuka".into(),
             ingredients: vec![],
+            units: vec![],
             canvas: kreatyna::recipes::StepCanvasView {
                 nodes: kreatyna::recipes::StepNodesView::Unselected { steps: vec![] },
                 connections: vec![],

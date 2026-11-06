@@ -451,12 +451,7 @@ impl StepCanvas {
         let Some(step) = self.step_mut(id) else {
             return DraftChange::Unchanged;
         };
-        let field = field(step);
-        if *field == value {
-            return DraftChange::Unchanged;
-        }
-        *field = value;
-        DraftChange::Changed
+        DraftChange::set(field(step), value)
     }
 
     /// Where the step `id` is in `steps`. `None` for an id that names no

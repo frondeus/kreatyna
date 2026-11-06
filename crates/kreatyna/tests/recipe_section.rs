@@ -765,7 +765,7 @@ async fn retry_in_a_failed_read_view_loads_the_recipe_again() -> anyhow::Result<
 
 mod recipe_editor_support;
 
-use recipe_editor_support::chips;
+use recipe_editor_support::{chips, units};
 
 fn recipe(id: u128, title: &str) -> Recipe {
     Recipe {
@@ -882,6 +882,7 @@ fn create(title: &str, draft_row: &str) -> RecipePaneView {
         editor: RecipeEditorView {
             title: title.into(),
             ingredients: vec![],
+            units: units(),
             canvas: canvas(StepNodesView::Unselected { steps: vec![] }),
             status: RecipeEditorStatus::Editing { problem: None },
         },
@@ -914,6 +915,7 @@ fn editing(saved: &Recipe, title: &str) -> RecipePaneView {
         editor: RecipeEditorView {
             title: title.into(),
             ingredients: vec![],
+            units: units(),
             canvas: canvas(StepNodesView::Unselected { steps }),
             status: RecipeEditorStatus::Editing { problem: None },
         },

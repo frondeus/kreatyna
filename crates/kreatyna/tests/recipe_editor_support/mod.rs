@@ -1,6 +1,6 @@
 //! Test support that `recipe_editor.rs` and `step_canvas.rs` share: the
 //! editor fixture and the recipes it opens. `recipe_section.rs` uses the
-//! chips. Each test file compiles this module on its own and uses only part
+//! chips and the units. Each test file compiles this module on its own and uses only part
 //! of it.
 #![expect(
     dead_code,
@@ -11,13 +11,13 @@ use kreatyna::{
     capabilities::ResolveRender,
     confirmation::{ConfirmationEvent, ConfirmationView},
     recipes::{
-        CanvasPoint, DurationChip, DurationEntry, DurationInput, DurationParts, Recipe,
-        RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome, RecipeEditorProblem,
-        RecipeEditorStatus, RecipeId, RecipeIngredient, RecipeIngredientId, RecipeIngredientName,
-        RecipeIngredientQuantity, RecipeIngredientsEvent, RecipeTitleError, Step, StepCanvasEvent,
-        StepCanvasView, StepDurationS, StepDurationView, StepEdge, StepEdges, StepId,
-        StepInstructions, StepKind, StepLabel, StepNodeView, StepNodesView, StepProblems,
-        StepTitle, StepTitleError, StepWrite,
+        CanvasPoint, DurationChip, DurationEntry, DurationInput, DurationParts, KnownUnit,
+        KnownUnitOption, Recipe, RecipeEditor, RecipeEditorEvent, RecipeEditorOutcome,
+        RecipeEditorProblem, RecipeEditorStatus, RecipeId, RecipeIngredient, RecipeIngredientId,
+        RecipeIngredientName, RecipeIngredientQuantity, RecipeIngredientsEvent, RecipeTitleError,
+        Step, StepCanvasEvent, StepCanvasView, StepDurationS, StepDurationView, StepEdge,
+        StepEdges, StepId, StepInstructions, StepKind, StepLabel, StepNodeView, StepNodesView,
+        StepProblems, StepTitle, StepTitleError, StepWrite,
         capabilities::{
             RecipeEffectStream, RecipeSaveError, RecipeStoreRequest, ResolveRecipeStore,
         },
@@ -247,6 +247,26 @@ pub(crate) fn chips() -> Vec<DurationChip> {
     .into()
 }
 
+/// The Unit picker's choices after "No unit", as every editor shows them
+/// (D-25).
+pub(crate) fn units() -> Vec<KnownUnitOption> {
+    [
+        (KnownUnit::Gram, "g"),
+        (KnownUnit::Kilogram, "kg"),
+        (KnownUnit::Millilitre, "ml"),
+        (KnownUnit::Litre, "l"),
+        (KnownUnit::Teaspoon, "tsp"),
+        (KnownUnit::Tablespoon, "tbsp"),
+        (KnownUnit::Cup, "cup"),
+        (KnownUnit::Piece, "piece"),
+    ]
+    .map(|(unit, label)| KnownUnitOption {
+        unit,
+        label: label.into(),
+    })
+    .into()
+}
+
 pub(crate) fn write(id: StepId, title: &str, position: CanvasPoint) -> anyhow::Result<StepWrite> {
     Ok(StepWrite {
         id,
@@ -423,6 +443,33 @@ impl Fixture {
         let name = name.into();
         self.ingredients(RecipeIngredientsEvent::SetName { id, name })
             .await
+    }
+
+    /// Types the amount, picks the unit and types the note of `id`, each as
+    /// its own event. An empty text and no unit send nothing, because they
+    /// change nothing on a new ingredient and so do not render.
+    pub(crate) async fn fill_ingredient(
+        &mut self,
+        id: RecipeIngredientId,
+        amount: &str,
+        unit: Option<KnownUnit>,
+        note: &str,
+    ) -> anyhow::Result<()> {
+        if !amount.is_empty() {
+            let amount = amount.into();
+            self.ingredients(RecipeIngredientsEvent::SetAmount { id, amount })
+                .await?;
+        }
+        if unit.is_some() {
+            self.ingredients(RecipeIngredientsEvent::SetUnit { id, unit })
+                .await?;
+        }
+        if !note.is_empty() {
+            let note = note.into();
+            self.ingredients(RecipeIngredientsEvent::SetNote { id, note })
+                .await?;
+        }
+        Ok(())
     }
 
     /// The names of the ingredients as the editor shows them, in list order.

@@ -218,7 +218,7 @@ pub struct RecipeIngredientSummary {
 pub enum RecipeIngredientLabel { Named { name: String }, Unnamed }
 
 /// One choice of the Unit picker, after "No unit".
-pub struct UnitOption { pub unit: KnownUnit, pub label: String }
+pub struct KnownUnitOption { pub unit: KnownUnit, pub label: String }
 ```
 
 `DraftRecipeIngredient` gets `amount: String`, `unit: Option<KnownUnit>` and
@@ -226,7 +226,7 @@ pub struct UnitOption { pub unit: KnownUnit, pub label: String }
 problems. `differs_from` compares the new fields too, so a changed amount
 makes Cancel ask "Discard changes?".
 
-`editor.rs`: `RecipeEditorView` gets `units: Vec<UnitOption>`.
+`editor.rs`: `RecipeEditorView` gets `units: Vec<KnownUnitOption>`.
 
 `detail.rs`: `RecipeDetailIngredient` gets `amount: Option<String>` ("300 g",
 "2 cups", formatted) and `note: Option<String>`.
@@ -248,7 +248,7 @@ async fn a_unit_without_an_amount_blocks_save_on_that_ingredient() -> anyhow::Re
 ### ffi (`crates/kreatyna-ffi`)
 
 `recipes.rs` mirrors `KnownUnit`, `RecipeIngredientAmountProblem`, `RecipeIngredientProblems`,
-`RecipeIngredientSummary`, `RecipeIngredientLabel`, `UnitOption`, the new events, and the new
+`RecipeIngredientSummary`, `RecipeIngredientLabel`, `KnownUnitOption`, the new events, and the new
 view fields. `RecipeIngredientView.problem` becomes `problems`.
 
 ### swift

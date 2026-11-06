@@ -15,7 +15,10 @@ use super::{
     NewRecipe, Recipe, RecipeIngredient, RecipeTitle, RecipeTitleError, RecipeUpdate, Step,
     StepEdges, StepWrite,
     capabilities::{RecipeCapabilities, RecipeEffectStream, RecipeSaveError},
-    recipe_ingredients::{DraftRecipeIngredients, RecipeIngredientView, RecipeIngredientsEvent},
+    recipe_ingredients::{
+        DraftRecipeIngredients, KnownUnitOption, RecipeIngredientView, RecipeIngredientsEvent,
+        unit_options,
+    },
     step_canvas::{StepCanvas, StepCanvasEvent, StepCanvasView},
 };
 
@@ -51,7 +54,7 @@ pub enum RecipeEditorOutcome {
 
 /// Why the last Save did not save. A step's problems live on its node
 /// (`StepNodeView::problems`), an ingredient's on the ingredient
-/// (`RecipeIngredientView::problem`).
+/// (`RecipeIngredientView::problems`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecipeEditorProblem {
     Invalid(RecipeTitleError),
@@ -76,6 +79,8 @@ pub struct RecipeEditorView {
     pub title: String,
     /// In list order (REC-07/Q1).
     pub ingredients: Vec<RecipeIngredientView>,
+    /// The Unit picker's choices after "No unit" (REC-08).
+    pub units: Vec<KnownUnitOption>,
     pub canvas: StepCanvasView,
     pub status: RecipeEditorStatus,
 }
@@ -218,8 +223,8 @@ impl RecipeEditor {
 
     /// Save. A recipe title that breaks the rule becomes the editor's
     /// problem. A step title that breaks the rule selects the first such
-    /// step, so the inspector shows its problem (REC-14/Q2). An ingredient with an
-    /// empty name shows its problem on the ingredient (REC-07).
+    /// step, so the inspector shows its problem (REC-14/Q2). An ingredient with a
+    /// problem in its name (REC-07) or amount (REC-08) shows it on the ingredient.
     fn save(&mut self) -> Command<RecipeEditorOutcome> {
         self.problems = ProblemDisplay::Shown;
         let title = RecipeTitle::try_new(self.title.as_str());
@@ -433,6 +438,7 @@ impl Widget for RecipeEditor {
         RecipeEditorView {
             title: self.title.clone(),
             ingredients: self.ingredients.view(self.problems),
+            units: unit_options(),
             canvas: self.canvas.view(self.problems),
             status,
         }

@@ -262,7 +262,9 @@ impl From<core::RecipeIngredientView> for RecipeIngredientView {
         Self {
             id: value.id,
             name: value.name,
-            problem: value.problem.map(Into::into),
+            // REC-08 change 4 mirrors the amount, the unit, the note, the
+            // summary and the amount's problem.
+            problem: value.problems.name.map(Into::into),
         }
     }
 }

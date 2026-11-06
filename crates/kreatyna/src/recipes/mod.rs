@@ -33,7 +33,11 @@ pub use model::{
     StepIdParseError, StepInstructions, StepInstructionsError, StepKind, StepTitle, StepTitleError,
     StepWrite,
 };
-pub use recipe_ingredients::{RecipeIngredientView, RecipeIngredientsEvent};
+pub use recipe_ingredients::{
+    KnownUnitOption, RecipeIngredientAmountProblem, RecipeIngredientLabel,
+    RecipeIngredientProblems, RecipeIngredientSummary, RecipeIngredientView,
+    RecipeIngredientsEvent,
+};
 pub use section::{
     RecipePaneOutcome, RecipePaneView, RecipeSection, RecipeSectionEvent, RecipeSectionOutcome,
     RecipeSectionView,
